@@ -1,0 +1,23 @@
+schema_version: 1
+catalog: Crystallography Open Database
+homepage: https://www.crystallography.net/cod/
+license: CC0-1.0
+license_uri: https://creativecommons.org/publicdomain/zero/1.0/
+copying_policy: >-
+  COD data and the database are dedicated to the public domain. Users should
+  acknowledge the original authors of the structural data.
+entries:
+  COD-9000319:
+    record: ../../phases/forsterite/source.yml
+    page_uri: https://www.crystallography.net/cod/9000319.html
+    cif_uri: https://www.crystallography.net/cod/9000319.cif
+    retrieved: 2026-07-12
+    sha256: 550b8c89c617267d39e7cb6a07fe6f55cd2343453c1c45ec77738bf6fd25d9cd
+    original_publication:
+      authors: [J. R. Smyth, R. M. Hazen]
+      title: The crystal structures of forsterite and hortonolite at several temperatures up to 900 C
+      journal: American Mineralogist
+      year: 1973
+      volume: 58
+      pages: 588-593
+      article_uri: https://rruff.info/uploads/AM58_588.pdf

@@ -1,0 +1,44 @@
+schema_version: 1
+identifier: COD-9000319
+cif: COD-9000319.cif
+sha256: 550b8c89c617267d39e7cb6a07fe6f55cd2343453c1c45ec77738bf6fd25d9cd
+retrieved: 2026-07-12
+uri: https://www.crystallography.net/cod/9000319.cif
+page_uri: https://www.crystallography.net/cod/9000319.html
+license: CC0-1.0
+license_uri: https://creativecommons.org/publicdomain/zero/1.0/
+copying_policy: Public-domain COD data; acknowledge the original structural-data authors.
+citation: >-
+  Smyth, J. R. and Hazen, R. M. (1973). The crystal structures of forsterite
+  and hortonolite at several temperatures up to 900 C. American Mineralogist
+  58, 588-593.
+phase:
+  name: forsterite
+  formula: Mg2SiO4
+  space_group_number: 62
+  setting: P b n m
+  lattice_angstrom: [4.756, 10.207, 5.980, 90.0, 90.0, 90.0]
+sites:
+  - {label: Mg1, element: Mg, fract: [0.00000, 0.00000, 0.00000], occupancy: 1.0, u_iso_angstrom_sq: 0.00329}
+  - {label: Mg2, element: Mg, fract: [0.99150, 0.27740, 0.25000], occupancy: 1.0, u_iso_angstrom_sq: 0.00279}
+  - {label: Si, element: Si, fract: [0.42620, 0.09400, 0.25000], occupancy: 1.0, u_iso_angstrom_sq: 0.00101}
+  - {label: O1, element: O, fract: [0.76570, 0.09130, 0.25000], occupancy: 1.0, u_iso_angstrom_sq: 0.00342}
+  - {label: O2, element: O, fract: [0.22150, 0.44740, 0.25000], occupancy: 1.0, u_iso_angstrom_sq: 0.00304}
+  - {label: O3, element: O, fract: [0.27770, 0.16280, 0.03310], occupancy: 1.0, u_iso_angstrom_sq: 0.00342}
+thermal_factor_policy:
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
+  simulation_units: angstrom^2
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
+simulation_setting:
+  reason: >-
+    COD 9000319 is reported in non-standard P b n m. ebsdsim 0.1.8 expands
+    space-group 62 in standard P n m a, so the source axes must be permuted
+    explicitly before simulation to preserve Wyckoff multiplicities.
+  source_setting: P b n m
+  target_setting: P n m a
+  target_lattice_from_source: [b, c, a]
+  target_fractional_from_source: [y, z, x]

@@ -14,6 +14,7 @@ dependencies = [
   "kikuchipy==0.13.0",
   "numpy>=2.0,<3",
   "orix>=0.14,<0.15",
+  "pycifrw>=5.0,<6",
   "pyyaml>=6.0,<7",
   "scikit-image>=0.25,<0.26",
   "tifffile>=2025.6,<2026",
