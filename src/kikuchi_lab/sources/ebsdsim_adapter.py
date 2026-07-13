@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import shutil
+import tempfile
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
@@ -14,6 +17,7 @@ from typing import Any
 import numpy as np
 import yaml
 from ebsdsim import master_pattern_from_cif
+from ebsdsim.cif import ATOMIC_NUMBERS
 from ebsdsim.mploader import load_master_pattern
 
 from kikuchi_lab.model.identity import canonical_json
@@ -33,6 +37,25 @@ class GeneratedMasterPattern:
     product: MasterPatternProduct
     npz_sha256: str
     simulation_cif: Path | None = None
+
+
+@contextmanager
+def _bundle_transaction(output_root: Path, bundle_name: str):
+    """Build a complete bundle privately, then publish its directory atomically."""
+    root = output_root.resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    final = (root / bundle_name).resolve()
+    if final.parent != root:
+        raise ValueError("bundle path must remain inside its output root")
+    if final.exists():
+        raise FileExistsError(f"bundle already exists: {final}")
+    staging = Path(tempfile.mkdtemp(prefix=".kikuchi-stage-", dir=root))
+    try:
+        yield staging, final
+        os.replace(staging, final)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
 
 
 def _sha256(path: Path) -> str:
@@ -111,6 +134,8 @@ def _validate_resolved_cell(cell: Any, source: StructureRecord) -> None:
             f"resolved space group mismatch: {cell.get('space_group')} != "
             f"{source.space_group_number}"
         )
+    if cell.get("pg_num") != 8 or cell.get("pg_symbol") != "mmm":
+        raise ValueError("resolved cell point group must be 8 / mmm for Pnma")
     a, b, c, alpha, beta, gamma = source.lattice_angstrom
     transformed_lattice = (b, c, a, beta, gamma, alpha)
     for name, expected in zip(
@@ -132,6 +157,8 @@ def _validate_resolved_cell(cell: Any, source: StructureRecord) -> None:
     ):
         if observed.get("symbol") != expected.element:
             raise ValueError(f"resolved site element mismatch for {expected.label}")
+        if observed.get("atomic_number") != ATOMIC_NUMBERS[expected.element]:
+            raise ValueError(f"resolved site atomic number mismatch for {expected.label}")
         fract = observed.get("fract")
         if not isinstance(fract, list) or len(fract) != 3:
             raise ValueError(f"resolved site coordinates missing for {expected.label}")
@@ -154,6 +181,50 @@ def _validate_resolved_cell(cell: Any, source: StructureRecord) -> None:
     formula = _formula_counts(source, sites)
     if formula != source.formula:
         raise ValueError(f"resolved formula mismatch: {formula!r} != {source.formula!r}")
+
+
+def _validate_loaded_dimensions(loaded: Any, sites: list[dict[str, Any]]) -> None:
+    n_sites = len(sites)
+    integrated = loaded.integrated_fs
+    bins = loaded.bin_fs
+    if integrated.ndim != 2 or integrated.shape[1] != n_sites:
+        raise ValueError("integrated fundamental-sector site dimension mismatch")
+    n_k = integrated.shape[0]
+    if bins.ndim != 3 or bins.shape[1:] != (n_k, n_sites):
+        raise ValueError("binned fundamental-sector dimensions mismatch")
+    if loaded.kij.shape != (n_k, 3) or loaded.khat.shape != (n_k, 3):
+        raise ValueError("fundamental-sector direction dimensions mismatch")
+    expected_weights = np.array(
+        [float(site["occupancy"]) * int(site["multiplicity"]) for site in sites],
+        dtype=np.float64,
+    )
+    expected_weights /= expected_weights.sum()
+    observed_weights = np.asarray(loaded.site_weights)
+    if observed_weights.shape != (n_sites,) or not np.allclose(
+        observed_weights, expected_weights, rtol=1e-7, atol=1e-8
+    ):
+        raise ValueError("resolved site weights do not match occupancy times multiplicity")
+    if loaded.data.ndim != 5 or loaded.data.shape[2] != 1:
+        raise ValueError("Pnma Lambert data hemisphere dimension must be one native hemisphere")
+    if loaded.axes.get("hemisphere_dim") != 1 or loaded.axes.get("hemispheres") != ["north"]:
+        raise ValueError("Pnma Lambert axes hemisphere semantics are inconsistent")
+
+
+def _validate_pnma_semantics(metadata: dict[str, Any]) -> None:
+    if not {
+        "is_centrosymmetric",
+        "needs_southern_hemisphere",
+    }.issubset(metadata):
+        raise ValueError("Pnma hemisphere semantics are missing")
+    if type(metadata.get("is_centrosymmetric")) is not bool or not metadata["is_centrosymmetric"]:
+        raise ValueError("Pnma is_centrosymmetric must be boolean true")
+    if (
+        type(metadata.get("needs_southern_hemisphere")) is not bool
+        or metadata["needs_southern_hemisphere"]
+    ):
+        raise ValueError("Pnma needs_southern_hemisphere must be boolean false")
+    if metadata.get("pg_num") != 8 or metadata.get("pg_symbol") != "mmm":
+        raise ValueError("resolved point group must be 8 / mmm for Pnma")
 
 
 _RESOLVED_FLOAT_CONTROLS = {
@@ -183,7 +254,9 @@ def _validate_resolved_simulation(metadata: dict[str, Any], recipe: SimulationRe
         if metadata.get(resolved) != getattr(recipe, requested):
             raise ValueError(f"resolved {resolved} does not match requested recipe")
     backend = metadata.get("mc_backend")
-    honored = backend == "surrogate" if recipe.mc_backend == "surrogate" else backend == "gpu_fly_first"
+    honored = (
+        backend == "surrogate" if recipe.mc_backend == "surrogate" else backend == "gpu_fly_first"
+    )
     if not honored:
         raise ValueError(
             f"requested backend {recipe.mc_backend!r} was not honored; resolved {backend!r}"
@@ -251,11 +324,13 @@ def load_ebsdsim_npz(
     metadata = loaded.meta
     if not np.isfinite(loaded.integrated_fs).all() or not np.isfinite(loaded.bin_fs).all():
         raise ValueError("ebsdsim fundamental-sector arrays must contain only finite values")
-    if not all(key in metadata for key in ("is_centrosymmetric", "needs_southern_hemisphere")):
-        raise ValueError("ebsdsim artifact lacks explicit hemisphere semantics")
+    _validate_pnma_semantics(metadata)
     _validate_resolved_cell(metadata.get("cell"), source)
+    _validate_loaded_dimensions(loaded, metadata["cell"]["sites"])
     _validate_resolved_simulation(metadata, recipe)
     north, south = loaded.reconstruct_integrated(normalize=None)
+    if not np.array_equal(north, south):
+        raise ValueError("centrosymmetric Pnma north/south reconstruction must be identical")
     intensity = np.stack((north, south)).astype(np.float32, copy=False)
     if not np.isfinite(intensity).all():
         raise ValueError("ebsdsim master pattern must contain only finite values")
@@ -425,30 +500,37 @@ def save_simulation_bundle(
     """Copy an untouched upstream NPZ and write validated derived artifacts."""
     original = Path(ebsdsim_npz).resolve()
     output = Path(output_root).resolve()
-    output.mkdir(parents=True, exist_ok=True)
     checksum = _sha256(original)
-    upstream = output / f"ebsdsim-{checksum[:16]}.npz"
-    if original != upstream:
+    native_name = f"ebsdsim-{checksum[:16]}.npz"
+    bundle_name = f"ebsdsim-{checksum[:16]}.bundle"
+    with _bundle_transaction(output, bundle_name) as (staging, published):
+        upstream = staging / native_name
         shutil.copyfile(original, upstream)
-    copied_checksum = _sha256(upstream)
-    if copied_checksum != checksum:
-        raise ValueError("copied ebsdsim NPZ checksum differs from native source")
-    product = load_ebsdsim_npz(
-        upstream,
-        source=source,
-        recipe=recipe,
-        expected_npz_sha256=checksum,
+        copied_checksum = _sha256(upstream)
+        if copied_checksum != checksum:
+            raise ValueError("copied ebsdsim NPZ checksum differs from native source")
+        product = load_ebsdsim_npz(
+            upstream,
+            source=source,
+            recipe=recipe,
+            expected_npz_sha256=checksum,
+        )
+        canonical = save_master_product(staging / f"{product.product_id}.npz", product)
+        manifest = _write_manifest(
+            npz_path=upstream,
+            canonical_path=canonical,
+            product=product,
+            source=source,
+            recipe=recipe,
+            npz_sha256=checksum,
+        )
+    return GeneratedMasterPattern(
+        published / upstream.name,
+        published / canonical.name,
+        published / manifest.name,
+        product,
+        checksum,
     )
-    canonical = save_master_product(output / f"{product.product_id}.npz", product)
-    manifest = _write_manifest(
-        npz_path=upstream,
-        canonical_path=canonical,
-        product=product,
-        source=source,
-        recipe=recipe,
-        npz_sha256=checksum,
-    )
-    return GeneratedMasterPattern(upstream, canonical, manifest, product, checksum)
 
 
 def generate_master_pattern(
@@ -460,54 +542,65 @@ def generate_master_pattern(
     """Run ebsdsim's public CIF API and validate all resulting artifacts."""
     verify_structure(source)
     requested_output = Path(output_npz).resolve()
-    simulation_cif = materialize_simulation_cif(
-        source, requested_output.with_suffix(".simulation.cif")
-    )
-    started = time.perf_counter()
-    mp = master_pattern_from_cif(
-        simulation_cif,
-        voltage_kv=recipe.voltage_kv,
-        halfw=recipe.halfw,
-        dmin=recipe.dmin_nm,
-        energy_binwidth_keV=recipe.energy_binwidth_kev,
-        n_trajectories=recipe.n_trajectories,
-        sigma_deg=recipe.sigma_deg,
-        omega_deg=recipe.omega_deg,
-        rank=recipe.rank,
-        chunk_size=recipe.chunk_size,
-        marginal_coverage=recipe.marginal_coverage,
-        relative_image_stop=recipe.relative_image_stop,
-        mc_backend=recipe.mc_backend,
-        bethe_c_strong=recipe.bethe_c_strong,
-        bethe_c_weak=recipe.bethe_c_weak,
-        bethe_c_cutoff=recipe.bethe_c_cutoff,
-        dbdiff_sg_cutoff=recipe.dbdiff_sg_cutoff,
-        mc_auto_stop=recipe.mc_auto_stop,
-        mc_relative_tol=recipe.mc_relative_tol,
-        mc_min_trajectories=recipe.mc_min_trajectories,
-        mc_max_trajectories=recipe.mc_max_trajectories,
-        exact_slow_cpu=recipe.exact_slow_cpu,
-    )
-    saved = mp.save(requested_output).resolve()
-    native_npz_sha256 = _sha256(saved)
-    elapsed = time.perf_counter() - started
-    product = load_ebsdsim_npz(
-        saved,
-        source=source,
-        recipe=recipe,
-        expected_npz_sha256=native_npz_sha256,
-    )
-    canonical = save_master_product(saved.with_name(f"{product.product_id}.npz"), product)
-    manifest = _write_manifest(
-        npz_path=saved,
-        canonical_path=canonical,
-        product=product,
-        source=source,
-        recipe=recipe,
-        simulation_cif=simulation_cif,
-        elapsed_seconds=elapsed,
-        npz_sha256=native_npz_sha256,
-    )
+    output_root = requested_output.parent
+    bundle_name = f"{requested_output.stem}.bundle"
+    with _bundle_transaction(output_root, bundle_name) as (staging, published):
+        staged_npz = staging / requested_output.name
+        simulation_cif = materialize_simulation_cif(
+            source, staging / requested_output.with_suffix(".simulation.cif").name
+        )
+        started = time.perf_counter()
+        mp = master_pattern_from_cif(
+            simulation_cif,
+            voltage_kv=recipe.voltage_kv,
+            halfw=recipe.halfw,
+            dmin=recipe.dmin_nm,
+            energy_binwidth_keV=recipe.energy_binwidth_kev,
+            n_trajectories=recipe.n_trajectories,
+            sigma_deg=recipe.sigma_deg,
+            omega_deg=recipe.omega_deg,
+            rank=recipe.rank,
+            chunk_size=recipe.chunk_size,
+            marginal_coverage=recipe.marginal_coverage,
+            relative_image_stop=recipe.relative_image_stop,
+            mc_backend=recipe.mc_backend,
+            bethe_c_strong=recipe.bethe_c_strong,
+            bethe_c_weak=recipe.bethe_c_weak,
+            bethe_c_cutoff=recipe.bethe_c_cutoff,
+            dbdiff_sg_cutoff=recipe.dbdiff_sg_cutoff,
+            mc_auto_stop=recipe.mc_auto_stop,
+            mc_relative_tol=recipe.mc_relative_tol,
+            mc_min_trajectories=recipe.mc_min_trajectories,
+            mc_max_trajectories=recipe.mc_max_trajectories,
+            exact_slow_cpu=recipe.exact_slow_cpu,
+        )
+        saved = mp.save(staged_npz).resolve()
+        if saved.parent != staging or saved.name != staged_npz.name:
+            raise ValueError("ebsdsim saved the native artifact outside its staging bundle")
+        native_npz_sha256 = _sha256(saved)
+        elapsed = time.perf_counter() - started
+        product = load_ebsdsim_npz(
+            saved,
+            source=source,
+            recipe=recipe,
+            expected_npz_sha256=native_npz_sha256,
+        )
+        canonical = save_master_product(staging / f"{product.product_id}.npz", product)
+        manifest = _write_manifest(
+            npz_path=saved,
+            canonical_path=canonical,
+            product=product,
+            source=source,
+            recipe=recipe,
+            simulation_cif=simulation_cif,
+            elapsed_seconds=elapsed,
+            npz_sha256=native_npz_sha256,
+        )
     return GeneratedMasterPattern(
-        saved, canonical, manifest, product, native_npz_sha256, simulation_cif
+        published / saved.name,
+        published / canonical.name,
+        published / manifest.name,
+        product,
+        native_npz_sha256,
+        published / simulation_cif.name,
     )

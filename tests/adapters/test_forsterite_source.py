@@ -113,3 +113,27 @@ def test_nonstandard_pbnm_source_is_explicitly_transformed_to_standard_pnma(tmp_
     assert crystal.atom_sites[1].fract == pytest.approx((0.27740, 0.25000, 0.99150))
     assert cell.multiplicities.tolist() == [4, 4, 4, 4, 4, 8]
     assert "source_sha256 550b8c89" in derived.read_text()
+
+
+@pytest.mark.parametrize("identifier", ["../evil", "phase/name", "phase.name", ".."])
+def test_source_identifier_rejects_path_capable_grammar(tmp_path, identifier):
+    raw = yaml.safe_load(SOURCE.read_text())
+    raw["identifier"] = identifier
+    raw["cif"] = "source.cif"
+    (tmp_path / "source.cif").write_bytes((ROOT / "phases/forsterite/COD-9000319.cif").read_bytes())
+    record_path = tmp_path / "source.yml"
+    record_path.write_text(yaml.safe_dump(raw))
+    with pytest.raises(ValueError, match="identifier"):
+        load_structure_record(record_path)
+
+
+def test_source_cif_reference_cannot_escape_record_directory(tmp_path):
+    raw = yaml.safe_load(SOURCE.read_text())
+    raw["cif"] = "../outside.cif"
+    (tmp_path.parent / "outside.cif").write_bytes(
+        (ROOT / "phases/forsterite/COD-9000319.cif").read_bytes()
+    )
+    record_path = tmp_path / "source.yml"
+    record_path.write_text(yaml.safe_dump(raw))
+    with pytest.raises(ValueError, match="CIF reference"):
+        load_structure_record(record_path)

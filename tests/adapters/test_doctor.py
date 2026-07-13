@@ -1,14 +1,33 @@
 from __future__ import annotations
 
 import json
-import importlib.metadata
-
 from kikuchi_lab.cli.main import main
-from kikuchi_lab.doctor import collect_doctor_report
+from kikuchi_lab.doctor import DoctorProbes, collect_doctor_report
 
 
-def test_doctor_reports_native_python_packages_metal_and_writability(tmp_path):
-    report = collect_doctor_report(tmp_path)
+READY = DoctorProbes(
+    python_version="3.12.9",
+    machine="arm64",
+    system="Darwin",
+    release="test-release",
+    executable="/managed/python",
+    packages={
+        "ebsdsim": "0.1.8",
+        "kikuchipy": "0.13.0",
+        "numpy": "2.4.0",
+        "wgpu": "0.31.1",
+    },
+    webgpu={
+        "ok": True,
+        "required": True,
+        "observed": "Test GPU",
+        "details": {"backend_type": "Metal"},
+    },
+)
+
+
+def test_doctor_reports_injected_ready_environment(tmp_path):
+    report = collect_doctor_report(tmp_path, probes=READY)
 
     assert report["schema_version"] == 1
     assert report["checks"]["python_3_12"]["ok"]
@@ -22,19 +41,33 @@ def test_doctor_reports_native_python_packages_metal_and_writability(tmp_path):
     assert report["checks"]["package_wgpu"]["ok"]
 
 
-def test_doctor_missing_required_package_contributes_to_failed_readiness(tmp_path, monkeypatch):
-    real_version = importlib.metadata.version
-
-    def version_or_missing(package):
-        if package == "ebsdsim":
-            raise importlib.metadata.PackageNotFoundError(package)
-        return real_version(package)
-
-    monkeypatch.setattr(importlib.metadata, "version", version_or_missing)
-    report = collect_doctor_report(tmp_path)
+def test_doctor_missing_required_package_contributes_to_failed_readiness(tmp_path):
+    probes = DoctorProbes(**{**READY.__dict__, "packages": {**READY.packages, "ebsdsim": None}})
+    report = collect_doctor_report(tmp_path, probes=probes)
 
     assert not report["checks"]["package_ebsdsim"]["ok"]
     assert report["checks"]["package_ebsdsim"]["required"]
+    assert not report["ok"]
+
+
+def test_doctor_structures_wrong_platform_and_unavailable_gpu(tmp_path):
+    probes = DoctorProbes(
+        **{
+            **READY.__dict__,
+            "machine": "x86_64",
+            "system": "Linux",
+            "webgpu": {
+                "ok": False,
+                "required": True,
+                "observed": "no adapter",
+                "details": {"error": "unavailable"},
+            },
+        }
+    )
+    report = collect_doctor_report(tmp_path, probes=probes)
+    assert not report["checks"]["arm64"]["ok"]
+    assert not report["checks"]["macos"]["ok"]
+    assert not report["checks"]["webgpu_adapter"]["ok"]
     assert not report["ok"]
 
 

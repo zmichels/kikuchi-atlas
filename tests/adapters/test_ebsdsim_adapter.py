@@ -8,10 +8,12 @@ import pytest
 from ebsdsim import MasterPattern
 from ebsdsim.kgrid import build_pg_k_grid
 
+from kikuchi_lab.sources import ebsdsim_adapter as adapter
 from kikuchi_lab.cli.main import main
 from kikuchi_lab.model.persistence import load_master_product
 from kikuchi_lab.model.recipes import SimulationRecipe
 from kikuchi_lab.sources.ebsdsim_adapter import (
+    generate_master_pattern,
     load_ebsdsim_npz,
     load_simulation_recipe,
     save_simulation_bundle,
@@ -76,14 +78,13 @@ def resolved_cell(record=None):
     }
 
 
-def write_deterministic_public_master_pattern_fixture(
-    directory: Path,
+def deterministic_public_master_pattern(
     *,
     cell=None,
     include_hemisphere_semantics: bool = True,
     invalid: bool = False,
     recipe: SimulationRecipe | None = None,
-) -> Path:
+) -> MasterPattern:
     recipe = tiny_recipe() if recipe is None else recipe
     grid = build_pg_k_grid(8, recipe.halfw)
     kij = grid.kij.reshape(-1, 3).astype(np.int32)
@@ -121,10 +122,8 @@ def write_deterministic_public_master_pattern_fixture(
         "pg_symbol": "mmm",
     }
     if include_hemisphere_semantics:
-        metadata.update(
-            {"is_centrosymmetric": True, "needs_southern_hemisphere": False}
-        )
-    mp = MasterPattern(
+        metadata.update({"is_centrosymmetric": True, "needs_southern_hemisphere": False})
+    return MasterPattern(
         pattern=np.zeros((9, 9), dtype=np.float32),
         integrated=integrated,
         n_k=n_k,
@@ -137,7 +136,10 @@ def write_deterministic_public_master_pattern_fixture(
         khat=khat,
         pg_num=8,
     )
-    return mp.save(directory / "fixture.npz")
+
+
+def write_deterministic_public_master_pattern_fixture(directory: Path, **kwargs) -> Path:
+    return deterministic_public_master_pattern(**kwargs).save(directory / "fixture.npz")
 
 
 def tamper_metadata(path: Path, change) -> None:
@@ -146,6 +148,13 @@ def tamper_metadata(path: Path, change) -> None:
     metadata = json.loads(bytes(arrays["meta_json"].tobytes()).decode("utf-8"))
     change(metadata)
     arrays["meta_json"] = np.frombuffer(json.dumps(metadata).encode(), dtype=np.uint8)
+    np.savez_compressed(path, **arrays)
+
+
+def tamper_archive(path: Path, change) -> None:
+    with np.load(path, allow_pickle=False) as archive:
+        arrays = {name: np.array(archive[name], copy=True) for name in archive.files}
+    change(arrays)
     np.savez_compressed(path, **arrays)
 
 
@@ -164,7 +173,9 @@ def test_ebsdsim_conversion_keeps_both_hemispheres(tmp_path):
 
     assert product.intensity.shape == (2, 9, 9)
     assert product.metadata_dict()["hemisphere_order"] == ["north", "south"]
-    assert product.metadata_dict()["source_structure"]["source_id"] == source.source_record.source_id
+    assert (
+        product.metadata_dict()["source_structure"]["source_id"] == source.source_record.source_id
+    )
     assert product.metadata_dict()["simulation"]["requested_backend"] == "gpu"
     assert product.metadata_dict()["simulation"]["resolved_backend"] == "gpu_fly_first"
     assert "mc_auto_stop" not in product.metadata_dict()["simulation"]["resolved"]
@@ -175,9 +186,71 @@ def test_ebsdsim_conversion_keeps_both_hemispheres(tmp_path):
         "invocation_only": ["mc_auto_stop", "mc_min_trajectories", "mc_max_trajectories"],
     }
     assert product.metadata_dict()["coordinate_frame"] == "crystal:Pnma-derived-from-Pbnm"
-    assert product.metadata_dict()["source_structure"]["simulation_setting"][
-        "target_setting"
-    ] == "P n m a"
+    assert (
+        product.metadata_dict()["source_structure"]["simulation_setting"]["target_setting"]
+        == "P n m a"
+    )
+    np.testing.assert_array_equal(product.intensity[0], product.intensity[1])
+
+
+def test_adapter_rejects_wrong_site_atomic_number(tmp_path):
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path)
+    tamper_metadata(
+        fixture,
+        lambda metadata: metadata["cell"]["sites"][0].__setitem__("atomic_number", 13),
+    )
+
+    with pytest.raises(ValueError, match="atomic number"):
+        load_ebsdsim_npz(fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe())
+
+
+def test_adapter_rejects_site_weight_order_or_values(tmp_path):
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path)
+    tamper_archive(
+        fixture, lambda arrays: arrays.__setitem__("site_weights", arrays["site_weights"][::-1])
+    )
+
+    with pytest.raises(ValueError, match="site weights"):
+        load_ebsdsim_npz(fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe())
+
+
+@pytest.mark.parametrize("array_name", ["fundamental_sector", "fundamental_khat"])
+def test_adapter_rejects_inconsistent_fs_site_or_direction_dimensions(tmp_path, array_name):
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path)
+
+    def truncate(arrays):
+        axis = 1 if array_name == "fundamental_sector" else 0
+        arrays[array_name] = np.delete(arrays[array_name], -1, axis=axis)
+
+    tamper_archive(fixture, truncate)
+    with pytest.raises(ValueError, match="dimension|direction|site"):
+        load_ebsdsim_npz(fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe())
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "message"),
+    [
+        ("is_centrosymmetric", False, "centrosymmetric"),
+        ("is_centrosymmetric", None, "centrosymmetric"),
+        ("is_centrosymmetric", "true", "centrosymmetric"),
+        ("needs_southern_hemisphere", True, "southern"),
+        ("needs_southern_hemisphere", None, "southern"),
+        ("needs_southern_hemisphere", "false", "southern"),
+    ],
+)
+def test_adapter_rejects_invalid_pnma_hemisphere_semantics(tmp_path, key, value, message):
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path)
+    tamper_metadata(fixture, lambda metadata: metadata.__setitem__(key, value))
+    with pytest.raises(ValueError, match=message):
+        load_ebsdsim_npz(fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe())
+
+
+@pytest.mark.parametrize(("key", "value"), [("pg_num", 7), ("pg_symbol", "mm2")])
+def test_adapter_rejects_wrong_resolved_point_group(tmp_path, key, value):
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path)
+    tamper_metadata(fixture, lambda metadata: metadata.__setitem__(key, value))
+    with pytest.raises(ValueError, match="point group"):
+        load_ebsdsim_npz(fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe())
 
 
 def test_canonical_phase_matches_the_derived_pnma_simulation_cell(tmp_path):
@@ -195,9 +268,7 @@ def test_canonical_phase_matches_the_derived_pnma_simulation_cell(tmp_path):
             "units": "angstrom",
         },
     }
-    assert metadata["source_structure"]["original_phase"]["space_group"][
-        "setting"
-    ] == "P b n m"
+    assert metadata["source_structure"]["original_phase"]["space_group"]["setting"] == "P b n m"
     assert metadata["source_structure"]["original_phase"]["lattice"]["values"] == [
         4.756,
         10.207,
@@ -235,9 +306,7 @@ def test_ebsdsim_conversion_rejects_per_site_multiplicity_tampering(tmp_path):
     tamper_metadata(fixture, swap_mg_multiplicities)
 
     with pytest.raises(ValueError, match="multiplicity"):
-        load_ebsdsim_npz(
-            fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe()
-        )
+        load_ebsdsim_npz(fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe())
 
 
 def test_ebsdsim_conversion_rejects_absent_hemisphere_semantics(tmp_path):
@@ -246,18 +315,14 @@ def test_ebsdsim_conversion_rejects_absent_hemisphere_semantics(tmp_path):
     )
 
     with pytest.raises(ValueError, match="hemisphere"):
-        load_ebsdsim_npz(
-            fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe()
-        )
+        load_ebsdsim_npz(fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe())
 
 
 def test_ebsdsim_conversion_rejects_invalid_arrays(tmp_path):
     fixture = write_deterministic_public_master_pattern_fixture(tmp_path, invalid=True)
 
     with pytest.raises(ValueError, match="finite"):
-        load_ebsdsim_npz(
-            fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe()
-        )
+        load_ebsdsim_npz(fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe())
 
 
 def test_simulation_bundle_links_untouched_ebsdsim_and_canonical_artifacts(tmp_path):
@@ -297,6 +362,59 @@ def test_simulation_bundle_links_untouched_ebsdsim_and_canonical_artifacts(tmp_p
             "mc_max_trajectories",
         ],
     }
+    assert bundle.manifest.parent == bundle.ebsdsim_npz.parent == bundle.canonical_product.parent
+    assert bundle.manifest.parent.name.endswith(".bundle")
+
+
+def test_save_bundle_failure_leaves_no_partial_publish(tmp_path, monkeypatch):
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path / "upstream")
+    output = tmp_path / "published"
+
+    def fail_manifest(**_kwargs):
+        raise RuntimeError("injected manifest failure")
+
+    monkeypatch.setattr(adapter, "_write_manifest", fail_manifest)
+    with pytest.raises(RuntimeError, match="manifest failure"):
+        save_simulation_bundle(
+            fixture,
+            output_root=output,
+            source=load_structure_record(SOURCE),
+            recipe=tiny_recipe(),
+        )
+    assert list(output.iterdir()) == []
+
+
+def test_generate_failure_leaves_no_partial_publish(tmp_path, monkeypatch):
+    output = tmp_path / "published"
+    monkeypatch.setattr(
+        adapter,
+        "master_pattern_from_cif",
+        lambda *_args, **_kwargs: deterministic_public_master_pattern(),
+    )
+    monkeypatch.setattr(
+        adapter,
+        "save_master_product",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("injected canonical failure")),
+    )
+    with pytest.raises(RuntimeError, match="canonical failure"):
+        generate_master_pattern(
+            source=load_structure_record(SOURCE),
+            recipe=tiny_recipe(),
+            output_npz=output / "master.npz",
+        )
+    assert list(output.iterdir()) == []
+
+
+def test_bundle_refuses_existing_completed_target(tmp_path):
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path / "upstream")
+    arguments = {
+        "output_root": tmp_path / "published",
+        "source": load_structure_record(SOURCE),
+        "recipe": tiny_recipe(),
+    }
+    save_simulation_bundle(fixture, **arguments)
+    with pytest.raises(FileExistsError, match="bundle"):
+        save_simulation_bundle(fixture, **arguments)
 
 
 def test_adapter_rejects_requested_backend_not_honored(tmp_path):
@@ -304,9 +422,7 @@ def test_adapter_rejects_requested_backend_not_honored(tmp_path):
     tamper_metadata(fixture, lambda metadata: metadata.__setitem__("mc_backend", "surrogate"))
 
     with pytest.raises(ValueError, match="backend"):
-        load_ebsdsim_npz(
-            fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe()
-        )
+        load_ebsdsim_npz(fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe())
 
 
 @pytest.mark.parametrize(
@@ -350,12 +466,8 @@ def test_adapter_rejects_bounded_trajectory_count_mismatch(tmp_path):
 def test_canonical_identity_does_not_include_elapsed_runtime(tmp_path):
     fixture = write_deterministic_public_master_pattern_fixture(tmp_path)
     source = load_structure_record(SOURCE)
-    first = load_ebsdsim_npz(
-        fixture, source=source, recipe=tiny_recipe(), elapsed_seconds=1.0
-    )
-    second = load_ebsdsim_npz(
-        fixture, source=source, recipe=tiny_recipe(), elapsed_seconds=99.0
-    )
+    first = load_ebsdsim_npz(fixture, source=source, recipe=tiny_recipe(), elapsed_seconds=1.0)
+    second = load_ebsdsim_npz(fixture, source=source, recipe=tiny_recipe(), elapsed_seconds=99.0)
 
     assert first.product_id == second.product_id
     assert first.metadata_dict() == second.metadata_dict()

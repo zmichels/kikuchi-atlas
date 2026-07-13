@@ -123,11 +123,19 @@ def load_structure_record(path: str | Path) -> StructureRecord:
     lattice = tuple(float(value) for value in _required(phase, "lattice_angstrom"))
     if len(lattice) != 6:
         raise ValueError("phase lattice_angstrom must contain six values")
-    cif_path = (record_path.parent / str(_required(raw, "cif"))).resolve()
+    identifier = str(_required(raw, "identifier"))
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", identifier) is None:
+        raise ValueError("structure identifier contains path-capable characters")
+    cif_reference = Path(str(_required(raw, "cif")))
+    if cif_reference.is_absolute():
+        raise ValueError("CIF reference must be relative to the source record")
+    cif_path = (record_path.parent / cif_reference).resolve()
+    if not cif_path.is_relative_to(record_path.parent):
+        raise ValueError("CIF reference escapes the source-record directory")
     return StructureRecord(
         record_path=record_path,
         cif_path=cif_path,
-        identifier=str(_required(raw, "identifier")),
+        identifier=identifier,
         sha256=str(_required(raw, "sha256")),
         retrieved=str(_required(raw, "retrieved")),
         uri=str(_required(raw, "uri")),
@@ -252,7 +260,13 @@ def verify_structure(record: StructureRecord) -> VerifiedStructure:
         else tuple(_number(value) for value in occupancies)
     )
     missing_thermal = (
-        parsed_labels if u_iso is None else tuple(label for label, value in zip(parsed_labels, u_iso) if str(value).strip() in {"", ".", "?"})
+        parsed_labels
+        if u_iso is None
+        else tuple(
+            label
+            for label, value in zip(parsed_labels, u_iso)
+            if str(value).strip() in {"", ".", "?"}
+        )
     )
     if missing_thermal and record.thermal_factor_policy.get("missing") == "reject":
         raise ValueError(f"missing thermal factors for sites: {', '.join(missing_thermal)}")

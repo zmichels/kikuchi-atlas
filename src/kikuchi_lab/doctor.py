@@ -7,8 +7,20 @@ import os
 import platform
 import re
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+
+@dataclass(frozen=True)
+class DoctorProbes:
+    python_version: str
+    machine: str
+    system: str
+    release: str
+    executable: str
+    packages: dict[str, str | None]
+    webgpu: dict[str, Any]
 
 
 def _check(ok: bool, observed: Any, *, required: bool = True, details: Any = None) -> dict:
@@ -26,9 +38,7 @@ def _webgpu_check() -> dict:
         if not adapters:
             return _check(False, "no adapter", details={"error": "no WebGPU adapters found"})
         infos = [dict(adapter.info) for adapter in adapters]
-        preferred = next(
-            (info for info in infos if info.get("backend_type") == "Metal"), infos[0]
-        )
+        preferred = next((info for info in infos if info.get("backend_type") == "Metal"), infos[0])
         return _check(
             preferred.get("backend_type") == "Metal",
             preferred.get("device") or preferred.get("description") or "unknown",
@@ -72,24 +82,38 @@ def _package_checks(packages: dict[str, str | None]) -> dict[str, dict]:
     }
 
 
-def collect_doctor_report(output_root: str | Path = "local") -> dict:
-    """Collect required runtime facts without throwing for unavailable GPU support."""
-    python_version = platform.python_version()
-    machine = platform.machine()
-    system = platform.system()
+def _system_probes() -> DoctorProbes:
     packages = {}
     for package in ("ebsdsim", "kikuchipy", "numpy", "wgpu"):
         try:
             packages[package] = importlib.metadata.version(package)
         except importlib.metadata.PackageNotFoundError:
             packages[package] = None
+    return DoctorProbes(
+        python_version=platform.python_version(),
+        machine=platform.machine(),
+        system=platform.system(),
+        release=platform.release(),
+        executable=os.path.realpath(os.sys.executable),
+        packages=packages,
+        webgpu=_webgpu_check(),
+    )
+
+
+def collect_doctor_report(
+    output_root: str | Path = "local", *, probes: DoctorProbes | None = None
+) -> dict:
+    """Collect required runtime facts without throwing for unavailable GPU support."""
+    probes = _system_probes() if probes is None else probes
+    python_version = probes.python_version
+    machine = probes.machine
+    system = probes.system
+    packages = probes.packages
     checks = {
-        "python_3_12": _check(
-            platform.python_version_tuple()[:2] == ("3", "12"), python_version
-        ),
+        "python_3_12": _check(_release(python_version)[:2] == (3, 12), python_version),
         "arm64": _check(machine == "arm64", machine),
         "macos": _check(system == "Darwin", system),
-        "webgpu_adapter": _webgpu_check(),
+        "webgpu_adapter": probes.webgpu,
         "output_root_writable": _writability_check(Path(output_root).resolve()),
         **_package_checks(packages),
     }
@@ -98,10 +122,10 @@ def collect_doctor_report(output_root: str | Path = "local") -> dict:
         "ok": all(value["ok"] for value in checks.values() if value["required"]),
         "platform": {
             "system": system,
-            "release": platform.release(),
+            "release": probes.release,
             "machine": machine,
             "python": python_version,
-            "executable": os.path.realpath(os.sys.executable),
+            "executable": probes.executable,
         },
         "packages": packages,
         "checks": checks,

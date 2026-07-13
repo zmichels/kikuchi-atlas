@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from kikuchi_lab.model.recipes import SimulationRecipe
+from kikuchi_lab.doctor import collect_doctor_report
 from kikuchi_lab.sources.ebsdsim_adapter import generate_master_pattern
 from kikuchi_lab.sources.structure import load_structure_record
 
@@ -18,6 +19,9 @@ ROOT = Path(__file__).parents[2]
 @pytest.mark.gpu
 @pytest.mark.slow
 def test_tiny_forsterite_gpu_master_pattern(tmp_path):
+    doctor = collect_doctor_report(tmp_path / "doctor")
+    assert doctor["checks"]["arm64"]["observed"] == "arm64"
+    assert doctor["checks"]["webgpu_adapter"]["details"]["backend_type"] == "Metal"
     source = load_structure_record(ROOT / "phases/forsterite/source.yml")
     recipe = SimulationRecipe(
         voltage_kv=20.0,
@@ -64,9 +68,7 @@ def test_tiny_forsterite_gpu_master_pattern(tmp_path):
     assert manifest["master_product_id"] == result.product.product_id
     transformed = result.manifest.parent / manifest["simulation_cif"]
     assert transformed.is_file()
-    assert hashlib.sha256(transformed.read_bytes()).hexdigest() == manifest[
-        "simulation_cif_sha256"
-    ]
+    assert hashlib.sha256(transformed.read_bytes()).hexdigest() == manifest["simulation_cif_sha256"]
     assert manifest["basis_transform"] == {
         "source_setting": "P b n m",
         "target_setting": "P n m a",

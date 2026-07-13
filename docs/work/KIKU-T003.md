@@ -11,6 +11,7 @@ evidence:
   - ../../phases/forsterite/source.yml
   - ../../tests/adapters/test_forsterite_source.py
   - ../../tests/adapters/test_ebsdsim_adapter.py
+  - ../../tests/adapters/test_doctor.py
   - ../../tests/integration/test_ebsdsim_gpu.py
   - ../../local/master-patterns/gpu-smoke/forsterite-tiny-gpu.manifest.json
 ---
@@ -50,6 +51,10 @@ and expose environment diagnostics without backend substitution.
   canonical product is `master-87a6e36534219826`.
 - `uv run ruff check src tests` and
   `uv run python scripts/validate_work_items.py`: passed.
+- 2026-07-12 follow-up hardening: `uv run pytest -q` passed all 148 tests;
+  `uv run pytest tests/integration/test_ebsdsim_gpu.py -ra -q` passed the real
+  Apple M2/Metal integration; `uv run ruff check .`, `git diff --check`, and
+  `uv run python scripts/validate_work_items.py` passed.
 
 ## Scientific Decision and Upstream Deviation
 
@@ -81,6 +86,24 @@ manifest and is excluded from canonical product metadata and identity. Doctor
 package-version checks are required readiness checks, so a missing or
 incompatible simulator, projection, array, or WebGPU package makes `doctor`
 fail.
+
+The adapter also validates the resolved atomic number for every site,
+occupancy-times-multiplicity site weights in source order, and the coupled
+fundamental-sector, direction, site, and hemisphere dimensions. Pnma point
+group and hemisphere metadata require exact native boolean and symbol/number
+semantics, and centrosymmetric north/south reconstruction must be exactly
+equal. Tamper tests cover each contract.
+
+Generated and imported artifacts are assembled in a same-filesystem staging
+directory. The untouched native NPZ, canonical product, optional simulation
+CIF, and manifest remain private until the complete directory is atomically
+published; the manifest is written last. Failure-injection tests prove that
+canonical or manifest failure leaves no partial publication, and an existing
+completed bundle is refused rather than overwritten. Source identifiers and
+CIF references are constrained so neither source loading nor generated paths
+can escape their declared roots. Fast doctor tests use injected probes;
+assertions about the actual host architecture and Metal adapter remain in the
+GPU integration test only.
 
 The implementation-plan pseudocode named a module-level
 `ebsdsim.mploader.reconstruct_integrated()`, which is not exported by ebsdsim
