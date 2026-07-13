@@ -18,14 +18,24 @@ def canonical_float_image(value: Any) -> np.ndarray:
     return np.ascontiguousarray(image)
 
 
-def quantize_uint16(image: np.ndarray, *, source_product_id: str) -> tuple[np.ndarray, dict]:
+def quantize_uint16(
+    image: np.ndarray,
+    *,
+    label: str,
+    source_product_id: str,
+    source_content_id: str,
+    source_array_sha256: str,
+) -> tuple[np.ndarray, dict]:
     black, white = (float(value) for value in np.percentile(image, [0.5, 99.5]))
     if white == black:
         white = black + 1.0
     normalized = np.clip((image.astype(np.float64) - black) / (white - black), 0.0, 1.0)
     quantized = np.rint(normalized * 65535.0).astype(np.uint16)
     return quantized, {
+        "label": label,
         "source_product_id": source_product_id,
+        "source_content_id": source_content_id,
+        "source_array_sha256": source_array_sha256,
         "scale": (white - black) / 65535.0,
         "offset": black,
         "black_point": black,

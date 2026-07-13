@@ -51,6 +51,24 @@ raw products, processing stages, high-bit-depth images, and diagnostics.
   exact shared background-correction output, then allow deliberate divergence.
   They reject missing or divergent correction nodes, disconnected roots,
   unrecorded intermediates, wrong terminals, and arbitrary final arrays.
+- Canonical-content regressions recompute and verify full checksums and short
+  IDs for every recipe, the orientation candidate set, and the orientation
+  decision. Stale IDs, selections outside the candidate set, and a mismatched
+  decision link fail before staging; correctly re-identified content changes
+  the run ID.
+- The materialized content registry covers projected, acquisition-corrected,
+  intermediate, scientific, and gallery float arrays. Even a continuous graph
+  is rejected if it names a fabricated node with no retained float artifact.
+- A 700x1400 regression records a bounded 256x512 anti-aliased diagnostic view
+  and directly observes float32 input and complex64 output at the SciPy real
+  FFT boundary. Original-shape pixel spacing preserves axis-equivalent
+  cycles-per-pixel classification.
+- Quantization ledgers link each uint16 export to its label, recomputed content
+  ID, and full source-array SHA-256 in the registry. One-pixel axes fail before
+  staging.
+- A publication-order regression observes all nested directories flushed
+  deepest-first, then the partial root, atomic rename, and final output-root
+  flush.
 - [ADR 0001](../decisions/0001-artifact-identity-and-bundle-layout.md)
   records the identity, atomic-publication, layout, quantization, and comparison
   exclusion contracts.

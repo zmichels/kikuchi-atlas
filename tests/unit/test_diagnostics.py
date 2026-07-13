@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import importlib
+
 import numpy as np
 import pytest
 
@@ -50,6 +52,47 @@ def test_rectangular_frequency_energy_is_axis_invariant_in_cycles_per_pixel() ->
 
     assert x_energy == pytest.approx(y_energy, abs=1e-12)
     assert x_energy["mid"] == pytest.approx(1.0)
+
+
+def test_large_rectangular_frequency_analysis_is_bounded_and_axis_invariant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = importlib.import_module("kikuchi_lab.diagnostics.image_metrics")
+    real_rfft2 = module.scipy_fft.rfft2
+    fft_calls: list[tuple[np.dtype, tuple[int, ...], np.dtype]] = []
+
+    def observed_rfft2(value: np.ndarray, **kwargs: object) -> np.ndarray:
+        result = real_rfft2(value, **kwargs)
+        fft_calls.append((value.dtype, value.shape, result.dtype))
+        return result
+
+    monkeypatch.setattr(module.scipy_fft, "rfft2", observed_rfft2)
+    yy, xx = np.indices((700, 1400), dtype=np.float32)
+    along_x = np.cos(2 * np.pi * 0.05 * xx).astype(np.float32)
+    along_y = np.cos(2 * np.pi * 0.05 * yy).astype(np.float32)
+
+    x_metrics = image_metrics(along_x)
+    y_metrics = image_metrics(along_y)
+    analysis = x_metrics["radial_frequency_analysis"]
+
+    assert analysis == {
+        "version": "radial-rfft-f32-aa512-v1",
+        "method": "scipy.fft.rfft2",
+        "dtype": "float32",
+        "anti_aliasing": True,
+        "max_longest_axis": 512,
+        "original_shape": [700, 1400],
+        "analysis_shape": [256, 512],
+        "thresholds_cycles_per_pixel": {"low_mid": 0.15, "mid_high": 0.35},
+    }
+    assert max(analysis["analysis_shape"]) <= 512
+    assert fft_calls == [
+        (np.dtype("float32"), (256, 512), np.dtype("complex64")),
+        (np.dtype("float32"), (256, 512), np.dtype("complex64")),
+    ]
+    assert x_metrics["radial_frequency_energy"] == pytest.approx(
+        y_metrics["radial_frequency_energy"], abs=2e-3
+    )
 
 
 @pytest.mark.parametrize(

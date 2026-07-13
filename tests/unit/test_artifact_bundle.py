@@ -19,6 +19,15 @@ from kikuchi_lab.artifacts import (
 from kikuchi_lab.model.identity import canonical_json, stable_id
 
 
+def _identified(kind: str, content: dict, *, id_key: str, sha_key: str) -> dict:
+    checksum = hashlib.sha256(canonical_json(content).encode("utf-8")).hexdigest()
+    return {
+        "content": content,
+        id_key: f"{kind}-{checksum[:16]}",
+        sha_key: checksum,
+    }
+
+
 def _request(*, elapsed: float = 1.25, created_at: str = "2026-07-12T12:00:00Z"):
     base = np.arange(48, dtype=np.float32).reshape(6, 8)
     projected = FloatProduct("detector-projected", base)
@@ -36,35 +45,45 @@ def _request(*, elapsed: float = 1.25, created_at: str = "2026-07-12T12:00:00Z")
         },
         hardware={"adapter": "Apple M2", "captured_at": created_at},
         recipes={
-            "simulation": {
-                "recipe_id": "recipe-sim",
-                "recipe_sha256": "b" * 64,
-                "voltage_kv": 20.0,
-            },
+            "simulation": _identified(
+                "recipe",
+                {"voltage_kv": 20.0, "halfw": 64},
+                id_key="recipe_id",
+                sha_key="recipe_sha256",
+            ),
             "projection": {
-                "recipe_id": "recipe-proj",
-                "recipe_sha256": "c" * 64,
-                "geometry_id": "geometry-detector-1",
-                "shape": [6, 8],
+                **_identified(
+                    "recipe",
+                    {"shape": [6, 8], "pc": [0.5, 0.5, 0.6]},
+                    id_key="recipe_id",
+                    sha_key="recipe_sha256",
+                ),
+                "geometry_id": stable_id("geometry", {"shape": [6, 8], "pc": [0.5, 0.5, 0.6]}),
             },
-            "scientific-clean": {
-                "recipe_id": "recipe-science",
-                "recipe_sha256": "d" * 64,
-            },
-            "gallery-crisp": {
-                "recipe_id": "recipe-gallery",
-                "recipe_sha256": "e" * 64,
-            },
+            "scientific-clean": _identified(
+                "recipe",
+                {"stages": ["background_divide", "robust_normalize"]},
+                id_key="recipe_id",
+                sha_key="recipe_sha256",
+            ),
+            "gallery-crisp": _identified(
+                "recipe",
+                {"stages": ["background_divide", "robust_normalize", "gallery_crisp_finish"]},
+                id_key="recipe_id",
+                sha_key="recipe_sha256",
+            ),
         },
         master_metadata={
             "product_id": "master-abc",
             "array_sha256": "f" * 64,
             "phase": "forsterite",
         },
-        orientation_candidates={
-            "candidate_set_id": "candidate-set-1",
-            "candidate_ids": ["orientation-1"],
-        },
+        orientation_candidates=_identified(
+            "candidate-set",
+            {"candidate_ids": ["orientation-1"]},
+            id_key="candidate_set_id",
+            sha_key="candidate_set_sha256",
+        ),
         projected=projected,
         acquisition_corrected=acquisition_corrected,
         stages={"normalize": normalized},
@@ -103,11 +122,22 @@ def _request(*, elapsed: float = 1.25, created_at: str = "2026-07-12T12:00:00Z")
         timings={"elapsed_seconds": elapsed, "captured_at": created_at},
         resources={"peak_rss_mb": 42.0, "sampled_at": created_at},
         orientation_decision={
-            "decision_id": "decision-orientation-1",
-            "selected": "orientation-1",
+            **_identified(
+                "decision",
+                {"selected_candidate_id": "orientation-1", "criterion": "band geometry"},
+                id_key="decision_id",
+                sha_key="decision_sha256",
+            ),
             "decided_at": created_at,
         },
-        decision_links={"orientation": "decision-orientation-1"},
+        decision_links={
+            "orientation": _identified(
+                "decision",
+                {"selected_candidate_id": "orientation-1", "criterion": "band geometry"},
+                id_key="decision_id",
+                sha_key="decision_sha256",
+            )["decision_id"]
+        },
     )
 
 
@@ -157,6 +187,7 @@ def test_bundle_writes_complete_canonical_inventory_and_image_formats(tmp_path: 
 
     manifest_path = bundle / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
+    assert manifest["schema_version"] == 2
     assert manifest_path.read_text() == canonical_json(manifest)
     assert set(manifest["files"]) == expected
     assert "manifest.json" not in manifest["files"]
@@ -179,7 +210,10 @@ def test_bundle_writes_complete_canonical_inventory_and_image_formats(tmp_path: 
         assert relative.endswith((".tif", ".png"))
         assert quantization["source_product_id"]
         assert set(quantization) == {
+            "label",
             "source_product_id",
+            "source_content_id",
+            "source_array_sha256",
             "scale",
             "offset",
             "black_point",
@@ -190,8 +224,16 @@ def test_bundle_writes_complete_canonical_inventory_and_image_formats(tmp_path: 
     assert manifest["products"]["acquisition_corrected"]["role"] == (
         "background_model_corrected_before_aesthetic_processing"
     )
-    assert manifest["run_identity_schema"]["schema_version"] == 2
+    assert manifest["run_identity_schema"]["schema_version"] == 3
     assert stable_id("run", manifest["run_identity"]) == result.run_id
+    assert set(manifest["run_identity"]["orientation_candidate_set"]) == {
+        "candidate_set_id",
+        "candidate_set_sha256",
+    }
+    assert set(manifest["run_identity"]["orientation_decision"]) == {
+        "decision_id",
+        "decision_sha256",
+    }
     assert set(manifest["processing_lineages"]) == {"scientific", "gallery"}
     assert manifest["run_identity"]["processing_lineages"] == manifest["processing_lineages"]
     assert json.loads((bundle / "metadata/processing-lineage.json").read_text()) == manifest[
@@ -207,6 +249,17 @@ def test_bundle_writes_complete_canonical_inventory_and_image_formats(tmp_path: 
     assert manifest["processing_lineages"]["gallery"][-1]["output_id"] == (
         _request().gallery_crisp.content_id
     )
+    assert set(manifest["content_registry"]["labels"]) == {
+        "projected",
+        "acquisition-corrected",
+        "stage:normalize",
+        "scientific-clean",
+        "gallery-crisp",
+    }
+    for path, quantization in manifest["uint16_exports"].items():
+        registry = manifest["content_registry"]["labels"][quantization["label"]]
+        assert quantization["source_content_id"] == registry["content_id"], path
+        assert quantization["source_array_sha256"] == registry["array_sha256"], path
     assert manifest["comparison_exclusions"] == {
         "json_fields": ["**/captured_at", "**/created_at", "**/decided_at"],
         "json_documents": [
@@ -312,9 +365,119 @@ def test_bundle_identity_changes_for_whitelisted_scientific_identity_fields(
 def test_bundle_identity_changes_for_recipe_checksum_and_geometry_id(tmp_path: Path) -> None:
     original = _request()
     changed_recipes = {name: dict(recipe) for name, recipe in original.recipes.items()}
-    changed_recipes["projection"]["recipe_sha256"] = "8" * 64
-    changed_recipes["projection"]["geometry_id"] = "geometry-detector-2"
+    content = {"shape": [6, 8], "pc": [0.52, 0.5, 0.6]}
+    changed_recipes["projection"] = {
+        **_identified(
+            "recipe",
+            content,
+            id_key="recipe_id",
+            sha_key="recipe_sha256",
+        ),
+        "geometry_id": stable_id("geometry", content),
+    }
     changed = ArtifactBundleRequest(**{**original.__dict__, "recipes": changed_recipes})
+
+    first = write_artifact_bundle(tmp_path / "first", original)
+    second = write_artifact_bundle(tmp_path / "second", changed)
+
+    assert first.run_id != second.run_id
+
+
+@pytest.mark.parametrize("target", ["recipe", "candidates", "decision"])
+def test_bundle_rejects_stale_asserted_content_identities(tmp_path: Path, target: str) -> None:
+    request = _request()
+    changes: dict[str, object] = {}
+    if target == "recipe":
+        recipes = {name: dict(recipe) for name, recipe in request.recipes.items()}
+        recipes["simulation"]["content"] = {
+            **recipes["simulation"]["content"],
+            "voltage_kv": 30.0,
+        }
+        changes["recipes"] = recipes
+    elif target == "candidates":
+        changes["orientation_candidates"] = {
+            **request.orientation_candidates,
+            "content": {"candidate_ids": ["orientation-2"]},
+        }
+    else:
+        changes["orientation_decision"] = {
+            **request.orientation_decision,
+            "content": {
+                **request.orientation_decision["content"],
+                "selected_candidate_id": "orientation-2",
+            },
+        }
+    malformed = ArtifactBundleRequest(**{**request.__dict__, **changes})
+
+    with pytest.raises(ValueError, match="checksum|identity|candidate|decision|recipe"):
+        write_artifact_bundle(tmp_path, malformed)
+
+
+def test_bundle_rejects_selection_outside_candidates_and_wrong_decision_link(tmp_path: Path) -> None:
+    request = _request()
+    decision = _identified(
+        "decision",
+        {"selected_candidate_id": "orientation-2", "criterion": "band geometry"},
+        id_key="decision_id",
+        sha_key="decision_sha256",
+    )
+    outside = ArtifactBundleRequest(
+        **{
+            **request.__dict__,
+            "orientation_decision": decision,
+            "decision_links": {"orientation": decision["decision_id"]},
+        }
+    )
+    with pytest.raises(ValueError, match="candidate set"):
+        write_artifact_bundle(tmp_path / "outside", outside)
+
+    wrong_link = ArtifactBundleRequest(
+        **{**request.__dict__, "decision_links": {"orientation": "decision-deadbeefdeadbeef"}}
+    )
+    with pytest.raises(ValueError, match="decision link"):
+        write_artifact_bundle(tmp_path / "link", wrong_link)
+
+
+def test_correct_content_identity_changes_change_run_id(tmp_path: Path) -> None:
+    original = _request()
+    recipes = {name: dict(recipe) for name, recipe in original.recipes.items()}
+    recipes["simulation"] = _identified(
+        "recipe",
+        {**recipes["simulation"]["content"], "voltage_kv": 30.0},
+        id_key="recipe_id",
+        sha_key="recipe_sha256",
+    )
+    changed = ArtifactBundleRequest(**{**original.__dict__, "recipes": recipes})
+
+    first = write_artifact_bundle(tmp_path / "first", original)
+    second = write_artifact_bundle(tmp_path / "second", changed)
+
+    assert first.run_id != second.run_id
+
+
+@pytest.mark.parametrize("target", ["candidates", "selection"])
+def test_correct_candidate_or_selection_content_changes_run_id(
+    tmp_path: Path, target: str
+) -> None:
+    original = _request()
+    candidate_content = {"candidate_ids": ["orientation-1", "orientation-2"]}
+    candidates = _identified(
+        "candidate-set",
+        candidate_content,
+        id_key="candidate_set_id",
+        sha_key="candidate_set_sha256",
+    )
+    changes: dict[str, object] = {"orientation_candidates": candidates}
+    if target == "selection":
+        decision = _identified(
+            "decision",
+            {"selected_candidate_id": "orientation-2", "criterion": "band geometry"},
+            id_key="decision_id",
+            sha_key="decision_sha256",
+        )
+        changes["orientation_decision"] = decision
+        changes["decision_links"] = {"orientation": decision["decision_id"]}
+    changed = ArtifactBundleRequest(**{**original.__dict__, **changes})
 
     first = write_artifact_bundle(tmp_path / "first", original)
     second = write_artifact_bundle(tmp_path / "second", changed)
@@ -413,6 +576,27 @@ def test_bundle_rejects_exported_intermediate_outside_both_branches(tmp_path: Pa
         write_artifact_bundle(tmp_path, malformed)
 
 
+def test_bundle_rejects_fabricated_but_connected_lineage_node(tmp_path: Path) -> None:
+    request = _request()
+    fabricated = "image-deadbeefdeadbeef"
+    lineage = list(request.gallery_lineage)
+    lineage.insert(
+        -1,
+        {
+            "name": "fabricated_intermediate",
+            "input_id": lineage[-1]["input_id"],
+            "output_id": fabricated,
+        },
+    )
+    lineage[-1] = {**lineage[-1], "input_id": fabricated}
+    malformed = ArtifactBundleRequest(
+        **{**request.__dict__, "gallery_lineage": tuple(lineage)}
+    )
+
+    with pytest.raises(ValueError, match="materialized|registry|retained"):
+        write_artifact_bundle(tmp_path, malformed)
+
+
 def test_bundle_rejects_acquisition_array_unrelated_to_recorded_background_output(
     tmp_path: Path,
 ) -> None:
@@ -481,3 +665,36 @@ def test_malformed_request_leaves_no_partial_bundle(tmp_path: Path) -> None:
         write_artifact_bundle(tmp_path, malformed)
 
     assert list(tmp_path.glob("*.partial")) == []
+
+
+def test_bundle_rejects_float_product_axis_below_two_before_staging(tmp_path: Path) -> None:
+    request = _request()
+    malformed = ArtifactBundleRequest(
+        **{
+            **request.__dict__,
+            "projected": FloatProduct("detector-projected", np.zeros((1, 8), dtype=np.float32)),
+        }
+    )
+
+    with pytest.raises(ValueError, match="axis.*at least 2"):
+        write_artifact_bundle(tmp_path, malformed)
+    assert list(tmp_path.glob("*.partial")) == []
+
+
+def test_bundle_fsyncs_nested_directories_bottom_up_before_publish(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import kikuchi_lab.artifacts.bundle as bundle_module
+
+    calls: list[Path] = []
+    monkeypatch.setattr(bundle_module, "_fsync_directory", lambda path: calls.append(Path(path)))
+
+    result = write_artifact_bundle(tmp_path, _request())
+
+    partial = tmp_path / f"{result.run_id}.partial"
+    assert calls[-1] == tmp_path
+    assert partial in calls
+    partial_index = calls.index(partial)
+    nested = [path for path in calls[:partial_index] if partial in path.parents]
+    assert nested
+    assert all(len(left.parts) >= len(right.parts) for left, right in zip(nested, nested[1:]))

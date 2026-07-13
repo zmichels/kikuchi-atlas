@@ -31,17 +31,17 @@ _AESTHETIC_STAGE_NAMES = {
     "downsample",
 }
 RUN_IDENTITY_SCHEMA = {
-    "schema_version": 2,
+    "schema_version": 3,
     "included_fields": [
         "source.{source_id,sha256}",
         "master_metadata.{product_id,array_sha256}",
         "recipes.*.{recipe_id,recipe_sha256}",
         "recipes.projection.geometry_id",
         "software.identities.*.{version,distribution_sha256?}",
-        "orientation_candidates.candidate_set_id",
+        "orientation_candidates.{candidate_set_id,candidate_set_sha256}",
         "products.*.{product_id,content_id,array_sha256}",
         "processing_lineages.{scientific,gallery}.*.{name,input_id,output_id}",
-        "orientation_decision.decision_id",
+        "orientation_decision.{decision_id,decision_sha256}",
         "decision_links.{orientation,processing,source_selection}?",
     ],
     "excluded_classes": [
@@ -49,6 +49,14 @@ RUN_IDENTITY_SCHEMA = {
         "absolute or relative local paths",
         "retrieval or generation timestamps",
         "elapsed time and resource observations",
+    ],
+    "validation_rules": [
+        "recipe IDs and checksums are recomputed from canonical content",
+        "candidate-set ID and checksum are recomputed from canonical content",
+        "orientation-decision ID and checksum are recomputed from canonical content",
+        "selected candidate belongs to the candidate set",
+        "orientation decision link equals the recomputed decision ID",
+        "every processing-graph content ID resolves in the materialized registry",
     ],
 }
 
@@ -130,6 +138,28 @@ def _required_sha256(mapping: Mapping[str, Any], key: str, context: str) -> str:
     return value
 
 
+def _validated_content_identity(
+    record: Mapping[str, Any],
+    *,
+    kind: str,
+    id_key: str,
+    sha_key: str,
+    context: str,
+) -> dict[str, Any]:
+    content = record.get("content")
+    if not isinstance(content, Mapping):
+        raise ValueError(f"{context} requires canonical content")
+    canonical_content = plain_data(content)
+    checksum = hashlib.sha256(canonical_json(canonical_content).encode("utf-8")).hexdigest()
+    asserted_checksum = _required_sha256(record, sha_key, context)
+    if asserted_checksum != checksum:
+        raise ValueError(f"{context} checksum disagrees with canonical content")
+    expected_id = f"{kind}-{checksum[:16]}"
+    if _required_text(record, id_key, context) != expected_id:
+        raise ValueError(f"{context} identity disagrees with canonical content")
+    return {"content": canonical_content, id_key: expected_id, sha_key: checksum}
+
+
 def _software_identities(software: Mapping[str, Any]) -> dict[str, Any]:
     identities = software.get("identities")
     if not isinstance(identities, Mapping) or not identities:
@@ -201,6 +231,21 @@ def _validated_lineages(request: ArtifactBundleRequest) -> dict[str, list[dict[s
     }
     if lineages["scientific"][0] != lineages["gallery"][0]:
         raise ValueError("scientific and gallery branches must share one background correction")
+    registry_ids = {
+        product.content_id for product in _materialized_products(request).values()
+    }
+    unresolved = {
+        identity
+        for lineage in lineages.values()
+        for record in lineage
+        for identity in (record["input_id"], record["output_id"])
+        if identity not in registry_ids
+    }
+    if unresolved:
+        raise ValueError(
+            "processing lineage contains nodes absent from the materialized content registry: "
+            + ", ".join(sorted(unresolved))
+        )
     lineage_outputs = {
         record["output_id"] for lineage in lineages.values() for record in lineage
     }
@@ -212,6 +257,31 @@ def _validated_lineages(request: ArtifactBundleRequest) -> dict[str, list[dict[s
             f"stage products are absent from both processing branches: {', '.join(missing)}"
         )
     return lineages
+
+
+def _materialized_products(request: ArtifactBundleRequest) -> dict[str, FloatProduct]:
+    return {
+        "projected": request.projected,
+        "acquisition-corrected": request.acquisition_corrected,
+        **{f"stage:{name}": product for name, product in request.stages.items()},
+        "scientific-clean": request.scientific_clean,
+        "gallery-crisp": request.gallery_crisp,
+    }
+
+
+def _content_registry(request: ArtifactBundleRequest) -> dict[str, Any]:
+    return {
+        "labels": {
+            label: {
+                "product_id": product.product_id,
+                "content_id": product.content_id,
+                "array_sha256": product.array_sha256,
+                "shape": list(product.intensity.shape),
+                "dtype": "float32",
+            }
+            for label, product in _materialized_products(request).items()
+        }
+    }
 
 
 def _validate(request: ArtifactBundleRequest) -> None:
@@ -231,6 +301,8 @@ def _validate(request: ArtifactBundleRequest) -> None:
     )
     if any(not isinstance(product, FloatProduct) for product in products):
         raise TypeError("all image products must be FloatProduct values")
+    if any(any(axis < 2 for axis in product.intensity.shape) for product in products):
+        raise ValueError("every FloatProduct axis must contain at least 2 pixels")
     shapes = {product.intensity.shape for product in products}
     if len(shapes) != 1:
         raise ValueError("all bundle float products must share one detector shape")
@@ -238,16 +310,51 @@ def _validate(request: ArtifactBundleRequest) -> None:
     _required_sha256(request.source, "sha256", "source")
     _required_text(request.master_metadata, "product_id", "master metadata")
     _required_sha256(request.master_metadata, "array_sha256", "master metadata")
-    _required_text(request.orientation_candidates, "candidate_set_id", "orientation candidates")
-    _required_text(request.orientation_decision, "decision_id", "orientation decision")
+    candidates = _validated_content_identity(
+        request.orientation_candidates,
+        kind="candidate-set",
+        id_key="candidate_set_id",
+        sha_key="candidate_set_sha256",
+        context="orientation candidate set",
+    )
+    decision = _validated_content_identity(
+        request.orientation_decision,
+        kind="decision",
+        id_key="decision_id",
+        sha_key="decision_sha256",
+        context="orientation decision",
+    )
+    candidate_ids = candidates["content"].get("candidate_ids")
+    if (
+        not isinstance(candidate_ids, list)
+        or not candidate_ids
+        or any(not isinstance(value, str) or not value for value in candidate_ids)
+    ):
+        raise ValueError("orientation candidate set content requires candidate_ids")
+    selected = decision["content"].get("selected_candidate_id")
+    if selected not in candidate_ids:
+        raise ValueError("orientation decision selection is absent from candidate set")
+    if request.decision_links.get("orientation") != decision["decision_id"]:
+        raise ValueError("orientation decision link disagrees with recomputed decision identity")
     for key in ("orientation", "processing", "source_selection"):
         if key in request.decision_links:
             _required_text(request.decision_links, key, "decision links")
     _software_identities(request.software)
     for name, recipe in request.recipes.items():
-        _required_text(recipe, "recipe_id", f"{name} recipe")
-        _required_sha256(recipe, "recipe_sha256", f"{name} recipe")
-    _required_text(request.recipes["projection"], "geometry_id", "projection recipe")
+        _validated_content_identity(
+            recipe,
+            kind="recipe",
+            id_key="recipe_id",
+            sha_key="recipe_sha256",
+            context=f"{name} recipe",
+        )
+    projection_content = request.recipes["projection"]["content"]
+    expected_geometry_id = stable_id("geometry", projection_content)
+    if (
+        _required_text(request.recipes["projection"], "geometry_id", "projection recipe")
+        != expected_geometry_id
+    ):
+        raise ValueError("projection geometry identity disagrees with canonical content")
     _validated_lineages(request)
     plain_data(
         {
@@ -271,16 +378,36 @@ def _validate(request: ArtifactBundleRequest) -> None:
 
 def _run_identity_payload(request: ArtifactBundleRequest) -> dict[str, Any]:
     lineages = _validated_lineages(request)
-    recipe_identities = {
-        name: {
-            "recipe_id": recipe["recipe_id"],
-            "recipe_sha256": recipe["recipe_sha256"],
+    recipe_identities = {}
+    for name, recipe in request.recipes.items():
+        validated = _validated_content_identity(
+            recipe,
+            kind="recipe",
+            id_key="recipe_id",
+            sha_key="recipe_sha256",
+            context=f"{name} recipe",
+        )
+        recipe_identities[name] = {
+            "recipe_id": validated["recipe_id"],
+            "recipe_sha256": validated["recipe_sha256"],
         }
-        for name, recipe in request.recipes.items()
-    }
     recipe_identities["projection"]["geometry_id"] = request.recipes["projection"][
         "geometry_id"
     ]
+    candidate_identity = _validated_content_identity(
+        request.orientation_candidates,
+        kind="candidate-set",
+        id_key="candidate_set_id",
+        sha_key="candidate_set_sha256",
+        context="orientation candidate set",
+    )
+    decision_identity = _validated_content_identity(
+        request.orientation_decision,
+        kind="decision",
+        id_key="decision_id",
+        sha_key="decision_sha256",
+        context="orientation decision",
+    )
 
     def product_identity(product: FloatProduct) -> dict[str, str]:
         return {
@@ -298,7 +425,10 @@ def _run_identity_payload(request: ArtifactBundleRequest) -> dict[str, Any]:
             "product_id": request.master_metadata["product_id"],
             "array_sha256": request.master_metadata["array_sha256"],
         },
-        "orientation_candidate_set_id": request.orientation_candidates["candidate_set_id"],
+        "orientation_candidate_set": {
+            "candidate_set_id": candidate_identity["candidate_set_id"],
+            "candidate_set_sha256": candidate_identity["candidate_set_sha256"],
+        },
         "products": {
             "projected": product_identity(request.projected),
             "acquisition_corrected": product_identity(request.acquisition_corrected),
@@ -310,7 +440,10 @@ def _run_identity_payload(request: ArtifactBundleRequest) -> dict[str, Any]:
             "gallery_crisp": product_identity(request.gallery_crisp),
         },
         "processing_lineages": lineages,
-        "orientation_decision_id": request.orientation_decision["decision_id"],
+        "orientation_decision": {
+            "decision_id": decision_identity["decision_id"],
+            "decision_sha256": decision_identity["decision_sha256"],
+        },
         "decision_links": {
             key: request.decision_links[key]
             for key in ("orientation", "processing", "source_selection")
@@ -344,13 +477,20 @@ def _write_product(
     stem: str,
     product: FloatProduct,
     *,
+    label: str,
     export_images: bool,
     quantizations: dict[str, Any],
 ) -> np.ndarray | None:
     write_npy(root / f"{stem}.npy", product.intensity)
     if not export_images:
         return None
-    quantized, record = quantize_uint16(product.intensity, source_product_id=product.product_id)
+    quantized, record = quantize_uint16(
+        product.intensity,
+        label=label,
+        source_product_id=product.product_id,
+        source_content_id=product.content_id,
+        source_array_sha256=product.array_sha256,
+    )
     for suffix in ((".tif", ".png") if not stem.startswith("products/stages/") else (".tif",)):
         relative = f"{stem}{suffix}"
         write_uint16(root / relative, quantized)
@@ -379,25 +519,25 @@ def _write_contents(root: Path, request: ArtifactBundleRequest, run_id: str) -> 
 
     quantizations: dict[str, Any] = {}
     _write_product(
-        root, "products/projected", request.projected, export_images=False,
+        root, "products/projected", request.projected, label="projected", export_images=False,
         quantizations=quantizations,
     )
     _write_product(
         root, "products/acquisition-corrected", request.acquisition_corrected,
-        export_images=False, quantizations=quantizations,
+        label="acquisition-corrected", export_images=False, quantizations=quantizations,
     )
     for name, product in sorted(request.stages.items()):
         _write_product(
             root, f"products/stages/{name}", product, export_images=True,
-            quantizations=quantizations,
+            label=f"stage:{name}", quantizations=quantizations,
         )
     _write_product(
         root, "products/scientific-clean", request.scientific_clean, export_images=True,
-        quantizations=quantizations,
+        label="scientific-clean", quantizations=quantizations,
     )
     gallery = _write_product(
         root, "products/gallery-crisp", request.gallery_crisp, export_images=True,
-        quantizations=quantizations,
+        label="gallery-crisp", quantizations=quantizations,
     )
     assert gallery is not None
     write_preview(root / "products/preview.png", gallery)
@@ -419,11 +559,12 @@ def _write_contents(root: Path, request: ArtifactBundleRequest, run_id: str) -> 
         if path.is_file()
     }
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "run_id": run_id,
         "run_identity": _run_identity_payload(request),
         "run_identity_schema": RUN_IDENTITY_SCHEMA,
         "processing_lineages": _validated_lineages(request),
+        "content_registry": _content_registry(request),
         "files": files,
         "uint16_exports": quantizations,
         "products": {
@@ -453,6 +594,16 @@ def _fsync_directory(path: Path) -> None:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
+
+
+def _fsync_directory_tree(root: Path) -> None:
+    directories = sorted(
+        (path for path in root.rglob("*") if path.is_dir()),
+        key=lambda path: (-len(path.relative_to(root).parts), str(path.relative_to(root))),
+    )
+    for directory in directories:
+        _fsync_directory(directory)
+    _fsync_directory(root)
 
 
 def write_artifact_bundle(
@@ -487,7 +638,7 @@ def write_artifact_bundle(
     manifest_path = partial / "manifest.json"
     _write_json(manifest_path, manifest)
     manifest_sha256 = _sha256(manifest_path)
-    _fsync_directory(partial)
+    _fsync_directory_tree(partial)
     partial.rename(completed)
     _fsync_directory(root)
     return BundleWriteResult(run_id=run_id, path=completed, manifest_sha256=manifest_sha256)
