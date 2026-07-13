@@ -45,3 +45,6 @@ that do not expose upstream simulator or projection objects.
 - Quality regression gate: focused suite 86 passed and full fast/unit suite 92
   passed after strict canonical numeric typing, linked source/recipe identities,
   array-safe product equality, and atomic suffix-safe persistence were added.
+- Source-identity regression gate: focused suite 88 passed and full fast/unit
+  suite 94 passed with exact `SourceRecord.source_id` acceptance and NPZ
+  round-trip evidence.

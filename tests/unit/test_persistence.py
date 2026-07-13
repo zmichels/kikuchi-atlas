@@ -4,23 +4,29 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from kikuchi_lab.model.identity import stable_id
 from kikuchi_lab.model import persistence
 from kikuchi_lab.model.persistence import load_master_product, save_master_product
 from kikuchi_lab.model.products import MasterPatternProduct
+from kikuchi_lab.model.provenance import SourceRecord
 
 
 def product():
+    source = SourceRecord(
+        uri="https://www.crystallography.net/cod/9000319.cif",
+        sha256="a" * 64,
+        license="COD copying policy",
+        citation="Kirfel et al. (2005)",
+    )
     source_structure = {
         "identifier": "COD-9000319",
-        "sha256": "a" * 64,
+        "sha256": source.sha256,
         "provenance": {
-            "uri": "https://www.crystallography.net/cod/9000319.cif",
-            "license": "COD copying policy",
-            "citation": "Kirfel et al. (2005)",
+            "uri": source.uri,
+            "license": source.license,
+            "citation": source.citation,
         },
     }
-    source_structure["source_id"] = stable_id("source", source_structure)
+    source_structure["source_id"] = source.source_id
     return MasterPatternProduct.from_array(
         np.arange(50, dtype=np.float32).reshape(2, 5, 5),
         metadata={
@@ -63,6 +69,20 @@ def test_master_product_round_trip_preserves_evidence(tmp_path):
     assert restored.intensity.flags.writeable is False
     assert restored.array_sha256 == original.array_sha256
     assert restored.product_id == original.product_id
+
+
+def test_source_record_identity_round_trips_without_divergence(tmp_path):
+    source = SourceRecord(
+        uri="https://www.crystallography.net/cod/9000319.cif",
+        sha256="a" * 64,
+        license="COD copying policy",
+        citation="Kirfel et al. (2005)",
+    )
+    restored = load_master_product(save_master_product(tmp_path / "master.npz", product()))
+
+    source_metadata = restored.metadata_dict()["source_structure"]
+    assert source_metadata["source_id"] == source.source_id
+    assert source.source_id in restored.metadata_dict()["provenance_links"]
 
 
 def test_save_appends_npz_and_returns_an_existing_path(tmp_path):

@@ -1,21 +1,27 @@
 import numpy as np
 import pytest
 
-from kikuchi_lab.model.identity import stable_id
 from kikuchi_lab.model.products import DetectorPatternProduct, MasterPatternProduct
+from kikuchi_lab.model.provenance import SourceRecord
 
 
 def valid_metadata(**changes):
+    source = SourceRecord(
+        uri="https://www.crystallography.net/cod/9000319.cif",
+        sha256="a" * 64,
+        license="COD copying policy",
+        citation="Kirfel et al. (2005)",
+    )
     source_structure = {
         "identifier": "COD-9000319",
-        "sha256": "a" * 64,
+        "sha256": source.sha256,
         "provenance": {
-            "uri": "https://www.crystallography.net/cod/9000319.cif",
-            "license": "COD copying policy",
-            "citation": "Kirfel et al. (2005)",
+            "uri": source.uri,
+            "license": source.license,
+            "citation": source.citation,
         },
     }
-    source_structure["source_id"] = stable_id("source", source_structure)
+    source_structure["source_id"] = source.source_id
     metadata = {
         "phase": {
             "name": "forsterite",
@@ -57,6 +63,19 @@ def test_master_pattern_owns_a_read_only_float32_array():
         "dtype": "float32",
         "sha256": product.array_sha256,
     }
+
+
+def test_master_pattern_accepts_exact_source_record_identity():
+    source = SourceRecord(
+        uri="https://www.crystallography.net/cod/9000319.cif",
+        sha256="a" * 64,
+        license="COD copying policy",
+        citation="Kirfel et al. (2005)",
+    )
+    product = MasterPatternProduct.from_array(np.ones((2, 3, 3)), metadata=valid_metadata())
+
+    assert product.metadata_dict()["source_structure"]["source_id"] == source.source_id
+    assert source.source_id in product.metadata_dict()["provenance_links"]
 
 
 def test_master_pattern_array_cannot_be_made_writeable_again():

@@ -107,10 +107,13 @@ def _validate_source(metadata: Mapping[str, Any]) -> str:
     for key in ("uri", "license", "citation"):
         _required_text(provenance, key)
     _required_text(source, "source_id")
+    # SourceRecord owns source identity. The human/catalog identifier remains
+    # useful metadata, but must not create a second incompatible identity.
     source_payload = {
-        "identifier": source["identifier"],
+        "uri": provenance["uri"],
         "sha256": source["sha256"],
-        "provenance": plain_data(provenance),
+        "license": provenance["license"],
+        "citation": provenance["citation"],
     }
     expected_source_id = stable_id("source", source_payload)
     if source["source_id"] != expected_source_id:
