@@ -1,0 +1,19 @@
+schema_version: 1
+name: forsterite-orientation-proof
+candidate_recipe: forsterite-candidates.yml
+processing_recipe: scientific-clean.yml
+energy_kev: 20.0
+detector:
+  shape: [180, 240]
+  pcx: 0.50
+  pcy: 0.72
+  pcz: 0.60
+  pc_convention: tsl
+  sample_tilt_deg: 70.0
+  detector_tilt_deg: 0.0
+  detector_azimuth_deg: 0.0
+  detector_twist_deg: 0.0
+  pixel_size_um: 50.0
+  binning: 1
+  supersampling: 2
+contact_sheet_columns: 3

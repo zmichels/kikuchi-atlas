@@ -27,6 +27,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     simulate.add_argument("--source", required=True)
     simulate.add_argument("--recipe", required=True)
     simulate.add_argument("--output", required=True)
+    proof = subparsers.add_parser(
+        "proof", help="Render a deterministic orientation proof for human review."
+    )
+    proof.add_argument("--recipe", required=True)
+    proof.add_argument("--master-product", required=True)
+    proof.add_argument("--output", required=True)
     args = parser.parse_args(argv)
 
     if args.command == "version":
@@ -70,6 +76,36 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"kikuchi-lab: simulation failed: {error}", file=sys.stderr)
             return 1
         print(result.manifest)
+        return 0
+
+    if args.command == "proof":
+        from kikuchi_lab.model import load_master_product
+        from kikuchi_lab.workflows import render_proof
+
+        try:
+            master = load_master_product(args.master_product)
+            result = render_proof(
+                master=master,
+                recipe_path=args.recipe,
+                output_root=args.output,
+            )
+        except (OSError, ValueError, RuntimeError) as error:
+            print(f"kikuchi-lab: proof failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "proof_id": result.proof_id,
+                    "state": result.state,
+                    "path": str(result.path),
+                    "contact_sheet": str(result.contact_sheet),
+                    "candidate_count": len(result.candidate_ids),
+                    "elapsed_seconds": result.elapsed_seconds,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
 
     return 2

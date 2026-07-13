@@ -2,7 +2,7 @@
 id: KIKU-T008
 type: task
 title: Render the Deterministic Proof Comparison
-status: ready
+status: done
 parent: KIKU-F001
 created: 2026-07-12
 priority: P1
@@ -23,6 +23,52 @@ and a legible contact sheet for human orientation selection.
 
 ## Acceptance Criteria
 
-- [ ] Proof integration tests reproduce bundle identities and contact-sheet layout.
-- [ ] Each tile exposes orientation and processing identity without obscuring bands.
-- [ ] The proof bundle and contact sheet are linked here.
+- [x] Proof integration tests reproduce bundle identities and contact-sheet layout.
+- [x] Each tile exposes orientation and processing identity without obscuring bands.
+- [x] The proof bundle and contact sheet are linked here.
+
+## Evidence
+
+- Deterministic integration test:
+  `uv run pytest tests/integration/test_proof_workflow.py -q` (1 passed).
+- Full fast suite: `uv run pytest -q` (298 passed; 23 upstream deprecation
+  warnings).
+- Static checks: `uv run ruff check src tests` (clean).
+- Validated proof master manifest:
+  `../../local/master-patterns/forsterite-proof/COD-9000319-ebsdsim.bundle/COD-9000319-ebsdsim.manifest.json`.
+- Real proof bundle: `../../local/runs/proof-e0fbf70a07913a27/`.
+- Real contact sheet:
+  `../../local/runs/proof-e0fbf70a07913a27/contact-sheet.png`.
+- Smoke-master comparison retained at `../../local/runs/proof-200408b6ef117f36/`;
+  its 17 x 17 master was visibly faceted and was rejected as orientation-proof
+  evidence without selecting or ranking any candidate.
+
+The successful orientation-proof master is deliberately not a final-quality
+master: 257 x 257 Lambert sampling (`halfw=128`), `dmin=0.08 nm`, one 20 keV
+energy bin, rank 8, and 262,144 requested/minimum Monte Carlo trajectories. The
+validated upstream artifact reports convergence after 786,432 trajectories.
+Generation took 532.77 s internally (533.07 s wall time); the 12-candidate proof
+render took 1.04 s internally (3.49 s CLI wall time). Raw candidate products are
+360 x 480 float32 and processed products are 180 x 240 float32. The paired,
+labeled contact sheet is 1484 x 968 uint8 and the proof bundle contains 90
+inventoried evidence files (21 MB locally).
+
+All 12 candidates carry the same advisory `clipping_fraction` warning at 0.02,
+caused by the explicit 1st/99th percentile normalization before CLAHE. This is
+preserved as comparable evidence rather than suppressed. The run state remains
+`awaiting-human-selection`; this task creates no selection, winner, score, or
+ranking.
+
+## GPU launch observations
+
+- The original `chunk_size=256` proof recipe failed immediately because
+  ebsdsim 0.1.8 requested 1,281,424 one-dimensional dispatch groups, beyond
+  WebGPU's 65,535 limit. `chunk_size=8` is the validated Apple M2 Metal bound.
+- A final-intent control set (`dmin=0.05 nm`, 1 keV bins, rank 20) remained in
+  active Metal work for 1,174.74 s without reaching a checkpoint. Observed GPU
+  device utilization was 99%, renderer/tiler utilization 73%, recovery count
+  zero, and peak process RSS approximately 596 MB. It was intentionally stopped;
+  transactional staging was cleaned and no completed artifact was published.
+- These observations are diagnostics for later performance and final-master
+  planning, not a completed proof artifact and not evidence that the
+  proof-grade master meets final scientific-quality requirements.
