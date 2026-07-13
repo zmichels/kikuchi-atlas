@@ -31,7 +31,7 @@ _AESTHETIC_STAGE_NAMES = {
     "downsample",
 }
 RUN_IDENTITY_SCHEMA = {
-    "schema_version": 1,
+    "schema_version": 2,
     "included_fields": [
         "source.{source_id,sha256}",
         "master_metadata.{product_id,array_sha256}",
@@ -40,7 +40,7 @@ RUN_IDENTITY_SCHEMA = {
         "software.identities.*.{version,distribution_sha256?}",
         "orientation_candidates.candidate_set_id",
         "products.*.{product_id,content_id,array_sha256}",
-        "stage_lineage.*.{name,input_id,output_id}",
+        "processing_lineages.{scientific,gallery}.*.{name,input_id,output_id}",
         "orientation_decision.decision_id",
         "decision_links.{orientation,processing,source_selection}?",
     ],
@@ -98,7 +98,8 @@ class ArtifactBundleRequest:
     projected: FloatProduct
     acquisition_corrected: FloatProduct
     stages: Mapping[str, FloatProduct]
-    stage_lineage: Sequence[Mapping[str, Any]]
+    scientific_lineage: Sequence[Mapping[str, Any]]
+    gallery_lineage: Sequence[Mapping[str, Any]]
     scientific_clean: FloatProduct
     gallery_crisp: FloatProduct
     warnings: Sequence[Any]
@@ -147,45 +148,70 @@ def _software_identities(software: Mapping[str, Any]) -> dict[str, Any]:
     return stable
 
 
-def _validated_lineage(request: ArtifactBundleRequest) -> list[dict[str, str]]:
-    lineage = plain_data(request.stage_lineage)
+def _validated_branch(
+    branch: str,
+    lineage_value: Sequence[Mapping[str, Any]],
+    request: ArtifactBundleRequest,
+    terminal: FloatProduct,
+) -> list[dict[str, str]]:
+    lineage = plain_data(lineage_value)
     if not isinstance(lineage, list) or not lineage:
-        raise ValueError("processing stage lineage is required")
+        raise ValueError(f"{branch} processing lineage is required")
     normalized: list[dict[str, str]] = []
     previous = request.projected.content_id
     background_seen = False
     for index, raw_record in enumerate(lineage):
         if not isinstance(raw_record, Mapping):
-            raise ValueError("processing stage lineage entries must be objects")
+            raise ValueError(f"{branch} processing lineage entries must be objects")
         record = {
-            key: _required_text(raw_record, key, f"processing stage lineage entry {index}")
+            key: _required_text(raw_record, key, f"{branch} processing lineage entry {index}")
             for key in ("name", "input_id", "output_id")
         }
         if record["input_id"] != previous:
-            raise ValueError("processing stage lineage identity chain is discontinuous")
+            raise ValueError(f"{branch} processing lineage is disconnected from its root")
         if index == 0 and record["name"] not in _BACKGROUND_STAGE_NAMES:
-            raise ValueError("background correction must be the first processing stage")
+            raise ValueError(f"background correction must be the first {branch} processing stage")
         if record["name"] in _AESTHETIC_STAGE_NAMES and not background_seen:
-            raise ValueError("background correction must precede aesthetic processing stages")
+            raise ValueError(f"background correction must precede {branch} aesthetic stages")
         if record["name"] in _BACKGROUND_STAGE_NAMES:
             if background_seen:
-                raise ValueError("processing stage lineage contains multiple background corrections")
+                raise ValueError(f"{branch} lineage contains multiple background corrections")
             if record["output_id"] != request.acquisition_corrected.content_id:
                 raise ValueError(
-                    "acquisition-corrected product disagrees with background stage output"
+                    f"acquisition-corrected product disagrees with {branch} background output"
                 )
             background_seen = True
         normalized.append(record)
         previous = record["output_id"]
     if not background_seen:
-        raise ValueError("processing stage lineage requires a named background correction stage")
-    lineage_outputs = {record["output_id"] for record in normalized}
+        raise ValueError(f"{branch} lineage requires a named background correction stage")
+    if normalized[-1]["output_id"] != terminal.content_id:
+        raise ValueError(f"{branch} lineage terminal output disagrees with {branch} final product")
+    return normalized
+
+
+def _validated_lineages(request: ArtifactBundleRequest) -> dict[str, list[dict[str, str]]]:
+    lineages = {
+        "scientific": _validated_branch(
+            "scientific", request.scientific_lineage, request, request.scientific_clean
+        ),
+        "gallery": _validated_branch(
+            "gallery", request.gallery_lineage, request, request.gallery_crisp
+        ),
+    }
+    if lineages["scientific"][0] != lineages["gallery"][0]:
+        raise ValueError("scientific and gallery branches must share one background correction")
+    lineage_outputs = {
+        record["output_id"] for lineage in lineages.values() for record in lineage
+    }
     missing = [
         name for name, product in request.stages.items() if product.content_id not in lineage_outputs
     ]
     if missing:
-        raise ValueError(f"stage products are absent from processing lineage: {', '.join(missing)}")
-    return normalized
+        raise ValueError(
+            f"stage products are absent from both processing branches: {', '.join(missing)}"
+        )
+    return lineages
 
 
 def _validate(request: ArtifactBundleRequest) -> None:
@@ -222,7 +248,7 @@ def _validate(request: ArtifactBundleRequest) -> None:
         _required_text(recipe, "recipe_id", f"{name} recipe")
         _required_sha256(recipe, "recipe_sha256", f"{name} recipe")
     _required_text(request.recipes["projection"], "geometry_id", "projection recipe")
-    _validated_lineage(request)
+    _validated_lineages(request)
     plain_data(
         {
             "source": request.source,
@@ -232,7 +258,8 @@ def _validate(request: ArtifactBundleRequest) -> None:
             "recipes": request.recipes,
             "master_metadata": request.master_metadata,
             "orientation_candidates": request.orientation_candidates,
-            "stage_lineage": request.stage_lineage,
+            "scientific_lineage": request.scientific_lineage,
+            "gallery_lineage": request.gallery_lineage,
             "warnings": request.warnings,
             "timings": request.timings,
             "resources": request.resources,
@@ -243,7 +270,7 @@ def _validate(request: ArtifactBundleRequest) -> None:
 
 
 def _run_identity_payload(request: ArtifactBundleRequest) -> dict[str, Any]:
-    lineage = _validated_lineage(request)
+    lineages = _validated_lineages(request)
     recipe_identities = {
         name: {
             "recipe_id": recipe["recipe_id"],
@@ -282,7 +309,7 @@ def _run_identity_payload(request: ArtifactBundleRequest) -> dict[str, Any]:
             "scientific_clean": product_identity(request.scientific_clean),
             "gallery_crisp": product_identity(request.gallery_crisp),
         },
-        "stage_lineage": lineage,
+        "processing_lineages": lineages,
         "orientation_decision_id": request.orientation_decision["decision_id"],
         "decision_links": {
             key: request.decision_links[key]
@@ -339,7 +366,7 @@ def _write_contents(root: Path, request: ArtifactBundleRequest, run_id: str) -> 
         ("provenance/hardware.json", request.hardware),
         ("metadata/master-pattern.json", request.master_metadata),
         ("metadata/orientation-candidates.json", request.orientation_candidates),
-        ("metadata/processing-lineage.json", _validated_lineage(request)),
+        ("metadata/processing-lineage.json", _validated_lineages(request)),
         ("diagnostics/warnings.json", request.warnings),
         ("diagnostics/timings.json", request.timings),
         ("diagnostics/resources.json", request.resources),
@@ -396,7 +423,7 @@ def _write_contents(root: Path, request: ArtifactBundleRequest, run_id: str) -> 
         "run_id": run_id,
         "run_identity": _run_identity_payload(request),
         "run_identity_schema": RUN_IDENTITY_SCHEMA,
-        "processing_stage_lineage": _validated_lineage(request),
+        "processing_lineages": _validated_lineages(request),
         "files": files,
         "uint16_exports": quantizations,
         "products": {

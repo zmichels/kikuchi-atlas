@@ -24,6 +24,7 @@ def _request(*, elapsed: float = 1.25, created_at: str = "2026-07-12T12:00:00Z")
     projected = FloatProduct("detector-projected", base)
     acquisition_corrected = FloatProduct("stage-background", base + 1)
     normalized = FloatProduct("stage-normalize", base / 47)
+    gallery = FloatProduct("processed-gallery", np.flipud(base) / 47)
     return ArtifactBundleRequest(
         source={"source_id": "source-abc", "sha256": "a" * 64, "created_at": created_at},
         environment={"python": "3.12", "cwd": "/private/local/kikuchi"},
@@ -67,7 +68,7 @@ def _request(*, elapsed: float = 1.25, created_at: str = "2026-07-12T12:00:00Z")
         projected=projected,
         acquisition_corrected=acquisition_corrected,
         stages={"normalize": normalized},
-        stage_lineage=(
+        scientific_lineage=(
             {
                 "name": "background_divide",
                 "input_id": projected.content_id,
@@ -79,8 +80,25 @@ def _request(*, elapsed: float = 1.25, created_at: str = "2026-07-12T12:00:00Z")
                 "output_id": normalized.content_id,
             },
         ),
+        gallery_lineage=(
+            {
+                "name": "background_divide",
+                "input_id": projected.content_id,
+                "output_id": acquisition_corrected.content_id,
+            },
+            {
+                "name": "robust_normalize",
+                "input_id": acquisition_corrected.content_id,
+                "output_id": normalized.content_id,
+            },
+            {
+                "name": "gallery_crisp_finish",
+                "input_id": normalized.content_id,
+                "output_id": gallery.content_id,
+            },
+        ),
         scientific_clean=FloatProduct("processed-science", base / 47),
-        gallery_crisp=FloatProduct("processed-gallery", np.flipud(base) / 47),
+        gallery_crisp=gallery,
         warnings=[{"code": "example", "message": "test evidence"}],
         timings={"elapsed_seconds": elapsed, "captured_at": created_at},
         resources={"peak_rss_mb": 42.0, "sampled_at": created_at},
@@ -172,11 +190,22 @@ def test_bundle_writes_complete_canonical_inventory_and_image_formats(tmp_path: 
     assert manifest["products"]["acquisition_corrected"]["role"] == (
         "background_model_corrected_before_aesthetic_processing"
     )
-    assert manifest["run_identity_schema"]["schema_version"] == 1
+    assert manifest["run_identity_schema"]["schema_version"] == 2
     assert stable_id("run", manifest["run_identity"]) == result.run_id
-    assert manifest["processing_stage_lineage"][0]["name"] == "background_divide"
-    assert manifest["processing_stage_lineage"][0]["output_id"] == (
+    assert set(manifest["processing_lineages"]) == {"scientific", "gallery"}
+    assert manifest["run_identity"]["processing_lineages"] == manifest["processing_lineages"]
+    assert json.loads((bundle / "metadata/processing-lineage.json").read_text()) == manifest[
+        "processing_lineages"
+    ]
+    assert manifest["processing_lineages"]["scientific"][0]["name"] == "background_divide"
+    assert manifest["processing_lineages"]["gallery"][0]["output_id"] == (
         _request().acquisition_corrected.content_id
+    )
+    assert manifest["processing_lineages"]["scientific"][-1]["output_id"] == (
+        _request().scientific_clean.content_id
+    )
+    assert manifest["processing_lineages"]["gallery"][-1]["output_id"] == (
+        _request().gallery_crisp.content_id
     )
     assert manifest["comparison_exclusions"] == {
         "json_fields": ["**/captured_at", "**/created_at", "**/decided_at"],
@@ -293,6 +322,20 @@ def test_bundle_identity_changes_for_recipe_checksum_and_geometry_id(tmp_path: P
     assert first.run_id != second.run_id
 
 
+def test_bundle_identity_includes_each_ordered_processing_branch(tmp_path: Path) -> None:
+    original = _request()
+    changed_lineage = list(original.gallery_lineage)
+    changed_lineage[-1] = {**changed_lineage[-1], "name": "alternate_gallery_finish"}
+    changed = ArtifactBundleRequest(
+        **{**original.__dict__, "gallery_lineage": tuple(changed_lineage)}
+    )
+
+    first = write_artifact_bundle(tmp_path / "first", original)
+    second = write_artifact_bundle(tmp_path / "second", changed)
+
+    assert first.run_id != second.run_id
+
+
 @pytest.mark.parametrize(
     "failure", ["missing", "wrong_name", "unrelated_output", "unknown_before_background"]
 )
@@ -300,7 +343,7 @@ def test_bundle_rejects_missing_wrong_or_unrelated_background_lineage(
     tmp_path: Path, failure: str
 ) -> None:
     request = _request()
-    lineage = list(request.stage_lineage)
+    lineage = list(request.scientific_lineage)
     if failure == "missing":
         lineage = lineage[1:]
     elif failure == "wrong_name":
@@ -317,9 +360,56 @@ def test_bundle_rejects_missing_wrong_or_unrelated_background_lineage(
                     "output_id": request.projected.content_id,
                 },
             )
-    malformed = ArtifactBundleRequest(**{**request.__dict__, "stage_lineage": tuple(lineage)})
+    malformed = ArtifactBundleRequest(
+        **{**request.__dict__, "scientific_lineage": tuple(lineage)}
+    )
 
     with pytest.raises(ValueError, match="background|lineage|acquisition"):
+        write_artifact_bundle(tmp_path, malformed)
+
+
+@pytest.mark.parametrize(
+    "failure",
+    ["arbitrary_final", "wrong_terminal", "divergent_background", "disconnected_root"],
+)
+def test_bundle_rejects_invalid_scientific_or_gallery_branch_terminals(
+    tmp_path: Path, failure: str
+) -> None:
+    request = _request()
+    changes: dict[str, object] = {}
+    if failure == "arbitrary_final":
+        changes["gallery_crisp"] = FloatProduct(
+            request.gallery_crisp.product_id,
+            np.fliplr(request.gallery_crisp.intensity),
+        )
+    elif failure == "wrong_terminal":
+        lineage = list(request.gallery_lineage)
+        lineage[-1] = {**lineage[-1], "output_id": request.scientific_clean.content_id}
+        changes["gallery_lineage"] = tuple(lineage)
+    elif failure == "divergent_background":
+        lineage = list(request.gallery_lineage)
+        divergent = request.gallery_crisp.content_id
+        lineage[0] = {**lineage[0], "output_id": divergent}
+        lineage[1] = {**lineage[1], "input_id": divergent}
+        changes["gallery_lineage"] = tuple(lineage)
+    else:
+        lineage = list(request.scientific_lineage)
+        lineage[0] = {**lineage[0], "input_id": request.gallery_crisp.content_id}
+        changes["scientific_lineage"] = tuple(lineage)
+    malformed = ArtifactBundleRequest(**{**request.__dict__, **changes})
+
+    with pytest.raises(ValueError, match="scientific|gallery|background|root|terminal"):
+        write_artifact_bundle(tmp_path, malformed)
+
+
+def test_bundle_rejects_exported_intermediate_outside_both_branches(tmp_path: Path) -> None:
+    request = _request()
+    unattached = FloatProduct("stage-unattached", request.projected.intensity + 7.0)
+    malformed = ArtifactBundleRequest(
+        **{**request.__dict__, "stages": {**request.stages, "unattached": unattached}}
+    )
+
+    with pytest.raises(ValueError, match="both processing branches"):
         write_artifact_bundle(tmp_path, malformed)
 
 
@@ -341,13 +431,14 @@ def test_bundle_identity_changes_when_float_bytes_change_despite_reused_label(tm
     changed_request = _request()
     changed_gallery = changed_request.gallery_crisp.intensity.copy()
     changed_gallery[0, 0] += 0.125
+    changed_product = FloatProduct(changed_request.gallery_crisp.product_id, changed_gallery)
+    changed_lineage = list(changed_request.gallery_lineage)
+    changed_lineage[-1] = {**changed_lineage[-1], "output_id": changed_product.content_id}
     changed_request = ArtifactBundleRequest(
         **{
             **changed_request.__dict__,
-            "gallery_crisp": FloatProduct(
-                changed_request.gallery_crisp.product_id,
-                changed_gallery,
-            ),
+            "gallery_crisp": changed_product,
+            "gallery_lineage": tuple(changed_lineage),
         }
     )
 

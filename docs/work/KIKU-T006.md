@@ -47,9 +47,10 @@ raw products, processing stages, high-bit-depth images, and diagnostics.
   geometry, decision IDs, ordered stage lineage, and float pixels do perturb it.
 - A 64x128 regression proves that equal 0.25-cycle/pixel signals along either
   detector axis receive identical radial-frequency energy classification.
-- Background-lineage regressions reject a missing or misnamed correction,
-  discontinuous input/output IDs, and an acquisition-corrected array unrelated
-  to the recorded background-stage output.
+- Scientific and gallery branch regressions require a shared projected root and
+  exact shared background-correction output, then allow deliberate divergence.
+  They reject missing or divergent correction nodes, disconnected roots,
+  unrecorded intermediates, wrong terminals, and arbitrary final arrays.
 - [ADR 0001](../decisions/0001-artifact-identity-and-bundle-layout.md)
   records the identity, atomic-publication, layout, quantization, and comparison
   exclusion contracts.

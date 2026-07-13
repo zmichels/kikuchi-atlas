@@ -23,13 +23,14 @@ to `<run-id>.partial.<UTC timestamp>.abandoned`, retaining the interrupted
 evidence, and only then starts a new partial.
 
 The run ID is canonical-JSON/SHA-256 derived through a versioned, explicit
-whitelist. Version 1 includes source ID and checksum; master product ID and
+whitelist. Version 2 includes source ID and checksum; master product ID and
 array checksum; every resolved recipe ID and checksum; projection geometry ID;
 software package versions and optional distribution checksums; candidate-set,
-orientation-decision, and recognized decision-link IDs; ordered processing
-stage names and input/output content IDs; and every named float product's
-product ID, content ID, and array checksum. No other provenance dictionary
-value participates implicitly. Wall-clock, retrieval, and generation times,
+orientation-decision, and recognized decision-link IDs; separately ordered
+scientific and gallery branch stage names and input/output content IDs; and
+every named float product's product ID, content ID, and array checksum. No other
+provenance dictionary value participates implicitly. Wall-clock, retrieval,
+and generation times,
 elapsed/resource measurements, hardware observations, and absolute or relative
 local paths remain evidence regardless of their nesting or field names.
 The normalized whitelist payload is embedded in the manifest, so consumers can
@@ -46,12 +47,14 @@ points, and measured low/high clipping fractions. The preview is the only
 uint8 scientific-image derivative.
 
 That acquisition-corrected semantic is executable, not descriptive. The
-bundle requires a continuous ordered stage lineage beginning at the projected
-image content ID. Exactly one named background correction must be the first
-stage before normalization, local contrast, detail, tone, or downsampling, and its output ID
-must equal the acquisition-corrected float array's computed content ID. Every
-exported intermediate stage must also occur in that lineage. Missing, reordered,
-or unrelated products are rejected before a partial directory is created.
+bundle requires separate continuous scientific-clean and gallery-crisp branches
+beginning at the same projected image content ID. Both branches must share an
+identical first background-correction record whose output ID equals the
+acquisition-corrected float array's computed content ID. They may diverge only
+after that shared node. Each ordered branch must terminate at its corresponding
+final float product's computed content ID, and every exported intermediate must
+occur in at least one branch. Missing, reordered, disconnected, divergent, or
+unrelated products are rejected before a partial directory is created.
 
 Radial-frequency diagnostics are measured in physical cycles per pixel using
 the independent FFT frequency coordinates of each image axis. The version 1
@@ -74,8 +77,8 @@ not embed additional ad hoc exclusions in test or application code.
   independent of display quantization and machine timing.
 - Run-identity evolution is deliberate: adding a scientific identity field
   requires a schema-version change rather than a fragile exclusion-key patch.
-- Acquisition-corrected products cannot be substituted without breaking the
-  recorded computational lineage.
+- Acquisition-corrected or final branch products cannot be substituted without
+  breaking the recorded computational graph.
 - Bundle consumers must verify the externally supplied manifest checksum before
   trusting the internal inventory.
 - Any future layout or identity change requires a manifest schema-version
