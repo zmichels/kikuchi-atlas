@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kikuchi-lab"
+version = "0.1.0"
+description = "Reproducible, high-resolution EBSD Kikuchi pattern experiments."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "ebsdsim==0.1.8",
+  "imageio>=2.37,<3",
+  "kikuchipy==0.13.0",
+  "numpy>=2.0,<3",
+  "orix>=0.14,<0.15",
+  "pyyaml>=6.0,<7",
+  "scikit-image>=0.25,<0.26",
+  "tifffile>=2025.6,<2026",
+]
+
+[project.scripts]
+kikuchi-lab = "kikuchi_lab.cli.main:entrypoint"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4,<9",
+  "pytest-cov>=6.2,<7",
+  "ruff>=0.12,<0.13",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kikuchi_lab"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
