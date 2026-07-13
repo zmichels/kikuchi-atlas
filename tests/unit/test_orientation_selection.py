@@ -3,9 +3,12 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import subprocess
+import sys
 from copy import deepcopy
 from pathlib import Path
 
+import kikuchi_lab.orientations.selection as selection_module
 from kikuchi_lab.cli.main import main
 from kikuchi_lab.model.identity import canonical_json, stable_id
 import pytest
@@ -67,7 +70,7 @@ def _proof_bundle(tmp_path: Path) -> Path:
         "schema_version": 1,
         "candidate": candidate,
         "comparison_contract": {
-            "detector_recipe_id": "recipe-detector",
+            "detector_recipe_id": "recipe-0123456789abcdef",
             "detector": {"shape": [180, 240], "pc": {"x": 0.5, "y": 0.72, "z": 0.6}},
         },
         "processing_evidence": {
@@ -154,6 +157,21 @@ def _reseal_duplicate_candidate_proof(run: Path) -> None:
     _write_json(manifest_path, manifest)
 
 
+def _write_self_consistent_selection(
+    original_path: Path, record: dict[str, object]
+) -> Path:
+    decision = record["decision"]
+    decision_sha256 = hashlib.sha256(
+        canonical_json(decision).encode("utf-8")
+    ).hexdigest()
+    selection_id = f"orientation-selection-{decision_sha256[:16]}"
+    record["decision_sha256"] = decision_sha256
+    record["selection_id"] = selection_id
+    rewritten = original_path.parent.parent / selection_id / "selection.json"
+    _write_json(rewritten, record)
+    return rewritten
+
+
 def test_selection_is_content_addressed_and_references_sealed_evidence(tmp_path: Path) -> None:
     proof = _proof_bundle(tmp_path)
     before = _tree_checksums(proof)
@@ -210,11 +228,11 @@ def test_selection_rejects_sealed_duplicate_candidate_ids_before_choice(
 def test_proof_tree_digest_contract_is_exact_and_recomputable(tmp_path: Path) -> None:
     proof = _proof_bundle(tmp_path)
     expected_contract = {
-        "schema_version": 1,
+        "schema_version": 2,
         "algorithm": "sha256",
         "file_inclusion": (
-            "all non-symlink regular files recursively beneath the proof root, "
-            "including manifest.json"
+            "all regular files recursively beneath the proof root, including manifest.json; "
+            "any symbolic link or non-regular entry is an error"
         ),
         "exclusions": [],
         "entry_fields": ["relative_posix_path", "sha256", "bytes"],
@@ -259,8 +277,8 @@ def test_selection_schema_records_the_recomputable_proof_tree_digest(tmp_path: P
     )
 
     record = load_orientation_selection(result.selection_path)
-    assert record["schema_version"] == 2
-    assert record["decision"]["schema_version"] == 2
+    assert record["schema_version"] == 3
+    assert record["decision"]["schema_version"] == 3
     assert record["decision"]["proof"]["tree_digest"] == proof_tree_digest(proof)
 
 
@@ -285,6 +303,43 @@ def test_selection_requires_exactly_one_evidence_directory_for_selected_id(
         OrientationSelectionError,
         match="selected candidate ID must match exactly one evidence directory",
     ):
+        create_orientation_selection(
+            run=proof,
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="A human rationale.",
+            selected_on="2026-07-13",
+            output_root=tmp_path / "decisions",
+        )
+
+
+def test_selection_rejects_external_candidate_file_symlink(tmp_path: Path) -> None:
+    proof = _proof_bundle(tmp_path)
+    evidence = proof / "candidates/fo-011-phi1-045/evidence.json"
+    external = tmp_path / "external-evidence.json"
+    shutil.copyfile(evidence, external)
+    evidence.unlink()
+    evidence.symlink_to(external)
+
+    with pytest.raises(OrientationSelectionError, match="symbolic link"):
+        create_orientation_selection(
+            run=proof,
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="A human rationale.",
+            selected_on="2026-07-13",
+            output_root=tmp_path / "decisions",
+        )
+
+
+def test_selection_rejects_external_candidate_directory_symlink(tmp_path: Path) -> None:
+    proof = _proof_bundle(tmp_path)
+    candidate_dir = proof / "candidates/fo-011-phi1-045"
+    external = tmp_path / "external-candidate"
+    shutil.move(candidate_dir, external)
+    candidate_dir.symlink_to(external, target_is_directory=True)
+
+    with pytest.raises(OrientationSelectionError, match="symbolic link"):
         create_orientation_selection(
             run=proof,
             candidate_id="fo-011-phi1-045",
@@ -402,6 +457,148 @@ def test_supersession_creates_a_linked_new_immutable_artifact(tmp_path: Path) ->
     }
 
 
+def test_supersession_rejects_fork_from_non_leaf_predecessor(tmp_path: Path) -> None:
+    proof = _proof_bundle(tmp_path)
+    output = tmp_path / "decisions"
+    first = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="First decision.",
+        selected_on="2026-07-13",
+        output_root=output,
+    )
+    create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Current leaf.",
+        selected_on="2026-07-14",
+        output_root=output,
+        supersedes=first.selection_id,
+        supersede_reason="First linear correction.",
+    )
+
+    with pytest.raises(OrientationSelectionError, match="current unique leaf"):
+        create_orientation_selection(
+            run=proof,
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="Forked successor.",
+            selected_on="2026-07-15",
+            output_root=output,
+            supersedes=first.selection_id,
+            supersede_reason="This fork must be rejected.",
+        )
+
+
+def test_concurrent_subprocesses_cannot_fork_one_predecessor(tmp_path: Path) -> None:
+    proof = _proof_bundle(tmp_path)
+    output = tmp_path / "decisions"
+    first = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Initial decision.",
+        selected_on="2026-07-13",
+        output_root=output,
+    )
+    start = tmp_path / "start"
+    ready = tmp_path / "ready"
+    ready.mkdir()
+    processes = []
+    for index in range(6):
+        script = f"""
+import sys
+import time
+from pathlib import Path
+import kikuchi_lab.orientations.selection as selection_module
+from kikuchi_lab.orientations.selection import create_orientation_selection
+
+original_selection_records = selection_module._selection_records
+def synchronized_selection_records(root):
+    records = original_selection_records(root)
+    Path({str(ready / str(index))!r}).write_text("ready", encoding="utf-8")
+    deadline = time.monotonic() + 0.35
+    while len(list(Path({str(ready)!r}).iterdir())) < 6 and time.monotonic() < deadline:
+        time.sleep(0.001)
+    return records
+selection_module._selection_records = synchronized_selection_records
+
+while not Path({str(start)!r}).exists():
+    time.sleep(0.001)
+try:
+    create_orientation_selection(
+        run={str(proof)!r},
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale={f"Concurrent successor {index}."!r},
+        selected_on="2026-07-14",
+        output_root={str(output)!r},
+        supersedes={first.selection_id!r},
+        supersede_reason="Concurrent linearity test.",
+    )
+except Exception as error:
+    print(type(error).__name__ + ": " + str(error), file=sys.stderr)
+    raise SystemExit(1)
+"""
+        processes.append(
+            subprocess.Popen(
+                [sys.executable, "-c", script],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        )
+    start.write_text("go", encoding="utf-8")
+    results = [process.communicate(timeout=30) for process in processes]
+
+    assert sum(process.returncode == 0 for process in processes) == 1, results
+    assert len(list(output.glob("orientation-selection-*/selection.json"))) == 2
+
+
+def test_concurrent_initial_subprocess_selections_have_one_winner(tmp_path: Path) -> None:
+    proof = _proof_bundle(tmp_path)
+    output = tmp_path / "decisions"
+    start = tmp_path / "start"
+    processes = []
+    script = f"""
+import sys
+import time
+from pathlib import Path
+from kikuchi_lab.orientations.selection import create_orientation_selection
+
+while not Path({str(start)!r}).exists():
+    time.sleep(0.001)
+try:
+    create_orientation_selection(
+        run={str(proof)!r},
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="One shared initial decision.",
+        selected_on="2026-07-13",
+        output_root={str(output)!r},
+    )
+except Exception as error:
+    print(type(error).__name__ + ": " + str(error), file=sys.stderr)
+    raise SystemExit(1)
+"""
+    for _ in range(4):
+        processes.append(
+            subprocess.Popen(
+                [sys.executable, "-c", script],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        )
+    start.write_text("go", encoding="utf-8")
+    results = [process.communicate(timeout=30) for process in processes]
+
+    assert sum(process.returncode == 0 for process in processes) == 1, results
+    assert len(list(output.glob("orientation-selection-*/selection.json"))) == 1
+
+
 def test_selection_identity_excludes_local_proof_and_output_paths(tmp_path: Path) -> None:
     first_proof = _proof_bundle(tmp_path / "first")
     second_proof = tmp_path / "second" / "runs" / first_proof.name
@@ -504,6 +701,67 @@ def test_selection_never_overwrites_an_existing_artifact(tmp_path: Path) -> None
     assert first.selection_path.read_bytes() == before
 
 
+def test_selection_publication_fsyncs_before_and_after_atomic_rename(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    events: list[str] = []
+
+    def write_file(path: Path, payload: bytes) -> None:
+        events.append("write-and-fsync-file")
+        path.write_bytes(payload)
+
+    def fsync_directory(path: Path) -> None:
+        events.append("fsync-output" if path.name == "decisions" else "fsync-staging")
+
+    def rename(source: Path, target: Path) -> None:
+        events.append("atomic-rename")
+        source.rename(target)
+
+    monkeypatch.setattr(selection_module, "_write_selection_file", write_file)
+    monkeypatch.setattr(selection_module, "_fsync_directory", fsync_directory)
+    monkeypatch.setattr(selection_module, "_rename_selection", rename)
+
+    create_orientation_selection(
+        run=_proof_bundle(tmp_path),
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+
+    assert events == [
+        "write-and-fsync-file",
+        "fsync-staging",
+        "atomic-rename",
+        "fsync-output",
+    ]
+
+
+def test_selection_publication_cleans_staging_after_rename_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "decisions"
+
+    def fail_rename(_source: Path, _target: Path) -> None:
+        raise OSError("injected rename failure")
+
+    monkeypatch.setattr(selection_module, "_rename_selection", fail_rename)
+
+    with pytest.raises(OSError, match="injected rename failure"):
+        create_orientation_selection(
+            run=_proof_bundle(tmp_path),
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="Human visual judgment.",
+            selected_on="2026-07-13",
+            output_root=output,
+        )
+
+    assert not list(output.glob(".orientation-selection-*"))
+    assert not list(output.glob("orientation-selection-*"))
+
+
 def test_superseding_requires_a_nonblank_reason(tmp_path: Path) -> None:
     proof = _proof_bundle(tmp_path)
     first = create_orientation_selection(
@@ -555,6 +813,39 @@ def test_select_orientation_cli_reports_concise_validation_errors(
     assert "Traceback" not in captured.err
 
 
+def test_select_orientation_cli_rejects_nonfinite_json_without_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    proof = _proof_bundle(tmp_path)
+    manifest_path = proof / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["identity"]["nonfinite"] = float("nan")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    status = main(
+        [
+            "select-orientation",
+            "--run",
+            str(proof),
+            "--candidate",
+            "fo-011-phi1-045",
+            "--author",
+            "Z",
+            "--rationale",
+            "Human visual judgment.",
+            "--selected-on",
+            "2026-07-13",
+            "--output",
+            str(tmp_path / "decisions"),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 1
+    assert "selection failed: proof manifest is not valid JSON" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_select_orientation_cli_writes_the_requested_decision(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -599,3 +890,192 @@ def test_selection_loader_rejects_decision_content_drift(tmp_path: Path) -> None
 
     with pytest.raises(OrientationSelectionError, match="decision checksum"):
         load_orientation_selection(result.selection_path)
+
+
+def test_selection_loader_rejects_self_consistent_unsafe_locator(tmp_path: Path) -> None:
+    result = create_orientation_selection(
+        run=_proof_bundle(tmp_path),
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    record = json.loads(result.selection_path.read_text())
+    record["decision"]["selected_candidate"]["evidence_locator"] = "../outside.json"
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(OrientationSelectionError, match="safe relative POSIX path"):
+        load_orientation_selection(rewritten)
+
+
+def test_selection_loader_rejects_self_consistent_empty_orientation(tmp_path: Path) -> None:
+    result = create_orientation_selection(
+        run=_proof_bundle(tmp_path),
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    record = json.loads(result.selection_path.read_text())
+    selected = record["decision"]["selected_candidate"]
+    selected["candidate"]["orientation"]["euler_bunge_deg"] = []
+    selected["candidate_sha256"] = hashlib.sha256(
+        canonical_json(selected["candidate"]).encode("utf-8")
+    ).hexdigest()
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(OrientationSelectionError, match="three finite Bunge angles"):
+        load_orientation_selection(rewritten)
+
+
+def test_selection_loader_rejects_self_consistent_zero_hash(tmp_path: Path) -> None:
+    result = create_orientation_selection(
+        run=_proof_bundle(tmp_path),
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    record = json.loads(result.selection_path.read_text())
+    record["decision"]["selected_candidate"]["evidence_sha256"] = "0" * 64
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(OrientationSelectionError, match="nonzero lowercase SHA-256"):
+        load_orientation_selection(rewritten)
+
+
+def test_selection_loader_rejects_boolean_schema_version(tmp_path: Path) -> None:
+    result = create_orientation_selection(
+        run=_proof_bundle(tmp_path),
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    record = json.loads(result.selection_path.read_text())
+    record["schema_version"] = True
+    record["decision"]["schema_version"] = True
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(OrientationSelectionError, match="schema_version must be integer"):
+        load_orientation_selection(rewritten)
+
+
+def test_selection_loader_rejects_self_consistent_malformed_ids(tmp_path: Path) -> None:
+    result = create_orientation_selection(
+        run=_proof_bundle(tmp_path),
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    record = json.loads(result.selection_path.read_text())
+    record["decision"]["proof"]["proof_id"] = "proof-not-a-content-id"
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(OrientationSelectionError, match="proof identity is invalid"):
+        load_orientation_selection(rewritten)
+
+
+def test_selection_loader_rejects_invalid_superseded_identity_relation(
+    tmp_path: Path,
+) -> None:
+    proof = _proof_bundle(tmp_path)
+    output = tmp_path / "decisions"
+    first = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="First decision.",
+        selected_on="2026-07-13",
+        output_root=output,
+    )
+    second = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Second decision.",
+        selected_on="2026-07-14",
+        output_root=output,
+        supersedes=first.selection_id,
+        supersede_reason="Material correction.",
+    )
+    record = json.loads(second.selection_path.read_text())
+    record["decision"]["supersession"]["selection_id"] = (
+        "orientation-selection-0123456789abcdef"
+    )
+    rewritten = _write_self_consistent_selection(second.selection_path, record)
+
+    with pytest.raises(
+        OrientationSelectionError,
+        match="superseded selection identity does not match decision checksum",
+    ):
+        load_orientation_selection(rewritten)
+
+
+def test_selection_loader_rejects_self_consistent_empty_geometry_and_metrics(
+    tmp_path: Path,
+) -> None:
+    result = create_orientation_selection(
+        run=_proof_bundle(tmp_path),
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    record = json.loads(result.selection_path.read_text())
+    selected = record["decision"]["selected_candidate"]
+    selected["geometry"] = {}
+    selected["geometry_sha256"] = hashlib.sha256(b"{}").hexdigest()
+    selected["metrics"] = {}
+    selected["metrics_sha256"] = hashlib.sha256(b"{}").hexdigest()
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(OrientationSelectionError, match="substantive geometry"):
+        load_orientation_selection(rewritten)
+
+
+def test_selection_loader_rejects_unknown_schema_fields(tmp_path: Path) -> None:
+    result = create_orientation_selection(
+        run=_proof_bundle(tmp_path),
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    record = json.loads(result.selection_path.read_text())
+    record["unknown_field"] = "not schema declared"
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(OrientationSelectionError, match="selection fields differ"):
+        load_orientation_selection(rewritten)
+
+
+def test_selection_loader_rejects_candidate_that_disagrees_with_proof_evidence(
+    tmp_path: Path,
+) -> None:
+    result = create_orientation_selection(
+        run=_proof_bundle(tmp_path),
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    record = json.loads(result.selection_path.read_text())
+    selected = record["decision"]["selected_candidate"]
+    selected["candidate"]["name"] = "self-consistent but not proof-consistent"
+    selected["candidate_sha256"] = hashlib.sha256(
+        canonical_json(selected["candidate"]).encode("utf-8")
+    ).hexdigest()
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(OrientationSelectionError, match="proof candidate evidence disagrees"):
+        load_orientation_selection(rewritten)
