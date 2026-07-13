@@ -1,4 +1,53 @@
+from pathlib import Path
+
+import pytest
+
 from kikuchi_lab.cli.main import main
+
+
+ROOT = Path(__file__).parents[2]
+
+
+def _proof_recipe_with_local_dependencies(tmp_path: Path) -> Path:
+    proof = (ROOT / "recipes/proof/forsterite-proof.yml").read_text()
+    (tmp_path / "forsterite-candidates.yml").write_text(
+        (ROOT / "recipes/proof/forsterite-candidates.yml").read_text()
+    )
+    (tmp_path / "scientific-clean.yml").write_text(
+        (ROOT / "recipes/proof/scientific-clean.yml").read_text()
+    )
+    path = tmp_path / "proof.yml"
+    path.write_text(proof)
+    return path
+
+
+@pytest.fixture
+def proof_cli_before_origin(monkeypatch):
+    import kikuchi_lab.model
+    import kikuchi_lab.workflows.proof
+
+    monkeypatch.setattr(kikuchi_lab.model, "load_master_product", lambda _path: object())
+    monkeypatch.setattr(
+        kikuchi_lab.workflows.proof,
+        "validate_master_for_proof",
+        lambda _master, _contract: None,
+    )
+
+
+def _run_proof_cli(recipe: Path, tmp_path: Path) -> int:
+    return main(
+        [
+            "proof",
+            "--recipe",
+            str(recipe),
+            "--master-product",
+            str(tmp_path / "master.npz"),
+            "--source",
+            str(tmp_path / "source.cif"),
+            "--output",
+            str(tmp_path / "runs"),
+        ]
+    )
 
 
 def test_version_command_reports_package_version(capsys):
@@ -46,4 +95,38 @@ def test_proof_command_normalizes_malformed_recipe_without_traceback(tmp_path, c
     captured = capsys.readouterr()
     assert status == 1
     assert "proof failed: proof recipe YAML" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_proof_command_normalizes_malformed_candidate_yaml_without_traceback(
+    tmp_path, capsys, proof_cli_before_origin
+):
+    recipe = _proof_recipe_with_local_dependencies(tmp_path)
+    (tmp_path / "forsterite-candidates.yml").write_text("candidates: [")
+
+    status = _run_proof_cli(recipe, tmp_path)
+
+    captured = capsys.readouterr()
+    assert status == 1
+    assert "proof failed: candidate_recipe" in captured.err
+    assert "forsterite-candidates.yml" in captured.err
+    assert "Traceback" not in captured.err
+
+
+@pytest.mark.parametrize(
+    "processing_payload",
+    ["stages: [", "schema_version: 1\nname: clean\nintent: test\nstages: wrong\n"],
+)
+def test_proof_command_normalizes_invalid_processing_recipe_without_traceback(
+    tmp_path, capsys, proof_cli_before_origin, processing_payload
+):
+    recipe = _proof_recipe_with_local_dependencies(tmp_path)
+    (tmp_path / "scientific-clean.yml").write_text(processing_payload)
+
+    status = _run_proof_cli(recipe, tmp_path)
+
+    captured = capsys.readouterr()
+    assert status == 1
+    assert "proof failed: processing_recipe" in captured.err
+    assert "scientific-clean.yml" in captured.err
     assert "Traceback" not in captured.err

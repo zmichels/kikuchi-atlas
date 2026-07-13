@@ -401,6 +401,19 @@ def _comparison_contract(recipe: ProofRecipe, processing: Any) -> dict[str, Any]
     }
 
 
+def _load_declared_recipe(loader: Callable[[Path], Any], path: Path, field: str) -> Any:
+    try:
+        return loader(path)
+    except yaml.YAMLError:
+        raise ProofRecipeError(
+            f"{field} at {path} contains invalid YAML"
+        ) from None
+    except (TypeError, ValueError) as error:
+        raise ProofRecipeError(
+            f"{field} at {path} is invalid: {error}"
+        ) from None
+
+
 _SOFTWARE_DISTRIBUTIONS = {
     "kikuchi-lab": "kikuchi-lab",
     "kikuchipy": "kikuchipy",
@@ -564,8 +577,12 @@ def render_proof(
     started = time.perf_counter()
     recipe = load_proof_recipe(recipe_path)
     validate_master_for_proof(master, recipe.master_contract)
-    candidates = load_candidate_set(recipe.candidate_recipe)
-    processing = load_processing_recipe(recipe.processing_recipe)
+    candidates = _load_declared_recipe(
+        load_candidate_set, recipe.candidate_recipe, "candidate_recipe"
+    )
+    processing = _load_declared_recipe(
+        load_processing_recipe, recipe.processing_recipe, "processing_recipe"
+    )
     contract = _comparison_contract(recipe, processing)
     processed_variant = {
         "name": processing.name,
