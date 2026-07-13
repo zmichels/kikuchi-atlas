@@ -33,6 +33,15 @@ comparison identity, and any bounded final-render adjustments.
   enforces a single linear supersession leaf without forks or double successors.
 - [x] Proof traversal and every proof-relative locator reject symbolic links,
   escaping paths, and non-regular entries before a decision can be published.
+- [x] Intrinsic selection loading is independent of the recorded proof location;
+  external verification is explicit, accepts a relocated proof-root override,
+  and returns structured verified evidence.
+- [x] External verification recomputes canonical proof and candidate-set IDs,
+  requires exact candidate ordering and content, and validates the proof
+  inventory rather than trusting asserted IDs.
+- [x] Decision-lineage discovery uses physical directories and regular files,
+  rejects symbolic-link roots, locks, predecessor directories, and predecessor
+  files, and validates supersession IDs before filesystem access.
 - [x] Publication fsyncs the selection file and staging directory before atomic
   rename, then fsyncs the output directory; failed pre-rename publication cleans
   its staging directory.
@@ -46,7 +55,21 @@ comparison identity, and any bounded final-render adjustments.
 
 - Implementation commits: `2841d87` (`feat: add immutable orientation
   selections`), `9aac920` (`fix: reject ambiguous orientation selections`),
-  and `92e7cc8` (`fix: serialize and harden orientation decisions`).
+  `92e7cc8` (`fix: serialize and harden orientation decisions`), and `93d28f3`
+  (`fix: secure orientation selection verification`).
+- `load_orientation_selection()` now validates the immutable artifact alone;
+  `verify_orientation_selection(..., proof_root=...)` performs the explicitly
+  requested external check and returns an `OrientationSelectionVerification`
+  record. A byte-identical proof copied to a new location verifies after the
+  original proof path is removed.
+- The external verifier independently derives `proof_id` from canonical
+  manifest identity and `candidate_set_id` from the Task 7 candidate-set
+  identity payload, preserves candidate-set ordering, and rejects forged but
+  well-formed asserted IDs.
+- Lineage scanning and predecessor lookup use `lstat`-checked physical
+  directories and regular files. Focused tests cover predecessor directory and
+  file symlinks, malformed traversal-like predecessor IDs, and strict non-bool
+  record and decision schema versions.
 - Authoritative schema-v3 leaf: `orientation-selection-0903bbee65fa3896`
   for `fo-011-phi1-045`; artifact SHA-256
   `ca9ac51b14b7a862c8d33734071a57397e58556d2aa4d869e76a67b817ff818b`.
@@ -75,5 +98,6 @@ comparison identity, and any bounded final-render adjustments.
   in the schema-v3 selection.
 - Concurrency gates: a deterministic six-subprocess supersession race and a
   separate concurrent-initial-selection race each produced exactly one winner.
-- Focused gate: `38 passed` in `tests/unit/test_orientation_selection.py`.
-- Fast full gate: `344 passed`; Ruff and the 14-item work tracker validated.
+- Focused gate: `48 passed` in `tests/unit/test_orientation_selection.py`.
+- Explicit relocation and two deterministic concurrency gates: `3 passed`.
+- Fast full gate: `354 passed`; Ruff and the 14-item work tracker validated.
