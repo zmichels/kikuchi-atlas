@@ -59,6 +59,25 @@ def test_forsterite_source_rejects_catalog_site_disagreement():
         verify_structure(replace(record, sites=(changed_site, *record.sites[1:])))
 
 
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("source_field", "_atom_site_B_iso_or_equiv"),
+        ("source_units", "nm^2"),
+        ("simulation_field", "U_iso"),
+        ("conversion", "B_iso = U_iso"),
+        ("simulation_units", "nm^2"),
+        ("missing", "default"),
+    ],
+)
+def test_forsterite_source_rejects_semantically_wrong_thermal_policy(key, value):
+    record = load_structure_record(SOURCE)
+    changed_policy = {**record.thermal_factor_policy, key: value}
+
+    with pytest.raises(ValueError, match="thermal factor policy"):
+        verify_structure(replace(record, thermal_factor_policy=changed_policy))
+
+
 def test_forsterite_catalog_links_license_publication_and_exact_cif():
     record = load_structure_record(SOURCE)
     catalog = yaml.safe_load(

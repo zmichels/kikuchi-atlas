@@ -58,6 +58,7 @@ def test_tiny_forsterite_gpu_master_pattern(tmp_path):
     assert metadata["simulation"]["requested_backend"] == "gpu"
     assert metadata["simulation"]["resolved_backend"] == "gpu_fly_first"
     assert metadata["simulation"]["resolved"]["mc_n_trajectories"] == 4096
+    assert metadata["simulation"]["resolved"]["mc_auto_stop"] is False
     assert hashlib.sha256(result.ebsdsim_npz.read_bytes()).hexdigest() == result.npz_sha256
     manifest = json.loads(result.manifest.read_text())
     assert manifest["master_product_id"] == result.product.product_id
@@ -72,3 +73,4 @@ def test_tiny_forsterite_gpu_master_pattern(tmp_path):
         "target_fractional_from_source": ["y", "z", "x"],
         "target_lattice_from_source": ["b", "c", "a"],
     }
+    assert manifest["elapsed_seconds"] > 0

@@ -82,8 +82,9 @@ def write_deterministic_public_master_pattern_fixture(
     cell=None,
     include_hemisphere_semantics: bool = True,
     invalid: bool = False,
+    recipe: SimulationRecipe | None = None,
 ) -> Path:
-    recipe = tiny_recipe()
+    recipe = tiny_recipe() if recipe is None else recipe
     grid = build_pg_k_grid(8, recipe.halfw)
     kij = grid.kij.reshape(-1, 3).astype(np.int32)
     khat = grid.khat.reshape(-1, 3).astype(np.float32)
@@ -113,6 +114,10 @@ def write_deterministic_public_master_pattern_fixture(
         "omega_deg": recipe.omega_deg,
         "mc_backend": "gpu_fly_first",
         "mc_n_trajectories": recipe.n_trajectories,
+        "mc_auto_stop": recipe.mc_auto_stop,
+        "mc_min_trajectories": recipe.mc_min_trajectories,
+        "mc_max_trajectories": recipe.mc_max_trajectories,
+        "mc_converged": recipe.mc_auto_stop,
         "mc_relative_tol": recipe.mc_relative_tol,
         "cell": resolved_cell() if cell is None else cell,
         "pg_num": 8,
@@ -136,6 +141,15 @@ def write_deterministic_public_master_pattern_fixture(
         pg_num=8,
     )
     return mp.save(directory / "fixture.npz")
+
+
+def tamper_metadata(path: Path, change) -> None:
+    with np.load(path, allow_pickle=False) as archive:
+        arrays = {name: np.array(archive[name], copy=True) for name in archive.files}
+    metadata = json.loads(bytes(arrays["meta_json"].tobytes()).decode("utf-8"))
+    change(metadata)
+    arrays["meta_json"] = np.frombuffer(json.dumps(metadata).encode(), dtype=np.uint8)
+    np.savez_compressed(path, **arrays)
 
 
 def test_proof_recipe_contains_every_simulation_control():
@@ -162,6 +176,41 @@ def test_ebsdsim_conversion_keeps_both_hemispheres(tmp_path):
     ] == "P n m a"
 
 
+def test_canonical_phase_matches_the_derived_pnma_simulation_cell(tmp_path):
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path)
+    source = load_structure_record(SOURCE)
+    product = load_ebsdsim_npz(fixture, source=source, recipe=tiny_recipe())
+    metadata = product.metadata_dict()
+
+    assert metadata["phase"] == {
+        "name": "forsterite",
+        "formula": "Mg2SiO4",
+        "space_group": {"number": 62, "setting": "P n m a"},
+        "lattice": {
+            "values": [10.207, 5.980, 4.756, 90.0, 90.0, 90.0],
+            "units": "angstrom",
+        },
+    }
+    assert metadata["source_structure"]["original_phase"]["space_group"][
+        "setting"
+    ] == "P b n m"
+    assert metadata["source_structure"]["original_phase"]["lattice"]["values"] == [
+        4.756,
+        10.207,
+        5.980,
+        90.0,
+        90.0,
+        90.0,
+    ]
+    assert metadata["source_structure"]["basis_transform"] == {
+        "source_setting": "P b n m",
+        "target_setting": "P n m a",
+        "target_lattice_from_source": ["b", "c", "a"],
+        "target_fractional_from_source": ["y", "z", "x"],
+        "target_site_multiplicities": [4, 4, 4, 4, 4, 8],
+    }
+
+
 def test_ebsdsim_conversion_rejects_wrong_resolved_phase(tmp_path):
     source = load_structure_record(SOURCE)
     cell = resolved_cell(source)
@@ -170,6 +219,21 @@ def test_ebsdsim_conversion_rejects_wrong_resolved_phase(tmp_path):
 
     with pytest.raises(ValueError, match="space group"):
         load_ebsdsim_npz(fixture, source=source, recipe=tiny_recipe())
+
+
+def test_ebsdsim_conversion_rejects_per_site_multiplicity_tampering(tmp_path):
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path)
+
+    def swap_mg_multiplicities(metadata):
+        metadata["cell"]["sites"][0]["multiplicity"] = 8
+        metadata["cell"]["sites"][1]["multiplicity"] = 4
+
+    tamper_metadata(fixture, swap_mg_multiplicities)
+
+    with pytest.raises(ValueError, match="multiplicity"):
+        load_ebsdsim_npz(
+            fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe()
+        )
 
 
 def test_ebsdsim_conversion_rejects_absent_hemisphere_semantics(tmp_path):
@@ -215,17 +279,55 @@ def test_simulation_bundle_links_untouched_ebsdsim_and_canonical_artifacts(tmp_p
 
 def test_adapter_rejects_requested_backend_not_honored(tmp_path):
     fixture = write_deterministic_public_master_pattern_fixture(tmp_path)
-    with np.load(fixture, allow_pickle=False) as archive:
-        arrays = {name: np.array(archive[name], copy=True) for name in archive.files}
-    metadata = json.loads(bytes(arrays["meta_json"].tobytes()).decode("utf-8"))
-    metadata["mc_backend"] = "surrogate"
-    arrays["meta_json"] = np.frombuffer(json.dumps(metadata).encode(), dtype=np.uint8)
-    np.savez_compressed(fixture, **arrays)
+    tamper_metadata(fixture, lambda metadata: metadata.__setitem__("mc_backend", "surrogate"))
 
     with pytest.raises(ValueError, match="backend"):
         load_ebsdsim_npz(
             fixture, source=load_structure_record(SOURCE), recipe=tiny_recipe()
         )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("mc_auto_stop", False, "auto-stop"),
+        ("mc_relative_tol", 0.02, "mc_relative_tol"),
+        ("mc_n_trajectories", 2048, "minimum"),
+        ("mc_n_trajectories", 16384, "maximum"),
+        ("mc_min_trajectories", 2048, "minimum"),
+        ("mc_max_trajectories", 16384, "maximum"),
+    ],
+)
+def test_adapter_rejects_auto_stop_control_mismatch(tmp_path, field, value, message):
+    recipe = tiny_recipe(
+        mc_auto_stop=True,
+        mc_min_trajectories=4096,
+        mc_max_trajectories=8192,
+    )
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path, recipe=recipe)
+    tamper_metadata(fixture, lambda metadata: metadata.__setitem__(field, value))
+
+    with pytest.raises(ValueError, match=message):
+        load_ebsdsim_npz(
+            fixture,
+            source=load_structure_record(SOURCE),
+            recipe=recipe,
+        )
+
+
+def test_canonical_identity_does_not_include_elapsed_runtime(tmp_path):
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path)
+    source = load_structure_record(SOURCE)
+    first = load_ebsdsim_npz(
+        fixture, source=source, recipe=tiny_recipe(), elapsed_seconds=1.0
+    )
+    second = load_ebsdsim_npz(
+        fixture, source=source, recipe=tiny_recipe(), elapsed_seconds=99.0
+    )
+
+    assert first.product_id == second.product_id
+    assert first.metadata_dict() == second.metadata_dict()
+    assert "elapsed_seconds" not in first.metadata_dict()["simulation"]
 
 
 def test_simulate_master_cli_rejects_structure_outside_source_record(tmp_path, capsys):

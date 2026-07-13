@@ -35,9 +35,9 @@ and expose environment diagnostics without backend substitution.
   `550b8c89c617267d39e7cb6a07fe6f55cd2343453c1c45ec77738bf6fd25d9cd`.
   COD data are CC0-1.0/public domain, with the requested acknowledgement to
   Smyth and Hazen (1973) recorded in `source.yml` and the COD catalog.
-- `uv run pytest -m "not gpu and not slow" -q`: 110 passed, 1 deselected.
+- `uv run pytest -m "not gpu and not slow" -q`: 126 passed, 1 deselected.
 - `uv run pytest -m "gpu and slow" tests/integration/test_ebsdsim_gpu.py -q -s`:
-  1 passed in 3.61 s on Apple M2 Metal. The bounded gate used 4096 trajectories,
+  1 passed in 3.60 s on Apple M2 Metal. The bounded gate used 4096 trajectories,
   `mc_auto_stop=False`, and produced a finite, non-constant `(2, 17, 17)`
   canonical pattern with resolved backend `gpu_fly_first`.
 - `uv run kikuchi-lab doctor --json`: all required checks passed for native
@@ -46,8 +46,8 @@ and expose environment diagnostics without backend substitution.
 - Local smoke manifest:
   `local/master-patterns/gpu-smoke/forsterite-tiny-gpu.manifest.json`.
   The untouched ebsdsim NPZ SHA-256 is
-  `e888f1fe24597319ea6cd7a7257b79a322071a78d485e89e300bcf6cbc584eff`;
-  canonical product is `master-531655513a699439`.
+  `03a02cd924d6261f63d71a1f53569e76c634905bd0416cf23b36b47f15e52e12`;
+  canonical product is `master-4f07f6d45699eb90`.
 - `uv run ruff check src tests` and
   `uv run python scripts/validate_work_items.py`: passed.
 
@@ -61,6 +61,21 @@ unchanged; the adapter now creates a deterministic simulation view using
 the basis transform, and validates resolved multiplicities `[4,4,4,4,4,8]`.
 This is required for correct Mg2SiO4 site weighting and is not a silent source
 substitution.
+
+The accepted canonical product describes the actual simulation frame as
+`P n m a` with lattice `[10.207, 5.980, 4.756, 90, 90, 90]` Å. The original
+`P b n m` setting and lattice remain under source provenance. Adapter checks
+now enforce each transformed site coordinate, element, occupancy, thermal
+factor, and multiplicity rather than accepting aggregate stoichiometry alone.
+The source thermal-factor policy is executable: U is required in Å², B is
+required in Å² using `B = 8*pi²*U`, and missing values are rejected.
+
+Monte Carlo evidence records and validates the auto-stop flag, requested
+minimum/maximum trajectory bounds, tolerance, convergence flag, and actual
+trajectory count. Wall-clock runtime remains in the external manifest and is
+excluded from canonical product metadata and identity. Doctor package-version
+checks are required readiness checks, so a missing or incompatible simulator,
+projection, array, or WebGPU package makes `doctor` fail.
 
 The implementation-plan pseudocode named a module-level
 `ebsdsim.mploader.reconstruct_integrated()`, which is not exported by ebsdsim

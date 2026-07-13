@@ -42,3 +42,4 @@ simulation_setting:
   target_setting: P n m a
   target_lattice_from_source: [b, c, a]
   target_fractional_from_source: [y, z, x]
+  target_site_multiplicities: [4, 4, 4, 4, 4, 8]

@@ -19,6 +19,7 @@ from ebsdsim.mploader import load_master_pattern
 from kikuchi_lab.model.identity import canonical_json
 from kikuchi_lab.model.persistence import save_master_product
 from kikuchi_lab.model.products import MasterPatternProduct
+from kikuchi_lab.model.provenance import PhaseRecord
 from kikuchi_lab.model.recipes import SimulationRecipe
 
 from .structure import StructureRecord, materialize_simulation_cif, verify_structure
@@ -121,7 +122,14 @@ def _validate_resolved_cell(cell: Any, source: StructureRecord) -> None:
     sites = cell.get("sites")
     if not isinstance(sites, list) or len(sites) != len(source.sites):
         raise ValueError("resolved site count mismatch")
-    for observed, expected in zip(sites, source.sites, strict=True):
+    expected_multiplicities = source.simulation_setting.get("target_site_multiplicities")
+    if not isinstance(expected_multiplicities, list) or len(expected_multiplicities) != len(
+        source.sites
+    ):
+        raise ValueError("source basis transform lacks target site multiplicities")
+    for observed, expected, expected_multiplicity in zip(
+        sites, source.sites, expected_multiplicities, strict=True
+    ):
         if observed.get("symbol") != expected.element:
             raise ValueError(f"resolved site element mismatch for {expected.label}")
         fract = observed.get("fract")
@@ -131,6 +139,11 @@ def _validate_resolved_cell(cell: Any, source: StructureRecord) -> None:
         for axis, coordinate in enumerate((y, z, x)):
             _close(f"site {expected.label} coordinate {axis}", fract[axis], coordinate)
         _close(f"site {expected.label} occupancy", observed.get("occupancy"), expected.occupancy)
+        if observed.get("multiplicity") != expected_multiplicity:
+            raise ValueError(
+                f"resolved site {expected.label} multiplicity mismatch: "
+                f"{observed.get('multiplicity')!r} != {expected_multiplicity!r}"
+            )
         expected_b_iso = 8.0 * math.pi**2 * expected.u_iso_angstrom_sq
         _close(
             f"site {expected.label} B_iso",
@@ -175,8 +188,48 @@ def _validate_resolved_simulation(metadata: dict[str, Any], recipe: SimulationRe
         raise ValueError(
             f"requested backend {recipe.mc_backend!r} was not honored; resolved {backend!r}"
         )
-    if not recipe.mc_auto_stop and metadata.get("mc_n_trajectories") != recipe.n_trajectories:
+    if metadata.get("mc_auto_stop") is not recipe.mc_auto_stop:
+        raise ValueError("resolved Monte Carlo auto-stop flag does not match requested recipe")
+    if metadata.get("mc_min_trajectories") != recipe.mc_min_trajectories:
+        raise ValueError("resolved Monte Carlo minimum does not match requested recipe")
+    if metadata.get("mc_max_trajectories") != recipe.mc_max_trajectories:
+        raise ValueError("resolved Monte Carlo maximum does not match requested recipe")
+    used = metadata.get("mc_n_trajectories")
+    if isinstance(used, bool) or not isinstance(used, int) or used <= 0:
+        raise ValueError("resolved Monte Carlo trajectory count must be a positive integer")
+    converged = metadata.get("mc_converged")
+    if not isinstance(converged, bool):
+        raise ValueError("resolved Monte Carlo convergence flag must be boolean")
+    if recipe.mc_auto_stop:
+        if used < recipe.mc_min_trajectories:
+            raise ValueError("resolved Monte Carlo count is below requested minimum")
+        if used > recipe.mc_max_trajectories:
+            raise ValueError("resolved Monte Carlo count exceeds requested maximum")
+    elif used != recipe.n_trajectories:
         raise ValueError("resolved Monte Carlo trajectory count does not match bounded request")
+    elif converged:
+        raise ValueError("bounded Monte Carlo run cannot report auto-stop convergence")
+
+
+def _simulation_phase(source: StructureRecord) -> PhaseRecord:
+    a, b, c, alpha, beta, gamma = source.lattice_angstrom
+    return PhaseRecord(
+        name=source.name,
+        formula=source.formula,
+        space_group_number=source.space_group_number,
+        setting=str(source.simulation_setting["target_setting"]),
+        lattice_angstrom=(b, c, a, beta, gamma, alpha),
+    )
+
+
+def _source_phase(source: StructureRecord) -> PhaseRecord:
+    return PhaseRecord(
+        name=source.name,
+        formula=source.formula,
+        space_group_number=source.space_group_number,
+        setting=source.setting,
+        lattice_angstrom=source.lattice_angstrom,
+    )
 
 
 def load_ebsdsim_npz(
@@ -186,7 +239,12 @@ def load_ebsdsim_npz(
     recipe: SimulationRecipe,
     elapsed_seconds: float | None = None,
 ) -> MasterPatternProduct:
-    """Validate and convert one untouched public ebsdsim NPZ artifact."""
+    """Validate and convert one untouched public ebsdsim NPZ artifact.
+
+    ``elapsed_seconds`` is accepted only to prove that runtime does not enter
+    canonical metadata or identity; generated bundles record it in the external
+    manifest instead.
+    """
     verify_structure(source)
     npz_path = Path(path).resolve()
     loaded = load_master_pattern(npz_path)
@@ -226,6 +284,9 @@ def load_ebsdsim_npz(
             "sigma_deg",
             "omega_deg",
             "mc_n_trajectories",
+            "mc_auto_stop",
+            "mc_min_trajectories",
+            "mc_max_trajectories",
             "mc_converged",
             "mc_relative_tol",
             "n_mc_bins",
@@ -236,16 +297,18 @@ def load_ebsdsim_npz(
             "pg_symbol",
         }
     }
+    basis_transform = {
+        key: source.simulation_setting[key]
+        for key in (
+            "source_setting",
+            "target_setting",
+            "target_lattice_from_source",
+            "target_fractional_from_source",
+            "target_site_multiplicities",
+        )
+    }
     canonical_metadata = {
-        "phase": {
-            "name": source.name,
-            "formula": source.formula,
-            "space_group": {
-                "number": source.space_group_number,
-                "setting": source.setting,
-            },
-            "lattice": {"values": list(source.lattice_angstrom), "units": "angstrom"},
-        },
+        "phase": _simulation_phase(source).to_dict(),
         "source_structure": {
             "identifier": source.identifier,
             "sha256": source.sha256,
@@ -255,6 +318,8 @@ def load_ebsdsim_npz(
             "provenance": source_record.to_dict(),
             "thermal_factor_policy": source.thermal_factor_policy,
             "simulation_setting": source.simulation_setting,
+            "original_phase": _source_phase(source).to_dict(),
+            "basis_transform": basis_transform,
         },
         "generator": {"name": "ebsdsim", "version": version("ebsdsim")},
         "simulation": {
@@ -265,7 +330,6 @@ def load_ebsdsim_npz(
             "requested_backend": recipe.mc_backend,
             "resolved_backend": metadata["mc_backend"],
             "resolved": resolved,
-            "elapsed_seconds": elapsed_seconds,
             "upstream_npz_sha256": npz_sha256,
         },
         "projection": "Lambert square equal-area",
@@ -290,6 +354,7 @@ def _write_manifest(
     source: StructureRecord,
     recipe: SimulationRecipe,
     simulation_cif: Path | None = None,
+    elapsed_seconds: float | None = None,
 ) -> Path:
     manifest = npz_path.with_suffix(".manifest.json")
     payload = {
@@ -302,6 +367,8 @@ def _write_manifest(
         "canonical_array_sha256": product.array_sha256,
         "master_product_id": product.product_id,
     }
+    if elapsed_seconds is not None:
+        payload["elapsed_seconds"] = float(elapsed_seconds)
     if simulation_cif is not None:
         payload.update(
             {
@@ -386,9 +453,16 @@ def generate_master_pattern(
         mc_max_trajectories=recipe.mc_max_trajectories,
         exact_slow_cpu=recipe.exact_slow_cpu,
     )
+    mp.metadata.update(
+        {
+            "mc_auto_stop": recipe.mc_auto_stop,
+            "mc_min_trajectories": recipe.mc_min_trajectories,
+            "mc_max_trajectories": recipe.mc_max_trajectories,
+        }
+    )
     saved = mp.save(requested_output).resolve()
     elapsed = time.perf_counter() - started
-    product = load_ebsdsim_npz(saved, source=source, recipe=recipe, elapsed_seconds=elapsed)
+    product = load_ebsdsim_npz(saved, source=source, recipe=recipe)
     canonical = save_master_product(saved.with_name(f"{product.product_id}.npz"), product)
     manifest = _write_manifest(
         npz_path=saved,
@@ -397,6 +471,7 @@ def generate_master_pattern(
         source=source,
         recipe=recipe,
         simulation_cif=simulation_cif,
+        elapsed_seconds=elapsed,
     )
     return GeneratedMasterPattern(
         saved, canonical, manifest, product, _sha256(saved), simulation_cif

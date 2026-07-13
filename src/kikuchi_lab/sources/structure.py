@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 from dataclasses import dataclass
 from io import StringIO
@@ -13,6 +14,16 @@ import yaml
 from CifFile import ReadCif
 
 from kikuchi_lab.model.provenance import SourceRecord
+
+
+_REQUIRED_THERMAL_FACTOR_POLICY = {
+    "source_field": "_atom_site_U_iso_or_equiv",
+    "source_units": "angstrom^2",
+    "simulation_field": "B_iso",
+    "conversion": "B_iso = 8 * pi^2 * U_iso",
+    "simulation_units": "angstrom^2",
+    "missing": "reject",
+}
 
 
 @dataclass(frozen=True)
@@ -172,8 +183,20 @@ def _assert_close(label: str, actual: float, expected: float, tolerance: float =
         raise ValueError(f"{label} mismatch: CIF {actual!r}, catalog {expected!r}")
 
 
+def _validate_thermal_factor_policy(policy: dict[str, Any]) -> None:
+    for key, expected in _REQUIRED_THERMAL_FACTOR_POLICY.items():
+        if policy.get(key) != expected:
+            raise ValueError(
+                f"thermal factor policy {key} must be {expected!r}; got {policy.get(key)!r}"
+            )
+    fallback = policy.get("ebsdsim_fallback_b_iso_angstrom_sq")
+    if not isinstance(fallback, (int, float)) or not math.isfinite(float(fallback)):
+        raise ValueError("thermal factor policy must document finite ebsdsim fallback")
+
+
 def verify_structure(record: StructureRecord) -> VerifiedStructure:
     """Parse the tracked CIF and compare every simulation-relevant source value."""
+    _validate_thermal_factor_policy(record.thermal_factor_policy)
     payload = record.cif_path.read_bytes()
     actual_sha256 = hashlib.sha256(payload).hexdigest()
     if actual_sha256 != record.sha256:
