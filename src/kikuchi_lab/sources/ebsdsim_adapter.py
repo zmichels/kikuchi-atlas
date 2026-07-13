@@ -6,9 +6,10 @@ import hashlib
 import math
 import os
 import shutil
+import sys
 import tempfile
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
 from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
@@ -37,6 +38,45 @@ class GeneratedMasterPattern:
     product: MasterPatternProduct
     npz_sha256: str
     simulation_cif: Path | None = None
+
+
+class _ProgressTee:
+    def __init__(self, *streams):
+        self._streams = streams
+
+    def write(self, text: str) -> int:
+        for stream in self._streams:
+            stream.write(text)
+        return len(text)
+
+    def flush(self) -> None:
+        for stream in self._streams:
+            stream.flush()
+
+
+@contextmanager
+def _simulation_progress_journal(path: str | Path | None, recipe: SimulationRecipe):
+    if path is None:
+        yield
+        return
+    journal = Path(path).resolve()
+    journal.parent.mkdir(parents=True, exist_ok=True)
+    with journal.open("a", encoding="utf-8", buffering=1) as handle:
+        tee = _ProgressTee(sys.stdout, handle)
+        started = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        tee.write(f"[kikuchi-lab] {started} state=started recipe_id={recipe.recipe_id}\n")
+        try:
+            with redirect_stdout(tee):
+                yield
+        except BaseException as error:
+            finished = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            tee.write(
+                f"[kikuchi-lab] {finished} state=failed error={type(error).__name__}\n"
+            )
+            raise
+        else:
+            finished = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            tee.write(f"[kikuchi-lab] {finished} state=completed\n")
 
 
 @contextmanager
@@ -250,6 +290,7 @@ def _validate_resolved_simulation(metadata: dict[str, Any], recipe: SimulationRe
         "halfw": "halfw",
         "rank": "rank",
         "exact_slow_cpu": "exact_slow_cpu",
+        "verbosity": "verbosity",
     }.items():
         if metadata.get(resolved) != getattr(recipe, requested):
             raise ValueError(f"resolved {resolved} does not match requested recipe")
@@ -348,6 +389,7 @@ def load_ebsdsim_npz(
             "energy_binwidth_keV",
             "rank",
             "exact_slow_cpu",
+            "verbosity",
             "bethe_c_strong",
             "bethe_c_weak",
             "bethe_c_cutoff",
@@ -538,6 +580,18 @@ def generate_master_pattern(
     source: StructureRecord,
     recipe: SimulationRecipe,
     output_npz: str | Path,
+    progress_log: str | Path | None = None,
+) -> GeneratedMasterPattern:
+    """Run, journal, and validate an ebsdsim master-pattern request."""
+    with _simulation_progress_journal(progress_log, recipe):
+        return _generate_master_pattern(source=source, recipe=recipe, output_npz=output_npz)
+
+
+def _generate_master_pattern(
+    *,
+    source: StructureRecord,
+    recipe: SimulationRecipe,
+    output_npz: str | Path,
 ) -> GeneratedMasterPattern:
     """Run ebsdsim's public CIF API and validate all resulting artifacts."""
     verify_structure(source)
@@ -573,6 +627,7 @@ def generate_master_pattern(
             mc_min_trajectories=recipe.mc_min_trajectories,
             mc_max_trajectories=recipe.mc_max_trajectories,
             exact_slow_cpu=recipe.exact_slow_cpu,
+            verbosity=recipe.verbosity,
         )
         saved = mp.save(staged_npz).resolve()
         if saved.parent != staging or saved.name != staged_npz.name:

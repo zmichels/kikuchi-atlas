@@ -45,6 +45,7 @@ def test_tiny_forsterite_gpu_master_pattern(tmp_path):
         mc_min_trajectories=4096,
         mc_max_trajectories=4096,
         exact_slow_cpu=False,
+        verbosity=0,
     )
 
     result = generate_master_pattern(

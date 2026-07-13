@@ -35,6 +35,7 @@ def valid_simulation_recipe(**changes):
         "mc_min_trajectories": 10_000,
         "mc_max_trajectories": 1_000_000,
         "exact_slow_cpu": False,
+        "verbosity": 2,
     }
     values.update(changes)
     return SimulationRecipe(**values)
@@ -45,7 +46,14 @@ def test_simulation_recipe_exposes_every_ebsdsim_control_and_stable_identity():
 
     assert recipe.to_dict()["mc_backend"] == "gpu"
     assert recipe.to_dict()["exact_slow_cpu"] is False
+    assert recipe.to_dict()["verbosity"] == 2
     assert recipe.recipe_id == valid_simulation_recipe().recipe_id
+
+
+@pytest.mark.parametrize("verbosity", [-1, 3, True])
+def test_simulation_recipe_rejects_invalid_verbosity(verbosity):
+    with pytest.raises(ValueError, match="verbosity"):
+        valid_simulation_recipe(verbosity=verbosity)
 
 
 def test_recipe_objects_are_frozen():

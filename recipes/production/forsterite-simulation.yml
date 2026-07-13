@@ -23,3 +23,4 @@ mc_relative_tol: 0.01
 mc_min_trajectories: 1048576
 mc_max_trajectories: 16777216
 exact_slow_cpu: false
+verbosity: 2

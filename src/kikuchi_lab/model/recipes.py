@@ -58,6 +58,7 @@ class SimulationRecipe:
     mc_min_trajectories: int
     mc_max_trajectories: int
     exact_slow_cpu: bool
+    verbosity: int
 
     def __post_init__(self) -> None:
         for name in (
@@ -87,6 +88,9 @@ class SimulationRecipe:
             if isinstance(value, bool) or int(value) != value or value <= 0:
                 raise ValueError(f"{name} must be a positive integer")
             object.__setattr__(self, name, int(value))
+        if isinstance(self.verbosity, bool) or self.verbosity not in (0, 1, 2):
+            raise ValueError("verbosity must be 0, 1, or 2")
+        object.__setattr__(self, "verbosity", int(self.verbosity))
         if self.voltage_kv <= 0 or self.dmin_nm <= 0 or self.energy_binwidth_kev <= 0:
             raise ValueError("voltage, dmin, and energy bin width must be positive")
         if self.mc_backend not in {"gpu", "surrogate"}:

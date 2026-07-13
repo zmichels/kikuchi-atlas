@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -24,6 +25,7 @@ from kikuchi_lab.sources.structure import load_structure_record
 ROOT = Path(__file__).parents[2]
 SOURCE = ROOT / "phases/forsterite/source.yml"
 PROOF_RECIPE = ROOT / "recipes/proof/forsterite-simulation.yml"
+PRODUCTION_RECIPE = ROOT / "recipes/production/forsterite-simulation.yml"
 
 
 def tiny_recipe(**changes) -> SimulationRecipe:
@@ -105,6 +107,7 @@ def deterministic_public_master_pattern(
         "rank": recipe.rank,
         "chunk_size": recipe.chunk_size,
         "exact_slow_cpu": recipe.exact_slow_cpu,
+        "verbosity": recipe.verbosity,
         "marginal_coverage": recipe.marginal_coverage,
         "relative_image_stop": recipe.relative_image_stop,
         "bethe_c_strong": recipe.bethe_c_strong,
@@ -405,6 +408,50 @@ def test_generate_failure_leaves_no_partial_publish(tmp_path, monkeypatch):
     assert list(output.iterdir()) == []
 
 
+def test_generate_passes_observable_verbosity_to_ebsdsim(tmp_path, monkeypatch):
+    recipe = tiny_recipe(verbosity=2)
+    captured = {}
+
+    def generate(_path, **kwargs):
+        captured.update(kwargs)
+        return deterministic_public_master_pattern(recipe=recipe)
+
+    monkeypatch.setattr(adapter, "master_pattern_from_cif", generate)
+    generate_master_pattern(
+        source=load_structure_record(SOURCE),
+        recipe=recipe,
+        output_npz=tmp_path / "published" / "master.npz",
+    )
+
+    assert captured["verbosity"] == 2
+
+
+def test_generate_failure_preserves_progress_journal_but_not_partial_bundle(
+    tmp_path, monkeypatch
+):
+    output = tmp_path / "published"
+    progress_log = tmp_path / "logs" / "simulation-progress.log"
+
+    def fail_after_progress(_path, **_kwargs):
+        print("[ebsdsim] chunk 17/100: forward progress")
+        raise RuntimeError("injected solver failure")
+
+    monkeypatch.setattr(adapter, "master_pattern_from_cif", fail_after_progress)
+    with pytest.raises(RuntimeError, match="solver failure"):
+        generate_master_pattern(
+            source=load_structure_record(SOURCE),
+            recipe=tiny_recipe(verbosity=2),
+            output_npz=output / "master.npz",
+            progress_log=progress_log,
+        )
+
+    journal = progress_log.read_text()
+    assert "state=started" in journal
+    assert "chunk 17/100: forward progress" in journal
+    assert "state=failed error=RuntimeError" in journal
+    assert list(output.iterdir()) == []
+
+
 def test_bundle_refuses_existing_completed_target(tmp_path):
     fixture = write_deterministic_public_master_pattern_fixture(tmp_path / "upstream")
     arguments = {
@@ -492,3 +539,113 @@ def test_simulate_master_cli_rejects_structure_outside_source_record(tmp_path, c
     assert status == 1
     assert "tracked CIF" in capsys.readouterr().err
     assert not (tmp_path / "output").exists()
+
+
+def test_simulate_master_cli_plan_only_reports_finite_work_without_gpu(tmp_path, capsys):
+    output = tmp_path / "output"
+    status = main(
+        [
+            "simulate-master",
+            "--structure",
+            str(ROOT / "phases/forsterite/COD-9000319.cif"),
+            "--source",
+            str(SOURCE),
+            "--recipe",
+            str(PRODUCTION_RECIPE),
+            "--output",
+            str(output),
+            "--plan-only",
+        ]
+    )
+
+    assert status == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["n_k"] == 63701
+    assert plan["n_reflections"] == 9773
+    assert plan["chunks_per_bin"] == 7963
+    assert plan["maximum_energy_bins"] == 20
+    assert plan["resumable_within_run"] is False
+    assert not output.exists()
+
+
+def test_simulate_master_cli_refuses_implicit_multi_bin_run(tmp_path, capsys):
+    output = tmp_path / "output"
+    status = main(
+        [
+            "simulate-master",
+            "--structure",
+            str(ROOT / "phases/forsterite/COD-9000319.cif"),
+            "--source",
+            str(SOURCE),
+            "--recipe",
+            str(PRODUCTION_RECIPE),
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert status == 1
+    assert "20-bin run requires --allow-multi-bin" in capsys.readouterr().err
+    assert not output.exists()
+
+
+def test_simulate_master_cli_passes_persistent_progress_log(tmp_path, monkeypatch, capsys):
+    captured = {}
+    progress_log = tmp_path / "logs" / "resolution-501.log"
+
+    def generate(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(manifest=tmp_path / "master.manifest.json")
+
+    monkeypatch.setattr(adapter, "generate_master_pattern", generate)
+    status = main(
+        [
+            "simulate-master",
+            "--structure",
+            str(ROOT / "phases/forsterite/COD-9000319.cif"),
+            "--source",
+            str(SOURCE),
+            "--recipe",
+            str(PROOF_RECIPE),
+            "--output",
+            str(tmp_path / "output"),
+            "--progress-log",
+            str(progress_log),
+        ]
+    )
+
+    assert status == 0
+    assert captured["progress_log"] == progress_log.resolve()
+    assert str(captured["output_npz"]).endswith("COD-9000319-ebsdsim.npz")
+    assert "master.manifest.json" in capsys.readouterr().out
+
+
+def test_simulate_master_cli_reports_clean_interrupt_and_progress_location(
+    tmp_path, monkeypatch, capsys
+):
+    progress_log = tmp_path / "logs" / "resolution-501.log"
+
+    def interrupt(**_kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(adapter, "generate_master_pattern", interrupt)
+    status = main(
+        [
+            "simulate-master",
+            "--structure",
+            str(ROOT / "phases/forsterite/COD-9000319.cif"),
+            "--source",
+            str(SOURCE),
+            "--recipe",
+            str(PROOF_RECIPE),
+            "--output",
+            str(tmp_path / "output"),
+            "--progress-log",
+            str(progress_log),
+        ]
+    )
+
+    assert status == 130
+    error = capsys.readouterr().err
+    assert "simulation interrupted" in error
+    assert str(progress_log.resolve()) in error

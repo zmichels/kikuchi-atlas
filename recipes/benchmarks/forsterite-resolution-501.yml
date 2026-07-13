@@ -1,15 +1,13 @@
 schema_version: 1
-name: forsterite-orientation-proof-master
+name: forsterite-resolution-501-benchmark
 voltage_kv: 20.0
-halfw: 128
+halfw: 250
 dmin_nm: 0.08
 energy_binwidth_kev: 20.0
 n_trajectories: 262144
 sigma_deg: 70.0
 omega_deg: 0.0
 rank: 8
-# Keep batch_count * strong_reflections^2 / 256 below WebGPU's 65,535
-# dispatch-group limit on the Apple M2 Metal adapter used for this proof.
 chunk_size: 8
 marginal_coverage: 1.0
 relative_image_stop: 0.01
@@ -23,4 +21,4 @@ mc_relative_tol: 0.01
 mc_min_trajectories: 262144
 mc_max_trajectories: 4194304
 exact_slow_cpu: false
-verbosity: 0
+verbosity: 2

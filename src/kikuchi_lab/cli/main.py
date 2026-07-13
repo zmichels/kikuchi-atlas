@@ -8,6 +8,7 @@ import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from kikuchi_lab import __version__
 from kikuchi_lab.doctor import collect_doctor_report
@@ -29,6 +30,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     simulate.add_argument("--source", required=True)
     simulate.add_argument("--recipe", required=True)
     simulate.add_argument("--output", required=True)
+    simulate.add_argument("--plan-only", action="store_true")
+    simulate.add_argument("--allow-multi-bin", action="store_true")
+    simulate.add_argument("--progress-log")
     proof = subparsers.add_parser(
         "proof", help="Render a deterministic orientation proof for human review."
     )
@@ -96,8 +100,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             generate_master_pattern,
             load_simulation_recipe,
         )
-        from kikuchi_lab.sources.structure import load_structure_record
+        from kikuchi_lab.diagnostics.simulation_work import estimate_simulation_work
+        from kikuchi_lab.sources.structure import load_structure_record, materialize_simulation_cif
 
+        progress_log = None
         try:
             source = load_structure_record(args.source)
             requested_structure = Path(args.structure).resolve()
@@ -107,12 +113,43 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             recipe = load_simulation_recipe(args.recipe)
             output_root = Path(args.output).resolve()
+            with TemporaryDirectory(prefix="kikuchi-plan-") as temporary:
+                simulation_cif = materialize_simulation_cif(
+                    source, Path(temporary) / f"{source.identifier}.simulation.cif"
+                )
+                work = estimate_simulation_work(simulation_cif, recipe)
+            if args.plan_only:
+                print(json.dumps(work.to_dict(), indent=2, sort_keys=True))
+                return 0
+            if work.maximum_energy_bins > 1 and not args.allow_multi_bin:
+                raise ValueError(
+                    f"{work.maximum_energy_bins}-bin run requires --allow-multi-bin; "
+                    "ebsdsim 0.1.8 cannot resume a partial multi-bin run"
+                )
+            print(
+                "[kikuchi-lab] finite work plan: "
+                f"{work.maximum_energy_bins} bin(s), {work.n_k} k-points/bin, "
+                f"{work.chunks_per_bin} chunks/bin, {work.n_reflections} reflections, "
+                f"rank {work.smith_rank}; resumable_within_run=false",
+                file=sys.stderr,
+                flush=True,
+            )
             output_root.mkdir(parents=True, exist_ok=True)
+            progress_log = (
+                Path(args.progress_log).resolve()
+                if args.progress_log
+                else output_root / "simulation-progress.log"
+            )
             result = generate_master_pattern(
                 source=source,
                 recipe=recipe,
                 output_npz=output_root / f"{source.identifier}-ebsdsim.npz",
+                progress_log=progress_log,
             )
+        except KeyboardInterrupt:
+            location = f"; progress retained at {progress_log}" if progress_log else ""
+            print(f"kikuchi-lab: simulation interrupted{location}", file=sys.stderr)
+            return 130
         except (OSError, ValueError, RuntimeError) as error:
             print(f"kikuchi-lab: simulation failed: {error}", file=sys.stderr)
             return 1

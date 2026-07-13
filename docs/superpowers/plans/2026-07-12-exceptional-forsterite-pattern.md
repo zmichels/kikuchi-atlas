@@ -869,6 +869,13 @@ target is a supersampled detector projection with final long edge at least 2048
 px. Increase `halfw`, supersampling, or trajectories only when proof diagnostics
 identify that limit; record each change in the recipe and run decision ledger.
 
+Runtime amendment (2026-07-13): follow
+[ADR 0004](../../decisions/0004-bounded-observable-simulation-ladder.md).
+Begin with the one-bin resolution-only 501 rung, retain a durable chunk journal,
+and promote only one expensive simulation control after review. Do not launch
+the twenty-bin production target implicitly; it requires explicit multi-bin
+approval and remains non-resumable with ebsdsim 0.1.8.
+
 ### Step 3: Review with the user
 
 Present the raw projection, acquisition-corrected product, all stage
