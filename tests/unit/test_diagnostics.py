@@ -76,23 +76,47 @@ def test_large_rectangular_frequency_analysis_is_bounded_and_axis_invariant(
     analysis = x_metrics["radial_frequency_analysis"]
 
     assert analysis == {
-        "version": "radial-rfft-f32-aa512-v1",
-        "method": "scipy.fft.rfft2",
+        "version": "radial-rfft-f32-native-tiles512-v2",
+        "method": "native_resolution_tiles_scipy.fft.rfft2",
         "dtype": "float32",
-        "anti_aliasing": True,
-        "max_longest_axis": 512,
+        "fft_dtype": "complex64",
+        "tile_max_shape": [512, 512],
         "original_shape": [700, 1400],
-        "analysis_shape": [256, 512],
+        "tile_count": 5,
+        "tiles": [
+            {"origin": [94, 444], "shape": [512, 512]},
+            {"origin": [0, 0], "shape": [512, 512]},
+            {"origin": [0, 888], "shape": [512, 512]},
+            {"origin": [188, 0], "shape": [512, 512]},
+            {"origin": [188, 888], "shape": [512, 512]},
+        ],
+        "sampling": "center_and_corners_native_resolution",
+        "aggregation": "sum_hermitian_weighted_band_energy_then_normalize",
+        "observable_radial_range_cycles_per_pixel": [0.0, pytest.approx(np.sqrt(0.5))],
+        "observable_bands": ["low", "mid", "high"],
         "thresholds_cycles_per_pixel": {"low_mid": 0.15, "mid_high": 0.35},
     }
-    assert max(analysis["analysis_shape"]) <= 512
+    assert all(max(tile["shape"]) <= 512 for tile in analysis["tiles"])
     assert fft_calls == [
-        (np.dtype("float32"), (256, 512), np.dtype("complex64")),
-        (np.dtype("float32"), (256, 512), np.dtype("complex64")),
-    ]
+        (np.dtype("float32"), (512, 512), np.dtype("complex64")),
+    ] * 10
     assert x_metrics["radial_frequency_energy"] == pytest.approx(
         y_metrics["radial_frequency_energy"], abs=2e-3
     )
+
+
+@pytest.mark.parametrize("size", [512, 1024, 2048])
+def test_native_nyquist_checkerboard_remains_high_frequency_at_large_sizes(size: int) -> None:
+    axis = np.arange(size, dtype=np.int32)
+    checkerboard = (1.0 - 2.0 * ((axis[:, None] + axis[None, :]) % 2)).astype(np.float32)
+
+    metrics = image_metrics(checkerboard)
+
+    assert metrics["radial_frequency_energy"]["high"] > 0.999
+    analysis = metrics["radial_frequency_analysis"]
+    assert analysis["observable_bands"] == ["low", "mid", "high"]
+    assert analysis["tile_count"] == (1 if size == 512 else 5)
+    assert all(tile["shape"] == [512, 512] for tile in analysis["tiles"])
 
 
 @pytest.mark.parametrize(

@@ -71,16 +71,23 @@ input and output must resolve to retained float bytes in that registry; a
 syntactically continuous graph cannot invent an unmaterialized node.
 
 Radial-frequency diagnostics are measured in physical cycles per pixel using
-the independent FFT frequency coordinates of each image axis. The version 1
+the independent native-pixel FFT frequency coordinates of each image axis. The
+version 1
 bands are low `[0, 0.15)`, mid `[0.15, 0.35)`, and high `[0.35, infinity)`
 cycles per pixel. Consequently, classification does not vary with rectangular
 aspect ratio or axis direction.
-Frequency evidence uses the declared `radial-rfft-f32-aa512-v1` method. Images
-larger than 512 pixels on their longest axis are anti-aliased to an
-aspect-preserving analysis view. A single-threaded SciPy real FFT receives
-float32 and produces complex64; the record includes original and analysis
-shapes, method/version, cap, and thresholds. Frequency coordinates retain the
-original pixel spacing after reduction.
+Frequency evidence uses the declared
+`radial-rfft-f32-native-tiles512-v2` method. Images no larger than 512x512 use
+the full native image. Larger images use deterministic native-resolution center
+and corner tiles, each at most 512x512 and processed sequentially. A
+single-threaded SciPy real FFT receives float32 and produces complex64. RFFT
+columns receive Hermitian energy weights; raw low/mid/high spectral energies
+are summed across tiles and normalized once into fractions. The record includes
+the method/version, original shape, tile cap, count, coordinates, aggregation,
+observable radial range, and thresholds. Because pixels are never rescaled, the
+high band remains observable at large render sizes. Robust percentiles and
+gradient distributions remain exact full-native spatial statistics, not a
+tiled or downscaled overview.
 
 Manifest schema version 2 is canonical JSON and inventories the byte length and SHA-256
 of every other file. It cannot inventory itself without recursion, so callers
@@ -101,8 +108,9 @@ not embed additional ad hoc exclusions in test or application code.
   breaking the recorded computational graph.
 - Caller-supplied short identities cannot conceal changed recipes, candidate
   sets, or decisions; full canonical content controls acceptance.
-- Diagnostic FFT memory is bounded independently of render resolution, with an
-  explicit resolution/anti-aliasing tradeoff in the evidence record.
+- Diagnostic FFT memory is bounded independently of render resolution without
+  sacrificing native cycles-per-pixel observability; large-image frequency
+  evidence is a declared deterministic spatial sample rather than a full FFT.
 - Bundle consumers must verify the externally supplied manifest checksum before
   trusting the internal inventory.
 - Any future layout or identity change requires a manifest schema-version

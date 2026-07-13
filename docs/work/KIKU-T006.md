@@ -59,10 +59,14 @@ raw products, processing stages, high-bit-depth images, and diagnostics.
 - The materialized content registry covers projected, acquisition-corrected,
   intermediate, scientific, and gallery float arrays. Even a continuous graph
   is rejected if it names a fabricated node with no retained float artifact.
-- A 700x1400 regression records a bounded 256x512 anti-aliased diagnostic view
-  and directly observes float32 input and complex64 output at the SciPy real
-  FFT boundary. Original-shape pixel spacing preserves axis-equivalent
-  cycles-per-pixel classification.
+- A 700x1400 regression records five deterministic native 512x512 center/corner
+  tiles and directly observes float32 input and complex64 output at every
+  sequential SciPy real-FFT boundary. Hermitian-corrected band energies are
+  summed before normalization, preserving axis-equivalent cycles-per-pixel
+  classification.
+- Native 0.5-cycle/pixel checkerboards at 512, 1024, and 2048 pixels remain in
+  the observable high band while frequency working memory stays capped at one
+  512x512 tile. Small images use their full native extent.
 - Quantization ledgers link each uint16 export to its label, recomputed content
   ID, and full source-array SHA-256 in the registry. One-pixel axes fail before
   staging.
