@@ -167,3 +167,39 @@ def test_provenance_records_validate_scientific_units_and_source_hash():
 
     with pytest.raises(ValueError, match="SHA-256"):
         SourceRecord("https://example.test/a.cif", "short", "CC0", "A citation")
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")])
+def test_phase_record_rejects_nonfinite_lattice_values(value):
+    with pytest.raises(ValueError, match="finite"):
+        PhaseRecord("forsterite", "Mg2SiO4", 62, "Pnma", (value, 10.2, 5.98, 90, 90, 90))
+
+
+@pytest.mark.parametrize("space_group", [True, 62.0, "62"])
+def test_phase_record_rejects_boolean_or_noninteger_space_group(space_group):
+    with pytest.raises(ValueError, match="space_group_number"):
+        PhaseRecord(
+            "forsterite", "Mg2SiO4", space_group, "Pnma", (4.75, 10.2, 5.98, 90, 90, 90)
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("name", " "),
+        ("formula", 123),
+        ("setting", None),
+    ],
+)
+def test_phase_record_rejects_blank_or_nonstring_text(field, value):
+    values = {
+        "name": "forsterite",
+        "formula": "Mg2SiO4",
+        "space_group_number": 62,
+        "setting": "Pnma",
+        "lattice_angstrom": (4.75, 10.2, 5.98, 90, 90, 90),
+    }
+    values[field] = value
+
+    with pytest.raises(ValueError, match=field):
+        PhaseRecord(**values)

@@ -68,6 +68,15 @@ def _validate_sha256(value: Any, field: str) -> None:
         raise ValueError(f"{field} must be a lowercase 64-character SHA-256")
 
 
+def _canonical_real(value: Any, field: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field} must be a canonical JSON number")
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"{field} must be finite")
+    return number
+
+
 def _validate_phase(metadata: Mapping[str, Any]) -> None:
     phase = _required_mapping(metadata, "phase")
     _required_text(phase, "name")
@@ -83,22 +92,30 @@ def _validate_phase(metadata: Mapping[str, Any]) -> None:
     values = lattice.get("values")
     if not isinstance(values, list) or len(values) != 6:
         raise ValueError("phase lattice values must contain six values")
-    numeric = [float(value) for value in values]
-    if not all(math.isfinite(value) for value in numeric):
-        raise ValueError("phase lattice values must be finite")
+    numeric = [_canonical_real(value, "phase lattice value") for value in values]
     if any(value <= 0 for value in numeric[:3]) or any(
         not 0 < value <= 180 for value in numeric[3:]
     ):
         raise ValueError("phase lattice lengths and angles are invalid")
 
 
-def _validate_source(metadata: Mapping[str, Any]) -> None:
+def _validate_source(metadata: Mapping[str, Any]) -> str:
     source = _required_mapping(metadata, "source_structure")
     _required_text(source, "identifier")
     _validate_sha256(source.get("sha256"), "source_structure sha256")
     provenance = _required_mapping(source, "provenance")
     for key in ("uri", "license", "citation"):
         _required_text(provenance, key)
+    _required_text(source, "source_id")
+    source_payload = {
+        "identifier": source["identifier"],
+        "sha256": source["sha256"],
+        "provenance": plain_data(provenance),
+    }
+    expected_source_id = stable_id("source", source_payload)
+    if source["source_id"] != expected_source_id:
+        raise ValueError("source_structure source_id disagrees with its canonical record")
+    return expected_source_id
 
 
 def _validate_generator(metadata: Mapping[str, Any]) -> None:
@@ -107,14 +124,18 @@ def _validate_generator(metadata: Mapping[str, Any]) -> None:
     _required_text(generator, "version")
 
 
-def _validate_simulation(metadata: Mapping[str, Any]) -> float:
+def _validate_simulation(metadata: Mapping[str, Any]) -> tuple[float, str]:
     simulation = _required_mapping(metadata, "simulation")
     _required_text(simulation, "recipe_id")
-    _validate_sha256(simulation.get("recipe_sha256"), "simulation recipe_sha256")
-    voltage = float(simulation.get("voltage_kv", math.nan))
-    if not math.isfinite(voltage) or voltage <= 0:
+    recipe_sha256 = simulation.get("recipe_sha256")
+    _validate_sha256(recipe_sha256, "simulation recipe_sha256")
+    expected_recipe_id = f"recipe-{recipe_sha256[:16]}"
+    if simulation["recipe_id"] != expected_recipe_id:
+        raise ValueError("simulation recipe_id disagrees with recipe_sha256")
+    voltage = _canonical_real(simulation.get("voltage_kv"), "simulation voltage_kv")
+    if voltage <= 0:
         raise ValueError("simulation voltage_kv must be finite and positive")
-    return voltage
+    return voltage, expected_recipe_id
 
 
 def _normalize_array_metadata(
@@ -134,7 +155,7 @@ def _normalize_array_metadata(
     metadata["array"] = actual
 
 
-@dataclass(frozen=True, init=False)
+@dataclass(frozen=True, init=False, eq=False)
 class MasterPatternProduct:
     intensity: np.ndarray
     metadata: Mapping[str, Any]
@@ -151,9 +172,9 @@ class MasterPatternProduct:
             raise ValueError("master intensity shape must be (2, y, x) for north and south")
         plain = plain_data(metadata)
         _validate_phase(plain)
-        _validate_source(plain)
+        source_id = _validate_source(plain)
         _validate_generator(plain)
-        voltage = _validate_simulation(plain)
+        voltage, recipe_id = _validate_simulation(plain)
         for key in ("projection", "intensity_units", "coordinate_frame"):
             _required_text(plain, key)
         if plain.get("hemisphere_order") != ["north", "south"]:
@@ -163,8 +184,12 @@ class MasterPatternProduct:
             not isinstance(link, str) or not link for link in links
         ):
             raise ValueError("metadata provenance_links must contain non-empty strings")
-        energy = float(plain.get("energy_kev", math.nan))
-        if not math.isfinite(energy) or energy <= 0:
+        if recipe_id not in links:
+            raise ValueError("recipe must appear in metadata provenance_links")
+        if source_id not in links:
+            raise ValueError("source must appear in metadata provenance_links")
+        energy = _canonical_real(plain.get("energy_kev"), "energy_kev")
+        if energy <= 0:
             raise ValueError("energy_kev must be finite and positive")
         if not math.isclose(voltage, energy, rel_tol=1e-9, abs_tol=0.0):
             raise ValueError("energy_kev is inconsistent with simulation voltage_kv")
@@ -181,8 +206,16 @@ class MasterPatternProduct:
     def metadata_dict(self) -> dict[str, Any]:
         return _thaw(self.metadata)
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MasterPatternProduct):
+            return NotImplemented
+        return (self.product_id, self.array_sha256) == (other.product_id, other.array_sha256)
 
-@dataclass(frozen=True, init=False)
+    def __hash__(self) -> int:
+        return hash((self.product_id, self.array_sha256))
+
+
+@dataclass(frozen=True, init=False, eq=False)
 class DetectorPatternProduct:
     intensity: np.ndarray
     master_product_id: str
@@ -211,8 +244,8 @@ class DetectorPatternProduct:
         plain = plain_data(metadata)
         for key in ("intensity_units", "detector_frame"):
             _required_text(plain, key)
-        energy = float(plain.get("energy_kev", math.nan))
-        if not math.isfinite(energy) or energy <= 0:
+        energy = _canonical_real(plain.get("energy_kev"), "energy_kev")
+        if energy <= 0:
             raise ValueError("energy_kev must be finite and positive")
         checksum = _array_sha256(array)
         _normalize_array_metadata(plain, array, checksum)
@@ -233,3 +266,11 @@ class DetectorPatternProduct:
 
     def metadata_dict(self) -> dict[str, Any]:
         return _thaw(self.metadata)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DetectorPatternProduct):
+            return NotImplemented
+        return (self.product_id, self.array_sha256) == (other.product_id, other.array_sha256)
+
+    def __hash__(self) -> int:
+        return hash((self.product_id, self.array_sha256))

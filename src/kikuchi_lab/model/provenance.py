@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
+from numbers import Real
 
 from .identity import stable_id
 
@@ -45,13 +47,26 @@ class PhaseRecord:
     lattice_angstrom: tuple[float, float, float, float, float, float]
 
     def __post_init__(self) -> None:
-        lattice = tuple(float(value) for value in self.lattice_angstrom)
+        for field in ("name", "formula", "setting"):
+            value = getattr(self, field)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"phase {field} must be a non-blank string")
+        if isinstance(self.space_group_number, bool) or not isinstance(
+            self.space_group_number, int
+        ):
+            raise ValueError("space_group_number must be an integer")
+        raw_lattice = tuple(self.lattice_angstrom)
+        if len(raw_lattice) != 6 or any(
+            isinstance(value, bool) or not isinstance(value, Real) for value in raw_lattice
+        ):
+            raise ValueError("lattice_angstrom must contain six numeric values")
+        lattice = tuple(float(value) for value in raw_lattice)
         object.__setattr__(self, "lattice_angstrom", lattice)
-        if not self.name or not self.formula or not self.setting:
-            raise ValueError("phase name, formula, and space-group setting are required")
         if not 1 <= self.space_group_number <= 230:
             raise ValueError("space_group_number must be in [1, 230]")
-        if len(lattice) != 6 or any(value <= 0 for value in lattice[:3]):
+        if any(not math.isfinite(value) for value in lattice):
+            raise ValueError("lattice_angstrom values must be finite")
+        if any(value <= 0 for value in lattice[:3]):
             raise ValueError("lattice_angstrom must contain three positive lengths and three angles")
         if any(not 0 < angle <= 180 for angle in lattice[3:]):
             raise ValueError("lattice angles must be in (0, 180]")

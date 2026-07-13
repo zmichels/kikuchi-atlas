@@ -42,3 +42,6 @@ that do not expose upstream simulator or projection objects.
 - Follow-up contract review gate: focused suite 58 passed and full fast/unit
   suite 64 passed after complete scientific metadata, byte-backed array
   immutability, and fraction-only PC convention checks were added.
+- Quality regression gate: focused suite 86 passed and full fast/unit suite 92
+  passed after strict canonical numeric typing, linked source/recipe identities,
+  array-safe product equality, and atomic suffix-safe persistence were added.
