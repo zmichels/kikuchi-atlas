@@ -6,6 +6,9 @@ from typing import Any
 
 import numpy as np
 
+LOW_FREQUENCY_CUTOFF_CYCLES_PER_PIXEL = 0.15
+HIGH_FREQUENCY_CUTOFF_CYCLES_PER_PIXEL = 0.35
+
 
 def _image(value: Any) -> np.ndarray:
     image = np.asarray(value, dtype=np.float64)
@@ -16,18 +19,19 @@ def _image(value: Any) -> np.ndarray:
 
 def _frequency_energy(image: np.ndarray) -> dict[str, float]:
     centered = image - np.mean(image)
-    power = np.abs(np.fft.fftshift(np.fft.fft2(centered))) ** 2
-    yy, xx = np.indices(image.shape, dtype=np.float64)
-    cy = (image.shape[0] - 1) / 2.0
-    cx = (image.shape[1] - 1) / 2.0
-    radius = np.hypot(yy - cy, xx - cx)
-    maximum = float(radius.max())
-    if maximum:
-        radius /= maximum
+    power = np.abs(np.fft.fft2(centered)) ** 2
+    frequency_y = np.fft.fftfreq(image.shape[0])[:, np.newaxis]
+    frequency_x = np.fft.fftfreq(image.shape[1])[np.newaxis, :]
+    radius = np.hypot(frequency_y, frequency_x)
     bands = {
-        "low": power[radius < 0.15].sum(dtype=np.float64),
-        "mid": power[(radius >= 0.15) & (radius < 0.45)].sum(dtype=np.float64),
-        "high": power[radius >= 0.45].sum(dtype=np.float64),
+        "low": power[radius < LOW_FREQUENCY_CUTOFF_CYCLES_PER_PIXEL].sum(dtype=np.float64),
+        "mid": power[
+            (radius >= LOW_FREQUENCY_CUTOFF_CYCLES_PER_PIXEL)
+            & (radius < HIGH_FREQUENCY_CUTOFF_CYCLES_PER_PIXEL)
+        ].sum(dtype=np.float64),
+        "high": power[radius >= HIGH_FREQUENCY_CUTOFF_CYCLES_PER_PIXEL].sum(
+            dtype=np.float64
+        ),
     }
     total = float(sum(bands.values()))
     if total == 0.0:
@@ -69,4 +73,13 @@ def image_metrics(
             "maximum": float(np.max(magnitude)),
         },
         "radial_frequency_energy": _frequency_energy(image),
+        "radial_frequency_bands": {
+            "units": "cycles_per_pixel",
+            "low": [0.0, LOW_FREQUENCY_CUTOFF_CYCLES_PER_PIXEL],
+            "mid": [
+                LOW_FREQUENCY_CUTOFF_CYCLES_PER_PIXEL,
+                HIGH_FREQUENCY_CUTOFF_CYCLES_PER_PIXEL,
+            ],
+            "high": [HIGH_FREQUENCY_CUTOFF_CYCLES_PER_PIXEL, None],
+        },
     }

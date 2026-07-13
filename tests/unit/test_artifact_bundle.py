@@ -16,33 +16,79 @@ from kikuchi_lab.artifacts import (
     PartialBundleError,
     write_artifact_bundle,
 )
-from kikuchi_lab.model.identity import canonical_json
+from kikuchi_lab.model.identity import canonical_json, stable_id
 
 
 def _request(*, elapsed: float = 1.25, created_at: str = "2026-07-12T12:00:00Z"):
     base = np.arange(48, dtype=np.float32).reshape(6, 8)
+    projected = FloatProduct("detector-projected", base)
+    acquisition_corrected = FloatProduct("stage-background", base + 1)
+    normalized = FloatProduct("stage-normalize", base / 47)
     return ArtifactBundleRequest(
         source={"source_id": "source-abc", "sha256": "a" * 64, "created_at": created_at},
         environment={"python": "3.12", "cwd": "/private/local/kikuchi"},
-        software={"kikuchi_lab": "0.1.0", "ebsdsim": "0.1.8"},
+        software={
+            "identities": {
+                "kikuchi_lab": {"version": "0.1.0"},
+                "ebsdsim": {"version": "0.1.8"},
+            }
+        },
         hardware={"adapter": "Apple M2", "captured_at": created_at},
         recipes={
-            "simulation": {"recipe_id": "recipe-sim", "voltage_kv": 20.0},
-            "projection": {"recipe_id": "recipe-proj", "shape": [6, 8]},
-            "scientific-clean": {"recipe_id": "recipe-science"},
-            "gallery-crisp": {"recipe_id": "recipe-gallery"},
+            "simulation": {
+                "recipe_id": "recipe-sim",
+                "recipe_sha256": "b" * 64,
+                "voltage_kv": 20.0,
+            },
+            "projection": {
+                "recipe_id": "recipe-proj",
+                "recipe_sha256": "c" * 64,
+                "geometry_id": "geometry-detector-1",
+                "shape": [6, 8],
+            },
+            "scientific-clean": {
+                "recipe_id": "recipe-science",
+                "recipe_sha256": "d" * 64,
+            },
+            "gallery-crisp": {
+                "recipe_id": "recipe-gallery",
+                "recipe_sha256": "e" * 64,
+            },
         },
-        master_metadata={"product_id": "master-abc", "phase": "forsterite"},
-        orientation_candidates={"candidate_ids": ["orientation-1"]},
-        projected=FloatProduct("detector-projected", base),
-        acquisition_corrected=FloatProduct("stage-background", base + 1),
-        stages={"normalize": FloatProduct("stage-normalize", base / 47)},
+        master_metadata={
+            "product_id": "master-abc",
+            "array_sha256": "f" * 64,
+            "phase": "forsterite",
+        },
+        orientation_candidates={
+            "candidate_set_id": "candidate-set-1",
+            "candidate_ids": ["orientation-1"],
+        },
+        projected=projected,
+        acquisition_corrected=acquisition_corrected,
+        stages={"normalize": normalized},
+        stage_lineage=(
+            {
+                "name": "background_divide",
+                "input_id": projected.content_id,
+                "output_id": acquisition_corrected.content_id,
+            },
+            {
+                "name": "robust_normalize",
+                "input_id": acquisition_corrected.content_id,
+                "output_id": normalized.content_id,
+            },
+        ),
         scientific_clean=FloatProduct("processed-science", base / 47),
         gallery_crisp=FloatProduct("processed-gallery", np.flipud(base) / 47),
         warnings=[{"code": "example", "message": "test evidence"}],
         timings={"elapsed_seconds": elapsed, "captured_at": created_at},
         resources={"peak_rss_mb": 42.0, "sampled_at": created_at},
-        orientation_decision={"selected": "orientation-1", "decided_at": created_at},
+        orientation_decision={
+            "decision_id": "decision-orientation-1",
+            "selected": "orientation-1",
+            "decided_at": created_at,
+        },
         decision_links={"orientation": "decision-orientation-1"},
     )
 
@@ -65,6 +111,7 @@ def test_bundle_writes_complete_canonical_inventory_and_image_formats(tmp_path: 
         "recipes/gallery-crisp.json",
         "metadata/master-pattern.json",
         "metadata/orientation-candidates.json",
+        "metadata/processing-lineage.json",
         "products/projected.npy",
         "products/acquisition-corrected.npy",
         "products/stages/normalize.npy",
@@ -125,6 +172,12 @@ def test_bundle_writes_complete_canonical_inventory_and_image_formats(tmp_path: 
     assert manifest["products"]["acquisition_corrected"]["role"] == (
         "background_model_corrected_before_aesthetic_processing"
     )
+    assert manifest["run_identity_schema"]["schema_version"] == 1
+    assert stable_id("run", manifest["run_identity"]) == result.run_id
+    assert manifest["processing_stage_lineage"][0]["name"] == "background_divide"
+    assert manifest["processing_stage_lineage"][0]["output_id"] == (
+        _request().acquisition_corrected.content_id
+    )
     assert manifest["comparison_exclusions"] == {
         "json_fields": ["**/captured_at", "**/created_at", "**/decided_at"],
         "json_documents": [
@@ -151,6 +204,136 @@ def test_bundle_identity_excludes_wall_time_resource_measurements_and_local_path
     second = write_artifact_bundle(tmp_path / "second", changed)
 
     assert first.run_id == second.run_id
+
+
+def test_bundle_identity_ignores_adversarial_nested_paths_and_retrieval_times(tmp_path: Path) -> None:
+    original = _request()
+    changed = _request()
+    changed = ArtifactBundleRequest(
+        **{
+            **changed.__dict__,
+            "source": {
+                **changed.source,
+                "provenance": {
+                    "artifact_location": "../../other/source.cif",
+                    "retrieved_at": "2099-01-01T00:00:00Z",
+                },
+            },
+            "master_metadata": {
+                **changed.master_metadata,
+                "cache": {
+                    "artifact_location": "/tmp/other/master.npz",
+                    "generated_at": "2099-01-01T00:00:00Z",
+                },
+            },
+            "recipes": {
+                name: {
+                    **recipe,
+                    "evidence": {
+                        "artifact_location": f"../recipes/{name}.json",
+                        "retrieved_at": "2099-01-01T00:00:00Z",
+                    },
+                }
+                for name, recipe in changed.recipes.items()
+            },
+            "software": {
+                **changed.software,
+                "discovery": {
+                    "artifact_location": "/Users/someone/.venv",
+                    "generated_at": "2099-01-01T00:00:00Z",
+                },
+            },
+        }
+    )
+
+    first = write_artifact_bundle(tmp_path / "first", original)
+    second = write_artifact_bundle(tmp_path / "second", changed)
+
+    assert first.run_id == second.run_id
+    identity_text = canonical_json(
+        json.loads((second.path / "manifest.json").read_text())["run_identity"]
+    )
+    assert "artifact_location" not in identity_text
+    assert "retrieved_at" not in identity_text
+    assert "generated_at" not in identity_text
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("source", {"source_id": "source-abc", "sha256": "9" * 64}),
+        (
+            "software",
+            {"identities": {"kikuchi_lab": {"version": "0.2.0"}, "ebsdsim": {"version": "0.1.8"}}},
+        ),
+    ],
+)
+def test_bundle_identity_changes_for_whitelisted_scientific_identity_fields(
+    tmp_path: Path, field: str, replacement: object
+) -> None:
+    original = _request()
+    changed = ArtifactBundleRequest(**{**original.__dict__, field: replacement})
+
+    first = write_artifact_bundle(tmp_path / "first", original)
+    second = write_artifact_bundle(tmp_path / "second", changed)
+
+    assert first.run_id != second.run_id
+
+
+def test_bundle_identity_changes_for_recipe_checksum_and_geometry_id(tmp_path: Path) -> None:
+    original = _request()
+    changed_recipes = {name: dict(recipe) for name, recipe in original.recipes.items()}
+    changed_recipes["projection"]["recipe_sha256"] = "8" * 64
+    changed_recipes["projection"]["geometry_id"] = "geometry-detector-2"
+    changed = ArtifactBundleRequest(**{**original.__dict__, "recipes": changed_recipes})
+
+    first = write_artifact_bundle(tmp_path / "first", original)
+    second = write_artifact_bundle(tmp_path / "second", changed)
+
+    assert first.run_id != second.run_id
+
+
+@pytest.mark.parametrize(
+    "failure", ["missing", "wrong_name", "unrelated_output", "unknown_before_background"]
+)
+def test_bundle_rejects_missing_wrong_or_unrelated_background_lineage(
+    tmp_path: Path, failure: str
+) -> None:
+    request = _request()
+    lineage = list(request.stage_lineage)
+    if failure == "missing":
+        lineage = lineage[1:]
+    elif failure == "wrong_name":
+        lineage[0] = {**lineage[0], "name": "local_contrast"}
+    else:
+        if failure == "unrelated_output":
+            lineage[0] = {**lineage[0], "output_id": request.projected.content_id}
+        else:
+            lineage.insert(
+                0,
+                {
+                    "name": "opaque_preprocess",
+                    "input_id": request.projected.content_id,
+                    "output_id": request.projected.content_id,
+                },
+            )
+    malformed = ArtifactBundleRequest(**{**request.__dict__, "stage_lineage": tuple(lineage)})
+
+    with pytest.raises(ValueError, match="background|lineage|acquisition"):
+        write_artifact_bundle(tmp_path, malformed)
+
+
+def test_bundle_rejects_acquisition_array_unrelated_to_recorded_background_output(
+    tmp_path: Path,
+) -> None:
+    request = _request()
+    unrelated = FloatProduct("stage-background", request.acquisition_corrected.intensity + 0.25)
+    malformed = ArtifactBundleRequest(
+        **{**request.__dict__, "acquisition_corrected": unrelated}
+    )
+
+    with pytest.raises(ValueError, match="acquisition-corrected"):
+        write_artifact_bundle(tmp_path, malformed)
 
 
 def test_bundle_identity_changes_when_float_bytes_change_despite_reused_label(tmp_path: Path) -> None:
