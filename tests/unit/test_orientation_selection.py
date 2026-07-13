@@ -423,6 +423,112 @@ def test_second_decision_for_proof_requires_explicit_supersession(tmp_path: Path
         )
 
 
+def test_shared_decision_root_keeps_distinct_proof_lineages_independent(
+    tmp_path: Path,
+) -> None:
+    first_proof = _proof_bundle(tmp_path / "first")
+    second_proof = _proof_bundle(tmp_path / "second")
+    second_evidence_path = (
+        second_proof / "candidates/fo-011-phi1-045/evidence.json"
+    )
+    second_evidence = json.loads(second_evidence_path.read_text())
+    second_evidence["comparison_contract"]["detector"]["pc"]["x"] = 0.51
+    _write_json(second_evidence_path, second_evidence)
+    second_manifest_path = second_proof / "manifest.json"
+    second_manifest = json.loads(second_manifest_path.read_text())
+    evidence_relative = second_evidence_path.relative_to(second_proof).as_posix()
+    second_manifest["files"][evidence_relative] = {
+        "bytes": second_evidence_path.stat().st_size,
+        "sha256": _sha256(second_evidence_path),
+    }
+    second_manifest["identity"]["comparison_contract"] = second_evidence[
+        "comparison_contract"
+    ]
+    second_manifest["proof_id"] = stable_id("proof", second_manifest["identity"])
+    _write_json(second_manifest_path, second_manifest)
+    assert json.loads((first_proof / "manifest.json").read_text())["proof_id"] != (
+        second_manifest["proof_id"]
+    )
+
+    output = tmp_path / "decisions"
+    first = create_orientation_selection(
+        run=first_proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="First proof initial decision.",
+        selected_on="2026-07-13",
+        output_root=output,
+    )
+    second = create_orientation_selection(
+        run=second_proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Second proof initial decision.",
+        selected_on="2026-07-13",
+        output_root=output,
+    )
+    first_leaf = create_orientation_selection(
+        run=first_proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="First proof independent successor.",
+        selected_on="2026-07-14",
+        output_root=output,
+        supersedes=first.selection_id,
+        supersede_reason="First proof correction.",
+    )
+    second_leaf = create_orientation_selection(
+        run=second_proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Second proof independent successor.",
+        selected_on="2026-07-14",
+        output_root=output,
+        supersedes=second.selection_id,
+        supersede_reason="Second proof correction.",
+    )
+
+    records = [
+        load_orientation_selection(path)
+        for path in output.glob("orientation-selection-*/selection.json")
+    ]
+    proof_ids = [record["decision"]["proof"]["proof_id"] for record in records]
+    assert len(records) == 4
+    assert proof_ids.count(
+        load_orientation_selection(first_leaf.selection_path)["decision"]["proof"][
+            "proof_id"
+        ]
+    ) == 2
+    assert proof_ids.count(
+        load_orientation_selection(second_leaf.selection_path)["decision"]["proof"][
+            "proof_id"
+        ]
+    ) == 2
+
+    with pytest.raises(OrientationSelectionError, match="current unique leaf"):
+        create_orientation_selection(
+            run=first_proof,
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="Rejected first-proof fork.",
+            selected_on="2026-07-15",
+            output_root=output,
+            supersedes=first.selection_id,
+            supersede_reason="Must not fork.",
+        )
+    with pytest.raises(OrientationSelectionError, match="current unique leaf"):
+        create_orientation_selection(
+            run=second_proof,
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="Rejected second-proof fork.",
+            selected_on="2026-07-15",
+            output_root=output,
+            supersedes=second.selection_id,
+            supersede_reason="Must not fork.",
+        )
+
+
 def test_supersession_creates_a_linked_new_immutable_artifact(tmp_path: Path) -> None:
     proof = _proof_bundle(tmp_path)
     output = tmp_path / "decisions"

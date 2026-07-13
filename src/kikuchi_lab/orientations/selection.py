@@ -323,7 +323,7 @@ def proof_tree_digest(run: str | Path) -> dict[str, Any]:
 
 
 def _selection_records(
-    output_root: Path, *, proof_root: Path
+    output_root: Path, *, proof_root: Path, proof_id: str
 ) -> list[tuple[Path, dict[str, Any]]]:
     records: list[tuple[Path, dict[str, Any]]] = []
     for directory in sorted(output_root.iterdir(), key=lambda item: item.name):
@@ -344,6 +344,8 @@ def _selection_records(
             )
         path = _selection_artifact_path(output_root, directory.name)
         record = load_orientation_selection(path)
+        if record["decision"]["proof"]["proof_id"] != proof_id:
+            continue
         verify_orientation_selection(path, proof_root=proof_root)
         records.append((path, record))
     return records
@@ -1172,7 +1174,7 @@ def create_orientation_selection(
                 )
             raise SelectionExistsError(f"selection artifact already exists: {selection_id}")
         _validate_linear_predecessor(
-            _selection_records(output, proof_root=run_path),
+            _selection_records(output, proof_root=run_path, proof_id=proof_id),
             proof_id=proof_id,
             supersedes=supersedes,
         )
