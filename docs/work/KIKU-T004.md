@@ -73,3 +73,21 @@ kikuchipy returns `(1, Ny, Nx)`. The adapter validates that exact singleton
 shape and removes only that navigation dimension to satisfy the canonical 2D
 detector-product contract. All kikuchipy, orix, and diffpy types remain behind
 private adapter helpers and do not appear in the returned product.
+
+## Follow-up Quality Evidence
+
+- A source-neutral regression removes `upstream_npz_sha256` from an otherwise
+  valid canonical master and still projects successfully. Projection metadata
+  always records the generic source ID and canonical provenance links; an
+  upstream checksum is emitted as `upstream_artifact_sha256` only when the
+  source product supplies one.
+- Fractional PCs round-trip through kikuchipy for all supported `bruker`,
+  `tsl`, and `oxford` conventions. The tests additionally prove that the three
+  conventions produce different internal Bruker-coordinate transforms for
+  the same numeric triplet.
+- `diffpy-structure>=3.3,<4` is now a direct, locked dependency because the
+  adapter imports `Lattice` and `Structure` as part of phase construction.
+- `uv run pytest tests/adapters/test_kikuchipy_projection.py
+  tests/scientific/test_projection_invariants.py -q`: 13 passed.
+- `uv run pytest -m "not slow and not gpu" -q`: 160 passed, 1 deselected;
+  Ruff, tracker validation, and diff checks passed.

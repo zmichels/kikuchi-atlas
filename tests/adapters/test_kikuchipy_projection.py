@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 
 import numpy as np
+import pytest
 from diffpy.structure import Lattice
 from kikuchipy.detectors import EBSDDetector
 from kikuchipy.signals import EBSDMasterPattern
@@ -21,7 +22,7 @@ from kikuchi_lab.projection.kikuchipy_adapter import (
 )
 
 
-def canonical_master() -> MasterPatternProduct:
+def canonical_master(*, include_upstream_artifact: bool = True) -> MasterPatternProduct:
     y, x = np.mgrid[-1:1:17j, -1:1:17j]
     north = 11.0 + 2.0 * x + y + 0.5 * np.cos(4 * x * y)
     south = 9.0 - x + 1.5 * y + 0.25 * np.sin(3 * x)
@@ -34,6 +35,13 @@ def canonical_master() -> MasterPatternProduct:
     recipe_payload = {"fixture": "projection", "voltage_kv": 20.0}
     recipe_sha256 = hashlib.sha256(canonical_json(recipe_payload).encode()).hexdigest()
     recipe_id = f"recipe-{recipe_sha256[:16]}"
+    simulation = {
+        "recipe_id": recipe_id,
+        "recipe_sha256": recipe_sha256,
+        "voltage_kv": 20.0,
+    }
+    if include_upstream_artifact:
+        simulation["upstream_npz_sha256"] = "2" * 64
     return MasterPatternProduct.from_array(
         np.stack((north, south)),
         metadata={
@@ -53,12 +61,7 @@ def canonical_master() -> MasterPatternProduct:
                 "provenance": source.to_dict(),
             },
             "generator": {"name": "test-fixture", "version": "1"},
-            "simulation": {
-                "recipe_id": recipe_id,
-                "recipe_sha256": recipe_sha256,
-                "voltage_kv": 20.0,
-                "upstream_npz_sha256": "2" * 64,
-            },
+            "simulation": simulation,
             "projection": "Lambert square equal-area",
             "hemisphere_order": ["north", "south"],
             "energy_kev": 20.0,
@@ -108,7 +111,9 @@ def test_projection_preserves_public_geometry_and_source_identity():
     assert out.master_product_id == master.product_id
     assert metadata["master_product_id"] == master.product_id
     assert metadata["master_array_sha256"] == master.array_sha256
-    assert metadata["source_npz_sha256"] == "2" * 64
+    assert metadata["source_id"] == master.metadata["source_structure"]["source_id"]
+    assert metadata["provenance_links"] == list(master.metadata["provenance_links"])
+    assert metadata["upstream_artifact_sha256"] == "2" * 64
     assert metadata["orientation"] == orientation.to_dict()
     assert metadata["orientation_frame"] == "crystal_to_sample"
     assert metadata["detector"] == detector.to_dict()
@@ -133,8 +138,19 @@ def test_adapter_builds_pnma_phase_from_canonical_metadata():
     )
 
 
-def test_adapter_detector_preserves_geometry_at_supersampled_resolution():
-    recipe = detector_recipe()
+@pytest.mark.parametrize(
+    ("convention", "expected_bruker_pc"),
+    [
+        ("bruker", [0.42, 0.61, 0.72]),
+        ("tsl", [0.42, 0.39, 0.72]),
+        ("oxford", [0.42, 0.18666666666666665, 0.96]),
+    ],
+)
+def test_adapter_detector_roundtrips_each_fraction_pc_convention(
+    convention,
+    expected_bruker_pc,
+):
+    recipe = detector_recipe(pc_convention=convention)
 
     detector = _to_kikuchipy_detector(recipe)
 
@@ -142,13 +158,45 @@ def test_adapter_detector_preserves_geometry_at_supersampled_resolution():
     assert detector.shape == recipe.supersampled_shape
     assert detector.px_size == recipe.pixel_size_um / recipe.supersampling
     assert detector.binning == recipe.binning
-    np.testing.assert_allclose(detector.pc_tsl(), [[recipe.pcx, recipe.pcy, recipe.pcz]])
+    roundtrip = getattr(detector, f"pc_{convention}")()
+    np.testing.assert_allclose(roundtrip, [[recipe.pcx, recipe.pcy, recipe.pcz]])
+    np.testing.assert_allclose(detector.pc_bruker(), [expected_bruker_pc])
     assert detector.tilt == recipe.detector_tilt_deg
     assert detector.azimuthal == recipe.detector_azimuth_deg
     assert detector.twist == recipe.detector_twist_deg
     assert detector.sample_tilt == recipe.sample_tilt_deg
     assert detector.shape[0] * detector.px_size * detector.binning == recipe.physical_extent_um[0]
     assert detector.shape[1] * detector.px_size * detector.binning == recipe.physical_extent_um[1]
+
+
+def test_supported_pc_conventions_apply_different_internal_transforms():
+    internal_bruker_pcs = {
+        convention: _to_kikuchipy_detector(
+            detector_recipe(pc_convention=convention)
+        ).pc_bruker()[0]
+        for convention in ("bruker", "tsl", "oxford")
+    }
+
+    assert not np.allclose(internal_bruker_pcs["bruker"], internal_bruker_pcs["tsl"])
+    assert not np.allclose(internal_bruker_pcs["bruker"], internal_bruker_pcs["oxford"])
+    assert not np.allclose(internal_bruker_pcs["tsl"], internal_bruker_pcs["oxford"])
+
+
+def test_projection_accepts_generic_canonical_master_without_upstream_artifact():
+    master = canonical_master(include_upstream_artifact=False)
+
+    out = project_with_kikuchipy(
+        master=master,
+        orientation=Orientation((0.0, 0.0, 0.0)),
+        detector=detector_recipe(),
+        energy_kev=20.0,
+    )
+
+    metadata = out.metadata_dict()
+    assert out.master_product_id == master.product_id
+    assert metadata["source_id"] == master.metadata["source_structure"]["source_id"]
+    assert metadata["provenance_links"] == list(master.metadata["provenance_links"])
+    assert "upstream_artifact_sha256" not in metadata
 
 
 def test_projection_matches_direct_kikuchipy_standard_passive_call():

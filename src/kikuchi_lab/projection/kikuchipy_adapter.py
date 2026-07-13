@@ -105,11 +105,12 @@ def _projection_metadata(
     energy_kev: float,
 ) -> dict[str, Any]:
     master_metadata = master.metadata_dict()
-    return {
+    metadata = {
         "backend": {"name": "kikuchipy", "version": version("kikuchipy")},
         "master_product_id": master.product_id,
         "master_array_sha256": master.array_sha256,
-        "source_npz_sha256": master_metadata["simulation"]["upstream_npz_sha256"],
+        "source_id": master_metadata["source_structure"]["source_id"],
+        "provenance_links": master_metadata["provenance_links"],
         "phase": master_metadata["phase"],
         "orientation": orientation.to_dict(),
         "orientation_frame": orientation.frame,
@@ -121,6 +122,10 @@ def _projection_metadata(
         "supersampling": detector.supersampling,
         "downsampled": False,
     }
+    upstream_checksum = master_metadata["simulation"].get("upstream_npz_sha256")
+    if upstream_checksum is not None:
+        metadata["upstream_artifact_sha256"] = upstream_checksum
+    return metadata
 
 
 def project_with_kikuchipy(

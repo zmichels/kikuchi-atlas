@@ -407,6 +407,7 @@ name = "kikuchi-lab"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "diffpy-structure" },
     { name = "ebsdsim" },
     { name = "imageio" },
     { name = "kikuchipy" },
@@ -427,6 +428,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "diffpy-structure", specifier = ">=3.3,<4" },
     { name = "ebsdsim", specifier = "==0.1.8" },
     { name = "imageio", specifier = ">=2.37,<3" },
     { name = "kikuchipy", specifier = "==0.13.0" },
