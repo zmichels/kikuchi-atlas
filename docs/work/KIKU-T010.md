@@ -13,8 +13,8 @@ evidence:
   - ../../recipes/gallery/forsterite-final.yml
   - ../decisions/0003-clarity-aesthetic-target.md
   - ../../reference/catalog/aesthetic-clarity.yml
-  - ../../local/runs/run-d81a3ee884dceefd/manifest.json
-  - ../../local/reproductions/run-d81a3ee884dceefd/manifest.json
+  - ../../local/runs/run-d0c8306c3c060907/manifest.json
+  - ../../local/reproductions/run-d0c8306c3c060907/manifest.json
 ---
 
 # KIKU-T010: Implement Final Rendering and Reproduction
@@ -35,7 +35,8 @@ and source evidence reproduce the same canonical outputs.
 
 ## Implementation Evidence
 
-- Code landed in `41582bc` with a follow-up clarity tuning commit `34404f8`.
+- Code landed in `41582bc` with clarity tuning in `34404f8` and a genuine
+  non-identical GPU-source tolerance regression in `5d6d2c9`.
 - `render-final` intrinsically validates the selection record, explicitly verifies
   the caller-supplied proof root, and rejects any selection that is not the
   current unique leaf of its proof-scoped lineage.
@@ -44,11 +45,11 @@ and source evidence reproduce the same canonical outputs.
   selected 180 x 240 proof geometry and is marked `DEVELOPMENT / NOT FINAL
   QUALITY` in warnings and provenance.
 - The real selected-orientation development artifact is
-  `local/runs/run-d81a3ee884dceefd`; its manifest-driven rebuild is
-  `local/reproductions/run-d81a3ee884dceefd`.
-- Exact reproduction retained run ID `run-d81a3ee884dceefd`, exact CPU float and
+  `local/runs/run-d0c8306c3c060907`; its manifest-driven rebuild is
+  `local/reproductions/run-d0c8306c3c060907`.
+- Exact reproduction retained run ID `run-d0c8306c3c060907`, exact CPU float and
   uint16 products, and manifest comparison identity
-  `manifest-comparison-bd59c95e3bd4c1c5` in both roots.
+  `manifest-comparison-f571acc7d56532be` in both roots.
 - Development diagnostics show gallery high-frequency energy `0.0210427521`,
   below the selected proof processing value `0.0296949473`; the tuned run has no
   clipping or excessive-gain warnings and contains no line-overlay stage.
