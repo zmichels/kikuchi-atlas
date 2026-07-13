@@ -30,19 +30,26 @@ and a legible contact sheet for human orientation selection.
 ## Evidence
 
 - Deterministic integration test:
-  `uv run pytest tests/integration/test_proof_workflow.py -q` (1 passed).
-- Full fast suite: `uv run pytest -q` (298 passed; 23 upstream deprecation
+  `uv run pytest tests/integration/test_proof_workflow.py -q` (2 passed).
+- Focused proof/CLI suite:
+  `uv run pytest tests/unit/test_proof_recipe.py tests/unit/test_cli.py tests/integration/test_proof_workflow.py -q`
+  (8 passed).
+- Full fast suite: `uv run pytest -q` (303 passed; 23 upstream deprecation
   warnings).
 - Static checks: `uv run ruff check src tests` (clean).
 - Validated proof master manifest:
   `../../local/master-patterns/forsterite-proof/COD-9000319-ebsdsim.bundle/COD-9000319-ebsdsim.manifest.json`.
-- Current real proof bundle: `../../local/runs/proof-034550efeb6bf89a/`.
+- Current real proof bundle: `../../local/runs/proof-bb3c2766ff577427/`.
 - Real contact sheet:
-  `../../local/runs/proof-034550efeb6bf89a/contact-sheet.png`.
+  `../../local/runs/proof-bb3c2766ff577427/contact-sheet.png`.
 - The authoritative bundle was regenerated from clean revision
-  `31a19566b4b31134437fb0a07ef053a02143274f` on branch
+  `1a612f47cdd074a767cc9e2860533e69d80921cf` on branch
   `codex/exceptional-forsterite`; `provenance/execution.json` records
   `dirty=false` and the exact `kikuchi-lab proof` command.
+- The previous clean proof is preserved at
+  `../../local/runs/proof-034550efeb6bf89a.superseded-pre-master-contract-31a1956/`;
+  it predates the explicit master-admissibility and complete contact-rendering
+  identity contracts.
 - The earlier bundle with the same scientific proof ID but dirty execution
   context is preserved at
   `../../local/runs/proof-034550efeb6bf89a.superseded-dirty-303e0d0/`.
@@ -59,12 +66,17 @@ master: 257 x 257 Lambert sampling (`halfw=128`), `dmin=0.08 nm`, one 20 keV
 energy bin, rank 8, and 262,144 requested/minimum Monte Carlo trajectories. The
 validated upstream artifact reports convergence after 786,432 trajectories.
 Generation took 532.77 s internally (533.07 s wall time); the 12-candidate proof
-authoritative clean render took 1.36 s internally. Raw candidate products are
+authoritative clean render took 1.30 s internally. Raw candidate products are
 360 x 480 float32 and processed products are 180 x 240 float32. The paired,
 labeled contact sheet is 1484 x 1026 uint8 and the proof bundle contains 92
 inventoried evidence files (21 MB locally).
 
-The current recipe, run identity, manifest, and visible contact-sheet banner
+The current recipe declares and the workflow verifies, before projection, the
+exact forsterite phase/formula, space group 62 Pnma setting, transformed lattice
+within absolute tolerance, COD source identifier/checksum/source ID, requested
+and resolved simulation controls, backend and evidence classifications, product
+shape/projection/hemisphere order, and generator identity. The run identity,
+manifest, and visible contact-sheet banner
 all state `quality_grade=proof`, `intended_use=orientation-comparison`, and
 `not_final_quality=true`, with the `dmin`, one-bin energy integration, and rank
 limitations encoded machine-readably. Every tile names the processed variant
@@ -77,8 +89,12 @@ The bundle also records exact CLI arguments, software versions, the Apple M2
 Metal doctor report, git branch/revision/dirty state, canonical source path and
 checksum, and the originating master bundle, manifest locator, and checksum.
 Local locators and execution context are evidence excluded from scientific run
-identity; changing the quality, intended use, processing recipe, or contact
-rendering contract changes the proof identity.
+identity. The versioned contact-sheet contract includes columns, panel/card
+dimensions, gutters, padding, banner/footer sizing, colors, exact text
+templates, label policy, renderer version, Pillow version, font name/sizes, and
+a glyph-atlas hash. Changing columns, font identity, layout, quality, intended
+use, processing recipe, or the admitted master contract changes the proof
+identity.
 
 All 12 candidates carry the same advisory `clipping_fraction` warning at 0.02,
 caused by the explicit 1st/99th percentile normalization before CLAHE. This is
