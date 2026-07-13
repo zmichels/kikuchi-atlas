@@ -6,12 +6,13 @@ import hashlib
 import json
 import os
 import platform
+import stat
 import tempfile
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import numpy as np
@@ -98,6 +99,7 @@ class ValidatedFinalSelection:
     orientation: Orientation
     selected_detector: DetectorRecipe
     record: Mapping[str, Any]
+    proof_identity: Mapping[str, Any]
     proof_root: Path
     current_unique_leaf: bool = True
 
@@ -309,8 +311,8 @@ def _detector_from_selection(record: Mapping[str, Any]) -> DetectorRecipe:
     )
 
 
-def _selection_records(root: Path) -> list[dict[str, Any]]:
-    records: list[dict[str, Any]] = []
+def _selection_records(root: Path) -> list[tuple[Path, dict[str, Any]]]:
+    records: list[tuple[Path, dict[str, Any]]] = []
     for directory in sorted(root.glob("orientation-selection-*")):
         if not directory.is_dir() or directory.is_symlink():
             raise FinalSelectionError("selection lineage contains an unsafe entry")
@@ -318,7 +320,7 @@ def _selection_records(root: Path) -> list[dict[str, Any]]:
         if not path.is_file() or path.is_symlink():
             raise FinalSelectionError("selection lineage contains an invalid artifact")
         try:
-            records.append(load_orientation_selection(path))
+            records.append((path, load_orientation_selection(path)))
         except OrientationSelectionError as error:
             raise FinalSelectionError(f"selection lineage is invalid: {error}") from error
     return records
@@ -344,18 +346,27 @@ def validate_final_selection(
         raise FinalSelectionError(f"orientation selection verification failed: {error}") from error
     proof_id = record["decision"]["proof"]["proof_id"]
     same_proof = {
-        item["selection_id"]: item
-        for item in _selection_records(selection_path.parent.parent)
+        item["selection_id"]: (record_path, item)
+        for record_path, item in _selection_records(selection_path.parent.parent)
         if item["decision"]["proof"]["proof_id"] == proof_id
     }
     successors = {selection_id: [] for selection_id in same_proof}
-    for selection_id, item in same_proof.items():
+    for selection_id, (_record_path, item) in same_proof.items():
         supersession = item["decision"]["supersession"]
         if supersession is None:
             continue
         predecessor = supersession["selection_id"]
         if predecessor not in same_proof:
             raise FinalSelectionError("selection lineage predecessor is absent")
+        predecessor_path, predecessor_record = same_proof[predecessor]
+        if supersession["decision_sha256"] != predecessor_record["decision_sha256"]:
+            raise FinalSelectionError(
+                "selection lineage predecessor decision checksum disagrees"
+            )
+        if supersession["selection_sha256"] != _sha256(predecessor_path):
+            raise FinalSelectionError(
+                "selection lineage predecessor artifact checksum disagrees"
+            )
         successors[predecessor].append(selection_id)
     if any(len(values) > 1 for values in successors.values()):
         raise FinalSelectionError("selection lineage contains a supersession fork")
@@ -366,6 +377,17 @@ def validate_final_selection(
         )
     selected = record["decision"]["selected_candidate"]
     orientation = selected["candidate"]["orientation"]
+    manifest_path = verification.proof_root / "manifest.json"
+    try:
+        manifest_bytes = manifest_path.read_bytes()
+        manifest = json.loads(manifest_bytes)
+    except (OSError, json.JSONDecodeError) as error:
+        raise FinalSelectionError("verified proof manifest became unavailable") from error
+    if hashlib.sha256(manifest_bytes).hexdigest() != verification.manifest_sha256:
+        raise FinalSelectionError("verified proof manifest checksum changed after verification")
+    proof_identity = manifest.get("identity")
+    if not isinstance(proof_identity, dict):
+        raise FinalSelectionError("verified proof manifest lacks scientific identity")
     return ValidatedFinalSelection(
         selection_id=record["selection_id"],
         proof_id=verification.proof_id,
@@ -373,6 +395,7 @@ def validate_final_selection(
         orientation=Orientation(tuple(orientation["euler_bunge_deg"]), orientation["frame"]),
         selected_detector=_detector_from_selection(record),
         record=record,
+        proof_identity=plain_data(proof_identity),
         proof_root=verification.proof_root,
     )
 
@@ -397,6 +420,65 @@ def _require_contract(master: MasterPatternProduct, recipe: FinalRecipe) -> None
         raise FinalRecipeError("master product differs from the selected source/phase contract")
     if float(metadata["energy_kev"]) != recipe.energy_kev:
         raise FinalRecipeError("master product differs from the selected energy contract")
+
+
+def _require_verified_proof_contract(
+    selection: ValidatedFinalSelection,
+    recipe: FinalRecipe,
+) -> None:
+    identity = selection.proof_identity
+    master_contract = identity.get("master_contract")
+    comparison = identity.get("comparison_contract")
+    if not isinstance(master_contract, Mapping) or not isinstance(comparison, Mapping):
+        raise FinalSelectionError("verified proof lacks its source/phase/energy contract")
+    proof_source = master_contract.get("source")
+    expected_source = {
+        key: recipe.source_contract[key]
+        for key in ("identifier", "source_id", "sha256")
+    }
+    if not isinstance(proof_source, Mapping) or {
+        key: proof_source.get(key) for key in expected_source
+    } != expected_source:
+        raise FinalSelectionError("verified proof source contract differs from final recipe")
+    proof_phase = master_contract.get("phase")
+    expected_phase = recipe.source_contract["phase"]
+    if not isinstance(proof_phase, Mapping) or {
+        key: proof_phase.get(key) for key in expected_phase
+    } != expected_phase:
+        raise FinalSelectionError("verified proof phase contract differs from final recipe")
+    proof_energy = comparison.get("energy_kev")
+    if (
+        isinstance(proof_energy, bool)
+        or not isinstance(proof_energy, (int, float))
+        or not np.isfinite(float(proof_energy))
+        or float(proof_energy) != recipe.energy_kev
+    ):
+        raise FinalSelectionError("verified proof energy contract differs from final recipe")
+    simulation = master_contract.get("simulation")
+    if not isinstance(simulation, Mapping):
+        raise FinalSelectionError("verified proof lacks its simulation energy contract")
+    for resolution in ("requested", "resolved"):
+        values = simulation.get(resolution)
+        voltage = values.get("voltage_kv") if isinstance(values, Mapping) else None
+        if (
+            isinstance(voltage, bool)
+            or not isinstance(voltage, (int, float))
+            or not np.isfinite(float(voltage))
+            or float(voltage) != recipe.energy_kev
+        ):
+            raise FinalSelectionError(
+                f"verified proof {resolution} energy contract differs from final recipe"
+            )
+    detector = comparison.get("detector")
+    if detector != selection.selected_detector.to_dict():
+        raise FinalSelectionError(
+            "verified proof detector contract differs from selected detector evidence"
+        )
+    selected_geometry = selection.record["decision"]["selected_candidate"]["geometry"]
+    if comparison.get("detector_recipe_id") != selected_geometry["detector_recipe_id"]:
+        raise FinalSelectionError(
+            "verified proof detector identity differs from selected detector evidence"
+        )
 
 
 def _same_selected_geometry(selected: DetectorRecipe, final: DetectorRecipe) -> None:
@@ -539,6 +621,7 @@ def render_final(
     detector = recipe.final_detector if profile == "final" else selection.selected_detector
     if profile == "final":
         _same_selected_geometry(selection.selected_detector, detector)
+    _require_verified_proof_contract(selection, recipe)
     _require_contract(master, recipe)
     projected = projector(
         master=master,
@@ -771,8 +854,109 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+_REQUIRED_BUNDLE_FILES = {
+    "provenance/source.json",
+    "provenance/environment.json",
+    "provenance/software.json",
+    "provenance/hardware.json",
+    "recipes/simulation.json",
+    "recipes/projection.json",
+    "recipes/scientific-clean.json",
+    "recipes/gallery-crisp.json",
+    "metadata/master-pattern.json",
+    "metadata/orientation-candidates.json",
+    "metadata/processing-lineage.json",
+    "products/projected.npy",
+    "products/projected.tif",
+    "products/projected.png",
+    "products/acquisition-corrected.npy",
+    "products/acquisition-corrected.tif",
+    "products/acquisition-corrected.png",
+    "products/scientific-clean.npy",
+    "products/scientific-clean.tif",
+    "products/scientific-clean.png",
+    "products/gallery-crisp.npy",
+    "products/gallery-crisp.tif",
+    "products/gallery-crisp.png",
+    "products/preview.png",
+    "diagnostics/metrics.json",
+    "diagnostics/warnings.json",
+    "diagnostics/timings.json",
+    "diagnostics/resources.json",
+    "decisions/orientation.json",
+    "decisions/links.json",
+}
+
+
+def _regular_file_tree(bundle: Path) -> set[str]:
+    files: set[str] = set()
+    for current, directories, names in os.walk(bundle, topdown=True, followlinks=False):
+        current_path = Path(current)
+        for name in directories:
+            directory = current_path / name
+            mode = directory.lstat().st_mode
+            if stat.S_ISLNK(mode):
+                raise ReproductionMismatch(
+                    f"bundle tree contains a symbolic-link directory: {directory.relative_to(bundle)}"
+                )
+            if not stat.S_ISDIR(mode):
+                raise ReproductionMismatch("bundle tree contains an unsafe directory entry")
+        for name in names:
+            path = current_path / name
+            mode = path.lstat().st_mode
+            if stat.S_ISLNK(mode):
+                raise ReproductionMismatch(
+                    f"bundle tree contains a symbolic-link file: {path.relative_to(bundle)}"
+                )
+            if not stat.S_ISREG(mode):
+                raise ReproductionMismatch("bundle tree contains a non-regular file")
+            files.add(path.relative_to(bundle).as_posix())
+    return files
+
+
+def _validate_canonical_bundle_inventory(manifest: Mapping[str, Any]) -> None:
+    files = manifest["files"]
+    labels = manifest.get("content_registry", {}).get("labels")
+    if not isinstance(labels, Mapping):
+        raise ReproductionMismatch("bundle content registry is absent")
+    required_labels = {
+        "projected",
+        "acquisition-corrected",
+        "scientific-clean",
+        "gallery-crisp",
+    }
+    if not required_labels <= set(labels):
+        raise ReproductionMismatch("bundle content registry lacks canonical products")
+    stage_labels = sorted(label for label in labels if label.startswith("stage:"))
+    if not stage_labels:
+        raise ReproductionMismatch("bundle content registry lacks materialized stages")
+    expected_stage_files = {
+        f"products/stages/{label.removeprefix('stage:')}{suffix}"
+        for label in stage_labels
+        for suffix in (".npy", ".tif")
+    }
+    declared_stage_files = {
+        relative for relative in files if relative.startswith("products/stages/")
+    }
+    if declared_stage_files != expected_stage_files:
+        raise ReproductionMismatch("bundle stage inventory is incomplete or noncanonical")
+    expected_files = _REQUIRED_BUNDLE_FILES | expected_stage_files
+    if set(files) != expected_files:
+        extras = sorted(set(files) - expected_files)
+        missing = sorted(expected_files - set(files))
+        raise ReproductionMismatch(
+            f"bundle inventory differs from canonical schema: extras={extras}, missing={missing}"
+        )
+
+
 def _load_bundle_manifest(root: str | Path) -> tuple[Path, dict[str, Any]]:
-    bundle = Path(root).resolve()
+    bundle = Path(os.path.abspath(os.fspath(root)))
+    try:
+        bundle_mode = bundle.lstat().st_mode
+    except OSError as error:
+        raise ReproductionMismatch(f"bundle root is unavailable: {error}") from error
+    if stat.S_ISLNK(bundle_mode) or not stat.S_ISDIR(bundle_mode):
+        raise ReproductionMismatch("bundle root must be a real directory, not a symbolic link")
     manifest_path = bundle / "manifest.json"
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -783,9 +967,24 @@ def _load_bundle_manifest(root: str | Path) -> tuple[Path, dict[str, Any]]:
     files = manifest.get("files")
     if not isinstance(files, dict):
         raise ReproductionMismatch("bundle manifest inventory is absent")
+    declared_files = set(files)
+    if "manifest.json" in declared_files:
+        raise ReproductionMismatch("bundle manifest cannot inventory itself")
+    actual_files = _regular_file_tree(bundle)
+    expected_tree = {*declared_files, "manifest.json"}
+    if actual_files != expected_tree:
+        undeclared = sorted(actual_files - expected_tree)
+        missing = sorted(expected_tree - actual_files)
+        raise ReproductionMismatch(
+            f"bundle regular-file tree differs from inventory: undeclared={undeclared}, missing={missing}"
+        )
+    _validate_canonical_bundle_inventory(manifest)
     for relative, record in files.items():
         if not isinstance(relative, str) or not isinstance(record, dict):
             raise ReproductionMismatch("bundle manifest inventory is malformed")
+        locator = PurePosixPath(relative)
+        if locator.is_absolute() or ".." in locator.parts or locator.as_posix() != relative:
+            raise ReproductionMismatch("bundle manifest inventory locator is unsafe")
         path = bundle / relative
         try:
             resolved = path.resolve(strict=True)
@@ -944,12 +1143,11 @@ def _processing_paths(manifest: Mapping[str, Any]) -> list[str]:
         "products/scientific-clean.npy",
         "products/gallery-crisp.npy",
     ]
+    labels = manifest["content_registry"]["labels"]
     paths.extend(
-        sorted(
-            relative
-            for relative in manifest["files"]
-            if relative.startswith("products/stages/") and relative.endswith(".npy")
-        )
+        f"products/stages/{label.removeprefix('stage:')}.npy"
+        for label in sorted(labels)
+        if label.startswith("stage:")
     )
     return paths
 

@@ -155,6 +155,82 @@ def test_final_selection_gate_requires_external_proof_verification(tmp_path: Pat
         validate_final_selection(selection, proof_root=proof)
 
 
+@pytest.mark.parametrize(
+    ("fixture_kwargs", "message"),
+    [
+        (
+            {
+                "proof_source": {
+                    "identifier": "COD-unrelated",
+                    "source_id": "source-unrelated",
+                    "sha256": "9" * 64,
+                }
+            },
+            "source",
+        ),
+        (
+            {
+                "proof_phase": {
+                    "name": "unrelated-phase",
+                    "formula": "FeS2",
+                    "space_group_number": 205,
+                    "space_group_setting": "P a -3",
+                    "lattice_angstrom": [5.4, 5.4, 5.4, 90.0, 90.0, 90.0],
+                    "lattice_absolute_tolerance": 1e-6,
+                }
+            },
+            "phase",
+        ),
+        ({"proof_energy_kev": 30.0}, "energy"),
+    ],
+)
+def test_final_workflow_rejects_selection_from_unrelated_scientific_proof(
+    tmp_path: Path,
+    fixture_kwargs: dict,
+    message: str,
+) -> None:
+    proof, selection = selected_proof(tmp_path, **fixture_kwargs)
+
+    with pytest.raises((FinalSelectionError, ValueError), match=message):
+        render_final(
+            master=canonical_master(),
+            recipe_path=ROOT / "recipes/gallery/forsterite-final.yml",
+            selection_path=selection,
+            proof_root=proof,
+            output_root=tmp_path / "runs",
+            profile="development",
+            projector=fixture_projector,
+            execution_context={
+                "environment": {"python": "3.12", "cwd": "/local/test"},
+                "software": {"identities": {"kikuchi_lab": {"version": "0.1.0"}}},
+                "hardware": {"adapter": "fixture GPU"},
+            },
+        )
+
+
+def test_final_selection_rejects_predecessor_artifact_checksum_drift(
+    tmp_path: Path,
+) -> None:
+    from kikuchi_lab.orientations.selection import create_orientation_selection
+
+    proof, predecessor_path = selected_proof(tmp_path)
+    predecessor = json.loads(predecessor_path.read_text())
+    successor = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Same selection with a clarified durable record.",
+        selected_on="2026-07-14",
+        output_root=predecessor_path.parent.parent,
+        supersedes=predecessor["selection_id"],
+        supersede_reason="Clarify the selection record.",
+    )
+    predecessor_path.write_text(predecessor_path.read_text() + "\n", encoding="utf-8")
+
+    with pytest.raises(FinalSelectionError, match="predecessor.*checksum|artifact checksum"):
+        validate_final_selection(successor.selection_path, proof_root=proof)
+
+
 def test_render_final_cli_requires_and_forwards_explicit_selection_and_proof_root(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

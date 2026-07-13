@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -243,6 +245,97 @@ def test_gpu_tolerance_accepts_distinct_source_bytes_when_cpu_products_are_exact
     assert comparison.first_run_id != comparison.second_run_id
     assert comparison.first_manifest_identity == comparison.second_manifest_identity
     assert comparison.cpu_processing_comparison == "exact"
+
+
+def test_comparison_rejects_stage_omitted_from_both_inventories_even_if_manifests_match(
+    tmp_path: Path,
+) -> None:
+    proof, selection = selected_proof(tmp_path)
+    rendered = render_final(
+        master=canonical_master(),
+        recipe_path=ROOT / "recipes/gallery/forsterite-final.yml",
+        selection_path=selection,
+        proof_root=proof,
+        output_root=tmp_path / "rendered",
+        profile="development",
+        projector=fixture_projector,
+        execution_context=_context("/private/same"),
+    )
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    shutil.copytree(rendered.path, first)
+    shutil.copytree(rendered.path, second)
+    manifest = json.loads((first / "manifest.json").read_text())
+    omitted = sorted(
+        path
+        for path in manifest["files"]
+        if path.startswith("products/stages/") and path.endswith(".npy")
+    )[0]
+    manifest["files"].pop(omitted)
+    for root in (first, second):
+        (root / "manifest.json").write_text(
+            json.dumps(manifest, sort_keys=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
+    (second / omitted).write_bytes((second / omitted).read_bytes() + b"undeclared drift")
+
+    with pytest.raises(ReproductionMismatch, match="inventory|undeclared|tree|stage"):
+        compare_final_bundles(first, second)
+
+
+def test_comparison_rejects_symlink_or_extra_regular_file_outside_inventory(
+    tmp_path: Path,
+) -> None:
+    proof, selection = selected_proof(tmp_path)
+    rendered = render_final(
+        master=canonical_master(),
+        recipe_path=ROOT / "recipes/gallery/forsterite-final.yml",
+        selection_path=selection,
+        proof_root=proof,
+        output_root=tmp_path / "rendered",
+        profile="development",
+        projector=fixture_projector,
+        execution_context=_context("/private/same"),
+    )
+    (rendered.path / "undeclared.bin").write_bytes(b"extra")
+    with pytest.raises(ReproductionMismatch, match="inventory|undeclared|tree"):
+        compare_final_bundles(rendered.path, rendered.path)
+
+    (rendered.path / "undeclared.bin").unlink()
+    (rendered.path / "unsafe-link").symlink_to("manifest.json")
+    with pytest.raises(ReproductionMismatch, match="symbolic|symlink|unsafe"):
+        compare_final_bundles(rendered.path, rendered.path)
+
+
+def test_comparison_rejects_declared_file_outside_canonical_bundle_schema(
+    tmp_path: Path,
+) -> None:
+    proof, selection = selected_proof(tmp_path)
+    rendered = render_final(
+        master=canonical_master(),
+        recipe_path=ROOT / "recipes/gallery/forsterite-final.yml",
+        selection_path=selection,
+        proof_root=proof,
+        output_root=tmp_path / "rendered",
+        profile="development",
+        projector=fixture_projector,
+        execution_context=_context("/private/same"),
+    )
+    extra = rendered.path / "declared-extra.bin"
+    extra.write_bytes(b"declared but outside schema")
+    manifest_path = rendered.path / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["files"][extra.name] = {
+        "bytes": extra.stat().st_size,
+        "sha256": hashlib.sha256(extra.read_bytes()).hexdigest(),
+    }
+    manifest_path.write_text(
+        json.dumps(manifest, sort_keys=True, separators=(",", ":")),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReproductionMismatch, match="canonical|extra|schema"):
+        compare_final_bundles(rendered.path, rendered.path)
 
 
 def test_reproduce_final_cli_rebuilds_from_recorded_run(

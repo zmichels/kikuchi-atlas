@@ -19,7 +19,13 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def selected_proof(tmp_path: Path) -> tuple[Path, Path]:
+def selected_proof(
+    tmp_path: Path,
+    *,
+    proof_source: dict | None = None,
+    proof_phase: dict | None = None,
+    proof_energy_kev: float = 20.0,
+) -> tuple[Path, Path]:
     run = tmp_path / "proof" / "proof-fixture"
     candidate = {
         "id": "fo-011-phi1-045",
@@ -76,7 +82,7 @@ def selected_proof(tmp_path: Path) -> tuple[Path, Path]:
     comparison = {
         "detector_recipe_id": stable_id("recipe", detector),
         "detector": detector,
-        "energy_kev": 20.0,
+        "energy_kev": proof_energy_kev,
     }
     evidence = {
         "schema_version": 1,
@@ -108,17 +114,37 @@ def selected_proof(tmp_path: Path) -> tuple[Path, Path]:
             "bytes": path.stat().st_size,
             "sha256": _sha256(path),
         }
+    source_contract = proof_source or {
+        "identifier": "COD-9000319",
+        "sha256": "550b8c89c617267d39e7cb6a07fe6f55cd2343453c1c45ec77738bf6fd25d9cd",
+        "source_id": "source-ca21e09f345e7146",
+    }
+    phase_contract = proof_phase or {
+        "name": "forsterite",
+        "formula": "Mg2SiO4",
+        "space_group_number": 62,
+        "space_group_setting": "P n m a",
+        "lattice_angstrom": [10.207, 5.98, 4.756, 90.0, 90.0, 90.0],
+        "lattice_absolute_tolerance": 1e-6,
+    }
+    master_contract = {
+        "schema_version": 1,
+        "source": source_contract,
+        "phase": phase_contract,
+        "simulation": {
+            "requested": {"voltage_kv": proof_energy_kev},
+            "resolved": {"voltage_kv": proof_energy_kev},
+        },
+        "product": {
+            "projection": "Lambert square equal-area",
+            "hemisphere_order": ["north", "south"],
+        },
+    }
     identity = {
         "candidate_order": [candidate["id"]],
         "candidate_set_id": candidate_set_id,
         "comparison_contract": comparison,
-        "master_contract": {
-            "source": {
-                "identifier": "COD-9000319",
-                "sha256": "550b8c89c617267d39e7cb6a07fe6f55cd2343453c1c45ec77738bf6fd25d9cd",
-                "source_id": "source-ca21e09f345e7146",
-            }
-        },
+        "master_contract": master_contract,
     }
     manifest = {
         "schema_version": 3,
@@ -127,7 +153,7 @@ def selected_proof(tmp_path: Path) -> tuple[Path, Path]:
         "identity": identity,
         "candidate_order": [candidate["id"]],
         "candidate_set_id": candidate_set_id,
-        "master_contract": identity["master_contract"],
+        "master_contract": master_contract,
         "files": files,
     }
     _write_json(run / "manifest.json", manifest)
