@@ -31,4 +31,4 @@ stages:
       gamma: 0.9
   - name: downsample
     parameters:
-      shape: [48, 64]
+      shape: detector_native

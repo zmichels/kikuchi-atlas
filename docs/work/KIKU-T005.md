@@ -32,8 +32,8 @@ stages whose parameters and intermediate results remain inspectable.
 ## Accepted Evidence
 
 - `uv run pytest tests/unit/test_processing_stages.py
-  tests/scientific/test_processing_invariants.py -q`: 26 passed.
-- `uv run pytest -m "not slow and not gpu" -q`: 186 passed, 1 deselected.
+  tests/scientific/test_processing_invariants.py -q`: 45 passed.
+- `uv run pytest -m "not slow and not gpu" -q`: 205 passed, 1 deselected.
 - `uv run ruff check src tests`, `uv run python
   scripts/validate_work_items.py`, and `git diff --check`: passed.
 - Deterministic synthetic band, step-edge, constant-field, and Nyquist
@@ -83,3 +83,25 @@ Both use anti-aliased downsampling only after all supersampled processing.
   ceiling. Transfer tests prove an unsharp amount of 1.5 exceeds 2.0x on a
   Nyquist target, while constant and near-zero inputs remain finite and do not
   create false warnings.
+- Frequency diagnostics use a deterministic, anti-aliased analysis view whose
+  longest side is at most 512 pixels, followed by a single-threaded
+  single-precision SciPy real FFT. Records include analysis shape, float32
+  dtype, and `hf-rfft-f32-aa512-v1`; a 700x900 regression proves the bounded
+  398x512 diagnostic view. Full-resolution scientific rendering remains
+  unchanged. Stage inputs are validated without an eager full-array copy and
+  each output receives one immutable owned copy at the result boundary.
+- Presets now declare `shape: detector_native`. Graph execution compiles that
+  symbol against canonical detector metadata before any stage runs. Regressions
+  cover 48x64 at 2x, 30x50 at 3x, and 24x40 at 1x; resolved stage parameters and
+  recipe identities include the concrete final shape.
+- Product identity contains the source projection, resolved computational
+  recipe, geometry, and all intermediate/final content IDs, but excludes
+  advisory thresholds, warning prose, and measured diagnostic values. A
+  separate evidence identity covers those diagnostics. Threshold-only and
+  message-only regressions preserve identical output/product IDs and change
+  evidence IDs.
+- Direct stage calls and YAML loading reject Booleans and numeric strings as
+  numbers, reject strings/bytes as scale or gain sequences, and reject invalid
+  integer shape values before processing. SciPy is now a direct locked
+  dependency because its single-precision FFT is part of the diagnostic
+  evidence contract.

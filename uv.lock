@@ -416,6 +416,7 @@ dependencies = [
     { name = "pycifrw" },
     { name = "pyyaml" },
     { name = "scikit-image" },
+    { name = "scipy" },
     { name = "tifffile" },
 ]
 
@@ -437,6 +438,7 @@ requires-dist = [
     { name = "pycifrw", specifier = ">=5.0,<6" },
     { name = "pyyaml", specifier = ">=6.0,<7" },
     { name = "scikit-image", specifier = ">=0.25,<0.26" },
+    { name = "scipy", specifier = ">=1.15,<2" },
     { name = "tifffile", specifier = ">=2025.6,<2026" },
 ]
 

@@ -1,7 +1,7 @@
 """Inspectable acquisition-look and gallery-look processing."""
 
 from .graph import ProcessingResult, run_graph
-from .presets import ProcessingPreset, load_processing_recipe
+from .presets import ProcessingPreset, load_processing_recipe, resolve_processing_recipe
 from .stages import (
     CLIPPING_FRACTION_WARNING,
     HIGH_FREQUENCY_GAIN_CEILING,
@@ -31,6 +31,7 @@ __all__ = [
     "local_contrast",
     "multiscale_detail",
     "robust_normalize",
+    "resolve_processing_recipe",
     "run_graph",
     "tone_map",
     "unsharp",

@@ -12,6 +12,7 @@ import numpy as np
 from kikuchi_lab.model import DetectorPatternProduct, ProcessingStage
 from kikuchi_lab.model.identity import stable_id
 
+from .presets import ProcessingPreset, resolve_processing_recipe
 from .stages import STAGE_FUNCTIONS, StageResult, image_id
 
 
@@ -27,6 +28,7 @@ class ProcessingResult:
     source_projection_id: str
     processing_recipe_id: str
     product_id: str
+    evidence_id: str
     stages: tuple[StageResult, ...]
     geometry: Mapping[str, Any]
 
@@ -55,11 +57,17 @@ class ProcessingResult:
     def final_intensity(self) -> np.ndarray:
         return self.stages[-1].intensity
 
+    @property
+    def resolved_recipe_id(self) -> str:
+        return self.processing_recipe_id
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "source_projection_id": self.source_projection_id,
             "processing_recipe_id": self.processing_recipe_id,
+            "resolved_recipe_id": self.resolved_recipe_id,
             "product_id": self.product_id,
+            "evidence_id": self.evidence_id,
             "final_image_id": image_id(self.final_intensity),
             "geometry": {
                 key: list(value) if isinstance(value, tuple) else value
@@ -87,13 +95,15 @@ def _geometry(source: DetectorPatternProduct, output: np.ndarray) -> dict[str, A
 
 
 def run_graph(
-    source_projection: DetectorPatternProduct, recipe: ProcessingRecipeLike
+    source_projection: DetectorPatternProduct,
+    recipe: ProcessingPreset | ProcessingRecipeLike,
 ) -> ProcessingResult:
-    if not recipe.stages:
+    resolved_recipe = resolve_processing_recipe(recipe, source_projection)
+    if not resolved_recipe.stages:
         raise ValueError("processing recipe must contain at least one stage")
     current = source_projection.intensity
     results: list[StageResult] = []
-    for stage in recipe.stages:
+    for stage in resolved_recipe.stages:
         try:
             function = STAGE_FUNCTIONS[stage.name]
         except KeyError as exc:
@@ -109,16 +119,24 @@ def run_graph(
         "processed",
         {
             "source_projection_id": source_projection.product_id,
-            "processing_recipe_id": recipe.recipe_id,
+            "processing_recipe_id": resolved_recipe.recipe_id,
             "final_image_id": image_id(current),
-            "stages": [result.record.to_dict() for result in results],
+            "stages": [result.record.computational_dict() for result in results],
             "geometry": geometry,
+        },
+    )
+    evidence_id = stable_id(
+        "evidence",
+        {
+            "product_id": product_id,
+            "stages": [result.record.evidence_dict() for result in results],
         },
     )
     return ProcessingResult(
         source_projection_id=source_projection.product_id,
-        processing_recipe_id=recipe.recipe_id,
+        processing_recipe_id=resolved_recipe.recipe_id,
         product_id=product_id,
+        evidence_id=evidence_id,
         stages=tuple(results),
         geometry=geometry,
     )

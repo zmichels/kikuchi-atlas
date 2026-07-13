@@ -17,6 +17,7 @@ dependencies = [
   "orix>=0.14,<0.15",
   "pycifrw>=5.0,<6",
   "pyyaml>=6.0,<7",
+  "scipy>=1.15,<2",
   "scikit-image>=0.25,<0.26",
   "tifffile>=2025.6,<2026",
 ]

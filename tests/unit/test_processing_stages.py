@@ -141,6 +141,17 @@ def test_frequency_transfer_is_robust_for_constant_and_near_zero_images():
     assert not near_zero.record.warnings
 
 
+def test_frequency_transfer_analysis_is_bounded_on_large_input():
+    source = (np.indices((700, 900)).sum(axis=0) % 2).astype(np.float32)
+    result = unsharp(source, radius_px=1.0, amount=1.5, threshold=0.0)
+
+    analysis_shape = result.record.diagnostics["analysis_shape"]
+    assert max(analysis_shape) <= 512
+    assert analysis_shape == (398, 512)
+    assert result.record.diagnostics["analysis_version"] == "hf-rfft-f32-aa512-v1"
+    assert result.record.diagnostics["analysis_dtype"] == "float32"
+
+
 def test_tone_map_is_monotonic_for_positive_gamma():
     source = np.linspace(-0.2, 1.2, 512, dtype=np.float32).reshape(16, 32)
     result = tone_map(source, black=0.0, white=1.0, gamma=0.8)
@@ -187,4 +198,32 @@ def test_downsample_is_antialiased_and_uses_requested_geometry():
 )
 def test_invalid_stage_parameters_fail_explicitly(call, message):
     with pytest.raises(ValueError, match=message):
+        call(band_image())
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda image: background_divide(image, sigma_px=True, epsilon=1e-6),
+        lambda image: background_divide(image, sigma_px="18.0", epsilon=1e-6),
+        lambda image: robust_normalize(
+            image, low_percentile=False, high_percentile=99.0
+        ),
+        lambda image: local_contrast(
+            image,
+            clip_limit="0.02",
+            kernel_size=(16, 16),
+            input_domain="clip_0_1",
+        ),
+        lambda image: multiscale_detail(image, scales_px="1.0", gains=(0.5,)),
+        lambda image: multiscale_detail(image, scales_px=(1.0,), gains=b"1"),
+        lambda image: multiscale_detail(image, scales_px=(True,), gains=(0.5,)),
+        lambda image: unsharp(image, radius_px=1.0, amount="1.5", threshold=0.0),
+        lambda image: tone_map(image, black=0.0, white=True, gamma=1.0),
+        lambda image: downsample(image, shape="32,40"),
+        lambda image: downsample(image, shape=(True, 40)),
+    ],
+)
+def test_numeric_parameters_reject_bool_strings_and_byte_sequences(call):
+    with pytest.raises((TypeError, ValueError), match="numeric|number|sequence|shape"):
         call(band_image())
