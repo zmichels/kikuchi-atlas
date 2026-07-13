@@ -2,13 +2,14 @@
 id: KIKU-T011
 type: task
 title: Run Production and Visual Acceptance
-status: ready
+status: active
 parent: KIKU-F001
 created: 2026-07-12
 priority: P0
 tags: [gpu, production, visual-acceptance]
 evidence:
   - ../acceptance/forsterite-milestone.md
+  - ../../recipes/production/forsterite-simulation.yml
   - ../../recipes/gallery/forsterite-final.yml
   - ../../local/runs/
 ---
