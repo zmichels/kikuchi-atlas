@@ -39,6 +39,13 @@ and a legible contact sheet for human orientation selection.
 - Current real proof bundle: `../../local/runs/proof-034550efeb6bf89a/`.
 - Real contact sheet:
   `../../local/runs/proof-034550efeb6bf89a/contact-sheet.png`.
+- The authoritative bundle was regenerated from clean revision
+  `31a19566b4b31134437fb0a07ef053a02143274f` on branch
+  `codex/exceptional-forsterite`; `provenance/execution.json` records
+  `dirty=false` and the exact `kikuchi-lab proof` command.
+- The earlier bundle with the same scientific proof ID but dirty execution
+  context is preserved at
+  `../../local/runs/proof-034550efeb6bf89a.superseded-dirty-303e0d0/`.
 - Superseded proof evidence is preserved at
   `../../local/runs/proof-e0fbf70a07913a27/` (before explicit proof-grade and
   processing labels) and `../../local/runs/proof-517f23a016733775/` (Unicode
@@ -52,7 +59,7 @@ master: 257 x 257 Lambert sampling (`halfw=128`), `dmin=0.08 nm`, one 20 keV
 energy bin, rank 8, and 262,144 requested/minimum Monte Carlo trajectories. The
 validated upstream artifact reports convergence after 786,432 trajectories.
 Generation took 532.77 s internally (533.07 s wall time); the 12-candidate proof
-current render took 1.31 s internally. Raw candidate products are
+authoritative clean render took 1.36 s internally. Raw candidate products are
 360 x 480 float32 and processed products are 180 x 240 float32. The paired,
 labeled contact sheet is 1484 x 1026 uint8 and the proof bundle contains 92
 inventoried evidence files (21 MB locally).
