@@ -1,0 +1,91 @@
+schema_version: 1
+name: forsterite-selected-final
+intent: Reproduce the selected forsterite geometry with restrained acquisition clarity and a deliberately crisp gallery branch.
+quality_contract:
+  final_minimum_long_edge_px: 2048
+  final_profile: production-target
+  development_profile: selected-proof-geometry
+source_contract:
+  identifier: COD-9000319
+  source_id: source-ca21e09f345e7146
+  sha256: 550b8c89c617267d39e7cb6a07fe6f55cd2343453c1c45ec77738bf6fd25d9cd
+  phase:
+    name: forsterite
+    formula: Mg2SiO4
+    space_group_number: 62
+    space_group_setting: P n m a
+energy_kev: 20.0
+final_detector:
+  shape: [1536, 2048]
+  pcx: 0.50
+  pcy: 0.72
+  pcz: 0.60
+  pc_convention: tsl
+  sample_tilt_deg: 70.0
+  detector_tilt_deg: 0.0
+  detector_azimuth_deg: 0.0
+  detector_twist_deg: 0.0
+  pixel_size_um: 5.859375
+  binning: 1
+  supersampling: 2
+processing:
+  pixel_parameter_scaling: linear-from-reference-shape
+  reference_native_shape: [180, 240]
+  reference_supersampled_shape: [360, 480]
+  acquisition:
+    name: background_divide
+    parameters:
+      sigma_px: 18.0
+      epsilon: 0.000001
+  scientific:
+    - name: downsample
+      parameters:
+        shape: detector_native
+    - name: robust_normalize
+      parameters:
+        low_percentile: 0.75
+        high_percentile: 99.25
+    - name: local_contrast
+      parameters:
+        clip_limit: 0.006
+        kernel_size: [24, 24]
+        input_domain: clip_0_1
+    - name: tone_map
+      parameters:
+        black: 0.0
+        white: 1.0
+        gamma: 1.0
+  gallery:
+    - name: downsample
+      parameters:
+        shape: detector_native
+    - name: robust_normalize
+      parameters:
+        low_percentile: 0.5
+        high_percentile: 99.5
+    - name: local_contrast
+      parameters:
+        clip_limit: 0.008
+        kernel_size: [28, 28]
+        input_domain: clip_0_1
+    - name: multiscale_detail
+      parameters:
+        scales_px: [1.2, 3.5]
+        gains: [0.12, 0.04]
+    - name: unsharp
+      parameters:
+        radius_px: 1.2
+        amount: 0.18
+        threshold: 0.012
+    - name: tone_map
+      parameters:
+        black: 0.0
+        white: 1.0
+        gamma: 0.96
+clarity:
+  reference_role: descriptive-only-not-calibrated-truth
+  line_overlays: false
+  suppress_proof_speckle: true
+  smooth_band_interiors: true
+  coherent_detail: restrained
+  node_emphasis: restrained

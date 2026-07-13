@@ -303,9 +303,10 @@ def _validate(request: ArtifactBundleRequest) -> None:
         raise TypeError("all image products must be FloatProduct values")
     if any(any(axis < 2 for axis in product.intensity.shape) for product in products):
         raise ValueError("every FloatProduct axis must contain at least 2 pixels")
-    shapes = {product.intensity.shape for product in products}
-    if len(shapes) != 1:
-        raise ValueError("all bundle float products must share one detector shape")
+    if request.projected.intensity.shape != request.acquisition_corrected.intensity.shape:
+        raise ValueError("acquisition correction must preserve the supersampled projection shape")
+    if request.scientific_clean.intensity.shape != request.gallery_crisp.intensity.shape:
+        raise ValueError("scientific and gallery products must share one final detector shape")
     _required_text(request.source, "source_id", "source")
     _required_sha256(request.source, "sha256", "source")
     _required_text(request.master_metadata, "product_id", "master metadata")
@@ -519,12 +520,12 @@ def _write_contents(root: Path, request: ArtifactBundleRequest, run_id: str) -> 
 
     quantizations: dict[str, Any] = {}
     _write_product(
-        root, "products/projected", request.projected, label="projected", export_images=False,
+        root, "products/projected", request.projected, label="projected", export_images=True,
         quantizations=quantizations,
     )
     _write_product(
         root, "products/acquisition-corrected", request.acquisition_corrected,
-        label="acquisition-corrected", export_images=False, quantizations=quantizations,
+        label="acquisition-corrected", export_images=True, quantizations=quantizations,
     )
     for name, product in sorted(request.stages.items()):
         _write_product(
@@ -568,7 +569,10 @@ def _write_contents(root: Path, request: ArtifactBundleRequest, run_id: str) -> 
         "files": files,
         "uint16_exports": quantizations,
         "products": {
-            "projected": {"product_id": request.projected.product_id},
+            "projected": {
+                "product_id": request.projected.product_id,
+                "role": "single_immutable_supersampled_projection",
+            },
             "acquisition_corrected": {
                 "product_id": request.acquisition_corrected.product_id,
                 "role": "background_model_corrected_before_aesthetic_processing",

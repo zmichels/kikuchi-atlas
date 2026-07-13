@@ -161,7 +161,11 @@ def test_bundle_writes_complete_canonical_inventory_and_image_formats(tmp_path: 
         "metadata/orientation-candidates.json",
         "metadata/processing-lineage.json",
         "products/projected.npy",
+        "products/projected.tif",
+        "products/projected.png",
         "products/acquisition-corrected.npy",
+        "products/acquisition-corrected.tif",
+        "products/acquisition-corrected.png",
         "products/stages/normalize.npy",
         "products/stages/normalize.tif",
         "products/scientific-clean.npy",
@@ -197,12 +201,19 @@ def test_bundle_writes_complete_canonical_inventory_and_image_formats(tmp_path: 
     assert result.manifest_sha256 == _sha256(manifest_path)
 
     for relative in (
+        "products/projected.tif",
+        "products/acquisition-corrected.tif",
         "products/stages/normalize.tif",
         "products/scientific-clean.tif",
         "products/gallery-crisp.tif",
     ):
         assert tifffile.imread(bundle / relative).dtype == np.uint16
-    for relative in ("products/scientific-clean.png", "products/gallery-crisp.png"):
+    for relative in (
+        "products/projected.png",
+        "products/acquisition-corrected.png",
+        "products/scientific-clean.png",
+        "products/gallery-crisp.png",
+    ):
         assert iio.imread(bundle / relative).dtype == np.uint16
     assert iio.imread(bundle / "products/preview.png").dtype == np.uint8
 
@@ -223,6 +234,9 @@ def test_bundle_writes_complete_canonical_inventory_and_image_formats(tmp_path: 
         }
     assert manifest["products"]["acquisition_corrected"]["role"] == (
         "background_model_corrected_before_aesthetic_processing"
+    )
+    assert manifest["products"]["projected"]["role"] == (
+        "single_immutable_supersampled_projection"
     )
     assert manifest["run_identity_schema"]["schema_version"] == 3
     assert stable_id("run", manifest["run_identity"]) == result.run_id

@@ -48,6 +48,32 @@ def main(argv: Sequence[str] | None = None) -> int:
     select_orientation.add_argument("--output", required=True)
     select_orientation.add_argument("--supersedes")
     select_orientation.add_argument("--supersede-reason")
+    render_final_parser = subparsers.add_parser(
+        "render-final",
+        help="Render a verified current orientation selection into final products.",
+    )
+    render_final_parser.add_argument("--recipe", required=True)
+    render_final_parser.add_argument("--selection", required=True)
+    render_final_parser.add_argument("--proof-root", required=True)
+    render_final_parser.add_argument("--master-product", required=True)
+    render_final_parser.add_argument("--output", required=True)
+    render_final_parser.add_argument(
+        "--profile", choices=("final", "development"), default="final"
+    )
+    reproduce_final_parser = subparsers.add_parser(
+        "reproduce-final",
+        help="Rebuild a final run from its manifest recipe snapshot.",
+    )
+    reproduce_final_parser.add_argument("--run", required=True)
+    reproduce_final_parser.add_argument("--selection", required=True)
+    reproduce_final_parser.add_argument("--proof-root", required=True)
+    reproduce_final_parser.add_argument("--master-product", required=True)
+    reproduce_final_parser.add_argument("--output", required=True)
+    reproduce_final_parser.add_argument(
+        "--source-mode", choices=("exact", "gpu-tolerant"), default="exact"
+    )
+    reproduce_final_parser.add_argument("--source-atol", type=float, default=0.0)
+    reproduce_final_parser.add_argument("--source-rtol", type=float, default=0.0)
     args = parser.parse_args(arguments)
 
     if args.command == "version":
@@ -153,6 +179,73 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "selection_id": result.selection_id,
                     "path": str(result.path),
                     "selection": str(result.selection_path),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "render-final":
+        from kikuchi_lab.model import load_master_product
+        from kikuchi_lab.workflows import render_final
+
+        try:
+            result = render_final(
+                master=load_master_product(args.master_product),
+                recipe_path=args.recipe,
+                selection_path=args.selection,
+                proof_root=args.proof_root,
+                output_root=args.output,
+                profile=args.profile,
+            )
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            print(f"kikuchi-lab: final render failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "path": str(result.path),
+                    "profile": result.profile,
+                    "selection_id": result.selection_id,
+                    "not_final_quality": result.not_final_quality,
+                    "elapsed_seconds": result.elapsed_seconds,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "reproduce-final":
+        from kikuchi_lab.model import load_master_product
+        from kikuchi_lab.workflows import reproduce_final
+
+        try:
+            result = reproduce_final(
+                original_run=args.run,
+                master=load_master_product(args.master_product),
+                selection_path=args.selection,
+                proof_root=args.proof_root,
+                output_root=args.output,
+                source_mode=args.source_mode,
+                source_atol=args.source_atol,
+                source_rtol=args.source_rtol,
+            )
+        except (OSError, ValueError, RuntimeError, AssertionError) as error:
+            print(f"kikuchi-lab: final reproduction failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "reproduced": result.comparison.equal,
+                    "run_id": result.run.run_id,
+                    "path": str(result.run.path),
+                    "source_comparison": result.comparison.source_comparison,
+                    "cpu_processing_comparison": result.comparison.cpu_processing_comparison,
+                    "first_manifest_identity": result.comparison.first_manifest_identity,
+                    "second_manifest_identity": result.comparison.second_manifest_identity,
                 },
                 indent=2,
                 sort_keys=True,

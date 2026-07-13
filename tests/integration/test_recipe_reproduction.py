@@ -1,0 +1,222 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from kikuchi_lab.cli.main import main
+from kikuchi_lab.workflows.final import (
+    ReproductionMismatch,
+    compare_final_bundles,
+    render_final,
+    reproduce_final,
+)
+from ..final_fixtures import canonical_master, fixture_projector, selected_proof
+
+
+ROOT = Path(__file__).parents[2]
+
+
+def _context(cwd: str) -> dict:
+    return {
+        "environment": {"python": "3.12", "cwd": cwd},
+        "software": {
+            "identities": {
+                "kikuchi_lab": {"version": "0.1.0"},
+                "ebsdsim": {"version": "0.1.8"},
+                "kikuchipy": {"version": "0.13.0"},
+            }
+        },
+        "hardware": {"adapter": "fixture GPU"},
+    }
+
+
+def test_identical_source_recipe_and_selection_reproduce_exact_bundle_products(
+    tmp_path: Path,
+) -> None:
+    proof, selection = selected_proof(tmp_path)
+    kwargs = {
+        "master": canonical_master(),
+        "recipe_path": ROOT / "recipes/gallery/forsterite-final.yml",
+        "selection_path": selection,
+        "proof_root": proof,
+        "profile": "development",
+        "projector": fixture_projector,
+    }
+    first = render_final(
+        **kwargs,
+        output_root=tmp_path / "first",
+        execution_context=_context("/private/first"),
+    )
+    second = render_final(
+        **kwargs,
+        output_root=tmp_path / "second",
+        execution_context=_context("/private/second"),
+    )
+
+    comparison = compare_final_bundles(first.path, second.path)
+    assert comparison.equal is True
+    assert comparison.source_comparison == "exact"
+    assert comparison.cpu_processing_comparison == "exact"
+    assert comparison.first_run_id == comparison.second_run_id == first.run_id == second.run_id
+    assert comparison.first_manifest_identity == comparison.second_manifest_identity
+
+    first_manifest = json.loads((first.path / "manifest.json").read_text())
+    second_manifest = json.loads((second.path / "manifest.json").read_text())
+    assert first_manifest["run_identity"] == second_manifest["run_identity"]
+    for relative in (
+        "products/projected.npy",
+        "products/acquisition-corrected.npy",
+        "products/scientific-clean.npy",
+        "products/gallery-crisp.npy",
+    ):
+        np.testing.assert_array_equal(np.load(first.path / relative), np.load(second.path / relative))
+    for relative in sorted(first_manifest["uint16_exports"]):
+        assert (first.path / relative).read_bytes() == (second.path / relative).read_bytes()
+
+
+def test_reproduction_rebuilds_from_manifest_snapshot_without_original_recipe_path(
+    tmp_path: Path,
+) -> None:
+    proof, selection = selected_proof(tmp_path)
+    original = render_final(
+        master=canonical_master(),
+        recipe_path=ROOT / "recipes/gallery/forsterite-final.yml",
+        selection_path=selection,
+        proof_root=proof,
+        output_root=tmp_path / "original",
+        profile="development",
+        projector=fixture_projector,
+        execution_context=_context("/private/original"),
+    )
+
+    reproduction = reproduce_final(
+        original_run=original.path,
+        master=canonical_master(),
+        selection_path=selection,
+        proof_root=proof,
+        output_root=tmp_path / "reproduced",
+        projector=fixture_projector,
+        execution_context=_context("/private/reproduced"),
+    )
+
+    assert reproduction.run.run_id == original.run_id
+    assert reproduction.comparison.equal is True
+    assert reproduction.comparison.first_manifest_identity == (
+        reproduction.comparison.second_manifest_identity
+    )
+
+
+def test_gpu_tolerance_is_explicit_and_never_weakens_cpu_processing_checks(
+    tmp_path: Path,
+) -> None:
+    proof, selection = selected_proof(tmp_path)
+    common = {
+        "master": canonical_master(),
+        "recipe_path": ROOT / "recipes/gallery/forsterite-final.yml",
+        "selection_path": selection,
+        "proof_root": proof,
+        "profile": "development",
+        "execution_context": _context("/private/same"),
+    }
+    exact = render_final(
+        **common,
+        output_root=tmp_path / "exact",
+        projector=fixture_projector,
+    )
+    tolerant_exact = compare_final_bundles(
+        exact.path,
+        exact.path,
+        source_mode="gpu-tolerant",
+        source_atol=1e-5,
+        source_rtol=1e-6,
+    )
+    assert tolerant_exact.equal is True
+    assert tolerant_exact.source_comparison == "gpu-tolerant"
+    assert tolerant_exact.cpu_processing_comparison == "exact"
+
+    def perturbed_projector(**kwargs):
+        product = fixture_projector(**kwargs)
+        changed = np.array(product.intensity, copy=True)
+        changed[0, 0] += np.float32(5e-6)
+        from kikuchi_lab.model import DetectorPatternProduct
+
+        metadata = product.metadata_dict()
+        metadata.pop("array")
+
+        return DetectorPatternProduct.from_array(
+            changed,
+            master_product_id=product.master_product_id,
+            projection_recipe_id=product.projection_recipe_id,
+            metadata=metadata,
+        )
+
+    perturbed = render_final(
+        **common,
+        output_root=tmp_path / "perturbed",
+        projector=perturbed_projector,
+    )
+    with pytest.raises(ReproductionMismatch, match="CPU processing.*exact"):
+        compare_final_bundles(
+            exact.path,
+            perturbed.path,
+            source_mode="gpu-tolerant",
+            source_atol=1e-5,
+            source_rtol=1e-6,
+        )
+
+
+def test_reproduce_final_cli_rebuilds_from_recorded_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from types import SimpleNamespace
+
+    import kikuchi_lab.model as model_module
+    import kikuchi_lab.workflows as workflow_module
+
+    observed = {}
+    monkeypatch.setattr(model_module, "load_master_product", lambda path: object())
+
+    def fake_reproduce_final(**kwargs):
+        observed.update(kwargs)
+        return SimpleNamespace(
+            run=SimpleNamespace(
+                run_id="run-0123456789abcdef",
+                path=tmp_path / "run-0123456789abcdef",
+            ),
+            comparison=SimpleNamespace(
+                equal=True,
+                source_comparison="exact",
+                cpu_processing_comparison="exact",
+                first_manifest_identity="manifest-comparison-a",
+                second_manifest_identity="manifest-comparison-a",
+            ),
+        )
+
+    monkeypatch.setattr(workflow_module, "reproduce_final", fake_reproduce_final)
+    status = main(
+        [
+            "reproduce-final",
+            "--run",
+            "local/runs/run-original",
+            "--selection",
+            "local/decisions/example/selection.json",
+            "--proof-root",
+            "local/runs/proof-example",
+            "--master-product",
+            "local/master.npz",
+            "--output",
+            "local/reproductions",
+        ]
+    )
+
+    assert status == 0
+    assert observed["original_run"] == "local/runs/run-original"
+    assert observed["proof_root"] == "local/runs/proof-example"
+    report = json.loads(capsys.readouterr().out)
+    assert report["reproduced"] is True
+    assert report["cpu_processing_comparison"] == "exact"
