@@ -1,0 +1,105 @@
+schema_version: 1
+catalog_id: local-aesthetic-clarity-2026-07-13
+purpose: >-
+  Local visual references for a clarity-forward gallery treatment. These are
+  qualitative aesthetic evidence, not calibrated EBSD intensity standards or
+  quantitative regression truth.
+redistribution: not-cleared
+tracked_copies: false
+references:
+  - id: kappel-193-arsenopyrite
+    local_path: /Users/Z/Downloads/Kappel_193_Arsenopyrite.bmp
+    sha256: 072613e437e61a616f690af1c922449569e6098ff4ddc9098f1d4cf01b76f90d
+    media_type: image/bmp
+    dimensions_px: [800, 600]
+    bit_depth: 8
+    phase_label_from_filename: arsenopyrite
+    source_and_license: unknown
+    observed_traits:
+      - luminous continuous bands with soft interiors
+      - bright but non-geometric zone-axis nodes
+      - strong large-scale hierarchy with restrained pixel-scale texture
+      - acquisition-like blur retained rather than aggressively sharpened
+    normalized_diagnostic_snapshot:
+      gradient_p95: 0.1039
+      radial_frequency_energy: {low: 0.9589, mid: 0.0169, high: 0.0242}
+
+  - id: circular-kikuchi-map
+    local_path: /Users/Z/Desktop/kikuchi_1.jpeg
+    sha256: 285c2af29fd31b32ac7aea660ca53261a62753d981535c1ccb9c1d157f1899da
+    media_type: image/jpeg
+    dimensions_px: [225, 225]
+    bit_depth: 8
+    source_and_license: unknown
+    observed_traits:
+      - high simultaneous band-trace legibility
+      - circular whole-map composition
+      - crisp geometric organization without isolated edge fragments
+      - useful future spherical-map and print reference
+    normalized_diagnostic_snapshot:
+      gradient_p95: 0.2841
+      radial_frequency_energy: {low: 0.8098, mid: 0.1322, high: 0.0580}
+
+  - id: triangular-zone-axis-clarity
+    local_path: /Users/Z/Desktop/kikuchi_2.jpeg
+    sha256: 38c83bb4d363e252eb0060a37727ab8c82d52691b6871722b320e9cced5f53b9
+    media_type: image/jpeg
+    dimensions_px: [265, 190]
+    bit_depth: 8
+    source_and_license: unknown
+    observed_traits:
+      - exceptionally clean triangular band hierarchy
+      - smooth broad bands with localized bright nodes
+      - low high-frequency energy despite apparent crispness
+      - strong example of clarity through scale separation rather than texture
+    normalized_diagnostic_snapshot:
+      gradient_p95: 0.1458
+      radial_frequency_energy: {low: 0.9654, mid: 0.0314, high: 0.0033}
+
+  - id: dense-crossing-clarity
+    local_path: /Users/Z/Desktop/kikuchi_3.jpeg
+    sha256: 8810a4c69b5c36238e416941080ff630d9deac7ed47246c575af96f297981f59
+    media_type: image/jpeg
+    dimensions_px: [236, 214]
+    bit_depth: 8
+    source_and_license: unknown
+    observed_traits:
+      - dense crossings remain readable through tonal grouping
+      - bright narrow bands sit over a softer structural background
+      - zone-axis center remains prominent without becoming a flat white disc
+    normalized_diagnostic_snapshot:
+      gradient_p95: 0.2084
+      radial_frequency_energy: {low: 0.8885, mid: 0.0958, high: 0.0157}
+
+  - id: skm-tetragonal-stl
+    local_path: >-
+      /Users/Z/Desktop/FlashForge/models/Spherical Kikuchi map -
+      1109816/files/SKM_tetragonal.STL
+    sha256: 0455dfa8b05be79641acc4e344ea1b00df3d87a769eca2237343b424867848a3
+    media_type: model/stl
+    bytes: 2890084
+    source_and_license: unknown
+    mesh_snapshot:
+      encoding: binary-stl
+      header: solid SKM tetragonal
+      triangles: 57800
+      degenerate_triangles: 0
+      bounds_min: [0.87319, 0.75000, 0.82642]
+      bounds_max: [150.68918, 150.75000, 150.67358]
+      extent: [149.81599, 150.00000, 149.84717]
+      approximate_radial_range: [69.85730, 75.03113]
+      units: assumed_mm_from_print_context_not_verified
+    observed_traits:
+      - spherical band organization is carried by continuous low-relief geometry
+      - relief is modest relative to the approximately 150-unit diameter
+      - useful future topology and print-readability evidence, not milestone-one input
+
+comparison_notes:
+  normalization: independent 0.5_to_99.5_percentile_clip_to_0_1
+  diagnostic_version: radial-rfft-f32-native-tiles512-v2
+  interpretation: >-
+    The numerical snapshots describe these particular low-resolution files and
+    their compression/resampling history. They are descriptive observations,
+    not hard thresholds and not directly comparable to calibrated raw EBSD
+    intensities.
+
