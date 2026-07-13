@@ -36,6 +36,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     proof.add_argument("--master-product", required=True)
     proof.add_argument("--source", required=True)
     proof.add_argument("--output", required=True)
+    select_orientation = subparsers.add_parser(
+        "select-orientation",
+        help="Record an immutable human orientation decision for a sealed proof.",
+    )
+    select_orientation.add_argument("--run", required=True)
+    select_orientation.add_argument("--candidate", required=True)
+    select_orientation.add_argument("--author", required=True)
+    select_orientation.add_argument("--rationale", required=True)
+    select_orientation.add_argument("--selected-on", required=True)
+    select_orientation.add_argument("--output", required=True)
+    select_orientation.add_argument("--supersedes")
+    select_orientation.add_argument("--supersede-reason")
     args = parser.parse_args(arguments)
 
     if args.command == "version":
@@ -108,6 +120,39 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "contact_sheet": str(result.contact_sheet),
                     "candidate_count": len(result.candidate_ids),
                     "elapsed_seconds": result.elapsed_seconds,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "select-orientation":
+        from kikuchi_lab.orientations.selection import (
+            OrientationSelectionError,
+            create_orientation_selection,
+        )
+
+        try:
+            result = create_orientation_selection(
+                run=args.run,
+                candidate_id=args.candidate,
+                author=args.author,
+                rationale=args.rationale,
+                selected_on=args.selected_on,
+                output_root=args.output,
+                supersedes=args.supersedes,
+                supersede_reason=args.supersede_reason,
+            )
+        except (OSError, OrientationSelectionError) as error:
+            print(f"kikuchi-lab: selection failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "selection_id": result.selection_id,
+                    "path": str(result.path),
+                    "selection": str(result.selection_path),
                 },
                 indent=2,
                 sort_keys=True,
