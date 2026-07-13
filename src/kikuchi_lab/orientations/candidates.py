@@ -19,6 +19,15 @@ from kikuchi_lab.model.identity import plain_data
 
 _CANDIDATE_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)+$")
 _SUPPORTED_POINT_GROUP = "mmm"
+SUPPORTED_ORIENTATION_CONVENTION = (
+    "active crystal-to-sample Bunge ZXZ Euler angles in degrees; "
+    "sample axes are EDAX-TSL [RD, TD, ND]"
+)
+SUPPORTED_PHI1_SEMANTICS = (
+    "bunge_phi1_deg is the explicit first Bunge Euler angle; it is a reproducible "
+    "in-plane composition choice, not an absolute roll measured from a zone-axis "
+    "alignment reference"
+)
 
 
 def _required_text(value: Any, field: str) -> str:
@@ -27,8 +36,8 @@ def _required_text(value: Any, field: str) -> str:
     return value
 
 
-def _zone_axis_label(hkl: tuple[int, int, int]) -> str:
-    return "[" + "".join(str(index) for index in hkl) + "]"
+def _zone_axis_label(uvw: tuple[int, int, int]) -> str:
+    return "[" + "".join(str(index) for index in uvw) + "]"
 
 
 @dataclass(frozen=True)
@@ -38,7 +47,8 @@ class OrientationCandidate:
     candidate_id: str
     name: str
     orientation: Orientation
-    zone_axis_hkl: tuple[int, int, int]
+    bunge_phi1_deg: float
+    zone_axis_uvw: tuple[int, int, int]
     zone_axis_intent: str
     composition_intent: str
 
@@ -52,25 +62,32 @@ class OrientationCandidate:
                 "candidate Euler angles must use canonical Bunge ranges "
                 "[0, 360), [0, 180], [0, 360) degrees"
             )
-        hkl = tuple(self.zone_axis_hkl)
-        if len(hkl) != 3 or any(isinstance(index, bool) or int(index) != index for index in hkl):
-            raise ValueError("zone_axis_hkl must contain three integer indices")
-        if not any(hkl):
-            raise ValueError("zone_axis_hkl cannot be [000]")
-        object.__setattr__(self, "zone_axis_hkl", tuple(int(index) for index in hkl))
+        declared_phi1 = float(self.bunge_phi1_deg)
+        if not math.isfinite(declared_phi1) or declared_phi1 != phi1:
+            raise ValueError("bunge_phi1_deg must exactly match the first Bunge Euler angle")
+        object.__setattr__(self, "bunge_phi1_deg", declared_phi1)
+        uvw = tuple(self.zone_axis_uvw)
+        if len(uvw) != 3 or any(
+            isinstance(index, bool) or int(index) != index for index in uvw
+        ):
+            raise ValueError("zone_axis_uvw must contain three integer direct-lattice indices")
+        if not any(uvw):
+            raise ValueError("zone_axis_uvw cannot be [000]")
+        object.__setattr__(self, "zone_axis_uvw", tuple(int(index) for index in uvw))
         _required_text(self.zone_axis_intent, "zone_axis_intent")
         _required_text(self.composition_intent, "composition_intent")
 
     @property
     def zone_axis_label(self) -> str:
-        return _zone_axis_label(self.zone_axis_hkl)
+        return _zone_axis_label(self.zone_axis_uvw)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.candidate_id,
             "name": self.name,
             "orientation": self.orientation.to_dict(),
-            "zone_axis_hkl": list(self.zone_axis_hkl),
+            "bunge_phi1_deg": self.bunge_phi1_deg,
+            "zone_axis_uvw": list(self.zone_axis_uvw),
             "zone_axis_label": self.zone_axis_label,
             "zone_axis_intent": self.zone_axis_intent,
             "composition_intent": self.composition_intent,
@@ -86,6 +103,7 @@ class OrientationCandidateSet:
     space_group: str
     point_group: str
     orientation_convention: str
+    phi1_semantics: str
     equivalence_tolerance_deg: float
     generation_rationale: str
     exhaustive: bool
@@ -99,6 +117,15 @@ class OrientationCandidateSet:
             _required_text(getattr(self, name), name)
         if self.point_group != _SUPPORTED_POINT_GROUP:
             raise ValueError("candidate reduction currently supports point group 'mmm'")
+        if self.orientation_convention != SUPPORTED_ORIENTATION_CONVENTION:
+            raise ValueError(
+                "orientation_convention must exactly match the supported active "
+                "crystal-to-sample Bunge-degree convention"
+            )
+        if self.phi1_semantics != SUPPORTED_PHI1_SEMANTICS:
+            raise ValueError("phi1_semantics must exactly match the supported Bunge phi1 meaning")
+        if type(self.exhaustive) is not bool or self.exhaustive:
+            raise ValueError("schema v1 bounded proof-set exhaustive must be false")
         lattice = tuple(float(value) for value in self.lattice_abc_angstrom)
         if len(lattice) != 3 or any(not math.isfinite(value) or value <= 0 for value in lattice):
             raise ValueError("lattice_abc_angstrom must contain three finite positive lengths")
@@ -124,6 +151,7 @@ class OrientationCandidateSet:
             "space_group": self.space_group,
             "point_group": self.point_group,
             "orientation_convention": self.orientation_convention,
+            "phi1_semantics": self.phi1_semantics,
             "equivalence_tolerance_deg": self.equivalence_tolerance_deg,
             "generation_rationale": self.generation_rationale,
             "exhaustive": self.exhaustive,
@@ -204,7 +232,7 @@ def zone_axis_sample_misalignment_deg(
     lattice = np.asarray(lattice_abc_angstrom, dtype=float)
     if lattice.shape != (3,) or not np.isfinite(lattice).all() or np.any(lattice <= 0):
         raise ValueError("lattice_abc_angstrom must contain three finite positive lengths")
-    crystal_direction = np.asarray(candidate.zone_axis_hkl, dtype=float) * lattice
+    crystal_direction = np.asarray(candidate.zone_axis_uvw, dtype=float) * lattice
     crystal_direction /= np.linalg.norm(crystal_direction)
     active = Rotation.from_euler(
         candidate.orientation.euler_bunge_deg,
@@ -220,14 +248,15 @@ def _candidate_from_data(data: Mapping[str, Any]) -> OrientationCandidate:
     eulers = data.get("euler_bunge_deg")
     if not isinstance(eulers, list):
         raise ValueError("candidate euler_bunge_deg must be a list")
-    hkl = data.get("zone_axis_hkl")
-    if not isinstance(hkl, list):
-        raise ValueError("candidate zone_axis_hkl must be a list")
+    uvw = data.get("zone_axis_uvw")
+    if not isinstance(uvw, list):
+        raise ValueError("candidate zone_axis_uvw must be a list")
     return OrientationCandidate(
         candidate_id=_required_text(data.get("id"), "candidate id"),
         name=_required_text(data.get("name"), "candidate name"),
         orientation=Orientation(tuple(eulers)),
-        zone_axis_hkl=tuple(hkl),
+        bunge_phi1_deg=data.get("bunge_phi1_deg"),
+        zone_axis_uvw=tuple(uvw),
         zone_axis_intent=_required_text(data.get("zone_axis_intent"), "zone_axis_intent"),
         composition_intent=_required_text(data.get("composition_intent"), "composition_intent"),
     )
@@ -251,6 +280,7 @@ def load_candidate_set(path: str | Path) -> OrientationCandidateSet:
         orientation_convention=_required_text(
             data.get("orientation_convention"), "orientation_convention"
         ),
+        phi1_semantics=_required_text(data.get("phi1_semantics"), "phi1_semantics"),
         equivalence_tolerance_deg=data.get("equivalence_tolerance_deg"),
         generation_rationale=_required_text(
             data.get("generation_rationale"), "generation_rationale"

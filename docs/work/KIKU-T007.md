@@ -30,12 +30,14 @@ proof comparison without redundant symmetry equivalents.
 
 The twelve-candidate recipe is
 [forsterite-candidates.yml](../../recipes/proof/forsterite-candidates.yml),
-identified as `candidate-set-bf329b87e5427ecd`. The reduction convention,
+identified as `candidate-set-d2b48bceb4edcb63`. The reduction convention,
 `0.01` degree tolerance, bounded generation rationale, and non-exhaustive
 scope are accepted in
 [ADR 0002](../decisions/0002-forsterite-proof-candidate-set.md).
 
 `tests/scientific/test_orientation_candidates.py` proves deterministic IDs
-and order, canonical active Bunge angles, metric-aware zone-axis alignment,
-fixed-sample `mmm` disorientation, and stable serialization. All 66 pairs are
-distinct; the minimum disorientation is approximately `24.0515` degrees.
+and order, the exact active Bunge-degree convention, direct-lattice `[uvw]`
+semantics, explicit `phi1` metadata, metric-aware zone-axis alignment,
+literal-false bounded scope, fixed-sample `mmm` disorientation, and stable
+serialization. All 66 pairs are distinct; the minimum disorientation is
+approximately `24.0515` degrees.
