@@ -7,7 +7,13 @@ from pathlib import Path
 import imageio.v3 as iio
 import numpy as np
 
-from kikuchi_lab.model import DetectorPatternProduct, MasterPatternProduct, SourceRecord
+from kikuchi_lab.model import (
+    DetectorPatternProduct,
+    MasterPatternProduct,
+    SourceRecord,
+    save_master_product,
+    stable_id,
+)
 from kikuchi_lab.model.identity import canonical_json
 from kikuchi_lab.workflows.proof import render_proof
 
@@ -15,11 +21,11 @@ from kikuchi_lab.workflows.proof import render_proof
 ROOT = Path(__file__).parents[2]
 
 
-def _canonical_master() -> MasterPatternProduct:
+def _canonical_master(source_sha256: str = "1" * 64) -> MasterPatternProduct:
     y, x = np.mgrid[-1:1:33j, -1:1:33j]
     source = SourceRecord(
         uri="https://example.invalid/forsterite.cif",
-        sha256="1" * 64,
+        sha256=source_sha256,
         license="CC0-1.0",
         citation="Deterministic proof-workflow fixture.",
     )
@@ -87,7 +93,7 @@ def _fixture_projector(*, master, orientation, detector, energy_kev):
 
 
 def _contains_decision_key(value: object) -> bool:
-    forbidden = {"selected_candidate_id", "winner", "ranking", "rank", "score"}
+    forbidden = {"selected_candidate_id", "winner", "ranking", "score"}
     if isinstance(value, dict):
         return bool(forbidden.intersection(value)) or any(
             _contains_decision_key(item) for item in value.values()
@@ -98,17 +104,72 @@ def _contains_decision_key(value: object) -> bool:
 
 
 def test_proof_renders_every_candidate_under_one_comparison_contract(tmp_path: Path) -> None:
+    source_path = tmp_path / "source" / "forsterite.cif"
+    source_path.parent.mkdir()
+    source_path.write_bytes(b"deterministic-forsterite-source")
+    source_sha256 = hashlib.sha256(source_path.read_bytes()).hexdigest()
+    master = _canonical_master(source_sha256)
+    master_bundle = tmp_path / "master.bundle"
+    master_path = save_master_product(master_bundle / "master-product.npz", master)
+    master_manifest = master_bundle / "master.manifest.json"
+    master_manifest.write_text(
+        canonical_json({"master_product_id": master.product_id, "schema_version": 1})
+    )
+    execution_context = {
+        "software": {
+            "kikuchi-lab": "0.1.0",
+            "kikuchipy": "0.13.0",
+            "scikit-image": "0.25.2",
+            "numpy": "2.4.6",
+            "orix": "0.14.1",
+            "pillow": "12.3.0",
+            "ebsdsim": "0.1.8",
+            "wgpu": "0.31.1",
+        },
+        "doctor": {
+            "ok": True,
+            "checks": {
+                "webgpu_adapter": {
+                    "ok": True,
+                    "observed": "fixture-adapter",
+                    "details": {"backend_type": "TestBackend", "device": "Fixture GPU"},
+                }
+            },
+        },
+        "git": {
+            "branch": "codex/test",
+            "revision": "a" * 40,
+            "dirty": False,
+        },
+    }
+    invocation = [
+        "kikuchi-lab",
+        "proof",
+        "--recipe",
+        "recipes/proof/forsterite-proof.yml",
+    ]
     first = render_proof(
-        master=_canonical_master(),
+        master=master,
         recipe_path=ROOT / "recipes/proof/forsterite-proof.yml",
         output_root=tmp_path / "first",
         projector=_fixture_projector,
+        execution_context=execution_context,
+        invocation=invocation,
+        master_locator=master_path,
+        source_locator=source_path,
     )
     second = render_proof(
-        master=_canonical_master(),
+        master=master,
         recipe_path=ROOT / "recipes/proof/forsterite-proof.yml",
         output_root=tmp_path / "second",
         projector=_fixture_projector,
+        execution_context={
+            **execution_context,
+            "git": {**execution_context["git"], "dirty": True},
+        },
+        invocation=[*invocation, "--output", "/a/different/local/path"],
+        master_locator=master_path,
+        source_locator=source_path,
     )
 
     assert first.proof_id == second.proof_id
@@ -120,6 +181,25 @@ def test_proof_renders_every_candidate_under_one_comparison_contract(tmp_path: P
     assert manifest["proof_id"] == first.proof_id
     assert manifest["state"] == "awaiting-human-selection"
     assert manifest["candidate_order"] == list(first.candidate_ids)
+    assert manifest["quality_grade"] == "proof"
+    assert manifest["intended_use"] == "orientation-comparison"
+    assert manifest["not_final_quality"] is True
+    assert manifest["limitations"] == {
+        "dmin_nm": 0.08,
+        "energy_binwidth_kev": 20.0,
+        "energy_integration": "one-bin",
+        "rank": 8,
+    }
+    assert manifest["identity"]["quality_grade"] == "proof"
+    assert manifest["identity"]["intended_use"] == "orientation-comparison"
+    assert manifest["identity"]["not_final_quality"] is True
+    assert manifest["identity"]["contact_sheet_contract"] == {
+        "schema_version": 2,
+        "processed_variant": "scientific-clean",
+        "processing_recipe_id": manifest["comparison_contract"]["processing_recipe_id"],
+        "quality_banner": "ascii-proof-grade-v1",
+    }
+    assert stable_id("proof", manifest["identity"]) == first.proof_id
     assert manifest["comparison_contract"] == json.loads(
         (second.path / "manifest.json").read_text()
     )["comparison_contract"]
@@ -139,6 +219,18 @@ def test_proof_renders_every_candidate_under_one_comparison_contract(tmp_path: P
         assert evidence["candidate"]["bunge_phi1_deg"] == evidence["candidate"][
             "orientation"
         ]["euler_bunge_deg"][0]
+        policy = evidence["comparison_contract"]["preview_quantization"]
+        assert policy == {
+            "scope": "per-panel-per-candidate",
+            "method": "robust-percentile-linear",
+            "percentiles": [0.5, 99.5],
+            "comparison_use": "structural",
+            "absolute_intensity_comparable": False,
+        }
+        for panel in ("raw", "processed"):
+            assert evidence["quantization"][panel]["black_point"] < evidence[
+                "quantization"
+            ][panel]["white_point"]
         assert (candidate / "raw.npy").is_file()
         assert (candidate / "raw.tif").is_file()
         assert (candidate / "raw.png").is_file()
@@ -152,9 +244,46 @@ def test_proof_renders_every_candidate_under_one_comparison_contract(tmp_path: P
     contact = json.loads((first.path / "contact-sheet.json").read_text())
     assert contact["candidate_order"] == list(first.candidate_ids)
     assert contact["panels"] == ["raw", "processed"]
+    assert contact["processed_variant"] == {
+        "name": "scientific-clean",
+        "recipe_id": manifest["comparison_contract"]["processing_recipe_id"],
+        "short_id": manifest["comparison_contract"]["processing_recipe_id"].split("-")[1][
+            :8
+        ],
+    }
+    assert contact["quality_banner"]["quality_grade"] == "proof"
+    assert contact["quality_banner"]["not_final_quality"] is True
+    assert "PROOF-GRADE" in contact["quality_banner"]["text"]
+    assert "NOT FINAL QUALITY" in contact["quality_banner"]["text"]
+    assert "scientific-clean" in contact["quality_banner"]["text"]
+    assert all(ord(character) < 128 for character in contact["quality_banner"]["text"])
+    assert contact["quality_banner"]["text"] in contact["rendered_text"]
     assert all("Euler" in label and "phi1=" in label and "[" in label for label in contact["labels"])
     sheet = iio.imread(first.contact_sheet)
     assert sheet.ndim == 2
     assert sheet.shape == tuple(contact["pixel_shape"])
     assert contact["label_height_px"] >= 20
     assert not _contains_decision_key(contact)
+
+    execution = json.loads((first.path / "provenance/execution.json").read_text())
+    assert execution["invocation"] == invocation
+    assert execution["software"] == execution_context["software"]
+    assert execution["doctor"]["checks"]["webgpu_adapter"]["details"] == {
+        "backend_type": "TestBackend",
+        "device": "Fixture GPU",
+    }
+    assert execution["git"] == execution_context["git"]
+    origin = json.loads((first.path / "provenance/master-origin.json").read_text())
+    assert origin["source"]["canonical_path"] == str(source_path.resolve())
+    assert origin["source"]["sha256"] == source_sha256
+    assert origin["master_product"]["canonical_path"] == str(master_path.resolve())
+    assert origin["master_product"]["bundle_path"] == str(master_bundle.resolve())
+    assert origin["master_product"]["manifest_path"] == str(master_manifest.resolve())
+    assert origin["master_product"]["manifest_sha256"] == hashlib.sha256(
+        master_manifest.read_bytes()
+    ).hexdigest()
+    assert origin["identity_exclusion"] == "local locators and execution context"
+    assert manifest["evidence"]["execution"] == "provenance/execution.json"
+    assert manifest["evidence"]["master_origin"] == "provenance/master-origin.json"
+    assert "provenance/execution.json" in manifest["files"]
+    assert "provenance/master-origin.json" in manifest["files"]

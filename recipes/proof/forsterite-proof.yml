@@ -1,5 +1,13 @@
 schema_version: 1
 name: forsterite-orientation-proof
+quality_grade: proof
+intended_use: orientation-comparison
+not_final_quality: true
+limitations:
+  dmin_nm: 0.08
+  energy_binwidth_kev: 20.0
+  energy_integration: one-bin
+  rank: 8
 candidate_recipe: forsterite-candidates.yml
 processing_recipe: scientific-clean.yml
 energy_kev: 20.0

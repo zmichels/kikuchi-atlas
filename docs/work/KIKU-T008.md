@@ -36,9 +36,13 @@ and a legible contact sheet for human orientation selection.
 - Static checks: `uv run ruff check src tests` (clean).
 - Validated proof master manifest:
   `../../local/master-patterns/forsterite-proof/COD-9000319-ebsdsim.bundle/COD-9000319-ebsdsim.manifest.json`.
-- Real proof bundle: `../../local/runs/proof-e0fbf70a07913a27/`.
+- Current real proof bundle: `../../local/runs/proof-034550efeb6bf89a/`.
 - Real contact sheet:
-  `../../local/runs/proof-e0fbf70a07913a27/contact-sheet.png`.
+  `../../local/runs/proof-034550efeb6bf89a/contact-sheet.png`.
+- Superseded proof evidence is preserved at
+  `../../local/runs/proof-e0fbf70a07913a27/` (before explicit proof-grade and
+  processing labels) and `../../local/runs/proof-517f23a016733775/` (Unicode
+  banner separators rendered poorly in the bundled bitmap font).
 - Smoke-master comparison retained at `../../local/runs/proof-200408b6ef117f36/`;
   its 17 x 17 master was visibly faceted and was rejected as orientation-proof
   evidence without selecting or ranking any candidate.
@@ -48,10 +52,26 @@ master: 257 x 257 Lambert sampling (`halfw=128`), `dmin=0.08 nm`, one 20 keV
 energy bin, rank 8, and 262,144 requested/minimum Monte Carlo trajectories. The
 validated upstream artifact reports convergence after 786,432 trajectories.
 Generation took 532.77 s internally (533.07 s wall time); the 12-candidate proof
-render took 1.04 s internally (3.49 s CLI wall time). Raw candidate products are
+current render took 1.31 s internally. Raw candidate products are
 360 x 480 float32 and processed products are 180 x 240 float32. The paired,
-labeled contact sheet is 1484 x 968 uint8 and the proof bundle contains 90
+labeled contact sheet is 1484 x 1026 uint8 and the proof bundle contains 92
 inventoried evidence files (21 MB locally).
+
+The current recipe, run identity, manifest, and visible contact-sheet banner
+all state `quality_grade=proof`, `intended_use=orientation-comparison`, and
+`not_final_quality=true`, with the `dmin`, one-bin energy integration, and rank
+limitations encoded machine-readably. Every tile names the processed variant
+as `scientific-clean [b8b420e0]`, and the banner repeats its full recipe ID in
+metadata. Preview display mapping is explicitly per panel and per candidate at
+the 0.5th/99.5th percentiles; each black/white point is retained, and the
+contract disallows absolute-intensity comparison of the previews.
+
+The bundle also records exact CLI arguments, software versions, the Apple M2
+Metal doctor report, git branch/revision/dirty state, canonical source path and
+checksum, and the originating master bundle, manifest locator, and checksum.
+Local locators and execution context are evidence excluded from scientific run
+identity; changing the quality, intended use, processing recipe, or contact
+rendering contract changes the proof identity.
 
 All 12 candidates carry the same advisory `clipping_fraction` warning at 0.02,
 caused by the explicit 1st/99th percentile normalization before CLAHE. This is

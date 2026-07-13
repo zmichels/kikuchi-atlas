@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
+import subprocess
 import tempfile
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +22,7 @@ from kikuchi_lab.artifacts.bundle import BundleExistsError, FloatProduct
 from kikuchi_lab.artifacts.contact_sheet import ContactSheetItem, write_contact_sheet
 from kikuchi_lab.artifacts.images import quantize_uint16, write_npy, write_uint16
 from kikuchi_lab.diagnostics import image_metrics
+from kikuchi_lab.doctor import collect_doctor_report
 from kikuchi_lab.model import DetectorPatternProduct, DetectorRecipe, MasterPatternProduct
 from kikuchi_lab.model.identity import canonical_json, stable_id
 from kikuchi_lab.orientations import OrientationCandidate, load_candidate_set
@@ -33,6 +37,10 @@ Projector = Callable[..., DetectorPatternProduct]
 class ProofRecipe:
     schema_version: int
     name: str
+    quality_grade: str
+    intended_use: str
+    not_final_quality: bool
+    limitations: Mapping[str, Any]
     candidate_recipe: Path
     processing_recipe: Path
     energy_kev: float
@@ -43,6 +51,10 @@ class ProofRecipe:
         return {
             "schema_version": self.schema_version,
             "name": self.name,
+            "quality_grade": self.quality_grade,
+            "intended_use": self.intended_use,
+            "not_final_quality": self.not_final_quality,
+            "limitations": dict(self.limitations),
             "candidate_recipe": self.candidate_recipe.name,
             "processing_recipe": self.processing_recipe.name,
             "energy_kev": self.energy_kev,
@@ -88,7 +100,8 @@ def load_proof_recipe(path: str | Path) -> ProofRecipe:
     if not isinstance(raw, dict) or raw.get("schema_version") != 1:
         raise ValueError("proof recipe schema_version must be supported version 1")
     expected = {
-        "schema_version", "name", "candidate_recipe", "processing_recipe",
+        "schema_version", "name", "quality_grade", "intended_use",
+        "not_final_quality", "limitations", "candidate_recipe", "processing_recipe",
         "energy_kev", "detector", "contact_sheet_columns",
     }
     if set(raw) != expected:
@@ -98,6 +111,21 @@ def load_proof_recipe(path: str | Path) -> ProofRecipe:
         )
     if not isinstance(raw["name"], str) or not raw["name"].strip():
         raise ValueError("proof recipe requires non-empty name")
+    if raw["quality_grade"] != "proof":
+        raise ValueError("proof recipe quality_grade must be 'proof'")
+    if raw["intended_use"] != "orientation-comparison":
+        raise ValueError("proof recipe intended_use must be 'orientation-comparison'")
+    if raw["not_final_quality"] is not True:
+        raise ValueError("proof recipe not_final_quality must be true")
+    limitations = raw["limitations"]
+    expected_limitations = {
+        "dmin_nm": 0.08,
+        "energy_binwidth_kev": 20.0,
+        "energy_integration": "one-bin",
+        "rank": 8,
+    }
+    if limitations != expected_limitations:
+        raise ValueError(f"proof recipe limitations must be exactly {expected_limitations}")
     detector = raw["detector"]
     if not isinstance(detector, dict):
         raise ValueError("proof recipe detector must be an object")
@@ -110,6 +138,10 @@ def load_proof_recipe(path: str | Path) -> ProofRecipe:
     return ProofRecipe(
         schema_version=1,
         name=raw["name"],
+        quality_grade=raw["quality_grade"],
+        intended_use=raw["intended_use"],
+        not_final_quality=raw["not_final_quality"],
+        limitations=limitations,
         candidate_recipe=_relative_recipe(recipe_path.parent, raw["candidate_recipe"], "candidate_recipe"),
         processing_recipe=_relative_recipe(recipe_path.parent, raw["processing_recipe"], "processing_recipe"),
         energy_kev=energy,
@@ -197,8 +229,127 @@ def _comparison_contract(recipe: ProofRecipe, processing: Any) -> dict[str, Any]
         "detector": recipe.detector.to_dict(),
         "processing_recipe_id": processing.recipe_id,
         "processing": processing.to_dict(),
+        "processed_variant": processing.name,
         "metrics_schema": "kikuchi-lab-image-metrics-v1",
         "panels": ["raw", "processed"],
+        "preview_quantization": {
+            "scope": "per-panel-per-candidate",
+            "method": "robust-percentile-linear",
+            "percentiles": [0.5, 99.5],
+            "comparison_use": "structural",
+            "absolute_intensity_comparable": False,
+        },
+    }
+
+
+def _contact_sheet_contract(processing: Any) -> dict[str, Any]:
+    return {
+        "schema_version": 2,
+        "processed_variant": processing.name,
+        "processing_recipe_id": processing.recipe_id,
+        "quality_banner": "ascii-proof-grade-v1",
+    }
+
+
+_SOFTWARE_DISTRIBUTIONS = {
+    "kikuchi-lab": "kikuchi-lab",
+    "kikuchipy": "kikuchipy",
+    "scikit-image": "scikit-image",
+    "numpy": "numpy",
+    "orix": "orix",
+    "pillow": "pillow",
+    "ebsdsim": "ebsdsim",
+    "wgpu": "wgpu",
+}
+
+
+def collect_execution_context(output_root: str | Path) -> dict[str, Any]:
+    """Capture non-identity runtime evidence for a real CLI proof."""
+    repository = Path(__file__).parents[3]
+
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    return {
+        "software": {
+            label: version(distribution)
+            for label, distribution in _SOFTWARE_DISTRIBUTIONS.items()
+        },
+        "doctor": collect_doctor_report(output_root),
+        "git": {
+            "branch": git("branch", "--show-current"),
+            "revision": git("rev-parse", "HEAD"),
+            "dirty": bool(git("status", "--porcelain")),
+        },
+    }
+
+
+def _validate_execution_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = json.loads(canonical_json(value))
+    software = context.get("software")
+    if not isinstance(software, dict) or set(software) != set(_SOFTWARE_DISTRIBUTIONS):
+        raise ValueError("execution context requires the complete software version set")
+    if any(not isinstance(item, str) or not item for item in software.values()):
+        raise ValueError("execution context software versions must be non-empty strings")
+    doctor = context.get("doctor")
+    if not isinstance(doctor, dict) or not isinstance(doctor.get("checks"), dict):
+        raise ValueError("execution context requires doctor checks")
+    adapter = doctor["checks"].get("webgpu_adapter")
+    if not isinstance(adapter, dict) or not isinstance(adapter.get("details"), dict):
+        raise ValueError("execution context requires WebGPU hardware/backend details")
+    git = context.get("git")
+    if not isinstance(git, dict) or set(git) != {"branch", "revision", "dirty"}:
+        raise ValueError("execution context requires branch, revision, and dirty state")
+    if not isinstance(git["branch"], str) or not isinstance(git["revision"], str):
+        raise ValueError("execution context git locators must be strings")
+    if type(git["dirty"]) is not bool:
+        raise ValueError("execution context dirty state must be boolean")
+    return context
+
+
+def _origin_evidence(
+    *,
+    master: MasterPatternProduct,
+    master_locator: str | Path,
+    source_locator: str | Path,
+) -> dict[str, Any]:
+    master_path = Path(master_locator).resolve()
+    source_path = Path(source_locator).resolve()
+    if not master_path.is_file() or not source_path.is_file():
+        raise ValueError("master and source canonical locators must be files")
+    recorded_source_sha256 = master.metadata["source_structure"]["sha256"]
+    source_sha256 = _sha256(source_path)
+    if source_sha256 != recorded_source_sha256:
+        raise ValueError("source canonical locator checksum disagrees with master provenance")
+    manifests = sorted(master_path.parent.glob("*.manifest.json"))
+    if len(manifests) != 1:
+        raise ValueError("originating master bundle must contain exactly one manifest")
+    manifest_path = manifests[0].resolve()
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("master_product_id") != master.product_id:
+        raise ValueError("originating master manifest references a different product")
+    return {
+        "source": {
+            "canonical_path": str(source_path),
+            "sha256": source_sha256,
+            "source_id": master.metadata["source_structure"]["source_id"],
+        },
+        "master_product": {
+            "canonical_path": str(master_path),
+            "file_sha256": _sha256(master_path),
+            "product_id": master.product_id,
+            "array_sha256": master.array_sha256,
+            "bundle_path": str(master_path.parent),
+            "manifest_path": str(manifest_path),
+            "manifest_sha256": _sha256(manifest_path),
+        },
+        "identity_exclusion": "local locators and execution context",
     }
 
 
@@ -253,7 +404,11 @@ def render_proof(
     master: MasterPatternProduct,
     recipe_path: str | Path,
     output_root: str | Path,
+    master_locator: str | Path,
+    source_locator: str | Path,
     projector: Projector = project_with_kikuchipy,
+    execution_context: Mapping[str, Any] | None = None,
+    invocation: list[str] | tuple[str, ...] | None = None,
 ) -> ProofRunResult:
     """Render all candidates in declared order and stop before human selection."""
     started = time.perf_counter()
@@ -261,6 +416,20 @@ def render_proof(
     candidates = load_candidate_set(recipe.candidate_recipe)
     processing = load_processing_recipe(recipe.processing_recipe)
     contract = _comparison_contract(recipe, processing)
+    contact_contract = _contact_sheet_contract(processing)
+    output = Path(output_root).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    context = _validate_execution_context(
+        execution_context if execution_context is not None else collect_execution_context(output)
+    )
+    invoked_as = list(invocation or ["python-api:kikuchi_lab.workflows.render_proof"])
+    if not invoked_as or any(not isinstance(item, str) or not item for item in invoked_as):
+        raise ValueError("proof invocation must contain non-empty argument strings")
+    origin = _origin_evidence(
+        master=master,
+        master_locator=master_locator,
+        source_locator=source_locator,
+    )
     rendered = tuple(
         _rendered_candidate(
             master=master,
@@ -274,6 +443,10 @@ def render_proof(
     identity = {
         "schema_version": 1,
         "state": "awaiting-human-selection",
+        "quality_grade": recipe.quality_grade,
+        "intended_use": recipe.intended_use,
+        "not_final_quality": recipe.not_final_quality,
+        "limitations": dict(recipe.limitations),
         "master": {
             "product_id": master.product_id,
             "array_sha256": master.array_sha256,
@@ -281,6 +454,7 @@ def render_proof(
         "candidate_set_id": candidates.candidate_set_id,
         "candidate_order": list(candidates.candidate_ids),
         "comparison_contract": contract,
+        "contact_sheet_contract": contact_contract,
         "products": {
             item.candidate.candidate_id: {
                 "raw": _product_identity(item.raw_product),
@@ -290,8 +464,6 @@ def render_proof(
         },
     }
     proof_id = stable_id("proof", identity)
-    output = Path(output_root).resolve()
-    output.mkdir(parents=True, exist_ok=True)
     completed = output / proof_id
     if completed.exists():
         raise BundleExistsError(f"completed proof bundle already exists: {completed}")
@@ -303,6 +475,20 @@ def render_proof(
             items,
             columns=recipe.contact_sheet_columns,
             panel_shape=recipe.detector.shape,
+            processed_variant={
+                "name": processing.name,
+                "recipe_id": processing.recipe_id,
+                "short_id": processing.recipe_id.split("-", maxsplit=1)[1][:8],
+            },
+            quality_banner={
+                "quality_grade": recipe.quality_grade,
+                "intended_use": recipe.intended_use,
+                "not_final_quality": recipe.not_final_quality,
+                "text": (
+                    "PROOF-GRADE / NOT FINAL QUALITY | orientation comparison | "
+                    f"processed: {processing.name} [{processing.recipe_id.split('-', 1)[1][:8]}]"
+                ),
+            },
         )
         _write_json(staging / "contact-sheet.json", contact_metadata)
         _write_json(staging / "metadata/master-pattern.json", {
@@ -312,6 +498,11 @@ def render_proof(
         })
         _write_json(staging / "metadata/orientation-candidates.json", candidates.to_dict())
         _write_json(staging / "recipes/proof.json", recipe.to_dict())
+        _write_json(staging / "provenance/execution.json", {
+            **context,
+            "invocation": invoked_as,
+        })
+        _write_json(staging / "provenance/master-origin.json", origin)
         elapsed = time.perf_counter() - started
         _write_json(staging / "diagnostics/run.json", {
             "elapsed_seconds": elapsed,
@@ -333,11 +524,19 @@ def render_proof(
             "schema_version": 1,
             "proof_id": proof_id,
             "state": "awaiting-human-selection",
+            "quality_grade": recipe.quality_grade,
+            "intended_use": recipe.intended_use,
+            "not_final_quality": recipe.not_final_quality,
+            "limitations": dict(recipe.limitations),
             "candidate_set_id": candidates.candidate_set_id,
             "candidate_order": list(candidates.candidate_ids),
             "comparison_contract": contract,
             "identity": identity,
             "contact_sheet": "contact-sheet.png",
+            "evidence": {
+                "execution": "provenance/execution.json",
+                "master_origin": "provenance/master-origin.json",
+            },
             "files": files,
             "selection_policy": "No candidate is selected or ranked by the proof workflow.",
         }

@@ -14,6 +14,8 @@ def test_proof_command_reports_invalid_master_without_traceback(tmp_path, capsys
             "recipes/proof/forsterite-proof.yml",
             "--master-product",
             str(tmp_path / "missing.npz"),
+            "--source",
+            str(tmp_path / "missing.cif"),
             "--output",
             str(tmp_path / "runs"),
         ]

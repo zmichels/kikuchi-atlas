@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -14,6 +15,7 @@ from kikuchi_lab.doctor import collect_doctor_report
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI with an optional explicit argument sequence."""
+    arguments = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(prog="kikuchi-lab")
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("version", help="Print the package version.")
@@ -32,8 +34,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     proof.add_argument("--recipe", required=True)
     proof.add_argument("--master-product", required=True)
+    proof.add_argument("--source", required=True)
     proof.add_argument("--output", required=True)
-    args = parser.parse_args(argv)
+    args = parser.parse_args(arguments)
 
     if args.command == "version":
         print(f"kikuchi-lab {__version__}")
@@ -88,8 +91,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 master=master,
                 recipe_path=args.recipe,
                 output_root=args.output,
+                master_locator=args.master_product,
+                source_locator=args.source,
+                invocation=["kikuchi-lab", *arguments],
             )
-        except (OSError, ValueError, RuntimeError) as error:
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
             print(f"kikuchi-lab: proof failed: {error}", file=sys.stderr)
             return 1
         print(
