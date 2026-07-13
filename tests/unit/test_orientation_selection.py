@@ -19,6 +19,7 @@ from kikuchi_lab.orientations.selection import (
     create_orientation_selection,
     load_orientation_selection,
     proof_tree_digest,
+    verify_orientation_selection,
 )
 
 
@@ -516,8 +517,8 @@ import kikuchi_lab.orientations.selection as selection_module
 from kikuchi_lab.orientations.selection import create_orientation_selection
 
 original_selection_records = selection_module._selection_records
-def synchronized_selection_records(root):
-    records = original_selection_records(root)
+def synchronized_selection_records(root, **kwargs):
+    records = original_selection_records(root, **kwargs)
     Path({str(ready / str(index))!r}).write_text("ready", encoding="utf-8")
     deadline = time.monotonic() + 0.35
     while len(list(Path({str(ready)!r}).iterdir())) < 6 and time.monotonic() < deadline:
@@ -965,6 +966,32 @@ def test_selection_loader_rejects_boolean_schema_version(tmp_path: Path) -> None
         load_orientation_selection(rewritten)
 
 
+@pytest.mark.parametrize("schema_version", [1, 3])
+def test_selection_loader_rejects_boolean_decision_schema_version(
+    tmp_path: Path, schema_version: int
+) -> None:
+    result = create_orientation_selection(
+        run=_proof_bundle(tmp_path),
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    record = json.loads(result.selection_path.read_text())
+    record["schema_version"] = schema_version
+    record["decision"]["schema_version"] = True
+    if schema_version == 1:
+        record["decision"]["proof"].pop("tree_digest")
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(
+        OrientationSelectionError,
+        match="decision schema_version must be integer and match selection schema",
+    ):
+        load_orientation_selection(rewritten)
+
+
 def test_selection_loader_rejects_self_consistent_malformed_ids(tmp_path: Path) -> None:
     result = create_orientation_selection(
         run=_proof_bundle(tmp_path),
@@ -1058,7 +1085,7 @@ def test_selection_loader_rejects_unknown_schema_fields(tmp_path: Path) -> None:
         load_orientation_selection(rewritten)
 
 
-def test_selection_loader_rejects_candidate_that_disagrees_with_proof_evidence(
+def test_selection_verifier_rejects_candidate_that_disagrees_with_proof_evidence(
     tmp_path: Path,
 ) -> None:
     result = create_orientation_selection(
@@ -1078,4 +1105,268 @@ def test_selection_loader_rejects_candidate_that_disagrees_with_proof_evidence(
     rewritten = _write_self_consistent_selection(result.selection_path, record)
 
     with pytest.raises(OrientationSelectionError, match="proof candidate evidence disagrees"):
-        load_orientation_selection(rewritten)
+        verify_orientation_selection(rewritten)
+
+
+def test_selection_verifier_recomputes_canonical_proof_identity(tmp_path: Path) -> None:
+    proof = _proof_bundle(tmp_path)
+    result = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    manifest_path = proof / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    forged_proof_id = "proof-0123456789abcdef"
+    assert forged_proof_id != stable_id("proof", manifest["identity"])
+    manifest["proof_id"] = forged_proof_id
+    _write_json(manifest_path, manifest)
+    record = json.loads(result.selection_path.read_text())
+    record["decision"]["proof"].update(
+        {
+            "proof_id": forged_proof_id,
+            "manifest_sha256": _sha256(manifest_path),
+            "tree_digest": proof_tree_digest(proof),
+        }
+    )
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(
+        OrientationSelectionError,
+        match="external proof identity does not match canonical manifest identity",
+    ):
+        verify_orientation_selection(rewritten)
+
+
+def test_selection_verifier_recomputes_canonical_candidate_set_identity(
+    tmp_path: Path,
+) -> None:
+    proof = _proof_bundle(tmp_path)
+    result = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    candidate_set_path = proof / "metadata/orientation-candidates.json"
+    candidate_set = json.loads(candidate_set_path.read_text())
+    forged_candidate_set_id = "candidate-set-0123456789abcdef"
+    assert forged_candidate_set_id != stable_id(
+        "candidate-set", selection_module._candidate_set_identity_payload(candidate_set)
+    )
+    candidate_set["candidate_set_id"] = forged_candidate_set_id
+    _write_json(candidate_set_path, candidate_set)
+    record = json.loads(result.selection_path.read_text())
+    record["decision"]["candidate_set"].update(
+        {
+            "candidate_set_id": forged_candidate_set_id,
+            "candidate_set_sha256": _sha256(candidate_set_path),
+        }
+    )
+    record["decision"]["proof"]["tree_digest"] = proof_tree_digest(proof)
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(
+        OrientationSelectionError,
+        match="external candidate-set identity does not match canonical content",
+    ):
+        verify_orientation_selection(rewritten)
+
+
+def test_selection_verifier_requires_exact_manifest_candidate_order(
+    tmp_path: Path,
+) -> None:
+    proof = _proof_bundle(tmp_path)
+    result = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    manifest_path = proof / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["candidate_order"] = []
+    _write_json(manifest_path, manifest)
+    record = json.loads(result.selection_path.read_text())
+    record["decision"]["proof"].update(
+        {
+            "manifest_sha256": _sha256(manifest_path),
+            "tree_digest": proof_tree_digest(proof),
+        }
+    )
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(
+        OrientationSelectionError,
+        match="external manifest candidate_order must contain every candidate ID exactly once",
+    ):
+        verify_orientation_selection(rewritten)
+
+
+def test_selection_verifier_preserves_canonical_candidate_set_order(
+    tmp_path: Path,
+) -> None:
+    proof = _proof_bundle(tmp_path)
+    result = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    candidate_set_path = proof / "metadata/orientation-candidates.json"
+    candidate_set = json.loads(candidate_set_path.read_text())
+    second_candidate = deepcopy(candidate_set["candidates"][0])
+    second_candidate["id"] = "fo-001-phi1-000"
+    candidate_set["candidates"].append(second_candidate)
+    candidate_set_id = stable_id(
+        "candidate-set", selection_module._candidate_set_identity_payload(candidate_set)
+    )
+    candidate_set["candidate_set_id"] = candidate_set_id
+    _write_json(candidate_set_path, candidate_set)
+
+    manifest_path = proof / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    reversed_order = [second_candidate["id"], "fo-011-phi1-045"]
+    manifest["candidate_order"] = reversed_order
+    manifest["candidate_set_id"] = candidate_set_id
+    manifest["identity"]["candidate_order"] = reversed_order
+    manifest["identity"]["candidate_set_id"] = candidate_set_id
+    manifest["proof_id"] = stable_id("proof", manifest["identity"])
+    candidate_set_relative = candidate_set_path.relative_to(proof).as_posix()
+    manifest["files"][candidate_set_relative] = {
+        "bytes": candidate_set_path.stat().st_size,
+        "sha256": _sha256(candidate_set_path),
+    }
+    _write_json(manifest_path, manifest)
+
+    record = json.loads(result.selection_path.read_text())
+    record["decision"]["proof"].update(
+        {
+            "proof_id": manifest["proof_id"],
+            "manifest_sha256": _sha256(manifest_path),
+            "tree_digest": proof_tree_digest(proof),
+        }
+    )
+    record["decision"]["candidate_set"].update(
+        {
+            "candidate_set_id": candidate_set_id,
+            "candidate_set_sha256": _sha256(candidate_set_path),
+        }
+    )
+    rewritten = _write_self_consistent_selection(result.selection_path, record)
+
+    with pytest.raises(
+        OrientationSelectionError,
+        match="external manifest candidate_order must preserve candidate-set order",
+    ):
+        verify_orientation_selection(rewritten)
+
+
+def test_supersession_rejects_symbolic_link_predecessor_directory(
+    tmp_path: Path,
+) -> None:
+    proof = _proof_bundle(tmp_path)
+    output = tmp_path / "decisions"
+    first = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Initial decision.",
+        selected_on="2026-07-13",
+        output_root=output,
+    )
+    external = tmp_path / "external" / first.selection_id
+    external.parent.mkdir()
+    shutil.move(first.path, external)
+    first.path.symlink_to(external, target_is_directory=True)
+
+    with pytest.raises(OrientationSelectionError, match="symbolic link"):
+        create_orientation_selection(
+            run=proof,
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="Revised decision.",
+            selected_on="2026-07-14",
+            output_root=output,
+            supersedes=first.selection_id,
+            supersede_reason="Material correction.",
+        )
+
+
+def test_supersession_rejects_symbolic_link_predecessor_file(tmp_path: Path) -> None:
+    proof = _proof_bundle(tmp_path)
+    output = tmp_path / "decisions"
+    first = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Initial decision.",
+        selected_on="2026-07-13",
+        output_root=output,
+    )
+    external = tmp_path / "external" / first.selection_id / "selection.json"
+    external.parent.mkdir(parents=True)
+    shutil.move(first.selection_path, external)
+    first.selection_path.symlink_to(external)
+
+    with pytest.raises(OrientationSelectionError, match="symbolic link"):
+        create_orientation_selection(
+            run=proof,
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="Revised decision.",
+            selected_on="2026-07-14",
+            output_root=output,
+            supersedes=first.selection_id,
+            supersede_reason="Material correction.",
+        )
+
+
+def test_supersession_validates_identity_before_filesystem_access(tmp_path: Path) -> None:
+    with pytest.raises(OrientationSelectionError, match="superseded selection identity"):
+        create_orientation_selection(
+            run=_proof_bundle(tmp_path),
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="Revised decision.",
+            selected_on="2026-07-14",
+            output_root=tmp_path / "decisions",
+            supersedes="../outside",
+            supersede_reason="Material correction.",
+        )
+
+
+def test_intrinsic_selection_load_survives_proof_relocation_with_explicit_override(
+    tmp_path: Path,
+) -> None:
+    proof = _proof_bundle(tmp_path / "original")
+    result = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="Human visual judgment.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+    relocated = tmp_path / "relocated" / proof.name
+    shutil.copytree(proof, relocated)
+    shutil.rmtree(proof)
+
+    record = load_orientation_selection(result.selection_path)
+    verification = verify_orientation_selection(
+        result.selection_path, proof_root=relocated
+    )
+
+    assert record["selection_id"] == result.selection_id
+    assert verification.verified is True
+    assert verification.selection_id == result.selection_id
+    assert verification.proof_root == relocated.resolve()

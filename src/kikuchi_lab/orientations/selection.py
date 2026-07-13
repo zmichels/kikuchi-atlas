@@ -70,6 +70,20 @@ class OrientationSelectionResult:
     selection_path: Path
 
 
+@dataclass(frozen=True)
+class OrientationSelectionVerification:
+    """Structured evidence that one selection was checked against a proof tree."""
+
+    verified: bool
+    selection_id: str
+    proof_id: str
+    proof_root: Path
+    manifest_sha256: str
+    candidate_set_id: str
+    candidate_id: str
+    tree_sha256: str | None
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -89,6 +103,62 @@ def _proof_root(path: str | Path) -> Path:
     if not stat.S_ISDIR(mode):
         raise OrientationSelectionError(f"proof run does not exist: {root}")
     return root
+
+
+def _decision_root(path: str | Path) -> Path:
+    root = Path(os.path.abspath(os.fspath(path)))
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+        mode = root.lstat().st_mode
+    except OSError as error:
+        raise OrientationSelectionError(
+            f"decision root is unavailable: {root}"
+        ) from error
+    if stat.S_ISLNK(mode):
+        raise OrientationSelectionError("decision root cannot be a symbolic link")
+    if not stat.S_ISDIR(mode):
+        raise OrientationSelectionError("decision root must be a directory")
+    return root
+
+
+def _selection_artifact_path(root: Path, selection_id: str) -> Path:
+    if not _SELECTION_ID.fullmatch(selection_id):
+        raise OrientationSelectionError("superseded selection identity is invalid")
+    directory = root / selection_id
+    try:
+        directory_mode = directory.lstat().st_mode
+    except OSError as error:
+        raise OrientationSelectionError(
+            f"superseded selection is unavailable: {directory}"
+        ) from error
+    if stat.S_ISLNK(directory_mode):
+        raise OrientationSelectionError(
+            f"selection lineage contains a symbolic link: {selection_id}"
+        )
+    if not stat.S_ISDIR(directory_mode):
+        raise OrientationSelectionError(
+            f"selection lineage contains a non-directory entry: {selection_id}"
+        )
+    selection_path = directory / "selection.json"
+    try:
+        selection_mode = selection_path.lstat().st_mode
+    except OSError as error:
+        raise OrientationSelectionError(
+            f"superseded selection is unavailable: {selection_path}"
+        ) from error
+    if stat.S_ISLNK(selection_mode):
+        raise OrientationSelectionError(
+            f"selection lineage contains a symbolic link: {selection_id}/selection.json"
+        )
+    if not stat.S_ISREG(selection_mode):
+        raise OrientationSelectionError(
+            f"selection lineage contains a non-regular file: {selection_id}/selection.json"
+        )
+    resolved_root = root.resolve(strict=True)
+    resolved_selection = selection_path.resolve(strict=True)
+    if not resolved_selection.is_relative_to(resolved_root):
+        raise OrientationSelectionError("selection lineage escapes the decision root")
+    return selection_path
 
 
 def _proof_files(root: Path) -> list[Path]:
@@ -252,12 +322,30 @@ def proof_tree_digest(run: str | Path) -> dict[str, Any]:
     return _proof_tree_digest_with_contract(run, PROOF_TREE_DIGEST_CONTRACT)
 
 
-def _selection_records(output_root: Path) -> list[tuple[Path, dict[str, Any]]]:
+def _selection_records(
+    output_root: Path, *, proof_root: Path
+) -> list[tuple[Path, dict[str, Any]]]:
     records: list[tuple[Path, dict[str, Any]]] = []
-    if not output_root.is_dir():
-        return records
-    for path in sorted(output_root.glob("orientation-selection-*/selection.json")):
-        records.append((path, load_orientation_selection(path)))
+    for directory in sorted(output_root.iterdir(), key=lambda item: item.name):
+        if not directory.name.startswith("orientation-selection-"):
+            continue
+        mode = directory.lstat().st_mode
+        if stat.S_ISLNK(mode):
+            raise OrientationSelectionError(
+                f"selection lineage contains a symbolic link: {directory.name}"
+            )
+        if not stat.S_ISDIR(mode):
+            raise OrientationSelectionError(
+                f"selection lineage contains a non-directory entry: {directory.name}"
+            )
+        if not _SELECTION_ID.fullmatch(directory.name):
+            raise OrientationSelectionError(
+                f"selection lineage contains an invalid identity: {directory.name}"
+            )
+        path = _selection_artifact_path(output_root, directory.name)
+        record = load_orientation_selection(path)
+        verify_orientation_selection(path, proof_root=proof_root)
+        records.append((path, record))
     return records
 
 
@@ -313,10 +401,37 @@ def _validate_linear_predecessor(
 def _proof_selection_lock(output_root: Path, proof_id: str):
     """Serialize lineage validation and publication for one proof across processes."""
     lock_root = output_root / ".locks"
-    lock_root.mkdir(parents=True, exist_ok=True)
-    lock_path = lock_root / f"{proof_id}.lock"
-    descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
     try:
+        lock_root.mkdir(exist_ok=True)
+        lock_root_mode = lock_root.lstat().st_mode
+    except OSError as error:
+        raise OrientationSelectionError("selection lock directory is unavailable") from error
+    if stat.S_ISLNK(lock_root_mode):
+        raise OrientationSelectionError("selection lock directory cannot be a symbolic link")
+    if not stat.S_ISDIR(lock_root_mode):
+        raise OrientationSelectionError("selection lock path must be a directory")
+    lock_path = lock_root / f"{proof_id}.lock"
+    try:
+        lock_mode = lock_path.lstat().st_mode
+    except FileNotFoundError:
+        pass
+    except OSError as error:
+        raise OrientationSelectionError("selection lock file is unavailable") from error
+    else:
+        if stat.S_ISLNK(lock_mode):
+            raise OrientationSelectionError("selection lock file cannot be a symbolic link")
+        if not stat.S_ISREG(lock_mode):
+            raise OrientationSelectionError("selection lock path must be a regular file")
+    flags = os.O_RDWR | os.O_CREAT | os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(lock_path, flags, 0o600)
+    except OSError as error:
+        raise OrientationSelectionError("selection lock file is unavailable") from error
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise OrientationSelectionError("selection lock path must be a regular file")
         fcntl.flock(descriptor, fcntl.LOCK_EX)
         yield
     finally:
@@ -325,37 +440,91 @@ def _proof_selection_lock(output_root: Path, proof_id: str):
 
 
 def _validate_external_selection_evidence(
-    record: dict[str, Any], *, schema_version: int
-) -> None:
+    record: dict[str, Any], *, schema_version: int, proof_root: str | Path | None
+) -> Path:
     decision = record["decision"]
     proof = decision["proof"]
     candidate_set_record = decision["candidate_set"]
     selected = decision["selected_candidate"]
-    proof_root = _proof_root(record["external_locators"]["proof_run"])
-    _proof_files(proof_root)
+    resolved_proof_root = _proof_root(
+        record["external_locators"]["proof_run"]
+        if proof_root is None
+        else proof_root
+    )
+    _proof_files(resolved_proof_root)
 
     manifest_path = _proof_locator(
-        proof_root, proof["manifest_locator"], "proof manifest locator"
+        resolved_proof_root, proof["manifest_locator"], "proof manifest locator"
     )
     if _sha256(manifest_path) != proof["manifest_sha256"]:
         raise OrientationSelectionError("external proof manifest checksum disagrees")
     manifest = _load_json(manifest_path, "external proof manifest")
-    if manifest.get("proof_id") != proof["proof_id"]:
+    identity = manifest.get("identity")
+    if not isinstance(identity, dict):
+        raise OrientationSelectionError("external proof manifest requires identity content")
+    canonical_proof_id = stable_id("proof", identity)
+    if manifest.get("proof_id") != canonical_proof_id:
+        raise OrientationSelectionError(
+            "external proof identity does not match canonical manifest identity"
+        )
+    if proof["proof_id"] != canonical_proof_id:
         raise OrientationSelectionError("external proof identity disagrees")
 
     candidate_set_path = _proof_locator(
-        proof_root,
+        resolved_proof_root,
         candidate_set_record["candidate_set_locator"],
         "candidate-set locator",
     )
     if _sha256(candidate_set_path) != candidate_set_record["candidate_set_sha256"]:
         raise OrientationSelectionError("external candidate-set checksum disagrees")
     candidate_set = _load_json(candidate_set_path, "external candidate set")
-    if candidate_set.get("candidate_set_id") != candidate_set_record["candidate_set_id"]:
+    canonical_candidate_set_id = stable_id(
+        "candidate-set", _candidate_set_identity_payload(candidate_set)
+    )
+    if candidate_set.get("candidate_set_id") != canonical_candidate_set_id:
+        raise OrientationSelectionError(
+            "external candidate-set identity does not match canonical content"
+        )
+    if candidate_set_record["candidate_set_id"] != canonical_candidate_set_id:
         raise OrientationSelectionError("external candidate-set identity disagrees")
     candidates = candidate_set.get("candidates")
     if not isinstance(candidates, list):
         raise OrientationSelectionError("external candidate set requires candidates")
+    if any(not isinstance(candidate, dict) for candidate in candidates):
+        raise OrientationSelectionError("external candidate metadata entries must be objects")
+    candidate_ids = [candidate.get("id") for candidate in candidates]
+    if any(not isinstance(candidate_id, str) or not candidate_id for candidate_id in candidate_ids):
+        raise OrientationSelectionError("external candidate metadata requires nonblank IDs")
+    if len(candidate_ids) != len(set(candidate_ids)):
+        raise OrientationSelectionError("external candidate IDs must be globally unique")
+    candidate_order = manifest.get("candidate_order")
+    if (
+        not isinstance(candidate_order, list)
+        or any(not isinstance(candidate_id, str) or not candidate_id for candidate_id in candidate_order)
+        or len(candidate_order) != len(candidate_ids)
+        or len(candidate_order) != len(set(candidate_order))
+        or set(candidate_order) != set(candidate_ids)
+    ):
+        raise OrientationSelectionError(
+            "external manifest candidate_order must contain every candidate ID exactly once"
+        )
+    if candidate_order != candidate_ids:
+        raise OrientationSelectionError(
+            "external manifest candidate_order must preserve candidate-set order"
+        )
+    if identity.get("candidate_order") != candidate_order:
+        raise OrientationSelectionError(
+            "external proof identity and candidate_order disagree"
+        )
+    if manifest.get("candidate_set_id") != canonical_candidate_set_id:
+        raise OrientationSelectionError(
+            "external manifest and candidate-set identities disagree"
+        )
+    if identity.get("candidate_set_id") != canonical_candidate_set_id:
+        raise OrientationSelectionError(
+            "external proof identity and candidate-set identities disagree"
+        )
+    _verify_inventory(resolved_proof_root, manifest)
     candidate_matches = [
         candidate
         for candidate in candidates
@@ -365,7 +534,7 @@ def _validate_external_selection_evidence(
         raise OrientationSelectionError("proof candidate evidence disagrees with selection")
 
     evidence_path = _proof_locator(
-        proof_root, selected["evidence_locator"], "candidate evidence locator"
+        resolved_proof_root, selected["evidence_locator"], "candidate evidence locator"
     )
     if _sha256(evidence_path) != selected["evidence_sha256"]:
         raise OrientationSelectionError("external candidate evidence checksum disagrees")
@@ -392,8 +561,11 @@ def _validate_external_selection_evidence(
             if schema_version == 2
             else PROOF_TREE_DIGEST_CONTRACT
         )
-        if _proof_tree_digest_with_contract(proof_root, contract) != proof["tree_digest"]:
+        if _proof_tree_digest_with_contract(resolved_proof_root, contract) != proof[
+            "tree_digest"
+        ]:
             raise OrientationSelectionError("external proof tree digest disagrees")
+    return resolved_proof_root
 
 
 def _write_selection_file(path: Path, payload: bytes) -> None:
@@ -490,8 +662,14 @@ def load_orientation_selection(path: str | Path) -> dict[str, Any]:
         raise OrientationSelectionError("selection identity is invalid")
     if selection_path.parent.name != selection_id:
         raise OrientationSelectionError("selection directory must match selection identity")
-    if decision.get("schema_version") != schema_version:
-        raise OrientationSelectionError("decision schema_version must match selection schema")
+    decision_schema_version = decision.get("schema_version")
+    if (
+        type(decision_schema_version) is not int
+        or decision_schema_version != schema_version
+    ):
+        raise OrientationSelectionError(
+            "decision schema_version must be integer and match selection schema"
+        )
     if decision.get("kind") != "human-orientation-selection":
         raise OrientationSelectionError("decision kind must be human-orientation-selection")
     for field in ("author", "rationale", "selected_on"):
@@ -751,8 +929,31 @@ def load_orientation_selection(path: str | Path) -> dict[str, Any]:
     )
     if not Path(external_proof_run).is_absolute():
         raise OrientationSelectionError("external proof-run locator must be absolute")
-    _validate_external_selection_evidence(record, schema_version=schema_version)
     return record
+
+
+def verify_orientation_selection(
+    path: str | Path, *, proof_root: str | Path | None = None
+) -> OrientationSelectionVerification:
+    """Explicitly verify a valid selection against its external proof evidence."""
+    record = load_orientation_selection(path)
+    schema_version = record["schema_version"]
+    verified_root = _validate_external_selection_evidence(
+        record, schema_version=schema_version, proof_root=proof_root
+    )
+    decision = record["decision"]
+    proof = decision["proof"]
+    tree = proof.get("tree_digest")
+    return OrientationSelectionVerification(
+        verified=True,
+        selection_id=record["selection_id"],
+        proof_id=proof["proof_id"],
+        proof_root=verified_root,
+        manifest_sha256=proof["manifest_sha256"],
+        candidate_set_id=decision["candidate_set"]["candidate_set_id"],
+        candidate_id=decision["selected_candidate"]["candidate_id"],
+        tree_sha256=None if tree is None else tree["sha256"],
+    )
 
 
 def create_orientation_selection(
@@ -779,7 +980,7 @@ def create_orientation_selection(
         raise OrientationSelectionError(
             "selected-on must be an ISO calendar date (YYYY-MM-DD)"
         ) from error
-    output = Path(output_root).resolve()
+    output = _decision_root(output_root)
     if (supersedes is None) != (supersede_reason is None):
         raise OrientationSelectionError(
             "supersedes and supersede-reason must be provided together"
@@ -788,8 +989,10 @@ def create_orientation_selection(
     predecessor: dict[str, Any] | None = None
     if supersedes is not None:
         supersedes = _required_text(supersedes, "supersedes")
+        if not _SELECTION_ID.fullmatch(supersedes):
+            raise OrientationSelectionError("superseded selection identity is invalid")
         reason = _required_text(supersede_reason, "supersede-reason")
-        predecessor_path = output / supersedes / "selection.json"
+        predecessor_path = _selection_artifact_path(output, supersedes)
         predecessor = _load_json(predecessor_path, "superseded selection")
         predecessor_decision = predecessor.get("decision")
         if not isinstance(predecessor_decision, dict):
@@ -858,6 +1061,10 @@ def create_orientation_selection(
     ):
         raise OrientationSelectionError(
             "candidate_order must contain every candidate ID exactly once"
+        )
+    if candidate_order != candidate_ids:
+        raise OrientationSelectionError(
+            "candidate_order must preserve candidate-set order"
         )
     if identity.get("candidate_order") != candidate_order:
         raise OrientationSelectionError("proof identity and candidate_order disagree")
@@ -948,13 +1155,26 @@ def create_orientation_selection(
         "decision": decision,
         "external_locators": {"proof_run": str(run_path)},
     }
-    output.mkdir(parents=True, exist_ok=True)
     target = output / selection_id
     with _proof_selection_lock(output, proof_id):
-        if target.exists():
+        try:
+            target_mode = target.lstat().st_mode
+        except FileNotFoundError:
+            pass
+        else:
+            if stat.S_ISLNK(target_mode):
+                raise OrientationSelectionError(
+                    f"selection target cannot be a symbolic link: {selection_id}"
+                )
+            if not stat.S_ISDIR(target_mode):
+                raise OrientationSelectionError(
+                    f"selection target must be a directory: {selection_id}"
+                )
             raise SelectionExistsError(f"selection artifact already exists: {selection_id}")
         _validate_linear_predecessor(
-            _selection_records(output), proof_id=proof_id, supersedes=supersedes
+            _selection_records(output, proof_root=run_path),
+            proof_id=proof_id,
+            supersedes=supersedes,
         )
         _publish_selection_record(
             output=output,
