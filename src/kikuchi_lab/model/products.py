@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -13,14 +14,18 @@ import numpy as np
 
 from .identity import plain_data, stable_id
 
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
 
 def _owned_float32(value: Any, *, ndim: int) -> np.ndarray:
-    array = np.array(value, dtype=np.float32, order="C", copy=True)
-    if array.ndim != ndim:
-        raise ValueError(f"intensity must have {ndim} dimensions; got shape {array.shape}")
-    if not np.isfinite(array).all():
+    converted = np.array(value, dtype=np.float32, order="C", copy=True)
+    if converted.ndim != ndim:
+        raise ValueError(f"intensity must have {ndim} dimensions; got shape {converted.shape}")
+    if not np.isfinite(converted).all():
         raise ValueError("intensity must contain only finite values")
-    array.setflags(write=False)
+    # A write-disabled owned ndarray can later have writeability re-enabled.
+    # Backing this view with immutable bytes makes that escalation impossible.
+    array = np.frombuffer(converted.tobytes(order="C"), dtype=np.float32).reshape(converted.shape)
     return array
 
 
@@ -51,12 +56,93 @@ def _required_text(metadata: Mapping[str, Any], key: str) -> None:
         raise ValueError(f"metadata requires non-empty {key}")
 
 
-@dataclass(frozen=True)
+def _required_mapping(metadata: Mapping[str, Any], key: str) -> Mapping[str, Any]:
+    value = metadata.get(key)
+    if not isinstance(value, Mapping):
+        raise ValueError(f"metadata requires {key} object")
+    return value
+
+
+def _validate_sha256(value: Any, field: str) -> None:
+    if not isinstance(value, str) or not _SHA256.fullmatch(value):
+        raise ValueError(f"{field} must be a lowercase 64-character SHA-256")
+
+
+def _validate_phase(metadata: Mapping[str, Any]) -> None:
+    phase = _required_mapping(metadata, "phase")
+    _required_text(phase, "name")
+    _required_text(phase, "formula")
+    space_group = _required_mapping(phase, "space_group")
+    number = space_group.get("number")
+    if isinstance(number, bool) or not isinstance(number, int) or not 1 <= number <= 230:
+        raise ValueError("phase space_group number must be an integer in [1, 230]")
+    _required_text(space_group, "setting")
+    lattice = _required_mapping(phase, "lattice")
+    if lattice.get("units") != "angstrom":
+        raise ValueError("phase lattice units must be angstrom")
+    values = lattice.get("values")
+    if not isinstance(values, list) or len(values) != 6:
+        raise ValueError("phase lattice values must contain six values")
+    numeric = [float(value) for value in values]
+    if not all(math.isfinite(value) for value in numeric):
+        raise ValueError("phase lattice values must be finite")
+    if any(value <= 0 for value in numeric[:3]) or any(
+        not 0 < value <= 180 for value in numeric[3:]
+    ):
+        raise ValueError("phase lattice lengths and angles are invalid")
+
+
+def _validate_source(metadata: Mapping[str, Any]) -> None:
+    source = _required_mapping(metadata, "source_structure")
+    _required_text(source, "identifier")
+    _validate_sha256(source.get("sha256"), "source_structure sha256")
+    provenance = _required_mapping(source, "provenance")
+    for key in ("uri", "license", "citation"):
+        _required_text(provenance, key)
+
+
+def _validate_generator(metadata: Mapping[str, Any]) -> None:
+    generator = _required_mapping(metadata, "generator")
+    _required_text(generator, "name")
+    _required_text(generator, "version")
+
+
+def _validate_simulation(metadata: Mapping[str, Any]) -> float:
+    simulation = _required_mapping(metadata, "simulation")
+    _required_text(simulation, "recipe_id")
+    _validate_sha256(simulation.get("recipe_sha256"), "simulation recipe_sha256")
+    voltage = float(simulation.get("voltage_kv", math.nan))
+    if not math.isfinite(voltage) or voltage <= 0:
+        raise ValueError("simulation voltage_kv must be finite and positive")
+    return voltage
+
+
+def _normalize_array_metadata(
+    metadata: dict[str, Any], array: np.ndarray, checksum: str
+) -> None:
+    actual = {"shape": list(array.shape), "dtype": "float32", "sha256": checksum}
+    recorded = metadata.get("array")
+    if recorded is not None:
+        if not isinstance(recorded, Mapping):
+            raise ValueError("array metadata must be an object")
+        if recorded.get("shape") != actual["shape"]:
+            raise ValueError("recorded array shape disagrees with intensity payload")
+        if recorded.get("dtype") != actual["dtype"]:
+            raise ValueError("recorded array dtype disagrees with canonical float32 payload")
+        if recorded.get("sha256") != actual["sha256"]:
+            raise ValueError("recorded array checksum disagrees with intensity payload")
+    metadata["array"] = actual
+
+
+@dataclass(frozen=True, init=False)
 class MasterPatternProduct:
     intensity: np.ndarray
     metadata: Mapping[str, Any]
     array_sha256: str
     product_id: str
+
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+        raise TypeError("MasterPatternProduct must be created with from_array()")
 
     @classmethod
     def from_array(cls, intensity: Any, *, metadata: Mapping[str, Any]) -> MasterPatternProduct:
@@ -64,32 +150,39 @@ class MasterPatternProduct:
         if array.shape[0] != 2 or array.shape[1] < 1 or array.shape[2] < 1:
             raise ValueError("master intensity shape must be (2, y, x) for north and south")
         plain = plain_data(metadata)
-        for key in (
-            "source_id",
-            "phase_id",
-            "simulation_recipe_id",
-            "projection",
-            "intensity_units",
-            "coordinate_frame",
-        ):
+        _validate_phase(plain)
+        _validate_source(plain)
+        _validate_generator(plain)
+        voltage = _validate_simulation(plain)
+        for key in ("projection", "intensity_units", "coordinate_frame"):
             _required_text(plain, key)
         if plain.get("hemisphere_order") != ["north", "south"]:
-            raise ValueError("hemisphere_order must be ['north', 'south']")
-        voltage = float(plain.get("simulation_voltage_kv", math.nan))
+            raise ValueError("metadata hemisphere_order must be ['north', 'south']")
+        links = plain.get("provenance_links")
+        if not isinstance(links, list) or not links or any(
+            not isinstance(link, str) or not link for link in links
+        ):
+            raise ValueError("metadata provenance_links must contain non-empty strings")
         energy = float(plain.get("energy_kev", math.nan))
-        if not math.isfinite(voltage) or not math.isfinite(energy) or voltage <= 0 or energy <= 0:
-            raise ValueError("simulation_voltage_kv and energy_kev must be finite and positive")
+        if not math.isfinite(energy) or energy <= 0:
+            raise ValueError("energy_kev must be finite and positive")
         if not math.isclose(voltage, energy, rel_tol=1e-9, abs_tol=0.0):
-            raise ValueError("energy_kev is inconsistent with simulation_voltage_kv")
+            raise ValueError("energy_kev is inconsistent with simulation voltage_kv")
         checksum = _array_sha256(array)
+        _normalize_array_metadata(plain, array, checksum)
         product_id = stable_id("master", {"metadata": plain, "array_sha256": checksum})
-        return cls(array, _freeze(plain), checksum, product_id)
+        product = object.__new__(cls)
+        object.__setattr__(product, "intensity", array)
+        object.__setattr__(product, "metadata", _freeze(plain))
+        object.__setattr__(product, "array_sha256", checksum)
+        object.__setattr__(product, "product_id", product_id)
+        return product
 
     def metadata_dict(self) -> dict[str, Any]:
         return _thaw(self.metadata)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class DetectorPatternProduct:
     intensity: np.ndarray
     master_product_id: str
@@ -97,6 +190,9 @@ class DetectorPatternProduct:
     metadata: Mapping[str, Any]
     array_sha256: str
     product_id: str
+
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+        raise TypeError("DetectorPatternProduct must be created with from_array()")
 
     @classmethod
     def from_array(
@@ -119,20 +215,21 @@ class DetectorPatternProduct:
         if not math.isfinite(energy) or energy <= 0:
             raise ValueError("energy_kev must be finite and positive")
         checksum = _array_sha256(array)
+        _normalize_array_metadata(plain, array, checksum)
         identity_payload = {
             "metadata": plain,
             "array_sha256": checksum,
             "master_product_id": master_product_id,
             "projection_recipe_id": projection_recipe_id,
         }
-        return cls(
-            array,
-            master_product_id,
-            projection_recipe_id,
-            _freeze(plain),
-            checksum,
-            stable_id("detector", identity_payload),
-        )
+        product = object.__new__(cls)
+        object.__setattr__(product, "intensity", array)
+        object.__setattr__(product, "master_product_id", master_product_id)
+        object.__setattr__(product, "projection_recipe_id", projection_recipe_id)
+        object.__setattr__(product, "metadata", _freeze(plain))
+        object.__setattr__(product, "array_sha256", checksum)
+        object.__setattr__(product, "product_id", stable_id("detector", identity_payload))
+        return product
 
     def metadata_dict(self) -> dict[str, Any]:
         return _thaw(self.metadata)

@@ -39,3 +39,6 @@ that do not expose upstream simulator or projection objects.
 - `uv run pytest tests/unit -q`: 41 passed.
 - `uv run ruff check src tests`: all checks passed.
 - `uv run python scripts/validate_work_items.py`: tracker validation passed.
+- Follow-up contract review gate: focused suite 58 passed and full fast/unit
+  suite 64 passed after complete scientific metadata, byte-backed array
+  immutability, and fraction-only PC convention checks were added.

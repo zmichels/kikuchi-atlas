@@ -110,6 +110,7 @@ def test_detector_supersampling_preserves_geometry():
         ({"pcx": 1.1}, "pcx"),
         ({"pcy": -0.1}, "pcy"),
         ({"pcz": 0.0}, "pcz"),
+        ({"pc_convention": "emsoft"}, "convention"),
         ({"supersampling": 0}, "supersampling"),
     ],
 )
@@ -132,6 +133,26 @@ def test_detector_rejects_invalid_convention_or_fraction(changes, match):
 
     with pytest.raises(ValueError, match=match):
         DetectorRecipe(**values)
+
+
+@pytest.mark.parametrize("convention", ["bruker", "tsl", "oxford"])
+def test_detector_accepts_explicit_fraction_based_vendor_conventions(convention):
+    detector = DetectorRecipe(
+        shape=(96, 128),
+        pcx=0.5,
+        pcy=0.5,
+        pcz=0.6,
+        pc_convention=convention,
+        sample_tilt_deg=70.0,
+        detector_tilt_deg=0.0,
+        detector_azimuth_deg=0.0,
+        detector_twist_deg=0.0,
+        pixel_size_um=70.0,
+        binning=1,
+        supersampling=1,
+    )
+
+    assert detector.to_dict()["pc"]["convention"] == convention
 
 
 def test_provenance_records_validate_scientific_units_and_source_hash():

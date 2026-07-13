@@ -11,15 +11,39 @@ def product():
     return MasterPatternProduct.from_array(
         np.arange(50, dtype=np.float32).reshape(2, 5, 5),
         metadata={
-            "source_id": "source-1234567890abcdef",
-            "phase_id": "phase-1234567890abcdef",
-            "simulation_recipe_id": "recipe-1234567890abcdef",
+            "phase": {
+                "name": "forsterite",
+                "formula": "Mg2SiO4",
+                "space_group": {"number": 62, "setting": "Pnma"},
+                "lattice": {
+                    "values": [4.75, 10.20, 5.98, 90, 90, 90],
+                    "units": "angstrom",
+                },
+            },
+            "source_structure": {
+                "identifier": "COD-9000319",
+                "sha256": "a" * 64,
+                "provenance": {
+                    "uri": "https://www.crystallography.net/cod/9000319.cif",
+                    "license": "COD copying policy",
+                    "citation": "Kirfel et al. (2005)",
+                },
+            },
+            "generator": {"name": "ebsdsim", "version": "0.1.8"},
+            "simulation": {
+                "recipe_id": "recipe-1234567890abcdef",
+                "recipe_sha256": "b" * 64,
+                "voltage_kv": 20.0,
+            },
             "projection": "lambert",
             "hemisphere_order": ["north", "south"],
-            "simulation_voltage_kv": 20.0,
             "energy_kev": 20.0,
             "intensity_units": "relative",
             "coordinate_frame": "crystal",
+            "provenance_links": [
+                "source-1234567890abcdef",
+                "recipe-1234567890abcdef",
+            ],
         },
     )
 
@@ -76,4 +100,16 @@ def test_load_rejects_corrupted_product_id(tmp_path):
     np.savez_compressed(path, intensity=intensity, meta_json=json.dumps(metadata))
 
     with pytest.raises(ValueError, match="product identity"):
+        load_master_product(path)
+
+
+def test_load_rejects_metadata_array_shape_that_disagrees_with_payload(tmp_path):
+    path = save_master_product(tmp_path / "master.npz", product())
+    with np.load(path, allow_pickle=False) as archive:
+        intensity = archive["intensity"]
+        metadata = json.loads(str(archive["meta_json"].item()))
+    metadata["metadata"]["array"]["shape"] = [2, 99, 99]
+    np.savez_compressed(path, intensity=intensity, meta_json=json.dumps(metadata))
+
+    with pytest.raises(ValueError, match="array shape"):
         load_master_product(path)

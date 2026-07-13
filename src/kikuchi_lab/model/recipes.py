@@ -162,7 +162,9 @@ class DetectorRecipe:
             "pixel_size_um",
         ):
             object.__setattr__(self, name, _finite(name, getattr(self, name)))
-        if self.pc_convention not in {"bruker", "edax", "oxford", "emsoft"}:
+        # EMsoft PCs include pixel-valued coordinates in some conventions and
+        # therefore require a unit-aware conversion boundary of their own.
+        if self.pc_convention not in {"bruker", "tsl", "oxford"}:
             raise ValueError("unsupported projection-center convention")
         if not 0 <= self.pcx <= 1:
             raise ValueError("pcx must be a dimensionless fraction in [0, 1]")
