@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import imageio.v3 as iio
 import numpy as np
+import pytest
 
 from kikuchi_lab.model import (
     DetectorPatternProduct,
@@ -15,22 +17,25 @@ from kikuchi_lab.model import (
     stable_id,
 )
 from kikuchi_lab.model.identity import canonical_json
-from kikuchi_lab.workflows.proof import render_proof
+from kikuchi_lab.workflows.proof import ProofMasterError, render_proof
 
 
 ROOT = Path(__file__).parents[2]
 
 
-def _canonical_master(source_sha256: str = "1" * 64) -> MasterPatternProduct:
-    y, x = np.mgrid[-1:1:33j, -1:1:33j]
+def _canonical_master() -> MasterPatternProduct:
+    y, x = np.mgrid[-1:1:257j, -1:1:257j]
     source = SourceRecord(
-        uri="https://example.invalid/forsterite.cif",
-        sha256=source_sha256,
+        uri="https://www.crystallography.net/cod/9000319.cif",
+        sha256="550b8c89c617267d39e7cb6a07fe6f55cd2343453c1c45ec77738bf6fd25d9cd",
         license="CC0-1.0",
-        citation="Deterministic proof-workflow fixture.",
+        citation=(
+            "Smyth, J. R. and Hazen, R. M. (1973). The crystal structures of "
+            "forsterite and hortonolite at several temperatures up to 900 C. "
+            "American Mineralogist 58, 588-593."
+        ),
     )
-    recipe_content = {"fixture": "proof", "voltage_kv": 20.0}
-    recipe_sha256 = hashlib.sha256(canonical_json(recipe_content).encode()).hexdigest()
+    recipe_sha256 = "0898ea59fb8966df7b756e2ca441b83f61a3005b0fbecdc240dec796e649599a"
     recipe_id = f"recipe-{recipe_sha256[:16]}"
     return MasterPatternProduct.from_array(
         np.stack((10 + x + y, 9 - x + 0.5 * y)),
@@ -45,16 +50,49 @@ def _canonical_master(source_sha256: str = "1" * 64) -> MasterPatternProduct:
                 },
             },
             "source_structure": {
-                "identifier": "proof-fixture",
+                "identifier": "COD-9000319",
                 "sha256": source.sha256,
                 "source_id": source.source_id,
                 "provenance": source.to_dict(),
             },
-            "generator": {"name": "test-fixture", "version": "1"},
+            "generator": {"name": "ebsdsim", "version": "0.1.8"},
             "simulation": {
                 "recipe_id": recipe_id,
                 "recipe_sha256": recipe_sha256,
                 "voltage_kv": 20.0,
+                "requested": {
+                    "voltage_kv": 20.0,
+                    "dmin_nm": 0.08,
+                    "energy_binwidth_kev": 20.0,
+                    "rank": 8,
+                    "halfw": 128,
+                    "mc_backend": "gpu",
+                },
+                "resolved": {
+                    "voltage_kv": 20.0,
+                    "dmin": 0.08,
+                    "energy_binwidth_keV": 20.0,
+                    "rank": 8,
+                    "halfw": 128,
+                    "grid_size": 257,
+                    "n_bins_run": 1,
+                    "n_mc_bins": 1,
+                    "mc_backend": "gpu_fly_first",
+                },
+                "requested_backend": "gpu",
+                "resolved_backend": "gpu_fly_first",
+                "control_evidence": {
+                    "native_reported": [
+                        "mc_converged",
+                        "mc_n_trajectories",
+                        "mc_relative_tol",
+                    ],
+                    "invocation_only": [
+                        "mc_auto_stop",
+                        "mc_min_trajectories",
+                        "mc_max_trajectories",
+                    ],
+                },
             },
             "projection": "Lambert square equal-area",
             "hemisphere_order": ["north", "south"],
@@ -104,11 +142,9 @@ def _contains_decision_key(value: object) -> bool:
 
 
 def test_proof_renders_every_candidate_under_one_comparison_contract(tmp_path: Path) -> None:
-    source_path = tmp_path / "source" / "forsterite.cif"
-    source_path.parent.mkdir()
-    source_path.write_bytes(b"deterministic-forsterite-source")
+    source_path = ROOT / "phases/forsterite/COD-9000319.cif"
     source_sha256 = hashlib.sha256(source_path.read_bytes()).hexdigest()
-    master = _canonical_master(source_sha256)
+    master = _canonical_master()
     master_bundle = tmp_path / "master.bundle"
     master_path = save_master_product(master_bundle / "master-product.npz", master)
     master_manifest = master_bundle / "master.manifest.json"
@@ -193,13 +229,42 @@ def test_proof_renders_every_candidate_under_one_comparison_contract(tmp_path: P
     assert manifest["identity"]["quality_grade"] == "proof"
     assert manifest["identity"]["intended_use"] == "orientation-comparison"
     assert manifest["identity"]["not_final_quality"] is True
-    assert manifest["identity"]["contact_sheet_contract"] == {
-        "schema_version": 2,
+    contact_contract = manifest["identity"]["contact_sheet_contract"]
+    assert manifest["contact_sheet_contract"] == contact_contract
+    assert contact_contract["schema_version"] == 3
+    assert contact_contract["renderer"] == {
+        "name": "kikuchi-lab-contact-sheet",
+        "version": 3,
+    }
+    assert contact_contract["grid"] == {"columns": 3}
+    assert contact_contract["panel"] == {
+        "shape": [180, 240],
+        "panels": ["raw", "processed"],
         "processed_variant": "scientific-clean",
         "processing_recipe_id": manifest["comparison_contract"]["processing_recipe_id"],
-        "quality_banner": "ascii-proof-grade-v1",
     }
+    assert contact_contract["layout"] == {
+        "panel_gap_px": 4,
+        "outer_padding_px": 8,
+        "banner_height_px": 58,
+        "label_height_px": 52,
+        "card_shape": [232, 484],
+    }
+    assert contact_contract["colors"]["sheet_background"] == 18
+    assert contact_contract["fonts"]["provider"] == "pillow-load-default"
+    assert contact_contract["fonts"]["sizes_px"] == {"primary": 14, "secondary": 12}
+    assert len(contact_contract["fonts"]["glyph_atlas_sha256"]) == 64
+    assert "{processed_name}" in contact_contract["text_templates"]["quality_banner"]
+    assert contact_contract["label_policy"]["placement"] == "footer outside image panels"
     assert stable_id("proof", manifest["identity"]) == first.proof_id
+    for section, key, value in (
+        ("grid", "columns", 4),
+        ("layout", "outer_padding_px", 9),
+        ("fonts", "glyph_atlas_sha256", "0" * 64),
+    ):
+        changed_identity = deepcopy(manifest["identity"])
+        changed_identity["contact_sheet_contract"][section][key] = value
+        assert stable_id("proof", changed_identity) != first.proof_id
     assert manifest["comparison_contract"] == json.loads(
         (second.path / "manifest.json").read_text()
     )["comparison_contract"]
@@ -242,6 +307,7 @@ def test_proof_renders_every_candidate_under_one_comparison_contract(tmp_path: P
     assert len(metric_schemas) == 1
 
     contact = json.loads((first.path / "contact-sheet.json").read_text())
+    assert contact["rendering_contract"] == contact_contract
     assert contact["candidate_order"] == list(first.candidate_ids)
     assert contact["panels"] == ["raw", "processed"]
     assert contact["processed_variant"] == {
@@ -287,3 +353,50 @@ def test_proof_renders_every_candidate_under_one_comparison_contract(tmp_path: P
     assert manifest["evidence"]["master_origin"] == "provenance/master-origin.json"
     assert "provenance/execution.json" in manifest["files"]
     assert "provenance/master-origin.json" in manifest["files"]
+
+
+def test_proof_rejects_master_mismatch_before_projection(tmp_path: Path) -> None:
+    master = _canonical_master()
+    metadata = master.metadata_dict()
+    metadata["simulation"]["resolved"]["rank"] = 4
+    mismatched = MasterPatternProduct.from_array(master.intensity, metadata=metadata)
+    master_bundle = tmp_path / "mismatched.bundle"
+    master_path = save_master_product(master_bundle / "master-product.npz", mismatched)
+    (master_bundle / "master.manifest.json").write_text(
+        canonical_json({"master_product_id": mismatched.product_id, "schema_version": 1})
+    )
+    projection_calls = 0
+
+    def forbidden_projector(**_kwargs):
+        nonlocal projection_calls
+        projection_calls += 1
+        raise AssertionError("projection must not run for an inadmissible master")
+
+    context = {
+        "software": {
+            "kikuchi-lab": "0.1.0",
+            "kikuchipy": "0.13.0",
+            "scikit-image": "0.25.2",
+            "numpy": "2.4.6",
+            "orix": "0.14.3",
+            "pillow": "12.3.0",
+            "ebsdsim": "0.1.8",
+            "wgpu": "0.31.1",
+        },
+        "doctor": {
+            "ok": True,
+            "checks": {"webgpu_adapter": {"ok": True, "details": {}}},
+        },
+        "git": {"branch": "test", "revision": "a" * 40, "dirty": False},
+    }
+    with pytest.raises(ProofMasterError, match="simulation.resolved.rank"):
+        render_proof(
+            master=mismatched,
+            recipe_path=ROOT / "recipes/proof/forsterite-proof.yml",
+            output_root=tmp_path / "run",
+            master_locator=master_path,
+            source_locator=ROOT / "phases/forsterite/COD-9000319.cif",
+            projector=forbidden_projector,
+            execution_context=context,
+        )
+    assert projection_calls == 0

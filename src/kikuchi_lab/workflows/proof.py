@@ -19,7 +19,11 @@ import numpy as np
 import yaml
 
 from kikuchi_lab.artifacts.bundle import BundleExistsError, FloatProduct
-from kikuchi_lab.artifacts.contact_sheet import ContactSheetItem, write_contact_sheet
+from kikuchi_lab.artifacts.contact_sheet import (
+    ContactSheetItem,
+    contact_sheet_rendering_contract,
+    write_contact_sheet,
+)
 from kikuchi_lab.artifacts.images import quantize_uint16, write_npy, write_uint16
 from kikuchi_lab.diagnostics import image_metrics
 from kikuchi_lab.doctor import collect_doctor_report
@@ -33,6 +37,69 @@ from kikuchi_lab.projection import project_with_kikuchipy
 Projector = Callable[..., DetectorPatternProduct]
 
 
+class ProofRecipeError(ValueError):
+    """A concise, field-oriented proof recipe validation failure."""
+
+
+class ProofMasterError(ValueError):
+    """A canonical master does not satisfy the declared proof contract."""
+
+
+_EXPECTED_MASTER_CONTRACT = {
+    "schema_version": 1,
+    "phase": {
+        "name": "forsterite",
+        "formula": "Mg2SiO4",
+        "space_group_number": 62,
+        "space_group_setting": "P n m a",
+        "lattice_angstrom": [10.207, 5.98, 4.756, 90.0, 90.0, 90.0],
+        "lattice_absolute_tolerance": 1e-6,
+    },
+    "source": {
+        "identifier": "COD-9000319",
+        "sha256": "550b8c89c617267d39e7cb6a07fe6f55cd2343453c1c45ec77738bf6fd25d9cd",
+        "source_id": "source-ca21e09f345e7146",
+    },
+    "simulation": {
+        "requested": {
+            "voltage_kv": 20.0,
+            "dmin_nm": 0.08,
+            "energy_binwidth_kev": 20.0,
+            "rank": 8,
+            "halfw": 128,
+            "mc_backend": "gpu",
+        },
+        "resolved": {
+            "voltage_kv": 20.0,
+            "dmin": 0.08,
+            "energy_binwidth_keV": 20.0,
+            "rank": 8,
+            "halfw": 128,
+            "grid_size": 257,
+            "n_bins_run": 1,
+            "n_mc_bins": 1,
+            "mc_backend": "gpu_fly_first",
+        },
+        "requested_backend": "gpu",
+        "resolved_backend": "gpu_fly_first",
+        "control_evidence": {
+            "native_reported": ["mc_converged", "mc_n_trajectories", "mc_relative_tol"],
+            "invocation_only": [
+                "mc_auto_stop",
+                "mc_min_trajectories",
+                "mc_max_trajectories",
+            ],
+        },
+    },
+    "product": {
+        "shape": [2, 257, 257],
+        "projection": "Lambert square equal-area",
+        "hemisphere_order": ["north", "south"],
+        "generator": {"name": "ebsdsim", "version": "0.1.8"},
+    },
+}
+
+
 @dataclass(frozen=True)
 class ProofRecipe:
     schema_version: int
@@ -41,6 +108,7 @@ class ProofRecipe:
     intended_use: str
     not_final_quality: bool
     limitations: Mapping[str, Any]
+    master_contract: Mapping[str, Any]
     candidate_recipe: Path
     processing_recipe: Path
     energy_kev: float
@@ -55,6 +123,7 @@ class ProofRecipe:
             "intended_use": self.intended_use,
             "not_final_quality": self.not_final_quality,
             "limitations": dict(self.limitations),
+            "master_contract": json.loads(canonical_json(self.master_contract)),
             "candidate_recipe": self.candidate_recipe.name,
             "processing_recipe": self.processing_recipe.name,
             "energy_kev": self.energy_kev,
@@ -86,37 +155,40 @@ class _RenderedCandidate:
 
 def _relative_recipe(base: Path, value: Any, field: str) -> Path:
     if not isinstance(value, str) or not value:
-        raise ValueError(f"proof recipe requires non-empty {field}")
+        raise ProofRecipeError(f"proof recipe {field} must be non-empty text")
     relative = Path(value)
     if relative.is_absolute() or ".." in relative.parts:
-        raise ValueError(f"proof recipe {field} must remain beside the proof recipe")
+        raise ProofRecipeError(f"proof recipe {field} must remain beside the proof recipe")
     return base / relative
 
 
 def load_proof_recipe(path: str | Path) -> ProofRecipe:
     """Load the fixed detector/candidate/processing comparison contract."""
     recipe_path = Path(path).resolve()
-    raw = yaml.safe_load(recipe_path.read_text(encoding="utf-8"))
+    try:
+        raw = yaml.safe_load(recipe_path.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        raise ProofRecipeError("proof recipe YAML is invalid") from None
     if not isinstance(raw, dict) or raw.get("schema_version") != 1:
-        raise ValueError("proof recipe schema_version must be supported version 1")
+        raise ProofRecipeError("proof recipe schema_version must be integer 1")
     expected = {
         "schema_version", "name", "quality_grade", "intended_use",
-        "not_final_quality", "limitations", "candidate_recipe", "processing_recipe",
+        "not_final_quality", "limitations", "master_contract", "candidate_recipe", "processing_recipe",
         "energy_kev", "detector", "contact_sheet_columns",
     }
     if set(raw) != expected:
-        raise ValueError(
+        raise ProofRecipeError(
             f"proof recipe fields differ: missing={sorted(expected - set(raw))}, "
             f"unknown={sorted(set(raw) - expected)}"
         )
     if not isinstance(raw["name"], str) or not raw["name"].strip():
-        raise ValueError("proof recipe requires non-empty name")
+        raise ProofRecipeError("proof recipe name must be non-empty text")
     if raw["quality_grade"] != "proof":
-        raise ValueError("proof recipe quality_grade must be 'proof'")
+        raise ProofRecipeError("proof recipe quality_grade must be 'proof'")
     if raw["intended_use"] != "orientation-comparison":
-        raise ValueError("proof recipe intended_use must be 'orientation-comparison'")
+        raise ProofRecipeError("proof recipe intended_use must be 'orientation-comparison'")
     if raw["not_final_quality"] is not True:
-        raise ValueError("proof recipe not_final_quality must be true")
+        raise ProofRecipeError("proof recipe not_final_quality must be true")
     limitations = raw["limitations"]
     expected_limitations = {
         "dmin_nm": 0.08,
@@ -125,16 +197,26 @@ def load_proof_recipe(path: str | Path) -> ProofRecipe:
         "rank": 8,
     }
     if limitations != expected_limitations:
-        raise ValueError(f"proof recipe limitations must be exactly {expected_limitations}")
+        raise ProofRecipeError(f"proof recipe limitations must be exactly {expected_limitations}")
+    master_contract = raw["master_contract"]
+    if master_contract != _EXPECTED_MASTER_CONTRACT:
+        raise ProofRecipeError("proof recipe master_contract differs from the supported contract")
     detector = raw["detector"]
     if not isinstance(detector, dict):
-        raise ValueError("proof recipe detector must be an object")
+        raise ProofRecipeError("proof recipe detector must be an object")
     columns = raw["contact_sheet_columns"]
     if isinstance(columns, bool) or not isinstance(columns, int) or columns <= 0:
-        raise ValueError("contact_sheet_columns must be a positive integer")
-    energy = float(raw["energy_kev"])
+        raise ProofRecipeError("proof recipe contact_sheet_columns must be a positive integer")
+    try:
+        energy = float(raw["energy_kev"])
+    except (TypeError, ValueError):
+        raise ProofRecipeError("proof recipe energy_kev must be a finite positive number") from None
     if not np.isfinite(energy) or energy <= 0:
-        raise ValueError("energy_kev must be finite and positive")
+        raise ProofRecipeError("proof recipe energy_kev must be a finite positive number")
+    try:
+        detector_recipe = DetectorRecipe(**detector)
+    except (TypeError, ValueError) as error:
+        raise ProofRecipeError(f"proof recipe detector is invalid: {error}") from None
     return ProofRecipe(
         schema_version=1,
         name=raw["name"],
@@ -142,10 +224,11 @@ def load_proof_recipe(path: str | Path) -> ProofRecipe:
         intended_use=raw["intended_use"],
         not_final_quality=raw["not_final_quality"],
         limitations=limitations,
+        master_contract=master_contract,
         candidate_recipe=_relative_recipe(recipe_path.parent, raw["candidate_recipe"], "candidate_recipe"),
         processing_recipe=_relative_recipe(recipe_path.parent, raw["processing_recipe"], "processing_recipe"),
         energy_kev=energy,
-        detector=DetectorRecipe(**detector),
+        detector=detector_recipe,
         contact_sheet_columns=columns,
     )
 
@@ -222,6 +305,82 @@ def _product_identity(product: FloatProduct) -> dict[str, Any]:
     }
 
 
+def _master_field(metadata: Mapping[str, Any], path: str) -> Any:
+    value: Any = metadata
+    for component in path.split("."):
+        if not isinstance(value, Mapping) or component not in value:
+            raise ProofMasterError(f"proof master is missing {path}")
+        value = value[component]
+    return value
+
+
+def _require_master_value(metadata: Mapping[str, Any], path: str, expected: Any) -> None:
+    observed = _master_field(metadata, path)
+    if observed != expected:
+        raise ProofMasterError(
+            f"proof master {path} mismatch: expected {expected!r}, observed {observed!r}"
+        )
+
+
+def validate_master_for_proof(
+    master: MasterPatternProduct, contract: Mapping[str, Any]
+) -> None:
+    """Reject a canonical master that differs from the proof's admitted source."""
+    metadata = master.metadata_dict()
+    phase = contract["phase"]
+    for path, expected in (
+        ("phase.name", phase["name"]),
+        ("phase.formula", phase["formula"]),
+        ("phase.space_group.number", phase["space_group_number"]),
+        ("phase.space_group.setting", phase["space_group_setting"]),
+        ("phase.lattice.units", "angstrom"),
+    ):
+        _require_master_value(metadata, path, expected)
+    lattice = _master_field(metadata, "phase.lattice.values")
+    expected_lattice = phase["lattice_angstrom"]
+    tolerance = phase["lattice_absolute_tolerance"]
+    try:
+        lattice_matches = np.allclose(
+            np.asarray(lattice, dtype=float),
+            np.asarray(expected_lattice, dtype=float),
+            rtol=0.0,
+            atol=float(tolerance),
+        )
+    except (TypeError, ValueError):
+        lattice_matches = False
+    if not lattice_matches:
+        raise ProofMasterError(
+            "proof master phase.lattice.values mismatch: "
+            f"expected {expected_lattice!r} within {tolerance!r}, observed {lattice!r}"
+        )
+
+    source = contract["source"]
+    for field in ("identifier", "sha256", "source_id"):
+        _require_master_value(metadata, f"source_structure.{field}", source[field])
+
+    simulation = contract["simulation"]
+    for classification in ("requested", "resolved"):
+        for field, expected in simulation[classification].items():
+            _require_master_value(
+                metadata,
+                f"simulation.{classification}.{field}",
+                expected,
+            )
+    for field in ("requested_backend", "resolved_backend", "control_evidence"):
+        _require_master_value(metadata, f"simulation.{field}", simulation[field])
+    _require_master_value(metadata, "energy_kev", simulation["requested"]["voltage_kv"])
+
+    product = contract["product"]
+    if list(master.intensity.shape) != product["shape"]:
+        raise ProofMasterError(
+            "proof master product.shape mismatch: "
+            f"expected {product['shape']!r}, observed {list(master.intensity.shape)!r}"
+        )
+    _require_master_value(metadata, "projection", product["projection"])
+    _require_master_value(metadata, "hemisphere_order", product["hemisphere_order"])
+    _require_master_value(metadata, "generator", product["generator"])
+
+
 def _comparison_contract(recipe: ProofRecipe, processing: Any) -> dict[str, Any]:
     return {
         "energy_kev": recipe.energy_kev,
@@ -239,15 +398,6 @@ def _comparison_contract(recipe: ProofRecipe, processing: Any) -> dict[str, Any]
             "comparison_use": "structural",
             "absolute_intensity_comparable": False,
         },
-    }
-
-
-def _contact_sheet_contract(processing: Any) -> dict[str, Any]:
-    return {
-        "schema_version": 2,
-        "processed_variant": processing.name,
-        "processing_recipe_id": processing.recipe_id,
-        "quality_banner": "ascii-proof-grade-v1",
     }
 
 
@@ -413,10 +563,20 @@ def render_proof(
     """Render all candidates in declared order and stop before human selection."""
     started = time.perf_counter()
     recipe = load_proof_recipe(recipe_path)
+    validate_master_for_proof(master, recipe.master_contract)
     candidates = load_candidate_set(recipe.candidate_recipe)
     processing = load_processing_recipe(recipe.processing_recipe)
     contract = _comparison_contract(recipe, processing)
-    contact_contract = _contact_sheet_contract(processing)
+    processed_variant = {
+        "name": processing.name,
+        "recipe_id": processing.recipe_id,
+        "short_id": processing.recipe_id.split("-", maxsplit=1)[1][:8],
+    }
+    contact_contract = contact_sheet_rendering_contract(
+        columns=recipe.contact_sheet_columns,
+        panel_shape=recipe.detector.shape,
+        processed_variant=processed_variant,
+    )
     output = Path(output_root).resolve()
     output.mkdir(parents=True, exist_ok=True)
     context = _validate_execution_context(
@@ -447,6 +607,7 @@ def render_proof(
         "intended_use": recipe.intended_use,
         "not_final_quality": recipe.not_final_quality,
         "limitations": dict(recipe.limitations),
+        "master_contract": json.loads(canonical_json(recipe.master_contract)),
         "master": {
             "product_id": master.product_id,
             "array_sha256": master.array_sha256,
@@ -473,20 +634,15 @@ def render_proof(
         contact_metadata = write_contact_sheet(
             staging / "contact-sheet.png",
             items,
-            columns=recipe.contact_sheet_columns,
-            panel_shape=recipe.detector.shape,
-            processed_variant={
-                "name": processing.name,
-                "recipe_id": processing.recipe_id,
-                "short_id": processing.recipe_id.split("-", maxsplit=1)[1][:8],
-            },
+            rendering_contract=contact_contract,
+            processed_variant=processed_variant,
             quality_banner={
                 "quality_grade": recipe.quality_grade,
                 "intended_use": recipe.intended_use,
                 "not_final_quality": recipe.not_final_quality,
-                "text": (
-                    "PROOF-GRADE / NOT FINAL QUALITY | orientation comparison | "
-                    f"processed: {processing.name} [{processing.recipe_id.split('-', 1)[1][:8]}]"
+                "text": contact_contract["text_templates"]["quality_banner"].format(
+                    processed_name=processed_variant["name"],
+                    processed_short_id=processed_variant["short_id"],
                 ),
             },
         )
@@ -528,9 +684,11 @@ def render_proof(
             "intended_use": recipe.intended_use,
             "not_final_quality": recipe.not_final_quality,
             "limitations": dict(recipe.limitations),
+            "master_contract": json.loads(canonical_json(recipe.master_contract)),
             "candidate_set_id": candidates.candidate_set_id,
             "candidate_order": list(candidates.candidate_ids),
             "comparison_contract": contract,
+            "contact_sheet_contract": contact_contract,
             "identity": identity,
             "contact_sheet": "contact-sheet.png",
             "evidence": {

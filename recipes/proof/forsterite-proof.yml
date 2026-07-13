@@ -8,6 +8,49 @@ limitations:
   energy_binwidth_kev: 20.0
   energy_integration: one-bin
   rank: 8
+master_contract:
+  schema_version: 1
+  phase:
+    name: forsterite
+    formula: Mg2SiO4
+    space_group_number: 62
+    space_group_setting: P n m a
+    lattice_angstrom: [10.207, 5.980, 4.756, 90.0, 90.0, 90.0]
+    lattice_absolute_tolerance: 0.000001
+  source:
+    identifier: COD-9000319
+    sha256: 550b8c89c617267d39e7cb6a07fe6f55cd2343453c1c45ec77738bf6fd25d9cd
+    source_id: source-ca21e09f345e7146
+  simulation:
+    requested:
+      voltage_kv: 20.0
+      dmin_nm: 0.08
+      energy_binwidth_kev: 20.0
+      rank: 8
+      halfw: 128
+      mc_backend: gpu
+    resolved:
+      voltage_kv: 20.0
+      dmin: 0.08
+      energy_binwidth_keV: 20.0
+      rank: 8
+      halfw: 128
+      grid_size: 257
+      n_bins_run: 1
+      n_mc_bins: 1
+      mc_backend: gpu_fly_first
+    requested_backend: gpu
+    resolved_backend: gpu_fly_first
+    control_evidence:
+      native_reported: [mc_converged, mc_n_trajectories, mc_relative_tol]
+      invocation_only: [mc_auto_stop, mc_min_trajectories, mc_max_trajectories]
+  product:
+    shape: [2, 257, 257]
+    projection: Lambert square equal-area
+    hemisphere_order: [north, south]
+    generator:
+      name: ebsdsim
+      version: 0.1.8
 candidate_recipe: forsterite-candidates.yml
 processing_recipe: scientific-clean.yml
 energy_kev: 20.0

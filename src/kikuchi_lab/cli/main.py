@@ -83,9 +83,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "proof":
         from kikuchi_lab.model import load_master_product
-        from kikuchi_lab.workflows import render_proof
+        from kikuchi_lab.workflows import load_proof_recipe, render_proof
 
         try:
+            load_proof_recipe(args.recipe)
             master = load_master_product(args.master_product)
             result = render_proof(
                 master=master,
