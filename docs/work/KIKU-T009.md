@@ -42,6 +42,9 @@ comparison identity, and any bounded final-render adjustments.
 - [x] Decision-lineage discovery uses physical directories and regular files,
   rejects symbolic-link roots, locks, predecessor directories, and predecessor
   files, and validates supersession IDs before filesystem access.
+- [x] A shared decision root intrinsically validates every selection, filters by
+  recorded proof ID before external verification, and keeps each proof's unique
+  linear lineage under its own proof-scoped lock.
 - [x] Publication fsyncs the selection file and staging directory before atomic
   rename, then fsyncs the output directory; failed pre-rename publication cleans
   its staging directory.
@@ -55,8 +58,9 @@ comparison identity, and any bounded final-render adjustments.
 
 - Implementation commits: `2841d87` (`feat: add immutable orientation
   selections`), `9aac920` (`fix: reject ambiguous orientation selections`),
-  `92e7cc8` (`fix: serialize and harden orientation decisions`), and `93d28f3`
-  (`fix: secure orientation selection verification`).
+  `92e7cc8` (`fix: serialize and harden orientation decisions`), `93d28f3`
+  (`fix: secure orientation selection verification`), and `a4a3baa`
+  (`fix: isolate selection lineages by proof`).
 - `load_orientation_selection()` now validates the immutable artifact alone;
   `verify_orientation_selection(..., proof_root=...)` performs the explicitly
   requested external check and returns an `OrientationSelectionVerification`
@@ -70,6 +74,10 @@ comparison identity, and any bounded final-render adjustments.
   directories and regular files. Focused tests cover predecessor directory and
   file symlinks, malformed traversal-like predecessor IDs, and strict non-bool
   record and decision schema versions.
+- A shared-root regression creates two distinct valid proofs, records and
+  supersedes each proof independently, and rejects a fork in either lineage.
+  Nonmatching records are still intrinsically validated but are not checked
+  against the wrong proof tree.
 - Authoritative schema-v3 leaf: `orientation-selection-0903bbee65fa3896`
   for `fo-011-phi1-045`; artifact SHA-256
   `ca9ac51b14b7a862c8d33734071a57397e58556d2aa4d869e76a67b817ff818b`.
@@ -98,6 +106,7 @@ comparison identity, and any bounded final-render adjustments.
   in the schema-v3 selection.
 - Concurrency gates: a deterministic six-subprocess supersession race and a
   separate concurrent-initial-selection race each produced exactly one winner.
-- Focused gate: `48 passed` in `tests/unit/test_orientation_selection.py`.
-- Explicit relocation and two deterministic concurrency gates: `3 passed`.
-- Fast full gate: `354 passed`; Ruff and the 14-item work tracker validated.
+- Focused gate: `49 passed` in `tests/unit/test_orientation_selection.py`.
+- Shared-root isolation, explicit relocation, and two deterministic concurrency
+  gates: `4 passed`.
+- Fast full gate: `355 passed`; Ruff and the 14-item work tracker validated.
