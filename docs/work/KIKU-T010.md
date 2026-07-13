@@ -36,7 +36,9 @@ and source evidence reproduce the same canonical outputs.
 ## Implementation Evidence
 
 - Code landed in `41582bc` with clarity tuning in `34404f8` and a genuine
-  non-identical GPU-source tolerance regression in `5d6d2c9`.
+  non-identical GPU-source tolerance regression in `5d6d2c9`; strict bundle
+  trees, proof scientific-contract checks, and cryptographic leaf traversal
+  were added in `1a57a3b`.
 - `render-final` intrinsically validates the selection record, explicitly verifies
   the caller-supplied proof root, and rejects any selection that is not the
   current unique leaf of its proof-scoped lineage.
