@@ -579,17 +579,27 @@ def render_final(
     for branch, results in (("scientific", scientific), ("gallery", gallery)):
         for index, result in enumerate(results, start=1):
             stages[f"{branch}-{index:02d}-{result.record.name}"] = _stage_product(result)
+    acquisition_recipe_stage = {
+        "name": acquisition.record.name,
+        "parameters": plain_data(acquisition.record.parameters),
+    }
     scientific_recipe_content = {
         "profile": profile,
         "clarity_role": "scientific-clean",
-        "stages": [scientific_lineage[0]["name"], *[result.record.to_dict() for result in scientific]],
-        "resolved_processing": [acquisition.record.computational_dict(), *[result.record.computational_dict() for result in scientific]],
+        "acquisition": acquisition_recipe_stage,
+        "stages": [
+            {"name": result.record.name, "parameters": plain_data(result.record.parameters)}
+            for result in scientific
+        ],
     }
     gallery_recipe_content = {
         "profile": profile,
         "clarity_role": "gallery-crisp",
-        "stages": [gallery_lineage[0]["name"], *[result.record.to_dict() for result in gallery]],
-        "resolved_processing": [acquisition.record.computational_dict(), *[result.record.computational_dict() for result in gallery]],
+        "acquisition": acquisition_recipe_stage,
+        "stages": [
+            {"name": result.record.name, "parameters": plain_data(result.record.parameters)}
+            for result in gallery
+        ],
         "clarity_contract": plain_data(recipe.clarity),
     }
     scientific_final = FloatProduct(
@@ -802,7 +812,78 @@ def _normalized_json(value: Any) -> Any:
     return value
 
 
-def _manifest_comparison_identity(bundle: Path, manifest: Mapping[str, Any]) -> str:
+def _normalize_lineage_source(lineages: Mapping[str, Any]) -> None:
+    for branch in ("scientific", "gallery"):
+        lineage = lineages.get(branch)
+        if isinstance(lineage, list) and lineage and isinstance(lineage[0], dict):
+            lineage[0]["input_id"] = "<GPU_TOLERANT_SOURCE_CONTENT_ID>"
+
+
+def _normalize_provenance_product_ids(products: Mapping[str, Any]) -> None:
+    for name in ("acquisition_corrected", "scientific_clean", "gallery_crisp"):
+        product = products.get(name)
+        if isinstance(product, dict):
+            product["product_id"] = "<GPU_SOURCE_DERIVED_PRODUCT_ID>"
+    stages = products.get("stages")
+    if isinstance(stages, dict):
+        for product in stages.values():
+            if isinstance(product, dict):
+                product["product_id"] = "<GPU_SOURCE_DERIVED_PRODUCT_ID>"
+
+
+def _gpu_tolerant_manifest(value: Mapping[str, Any]) -> dict[str, Any]:
+    manifest = _normalized_json(plain_data(value))
+    manifest["run_id"] = "<GPU_SOURCE_DERIVED_RUN_ID>"
+    run_identity = manifest.get("run_identity", {})
+    if isinstance(run_identity, dict):
+        products = run_identity.get("products")
+        if isinstance(products, dict):
+            products["projected"] = "<GPU_TOLERANT_SOURCE_PRODUCT>"
+            _normalize_provenance_product_ids(products)
+        lineages = run_identity.get("processing_lineages")
+        if isinstance(lineages, dict):
+            _normalize_lineage_source(lineages)
+    lineages = manifest.get("processing_lineages")
+    if isinstance(lineages, dict):
+        _normalize_lineage_source(lineages)
+    registry = manifest.get("content_registry", {}).get("labels")
+    if isinstance(registry, dict):
+        registry["projected"] = "<GPU_TOLERANT_SOURCE_PRODUCT>"
+        for label, product in registry.items():
+            if label != "projected" and isinstance(product, dict):
+                product["product_id"] = "<GPU_SOURCE_DERIVED_PRODUCT_ID>"
+    products = manifest.get("products")
+    if isinstance(products, dict):
+        for product in products.values():
+            if isinstance(product, dict):
+                product["product_id"] = "<GPU_SOURCE_DERIVED_PRODUCT_ID>"
+    exports = manifest.get("uint16_exports")
+    if isinstance(exports, dict):
+        for relative, record in exports.items():
+            if relative.startswith("products/projected."):
+                exports[relative] = "<GPU_TOLERANT_SOURCE_EXPORT>"
+            elif isinstance(record, dict):
+                record["source_product_id"] = "<GPU_SOURCE_DERIVED_PRODUCT_ID>"
+    return manifest
+
+
+def _comparison_json_document(relative: str, payload: Any, *, gpu_tolerant: bool) -> Any:
+    normalized = _normalized_json(payload)
+    if not gpu_tolerant or not isinstance(normalized, dict):
+        return normalized
+    if relative == "diagnostics/metrics.json":
+        normalized["projected"] = "<GPU_TOLERANT_SOURCE_METRICS>"
+    elif relative == "metadata/processing-lineage.json":
+        _normalize_lineage_source(normalized)
+    return normalized
+
+
+def _manifest_comparison_identity(
+    bundle: Path,
+    manifest: Mapping[str, Any],
+    *,
+    source_mode: str,
+) -> str:
     expected_exclusions = {
         "json_fields": ["**/captured_at", "**/created_at", "**/decided_at"],
         "json_documents": [
@@ -815,9 +896,18 @@ def _manifest_comparison_identity(bundle: Path, manifest: Mapping[str, Any]) -> 
     if manifest.get("comparison_exclusions") != expected_exclusions:
         raise ReproductionMismatch("bundle comparison exclusions differ from schema")
     excluded_documents = {"diagnostics/timings.json", "diagnostics/resources.json"}
+    gpu_tolerant = source_mode == "gpu-tolerant"
+    source_artifacts = {
+        "products/projected.npy",
+        "products/projected.png",
+        "products/projected.tif",
+    }
     normalized_files: dict[str, Any] = {}
     for relative, record in manifest["files"].items():
         if relative in excluded_documents:
+            continue
+        if gpu_tolerant and relative in source_artifacts:
+            normalized_files[relative] = {"kind": "gpu-tolerant-source-artifact"}
             continue
         if relative.endswith(".json"):
             try:
@@ -826,14 +916,24 @@ def _manifest_comparison_identity(bundle: Path, manifest: Mapping[str, Any]) -> 
                 raise ReproductionMismatch(
                     f"comparison JSON is invalid: {relative}"
                 ) from error
-            semantic = canonical_json(_normalized_json(payload))
+            semantic = canonical_json(
+                _comparison_json_document(
+                    relative,
+                    payload,
+                    gpu_tolerant=gpu_tolerant,
+                )
+            )
             normalized_files[relative] = {
                 "kind": "normalized-json",
                 "semantic_sha256": hashlib.sha256(semantic.encode("utf-8")).hexdigest(),
             }
         else:
             normalized_files[relative] = record
-    normalized_manifest = _normalized_json(dict(manifest))
+    normalized_manifest = (
+        _gpu_tolerant_manifest(manifest)
+        if gpu_tolerant
+        else _normalized_json(dict(manifest))
+    )
     normalized_manifest["files"] = normalized_files
     return stable_id("manifest-comparison", normalized_manifest)
 
@@ -903,11 +1003,15 @@ def compare_final_bundles(
             raise ReproductionMismatch(
                 f"CPU processing uint16 exports must remain exact; mismatch at {relative}"
             )
-    first_manifest_identity = _manifest_comparison_identity(first_root, first_manifest)
-    second_manifest_identity = _manifest_comparison_identity(second_root, second_manifest)
+    first_manifest_identity = _manifest_comparison_identity(
+        first_root, first_manifest, source_mode=source_mode
+    )
+    second_manifest_identity = _manifest_comparison_identity(
+        second_root, second_manifest, source_mode=source_mode
+    )
     if first_manifest_identity != second_manifest_identity:
         raise ReproductionMismatch("manifest identity differs after schema exclusions")
-    if first_manifest["run_id"] != second_manifest["run_id"]:
+    if source_mode == "exact" and first_manifest["run_id"] != second_manifest["run_id"]:
         raise ReproductionMismatch("content-addressed run identities differ")
     return ReproductionComparison(
         equal=True,

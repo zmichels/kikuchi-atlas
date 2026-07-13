@@ -168,6 +168,83 @@ def test_gpu_tolerance_is_explicit_and_never_weakens_cpu_processing_checks(
         )
 
 
+def test_gpu_tolerance_accepts_distinct_source_bytes_when_cpu_products_are_exact(
+    tmp_path: Path,
+) -> None:
+    proof, selection = selected_proof(tmp_path)
+    common = {
+        "master": canonical_master(),
+        "recipe_path": ROOT / "recipes/gallery/forsterite-final.yml",
+        "selection_path": selection,
+        "proof_root": proof,
+        "profile": "development",
+        "execution_context": _context("/private/same"),
+    }
+    baseline = render_final(
+        **common,
+        output_root=tmp_path / "baseline",
+        projector=fixture_projector,
+    )
+
+    def one_ulp_projector(**kwargs):
+        from kikuchi_lab.model import DetectorPatternProduct
+
+        product = fixture_projector(**kwargs)
+        changed = np.array(product.intensity, copy=True)
+        changed[0, 0] = np.nextafter(changed[0, 0], np.float32(np.inf))
+        metadata = product.metadata_dict()
+        metadata.pop("array")
+        return DetectorPatternProduct.from_array(
+            changed,
+            master_product_id=product.master_product_id,
+            projection_recipe_id=product.projection_recipe_id,
+            metadata=metadata,
+        )
+
+    variant = render_final(
+        **common,
+        output_root=tmp_path / "variant",
+        projector=one_ulp_projector,
+    )
+    assert not np.array_equal(
+        np.load(baseline.path / "products/projected.npy"),
+        np.load(variant.path / "products/projected.npy"),
+    )
+    baseline_manifest = json.loads((baseline.path / "manifest.json").read_text())
+    for relative in (
+        "products/acquisition-corrected.npy",
+        "products/scientific-clean.npy",
+        "products/gallery-crisp.npy",
+        *sorted(
+            path
+            for path in baseline_manifest["files"]
+            if path.startswith("products/stages/") and path.endswith(".npy")
+        ),
+    ):
+        np.testing.assert_array_equal(
+            np.load(baseline.path / relative),
+            np.load(variant.path / relative),
+        )
+    for relative in sorted(baseline_manifest["uint16_exports"]):
+        if relative.startswith("products/projected."):
+            continue
+        assert (baseline.path / relative).read_bytes() == (variant.path / relative).read_bytes()
+
+    with pytest.raises(ReproductionMismatch, match="exact source projection"):
+        compare_final_bundles(baseline.path, variant.path)
+    comparison = compare_final_bundles(
+        baseline.path,
+        variant.path,
+        source_mode="gpu-tolerant",
+        source_atol=1e-6,
+        source_rtol=0.0,
+    )
+    assert comparison.equal is True
+    assert comparison.first_run_id != comparison.second_run_id
+    assert comparison.first_manifest_identity == comparison.second_manifest_identity
+    assert comparison.cpu_processing_comparison == "exact"
+
+
 def test_reproduce_final_cli_rebuilds_from_recorded_run(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
