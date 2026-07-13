@@ -58,13 +58,22 @@ def test_robust_normalize_maps_stated_percentile_window_without_clipping():
     }
 
 
-def test_local_contrast_remains_float32_and_finite():
+def test_local_contrast_records_explicit_clahe_domain_clipping():
     source = robust_normalize(
-        band_image(), low_percentile=0.0, high_percentile=100.0
+        band_image(), low_percentile=5.0, high_percentile=95.0
     ).intensity
-    result = local_contrast(source, clip_limit=0.02, kernel_size=(16, 16))
+    result = local_contrast(
+        source,
+        clip_limit=0.02,
+        kernel_size=(16, 16),
+        input_domain="clip_0_1",
+    )
 
     assert_stage_result(result, shape=source.shape)
+    assert result.record.parameters["input_domain"] == "clip_0_1"
+    assert result.record.diagnostics["input_clipped_fraction"] > 0.001
+    assert [warning.code for warning in result.record.warnings] == ["clipping_fraction"]
+    assert result.record.warnings[0].details["stage"] == "local_contrast"
 
 
 def test_multiscale_detail_has_zero_response_on_constant_image():
@@ -74,9 +83,10 @@ def test_multiscale_detail_has_zero_response_on_constant_image():
     np.testing.assert_allclose(result.intensity, source, atol=1e-6)
 
 
-def test_multiscale_detail_warns_without_adjusting_excessive_gain():
-    gains = (HIGH_FREQUENCY_GAIN_CEILING + 0.25, 0.5)
-    result = multiscale_detail(band_image(), scales_px=(1.0, 3.0), gains=gains)
+def test_multiscale_detail_records_measured_transfer_and_warns_without_adjusting():
+    source = (np.indices((64, 64)).sum(axis=0) % 2).astype(np.float32)
+    gains = (1.5,)
+    result = multiscale_detail(source, scales_px=(1.0,), gains=gains)
 
     assert result.record.parameters["gains"] == gains
     with pytest.raises(TypeError):
@@ -84,7 +94,9 @@ def test_multiscale_detail_warns_without_adjusting_excessive_gain():
     assert [warning.code for warning in result.record.warnings] == [
         "excessive_high_frequency_gain"
     ]
-    assert result.record.warnings[0].details["requested_gain"] == sum(abs(v) for v in gains)
+    measured = result.record.diagnostics["high_frequency_amplification"]
+    assert measured > HIGH_FREQUENCY_GAIN_CEILING
+    assert result.record.warnings[0].details["measured_ratio"] == measured
 
 
 def test_unsharp_does_not_clip_internal_overshoot():
@@ -97,15 +109,36 @@ def test_unsharp_does_not_clip_internal_overshoot():
 
 
 def test_unsharp_warns_without_adjusting_excessive_gain():
-    requested = HIGH_FREQUENCY_GAIN_CEILING + 0.5
+    source = (np.indices((64, 64)).sum(axis=0) % 2).astype(np.float32)
+    requested = 1.5
     result = unsharp(
-        band_image(), radius_px=1.0, amount=requested, threshold=0.0
+        source, radius_px=1.0, amount=requested, threshold=0.0
     )
 
     assert result.record.parameters["amount"] == requested
     assert [warning.code for warning in result.record.warnings] == [
         "excessive_high_frequency_gain"
     ]
+    assert result.record.diagnostics["high_frequency_amplification"] > 2.0
+
+
+def test_frequency_transfer_is_robust_for_constant_and_near_zero_images():
+    constant = unsharp(
+        np.full((32, 32), 0.4, dtype=np.float32),
+        radius_px=1.0,
+        amount=4.0,
+        threshold=0.0,
+    )
+    near_zero = multiscale_detail(
+        np.full((32, 32), 1e-20, dtype=np.float32),
+        scales_px=(1.0,),
+        gains=(4.0,),
+    )
+
+    assert constant.record.diagnostics["high_frequency_amplification"] == 1.0
+    assert near_zero.record.diagnostics["high_frequency_amplification"] == 1.0
+    assert not constant.record.warnings
+    assert not near_zero.record.warnings
 
 
 def test_tone_map_is_monotonic_for_positive_gamma():

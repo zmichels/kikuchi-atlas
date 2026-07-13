@@ -8,12 +8,13 @@ stages:
       epsilon: 0.000001
   - name: robust_normalize
     parameters:
-      low_percentile: 0.0
-      high_percentile: 100.0
+      low_percentile: 1.0
+      high_percentile: 99.0
   - name: local_contrast
     parameters:
       clip_limit: 0.01
       kernel_size: [16, 16]
+      input_domain: clip_0_1
   - name: tone_map
     parameters:
       black: 0.0

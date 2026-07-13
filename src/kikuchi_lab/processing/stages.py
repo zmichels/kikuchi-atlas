@@ -77,10 +77,12 @@ class StageRecord:
     parameters: Mapping[str, Any]
     input_id: str
     output_id: str
+    diagnostics: Mapping[str, Any] = MappingProxyType({})
     warnings: tuple[ProcessingWarning, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "parameters", _freeze_mapping(self.parameters))
+        object.__setattr__(self, "diagnostics", _freeze_mapping(self.diagnostics))
         object.__setattr__(self, "warnings", tuple(self.warnings))
 
     def to_dict(self) -> dict[str, Any]:
@@ -89,6 +91,7 @@ class StageRecord:
             "parameters": _plain(self.parameters),
             "input_id": self.input_id,
             "output_id": self.output_id,
+            "diagnostics": _plain(self.diagnostics),
             "warnings": [warning.to_dict() for warning in self.warnings],
         }
 
@@ -117,15 +120,24 @@ def _execute(
     parameters: Mapping[str, Any],
     operation: Callable[[np.ndarray], Any],
     warnings: Sequence[ProcessingWarning] = (),
+    analyzer: Callable[
+        [np.ndarray, np.ndarray], tuple[Mapping[str, Any], Sequence[ProcessingWarning]]
+    ]
+    | None = None,
 ) -> StageResult:
     source = _owned_float32(image)
     output = _owned_float32(operation(source))
+    diagnostics: Mapping[str, Any] = {}
+    analyzed_warnings: Sequence[ProcessingWarning] = ()
+    if analyzer is not None:
+        diagnostics, analyzed_warnings = analyzer(source, output)
     record = StageRecord(
         name=name,
         parameters=parameters,
         input_id=image_id(source),
         output_id=image_id(output),
-        warnings=tuple(warnings),
+        diagnostics=diagnostics,
+        warnings=(*warnings, *analyzed_warnings),
     )
     return StageResult(output, record)
 
@@ -174,7 +186,11 @@ def robust_normalize(
 
 
 def local_contrast(
-    image: Any, *, clip_limit: float, kernel_size: int | tuple[int, int]
+    image: Any,
+    *,
+    clip_limit: float,
+    kernel_size: int | tuple[int, int],
+    input_domain: str,
 ) -> StageResult:
     clip = _finite("clip_limit", clip_limit)
     if clip <= 0:
@@ -186,15 +202,44 @@ def local_contrast(
     if len(kernel) != 2 or any(isinstance(v, bool) or int(v) != v or v <= 0 for v in kernel):
         raise ValueError("kernel_size must contain two positive integers")
     kernel = (int(kernel[0]), int(kernel[1]))
+    if input_domain != "clip_0_1":
+        raise ValueError("input_domain must be 'clip_0_1'")
 
     def operation(source: np.ndarray) -> np.ndarray:
-        return exposure.equalize_adapthist(source, kernel_size=kernel, clip_limit=clip)
+        domain_input = np.clip(source, 0.0, 1.0)
+        return exposure.equalize_adapthist(
+            domain_input, kernel_size=kernel, clip_limit=clip
+        )
+
+    def analyze(
+        source: np.ndarray, _output: np.ndarray
+    ) -> tuple[Mapping[str, Any], Sequence[ProcessingWarning]]:
+        fraction = float(np.count_nonzero((source < 0.0) | (source > 1.0))) / source.size
+        diagnostics = {"input_clipped_fraction": fraction, "input_domain": [0.0, 1.0]}
+        if fraction <= CLIPPING_FRACTION_WARNING:
+            return diagnostics, ()
+        warning = ProcessingWarning(
+            code="clipping_fraction",
+            message="CLAHE input-domain conversion clips more than 0.1% of pixels.",
+            details={
+                "stage": "local_contrast",
+                "fraction": fraction,
+                "threshold": CLIPPING_FRACTION_WARNING,
+                "policy": input_domain,
+            },
+        )
+        return diagnostics, (warning,)
 
     return _execute(
         "local_contrast",
         image,
-        {"clip_limit": clip, "kernel_size": list(kernel)},
+        {
+            "clip_limit": clip,
+            "kernel_size": list(kernel),
+            "input_domain": input_domain,
+        },
         operation,
+        analyzer=analyze,
     )
 
 
@@ -205,8 +250,6 @@ def multiscale_detail(
     gain_values = tuple(_finite("gain", value) for value in gains)
     if not scales or len(scales) != len(gain_values) or any(scale <= 0 for scale in scales):
         raise ValueError("scales_px and gains must be non-empty, equal-length sequences")
-    requested_gain = sum(abs(value) for value in gain_values)
-    warnings = _high_frequency_warnings(requested_gain, stage="multiscale_detail")
 
     def operation(source: np.ndarray) -> np.ndarray:
         output = source.copy()
@@ -220,7 +263,7 @@ def multiscale_detail(
         image,
         {"scales_px": list(scales), "gains": list(gain_values)},
         operation,
-        warnings,
+        analyzer=_high_frequency_analyzer(stage="multiscale_detail"),
     )
 
 
@@ -232,7 +275,6 @@ def unsharp(
     cutoff = _finite("threshold", threshold)
     if radius <= 0 or gain < 0 or cutoff < 0:
         raise ValueError("radius_px must be positive; amount and threshold must be non-negative")
-    warnings = _high_frequency_warnings(gain, stage="unsharp")
 
     def operation(source: np.ndarray) -> np.ndarray:
         return filters.unsharp_mask(
@@ -247,26 +289,56 @@ def unsharp(
         image,
         {"radius_px": radius, "amount": gain, "threshold": cutoff},
         operation,
-        warnings,
+        analyzer=_high_frequency_analyzer(stage="unsharp"),
     )
 
 
-def _high_frequency_warnings(
-    requested_gain: float, *, stage: str
-) -> list[ProcessingWarning]:
-    if requested_gain <= HIGH_FREQUENCY_GAIN_CEILING:
-        return []
-    return [
-        ProcessingWarning(
+def _high_frequency_amplification(source: np.ndarray, output: np.ndarray) -> float:
+    """Return RMS Fourier-amplitude transfer above 0.25 cycles/pixel."""
+    fy = np.fft.fftfreq(source.shape[0])[:, np.newaxis]
+    fx = np.fft.rfftfreq(source.shape[1])[np.newaxis, :]
+    high_frequency = np.hypot(fy, fx) >= 0.25
+    if not np.any(high_frequency):
+        return 1.0
+    input_spectrum = np.fft.rfft2(source.astype(np.float64, copy=False))
+    output_spectrum = np.fft.rfft2(output.astype(np.float64, copy=False))
+    input_rms = float(np.sqrt(np.mean(np.abs(input_spectrum[high_frequency]) ** 2)))
+    output_rms = float(np.sqrt(np.mean(np.abs(output_spectrum[high_frequency]) ** 2)))
+    numerical_floor = 1e-12 * source.size
+    if input_rms <= numerical_floor and output_rms <= numerical_floor:
+        return 1.0
+    return output_rms / max(input_rms, numerical_floor)
+
+
+def _high_frequency_analyzer(
+    *, stage: str
+) -> Callable[
+    [np.ndarray, np.ndarray], tuple[Mapping[str, Any], Sequence[ProcessingWarning]]
+]:
+    def analyze(
+        source: np.ndarray, output: np.ndarray
+    ) -> tuple[Mapping[str, Any], Sequence[ProcessingWarning]]:
+        ratio = _high_frequency_amplification(source, output)
+        diagnostics = {
+            "high_frequency_amplification": ratio,
+            "metric": "rms_fft_amplitude_ratio_above_0.25_cycles_per_pixel",
+            "ceiling": HIGH_FREQUENCY_GAIN_CEILING,
+        }
+        if ratio <= HIGH_FREQUENCY_GAIN_CEILING:
+            return diagnostics, ()
+        warning = ProcessingWarning(
             code="excessive_high_frequency_gain",
-            message="Requested detail gain exceeds the initial documented ceiling.",
+            message="Measured high-frequency amplification exceeds the documented ceiling.",
             details={
                 "stage": stage,
-                "requested_gain": requested_gain,
+                "measured_ratio": ratio,
                 "ceiling": HIGH_FREQUENCY_GAIN_CEILING,
+                "metric": diagnostics["metric"],
             },
         )
-    ]
+        return diagnostics, (warning,)
+
+    return analyze
 
 
 def _thresholded_unsharp(

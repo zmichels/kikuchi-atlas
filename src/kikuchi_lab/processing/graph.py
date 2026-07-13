@@ -5,14 +5,21 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any
+from typing import Any, Protocol
 
 import numpy as np
 
-from kikuchi_lab.model import DetectorPatternProduct, ProcessingRecipe
+from kikuchi_lab.model import DetectorPatternProduct, ProcessingStage
 from kikuchi_lab.model.identity import stable_id
 
 from .stages import STAGE_FUNCTIONS, StageResult, image_id
+
+
+class ProcessingRecipeLike(Protocol):
+    stages: tuple[ProcessingStage, ...]
+
+    @property
+    def recipe_id(self) -> str: ...
 
 
 @dataclass(frozen=True, eq=False)
@@ -80,7 +87,7 @@ def _geometry(source: DetectorPatternProduct, output: np.ndarray) -> dict[str, A
 
 
 def run_graph(
-    source_projection: DetectorPatternProduct, recipe: ProcessingRecipe
+    source_projection: DetectorPatternProduct, recipe: ProcessingRecipeLike
 ) -> ProcessingResult:
     if not recipe.stages:
         raise ValueError("processing recipe must contain at least one stage")

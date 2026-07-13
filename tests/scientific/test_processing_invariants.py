@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import yaml
 
 from kikuchi_lab.model import DetectorPatternProduct
 from kikuchi_lab.processing import load_processing_recipe, run_graph
@@ -49,6 +50,37 @@ def test_graph_keeps_scientific_and_gallery_sources_identical():
     assert scientific.source_projection_id == gallery.source_projection_id
     assert scientific.product_id != gallery.product_id
     np.testing.assert_array_equal(projected.intensity, detector_projection().intensity)
+
+
+def test_robust_percentile_graph_reports_outlier_clipping_at_clahe_boundary():
+    projected = detector_projection()
+    mutable = projected.intensity.copy()
+    mutable[0, 0] = -100.0
+    mutable[-1, -1] = 100.0
+    metadata = projected.metadata_dict()
+    metadata.pop("array")
+    outlier_projection = DetectorPatternProduct.from_array(
+        mutable,
+        master_product_id=projected.master_product_id,
+        projection_recipe_id=projected.projection_recipe_id,
+        metadata=metadata,
+    )
+    preset = load_processing_recipe(REPO_ROOT / "recipes/gallery/gallery-crisp.yml")
+
+    result = run_graph(outlier_projection, preset)
+
+    names = [stage.record.name for stage in result.stages]
+    normalize = result.stages[names.index("robust_normalize")]
+    clahe = result.stages[names.index("local_contrast")]
+    assert normalize.record.parameters == {
+        "low_percentile": 1.0,
+        "high_percentile": 99.0,
+    }
+    assert normalize.intensity.min() < 0.0
+    assert normalize.intensity.max() > 1.0
+    assert clahe.record.parameters["input_domain"] == "clip_0_1"
+    assert clahe.record.diagnostics["input_clipped_fraction"] > 0.001
+    assert "clipping_fraction" in [warning.code for warning in clahe.record.warnings]
 
 
 def test_graph_is_ordered_deterministic_serializable_and_immutable():
@@ -100,3 +132,45 @@ def test_source_projection_is_not_a_processing_intermediate_or_replaced():
     assert all(stage.record.output_id != projected.product_id for stage in result.stages)
     assert result.product_id != projected.product_id
     np.testing.assert_array_equal(projected.intensity, source_copy)
+
+
+def test_checked_in_presets_roundtrip_metadata_but_share_computational_identity(tmp_path):
+    path = REPO_ROOT / "recipes/proof/scientific-clean.yml"
+    preset = load_processing_recipe(path)
+    payload = preset.to_dict()
+
+    assert payload["schema_version"] == 1
+    assert payload["name"] == "scientific-clean"
+    assert payload["intent"].startswith("restrained acquisition-style")
+    assert payload == yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    renamed = dict(payload)
+    renamed["name"] = "renamed-display-label"
+    renamed["intent"] = "Different prose; identical computation."
+    renamed_path = tmp_path / "renamed.yml"
+    renamed_path.write_text(yaml.safe_dump(renamed), encoding="utf-8")
+    renamed_preset = load_processing_recipe(renamed_path)
+    assert renamed_preset.recipe_id == preset.recipe_id
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"name": "missing", "intent": "missing schema", "stages": []}, "schema_version"),
+        (
+            {"schema_version": 2, "name": "future", "intent": "unknown", "stages": []},
+            "schema_version",
+        ),
+        (
+            {"schema_version": True, "name": "bool", "intent": "invalid", "stages": []},
+            "schema_version",
+        ),
+        ({"schema_version": 1, "intent": "missing name", "stages": []}, "name"),
+        ({"schema_version": 1, "name": "missing-intent", "stages": []}, "intent"),
+    ],
+)
+def test_preset_loader_rejects_invalid_contract(tmp_path, payload, message):
+    path = tmp_path / "preset.yml"
+    path.write_text(yaml.safe_dump(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match=message):
+        load_processing_recipe(path)

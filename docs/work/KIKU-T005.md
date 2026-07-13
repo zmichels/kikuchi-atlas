@@ -32,8 +32,8 @@ stages whose parameters and intermediate results remain inspectable.
 ## Accepted Evidence
 
 - `uv run pytest tests/unit/test_processing_stages.py
-  tests/scientific/test_processing_invariants.py -q`: 18 passed.
-- `uv run pytest -m "not slow and not gpu" -q`: 178 passed, 1 deselected.
+  tests/scientific/test_processing_invariants.py -q`: 26 passed.
+- `uv run pytest -m "not slow and not gpu" -q`: 186 passed, 1 deselected.
 - `uv run ruff check src tests`, `uv run python
   scripts/validate_work_items.py`, and `git diff --check`: passed.
 - Deterministic synthetic band, step-edge, constant-field, and Nyquist
@@ -56,12 +56,30 @@ and rejects a downsample target that disagrees with canonical detector
 geometry.
 
 Robust normalization intentionally does not clip percentile outliers, and
-unsharp/detail enhancement intentionally retains overshoot. Tone mapping is
-the explicit display-range boundary. It reports clipping above 0.1%, decreasing
-tone endpoints, and detail gain above the documented initial ceiling of 2.0;
-the requested parameters remain unchanged in every case.
+unsharp/detail enhancement intentionally retains overshoot. CLAHE declares an
+explicit `clip_0_1` input-domain policy, records the measured input clipping
+fraction, and reports clipping above 0.1%. Tone mapping remains the explicit
+display-range boundary and separately reports clipping above 0.1% and
+decreasing tone endpoints. The requested parameters remain unchanged in every
+case.
 
 The checked-in YAML presets make the first proof comparison reviewable:
 scientific-clean uses restrained background correction, normalization, CLAHE,
 and tone mapping; gallery-crisp adds named multiscale detail and unsharp stages.
 Both use anti-aliased downsampling only after all supersampled processing.
+
+## Follow-up Quality Evidence
+
+- Both presets now use a real robust percentile window of 1% to 99%. An
+  end-to-end outlier regression proves normalization retains out-of-window
+  values and the following CLAHE boundary explicitly clips and reports them.
+- Preset schema version 1, name, and intent are required and round-trip from
+  YAML. Name and intent remain descriptive metadata: renaming either does not
+  change the computational recipe ID. Missing, Boolean, or unsupported schema
+  versions are rejected.
+- Multiscale detail and unsharp stages measure actual RMS Fourier-amplitude
+  transfer above 0.25 cycles per pixel. That measured ratio is recorded in
+  stage diagnostics and triggers a structured warning above the initial 2.0x
+  ceiling. Transfer tests prove an unsharp amount of 1.5 exceeds 2.0x on a
+  Nyquist target, while constant and near-zero inputs remain finite and do not
+  create false warnings.
