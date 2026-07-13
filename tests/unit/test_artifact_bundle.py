@@ -1,0 +1,209 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+
+import imageio.v3 as iio
+import numpy as np
+import pytest
+import tifffile
+
+from kikuchi_lab.artifacts import (
+    ArtifactBundleRequest,
+    BundleExistsError,
+    FloatProduct,
+    PartialBundleError,
+    write_artifact_bundle,
+)
+from kikuchi_lab.model.identity import canonical_json
+
+
+def _request(*, elapsed: float = 1.25, created_at: str = "2026-07-12T12:00:00Z"):
+    base = np.arange(48, dtype=np.float32).reshape(6, 8)
+    return ArtifactBundleRequest(
+        source={"source_id": "source-abc", "sha256": "a" * 64, "created_at": created_at},
+        environment={"python": "3.12", "cwd": "/private/local/kikuchi"},
+        software={"kikuchi_lab": "0.1.0", "ebsdsim": "0.1.8"},
+        hardware={"adapter": "Apple M2", "captured_at": created_at},
+        recipes={
+            "simulation": {"recipe_id": "recipe-sim", "voltage_kv": 20.0},
+            "projection": {"recipe_id": "recipe-proj", "shape": [6, 8]},
+            "scientific-clean": {"recipe_id": "recipe-science"},
+            "gallery-crisp": {"recipe_id": "recipe-gallery"},
+        },
+        master_metadata={"product_id": "master-abc", "phase": "forsterite"},
+        orientation_candidates={"candidate_ids": ["orientation-1"]},
+        projected=FloatProduct("detector-projected", base),
+        acquisition_corrected=FloatProduct("stage-background", base + 1),
+        stages={"normalize": FloatProduct("stage-normalize", base / 47)},
+        scientific_clean=FloatProduct("processed-science", base / 47),
+        gallery_crisp=FloatProduct("processed-gallery", np.flipud(base) / 47),
+        warnings=[{"code": "example", "message": "test evidence"}],
+        timings={"elapsed_seconds": elapsed, "captured_at": created_at},
+        resources={"peak_rss_mb": 42.0, "sampled_at": created_at},
+        orientation_decision={"selected": "orientation-1", "decided_at": created_at},
+        decision_links={"orientation": "decision-orientation-1"},
+    )
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_bundle_writes_complete_canonical_inventory_and_image_formats(tmp_path: Path) -> None:
+    result = write_artifact_bundle(tmp_path, _request())
+    bundle = result.path
+    expected = {
+        "provenance/source.json",
+        "provenance/environment.json",
+        "provenance/software.json",
+        "provenance/hardware.json",
+        "recipes/simulation.json",
+        "recipes/projection.json",
+        "recipes/scientific-clean.json",
+        "recipes/gallery-crisp.json",
+        "metadata/master-pattern.json",
+        "metadata/orientation-candidates.json",
+        "products/projected.npy",
+        "products/acquisition-corrected.npy",
+        "products/stages/normalize.npy",
+        "products/stages/normalize.tif",
+        "products/scientific-clean.npy",
+        "products/gallery-crisp.npy",
+        "products/scientific-clean.tif",
+        "products/gallery-crisp.tif",
+        "products/scientific-clean.png",
+        "products/gallery-crisp.png",
+        "products/preview.png",
+        "diagnostics/metrics.json",
+        "diagnostics/warnings.json",
+        "diagnostics/timings.json",
+        "diagnostics/resources.json",
+        "decisions/orientation.json",
+        "decisions/links.json",
+    }
+    actual = {
+        str(path.relative_to(bundle))
+        for path in bundle.rglob("*")
+        if path.is_file() and path.name != "manifest.json"
+    }
+    assert actual == expected
+
+    manifest_path = bundle / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    assert manifest_path.read_text() == canonical_json(manifest)
+    assert set(manifest["files"]) == expected
+    assert "manifest.json" not in manifest["files"]
+    for relative, record in manifest["files"].items():
+        assert record["sha256"] == _sha256(bundle / relative)
+        assert record["bytes"] == (bundle / relative).stat().st_size
+    assert result.manifest_sha256 == _sha256(manifest_path)
+
+    for relative in (
+        "products/stages/normalize.tif",
+        "products/scientific-clean.tif",
+        "products/gallery-crisp.tif",
+    ):
+        assert tifffile.imread(bundle / relative).dtype == np.uint16
+    for relative in ("products/scientific-clean.png", "products/gallery-crisp.png"):
+        assert iio.imread(bundle / relative).dtype == np.uint16
+    assert iio.imread(bundle / "products/preview.png").dtype == np.uint8
+
+    for relative, quantization in manifest["uint16_exports"].items():
+        assert relative.endswith((".tif", ".png"))
+        assert quantization["source_product_id"]
+        assert set(quantization) == {
+            "source_product_id",
+            "scale",
+            "offset",
+            "black_point",
+            "white_point",
+            "clipping_below_black",
+            "clipping_above_white",
+        }
+    assert manifest["products"]["acquisition_corrected"]["role"] == (
+        "background_model_corrected_before_aesthetic_processing"
+    )
+    assert manifest["comparison_exclusions"] == {
+        "json_fields": ["**/captured_at", "**/created_at", "**/decided_at"],
+        "json_documents": [
+            "diagnostics/timings.json#/**",
+            "diagnostics/resources.json#/**",
+        ],
+        "value_rules": [{"kind": "absolute_local_path", "scope": "**"}],
+        "external_values": ["manifest_sha256"],
+    }
+
+
+def test_bundle_identity_excludes_wall_time_resource_measurements_and_local_paths(
+    tmp_path: Path,
+) -> None:
+    first = write_artifact_bundle(tmp_path / "first", _request())
+    changed = _request(elapsed=999.0, created_at="2030-01-01T00:00:00Z")
+    changed = ArtifactBundleRequest(
+        **{
+            **changed.__dict__,
+            "environment": {"python": "3.12", "cwd": "/another/local/path"},
+            "resources": {"peak_rss_mb": 9999.0, "sampled_at": "2030-01-01T00:00:00Z"},
+        }
+    )
+    second = write_artifact_bundle(tmp_path / "second", changed)
+
+    assert first.run_id == second.run_id
+
+
+def test_bundle_identity_changes_when_float_bytes_change_despite_reused_label(tmp_path: Path) -> None:
+    first_request = _request()
+    changed_request = _request()
+    changed_gallery = changed_request.gallery_crisp.intensity.copy()
+    changed_gallery[0, 0] += 0.125
+    changed_request = ArtifactBundleRequest(
+        **{
+            **changed_request.__dict__,
+            "gallery_crisp": FloatProduct(
+                changed_request.gallery_crisp.product_id,
+                changed_gallery,
+            ),
+        }
+    )
+
+    first = write_artifact_bundle(tmp_path / "first", first_request)
+    changed = write_artifact_bundle(tmp_path / "changed", changed_request)
+
+    assert first.run_id != changed.run_id
+
+
+def test_bundle_refuses_completed_and_partial_runs_and_resume_clean_preserves_evidence(
+    tmp_path: Path,
+) -> None:
+    first = write_artifact_bundle(tmp_path, _request())
+    with pytest.raises(BundleExistsError):
+        write_artifact_bundle(tmp_path, _request())
+
+    first.path.rename(tmp_path / f"{first.run_id}.saved")
+    partial = tmp_path / f"{first.run_id}.partial"
+    partial.mkdir()
+    (partial / "evidence.txt").write_text("stale")
+    with pytest.raises(PartialBundleError):
+        write_artifact_bundle(tmp_path, _request())
+
+    resumed = write_artifact_bundle(
+        tmp_path,
+        _request(),
+        resume_clean=True,
+        abandoned_at="20260712T120000Z",
+    )
+    abandoned = tmp_path / f"{first.run_id}.partial.20260712T120000Z.abandoned"
+    assert (abandoned / "evidence.txt").read_text() == "stale"
+    assert resumed.path.is_dir()
+
+
+def test_malformed_request_leaves_no_partial_bundle(tmp_path: Path) -> None:
+    request = _request()
+    malformed = ArtifactBundleRequest(**{**request.__dict__, "warnings": [float("nan")]})
+
+    with pytest.raises((TypeError, ValueError)):
+        write_artifact_bundle(tmp_path, malformed)
+
+    assert list(tmp_path.glob("*.partial")) == []
