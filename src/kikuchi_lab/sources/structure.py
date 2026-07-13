@@ -190,8 +190,15 @@ def _validate_thermal_factor_policy(policy: dict[str, Any]) -> None:
                 f"thermal factor policy {key} must be {expected!r}; got {policy.get(key)!r}"
             )
     fallback = policy.get("ebsdsim_fallback_b_iso_angstrom_sq")
-    if not isinstance(fallback, (int, float)) or not math.isfinite(float(fallback)):
-        raise ValueError("thermal factor policy must document finite ebsdsim fallback")
+    if (
+        isinstance(fallback, bool)
+        or not isinstance(fallback, (int, float))
+        or not math.isfinite(float(fallback))
+        or not math.isclose(float(fallback), 0.5, rel_tol=0.0, abs_tol=0.0)
+    ):
+        raise ValueError(
+            "thermal factor policy must document ebsdsim fallback as exactly 0.5 angstrom^2"
+        )
 
 
 def verify_structure(record: StructureRecord) -> VerifiedStructure:

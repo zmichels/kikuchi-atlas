@@ -58,7 +58,7 @@ def test_tiny_forsterite_gpu_master_pattern(tmp_path):
     assert metadata["simulation"]["requested_backend"] == "gpu"
     assert metadata["simulation"]["resolved_backend"] == "gpu_fly_first"
     assert metadata["simulation"]["resolved"]["mc_n_trajectories"] == 4096
-    assert metadata["simulation"]["resolved"]["mc_auto_stop"] is False
+    assert "mc_auto_stop" not in metadata["simulation"]["resolved"]
     assert hashlib.sha256(result.ebsdsim_npz.read_bytes()).hexdigest() == result.npz_sha256
     manifest = json.loads(result.manifest.read_text())
     assert manifest["master_product_id"] == result.product.product_id
@@ -74,3 +74,13 @@ def test_tiny_forsterite_gpu_master_pattern(tmp_path):
         "target_lattice_from_source": ["b", "c", "a"],
     }
     assert manifest["elapsed_seconds"] > 0
+    assert manifest["simulation_controls"]["unreported_by_ebsdsim"] == [
+        "mc_auto_stop",
+        "mc_min_trajectories",
+        "mc_max_trajectories",
+    ]
+    with np.load(result.ebsdsim_npz, allow_pickle=False) as archive:
+        upstream_metadata = json.loads(bytes(archive["meta_json"].tobytes()).decode("utf-8"))
+    assert "mc_auto_stop" not in upstream_metadata
+    assert "mc_min_trajectories" not in upstream_metadata
+    assert "mc_max_trajectories" not in upstream_metadata

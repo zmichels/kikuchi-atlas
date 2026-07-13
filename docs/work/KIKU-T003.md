@@ -37,7 +37,7 @@ and expose environment diagnostics without backend substitution.
   Smyth and Hazen (1973) recorded in `source.yml` and the COD catalog.
 - `uv run pytest -m "not gpu and not slow" -q`: 126 passed, 1 deselected.
 - `uv run pytest -m "gpu and slow" tests/integration/test_ebsdsim_gpu.py -q -s`:
-  1 passed in 3.60 s on Apple M2 Metal. The bounded gate used 4096 trajectories,
+  1 passed in 3.59 s on Apple M2 Metal. The bounded gate used 4096 trajectories,
   `mc_auto_stop=False`, and produced a finite, non-constant `(2, 17, 17)`
   canonical pattern with resolved backend `gpu_fly_first`.
 - `uv run kikuchi-lab doctor --json`: all required checks passed for native
@@ -46,8 +46,8 @@ and expose environment diagnostics without backend substitution.
 - Local smoke manifest:
   `local/master-patterns/gpu-smoke/forsterite-tiny-gpu.manifest.json`.
   The untouched ebsdsim NPZ SHA-256 is
-  `03a02cd924d6261f63d71a1f53569e76c634905bd0416cf23b36b47f15e52e12`;
-  canonical product is `master-4f07f6d45699eb90`.
+  `e888f1fe24597319ea6cd7a7257b79a322071a78d485e89e300bcf6cbc584eff`;
+  canonical product is `master-87a6e36534219826`.
 - `uv run ruff check src tests` and
   `uv run python scripts/validate_work_items.py`: passed.
 
@@ -70,12 +70,17 @@ factor, and multiplicity rather than accepting aggregate stoichiometry alone.
 The source thermal-factor policy is executable: U is required in Å², B is
 required in Å² using `B = 8*pi²*U`, and missing values are rejected.
 
-Monte Carlo evidence records and validates the auto-stop flag, requested
-minimum/maximum trajectory bounds, tolerance, convergence flag, and actual
-trajectory count. Wall-clock runtime remains in the external manifest and is
-excluded from canonical product metadata and identity. Doctor package-version
-checks are required readiness checks, so a missing or incompatible simulator,
-projection, array, or WebGPU package makes `doctor` fail.
+The ebsdsim NPZ is saved directly from the public `MasterPattern` without
+injecting project metadata, and its checksum is captured before project
+ingestion. Monte Carlo evidence distinguishes invocation-only requests
+(`mc_auto_stop`, minimum, and maximum) from native-reported tolerance,
+convergence, and actual trajectory count. Native reports are validated against
+the requested tolerance and trajectory bounds without presenting unreported
+upstream fields as resolved facts. Wall-clock runtime remains in the external
+manifest and is excluded from canonical product metadata and identity. Doctor
+package-version checks are required readiness checks, so a missing or
+incompatible simulator, projection, array, or WebGPU package makes `doctor`
+fail.
 
 The implementation-plan pseudocode named a module-level
 `ebsdsim.mploader.reconstruct_integrated()`, which is not exported by ebsdsim

@@ -188,12 +188,6 @@ def _validate_resolved_simulation(metadata: dict[str, Any], recipe: SimulationRe
         raise ValueError(
             f"requested backend {recipe.mc_backend!r} was not honored; resolved {backend!r}"
         )
-    if metadata.get("mc_auto_stop") is not recipe.mc_auto_stop:
-        raise ValueError("resolved Monte Carlo auto-stop flag does not match requested recipe")
-    if metadata.get("mc_min_trajectories") != recipe.mc_min_trajectories:
-        raise ValueError("resolved Monte Carlo minimum does not match requested recipe")
-    if metadata.get("mc_max_trajectories") != recipe.mc_max_trajectories:
-        raise ValueError("resolved Monte Carlo maximum does not match requested recipe")
     used = metadata.get("mc_n_trajectories")
     if isinstance(used, bool) or not isinstance(used, int) or used <= 0:
         raise ValueError("resolved Monte Carlo trajectory count must be a positive integer")
@@ -238,6 +232,7 @@ def load_ebsdsim_npz(
     source: StructureRecord,
     recipe: SimulationRecipe,
     elapsed_seconds: float | None = None,
+    expected_npz_sha256: str | None = None,
 ) -> MasterPatternProduct:
     """Validate and convert one untouched public ebsdsim NPZ artifact.
 
@@ -247,6 +242,11 @@ def load_ebsdsim_npz(
     """
     verify_structure(source)
     npz_path = Path(path).resolve()
+    # Capture the native container checksum before loading or deriving any
+    # project-owned representation from it.
+    npz_sha256 = _sha256(npz_path)
+    if expected_npz_sha256 is not None and npz_sha256 != expected_npz_sha256:
+        raise ValueError("native ebsdsim NPZ changed before project ingestion")
     loaded = load_master_pattern(npz_path)
     metadata = loaded.meta
     if not np.isfinite(loaded.integrated_fs).all() or not np.isfinite(loaded.bin_fs).all():
@@ -259,7 +259,6 @@ def load_ebsdsim_npz(
     intensity = np.stack((north, south)).astype(np.float32, copy=False)
     if not np.isfinite(intensity).all():
         raise ValueError("ebsdsim master pattern must contain only finite values")
-    npz_sha256 = _sha256(npz_path)
     recipe_sha256 = _recipe_sha256(recipe)
     source_record = source.source_record
     resolved = {
@@ -284,9 +283,6 @@ def load_ebsdsim_npz(
             "sigma_deg",
             "omega_deg",
             "mc_n_trajectories",
-            "mc_auto_stop",
-            "mc_min_trajectories",
-            "mc_max_trajectories",
             "mc_converged",
             "mc_relative_tol",
             "n_mc_bins",
@@ -330,6 +326,18 @@ def load_ebsdsim_npz(
             "requested_backend": recipe.mc_backend,
             "resolved_backend": metadata["mc_backend"],
             "resolved": resolved,
+            "control_evidence": {
+                "native_reported": [
+                    "mc_converged",
+                    "mc_n_trajectories",
+                    "mc_relative_tol",
+                ],
+                "invocation_only": [
+                    "mc_auto_stop",
+                    "mc_min_trajectories",
+                    "mc_max_trajectories",
+                ],
+            },
             "upstream_npz_sha256": npz_sha256,
         },
         "projection": "Lambert square equal-area",
@@ -355,6 +363,7 @@ def _write_manifest(
     recipe: SimulationRecipe,
     simulation_cif: Path | None = None,
     elapsed_seconds: float | None = None,
+    npz_sha256: str | None = None,
 ) -> Path:
     manifest = npz_path.with_suffix(".manifest.json")
     payload = {
@@ -362,10 +371,27 @@ def _write_manifest(
         "source_id": source.source_record.source_id,
         "recipe_id": recipe.recipe_id,
         "ebsdsim_npz": npz_path.name,
-        "ebsdsim_npz_sha256": _sha256(npz_path),
+        "ebsdsim_npz_sha256": npz_sha256 or _sha256(npz_path),
         "canonical_product": canonical_path.name,
         "canonical_array_sha256": product.array_sha256,
         "master_product_id": product.product_id,
+        "simulation_controls": {
+            "requested": {
+                "mc_auto_stop": recipe.mc_auto_stop,
+                "mc_min_trajectories": recipe.mc_min_trajectories,
+                "mc_max_trajectories": recipe.mc_max_trajectories,
+                "mc_relative_tol": recipe.mc_relative_tol,
+            },
+            "native_reported": {
+                key: product.metadata_dict()["simulation"]["resolved"][key]
+                for key in ("mc_converged", "mc_n_trajectories", "mc_relative_tol")
+            },
+            "unreported_by_ebsdsim": [
+                "mc_auto_stop",
+                "mc_min_trajectories",
+                "mc_max_trajectories",
+            ],
+        },
     }
     if elapsed_seconds is not None:
         payload["elapsed_seconds"] = float(elapsed_seconds)
@@ -404,7 +430,15 @@ def save_simulation_bundle(
     upstream = output / f"ebsdsim-{checksum[:16]}.npz"
     if original != upstream:
         shutil.copyfile(original, upstream)
-    product = load_ebsdsim_npz(upstream, source=source, recipe=recipe)
+    copied_checksum = _sha256(upstream)
+    if copied_checksum != checksum:
+        raise ValueError("copied ebsdsim NPZ checksum differs from native source")
+    product = load_ebsdsim_npz(
+        upstream,
+        source=source,
+        recipe=recipe,
+        expected_npz_sha256=checksum,
+    )
     canonical = save_master_product(output / f"{product.product_id}.npz", product)
     manifest = _write_manifest(
         npz_path=upstream,
@@ -412,6 +446,7 @@ def save_simulation_bundle(
         product=product,
         source=source,
         recipe=recipe,
+        npz_sha256=checksum,
     )
     return GeneratedMasterPattern(upstream, canonical, manifest, product, checksum)
 
@@ -453,16 +488,15 @@ def generate_master_pattern(
         mc_max_trajectories=recipe.mc_max_trajectories,
         exact_slow_cpu=recipe.exact_slow_cpu,
     )
-    mp.metadata.update(
-        {
-            "mc_auto_stop": recipe.mc_auto_stop,
-            "mc_min_trajectories": recipe.mc_min_trajectories,
-            "mc_max_trajectories": recipe.mc_max_trajectories,
-        }
-    )
     saved = mp.save(requested_output).resolve()
+    native_npz_sha256 = _sha256(saved)
     elapsed = time.perf_counter() - started
-    product = load_ebsdsim_npz(saved, source=source, recipe=recipe)
+    product = load_ebsdsim_npz(
+        saved,
+        source=source,
+        recipe=recipe,
+        expected_npz_sha256=native_npz_sha256,
+    )
     canonical = save_master_product(saved.with_name(f"{product.product_id}.npz"), product)
     manifest = _write_manifest(
         npz_path=saved,
@@ -472,7 +506,8 @@ def generate_master_pattern(
         recipe=recipe,
         simulation_cif=simulation_cif,
         elapsed_seconds=elapsed,
+        npz_sha256=native_npz_sha256,
     )
     return GeneratedMasterPattern(
-        saved, canonical, manifest, product, _sha256(saved), simulation_cif
+        saved, canonical, manifest, product, native_npz_sha256, simulation_cif
     )

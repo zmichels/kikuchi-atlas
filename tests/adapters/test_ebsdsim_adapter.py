@@ -114,9 +114,6 @@ def write_deterministic_public_master_pattern_fixture(
         "omega_deg": recipe.omega_deg,
         "mc_backend": "gpu_fly_first",
         "mc_n_trajectories": recipe.n_trajectories,
-        "mc_auto_stop": recipe.mc_auto_stop,
-        "mc_min_trajectories": recipe.mc_min_trajectories,
-        "mc_max_trajectories": recipe.mc_max_trajectories,
         "mc_converged": recipe.mc_auto_stop,
         "mc_relative_tol": recipe.mc_relative_tol,
         "cell": resolved_cell() if cell is None else cell,
@@ -170,6 +167,13 @@ def test_ebsdsim_conversion_keeps_both_hemispheres(tmp_path):
     assert product.metadata_dict()["source_structure"]["source_id"] == source.source_record.source_id
     assert product.metadata_dict()["simulation"]["requested_backend"] == "gpu"
     assert product.metadata_dict()["simulation"]["resolved_backend"] == "gpu_fly_first"
+    assert "mc_auto_stop" not in product.metadata_dict()["simulation"]["resolved"]
+    assert "mc_min_trajectories" not in product.metadata_dict()["simulation"]["resolved"]
+    assert "mc_max_trajectories" not in product.metadata_dict()["simulation"]["resolved"]
+    assert product.metadata_dict()["simulation"]["control_evidence"] == {
+        "native_reported": ["mc_converged", "mc_n_trajectories", "mc_relative_tol"],
+        "invocation_only": ["mc_auto_stop", "mc_min_trajectories", "mc_max_trajectories"],
+    }
     assert product.metadata_dict()["coordinate_frame"] == "crystal:Pnma-derived-from-Pbnm"
     assert product.metadata_dict()["source_structure"]["simulation_setting"][
         "target_setting"
@@ -275,6 +279,24 @@ def test_simulation_bundle_links_untouched_ebsdsim_and_canonical_artifacts(tmp_p
     assert manifest["master_product_id"] == canonical.product_id
     assert manifest["ebsdsim_npz_sha256"] != canonical.array_sha256
     assert Path(manifest["ebsdsim_npz"]).name == bundle.ebsdsim_npz.name
+    assert manifest["simulation_controls"] == {
+        "requested": {
+            "mc_auto_stop": False,
+            "mc_min_trajectories": 4096,
+            "mc_max_trajectories": 4096,
+            "mc_relative_tol": 0.01,
+        },
+        "native_reported": {
+            "mc_converged": False,
+            "mc_n_trajectories": 4096,
+            "mc_relative_tol": 0.01,
+        },
+        "unreported_by_ebsdsim": [
+            "mc_auto_stop",
+            "mc_min_trajectories",
+            "mc_max_trajectories",
+        ],
+    }
 
 
 def test_adapter_rejects_requested_backend_not_honored(tmp_path):
@@ -290,15 +312,12 @@ def test_adapter_rejects_requested_backend_not_honored(tmp_path):
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     [
-        ("mc_auto_stop", False, "auto-stop"),
         ("mc_relative_tol", 0.02, "mc_relative_tol"),
         ("mc_n_trajectories", 2048, "minimum"),
         ("mc_n_trajectories", 16384, "maximum"),
-        ("mc_min_trajectories", 2048, "minimum"),
-        ("mc_max_trajectories", 16384, "maximum"),
     ],
 )
-def test_adapter_rejects_auto_stop_control_mismatch(tmp_path, field, value, message):
+def test_adapter_rejects_native_auto_stop_evidence_mismatch(tmp_path, field, value, message):
     recipe = tiny_recipe(
         mc_auto_stop=True,
         mc_min_trajectories=4096,
@@ -308,6 +327,19 @@ def test_adapter_rejects_auto_stop_control_mismatch(tmp_path, field, value, mess
     tamper_metadata(fixture, lambda metadata: metadata.__setitem__(field, value))
 
     with pytest.raises(ValueError, match=message):
+        load_ebsdsim_npz(
+            fixture,
+            source=load_structure_record(SOURCE),
+            recipe=recipe,
+        )
+
+
+def test_adapter_rejects_bounded_trajectory_count_mismatch(tmp_path):
+    recipe = tiny_recipe()
+    fixture = write_deterministic_public_master_pattern_fixture(tmp_path, recipe=recipe)
+    tamper_metadata(fixture, lambda metadata: metadata.__setitem__("mc_n_trajectories", 2048))
+
+    with pytest.raises(ValueError, match="bounded request"):
         load_ebsdsim_npz(
             fixture,
             source=load_structure_record(SOURCE),

@@ -68,6 +68,8 @@ def test_forsterite_source_rejects_catalog_site_disagreement():
         ("conversion", "B_iso = U_iso"),
         ("simulation_units", "nm^2"),
         ("missing", "default"),
+        ("ebsdsim_fallback_b_iso_angstrom_sq", 999),
+        ("ebsdsim_fallback_b_iso_angstrom_sq", True),
     ],
 )
 def test_forsterite_source_rejects_semantically_wrong_thermal_policy(key, value):
