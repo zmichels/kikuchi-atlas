@@ -6,6 +6,7 @@ import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from numbers import Real
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,6 @@ from orix.quaternion import Orientation as OrixOrientation
 from orix.quaternion import Rotation, symmetry
 
 from kikuchi_lab.model import Orientation, stable_id
-from kikuchi_lab.model.identity import plain_data
 
 _CANDIDATE_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)+$")
 _SUPPORTED_POINT_GROUP = "mmm"
@@ -34,6 +34,29 @@ def _required_text(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field} must be non-empty text")
     return value
+
+
+def _finite_real(value: Any, field: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise ValueError(f"{field} must be a finite real number")
+    result = float(value)
+    if not math.isfinite(result):
+        raise ValueError(f"{field} must be a finite real number")
+    return result
+
+
+def _real_sequence(value: Any, field: str, *, length: int) -> tuple[float, ...]:
+    if not isinstance(value, list) or len(value) != length:
+        raise ValueError(f"{field} must be a {length}-value YAML sequence")
+    return tuple(_finite_real(item, field) for item in value)
+
+
+def _integer_sequence(value: Any, field: str, *, length: int) -> tuple[int, ...]:
+    if not isinstance(value, list) or len(value) != length:
+        raise ValueError(f"{field} must be a {length}-integer YAML sequence")
+    if any(type(item) is not int for item in value):
+        raise ValueError(f"{field} must contain finite integer indices")
+    return tuple(value)
 
 
 def _zone_axis_label(uvw: tuple[int, int, int]) -> str:
@@ -62,18 +85,18 @@ class OrientationCandidate:
                 "candidate Euler angles must use canonical Bunge ranges "
                 "[0, 360), [0, 180], [0, 360) degrees"
             )
-        declared_phi1 = float(self.bunge_phi1_deg)
-        if not math.isfinite(declared_phi1) or declared_phi1 != phi1:
+        declared_phi1 = _finite_real(self.bunge_phi1_deg, "bunge_phi1_deg")
+        if declared_phi1 != phi1:
             raise ValueError("bunge_phi1_deg must exactly match the first Bunge Euler angle")
         object.__setattr__(self, "bunge_phi1_deg", declared_phi1)
-        uvw = tuple(self.zone_axis_uvw)
-        if len(uvw) != 3 or any(
-            isinstance(index, bool) or int(index) != index for index in uvw
-        ):
+        if not isinstance(self.zone_axis_uvw, (list, tuple)) or len(self.zone_axis_uvw) != 3:
             raise ValueError("zone_axis_uvw must contain three integer direct-lattice indices")
+        if any(type(index) is not int for index in self.zone_axis_uvw):
+            raise ValueError("zone_axis_uvw must contain finite integer direct-lattice indices")
+        uvw = tuple(self.zone_axis_uvw)
         if not any(uvw):
             raise ValueError("zone_axis_uvw cannot be [000]")
-        object.__setattr__(self, "zone_axis_uvw", tuple(int(index) for index in uvw))
+        object.__setattr__(self, "zone_axis_uvw", uvw)
         _required_text(self.zone_axis_intent, "zone_axis_intent")
         _required_text(self.composition_intent, "composition_intent")
 
@@ -81,17 +104,19 @@ class OrientationCandidate:
     def zone_axis_label(self) -> str:
         return _zone_axis_label(self.zone_axis_uvw)
 
-    def to_dict(self) -> dict[str, Any]:
+    def identity_payload(self) -> dict[str, Any]:
         return {
             "id": self.candidate_id,
             "name": self.name,
             "orientation": self.orientation.to_dict(),
             "bunge_phi1_deg": self.bunge_phi1_deg,
             "zone_axis_uvw": list(self.zone_axis_uvw),
-            "zone_axis_label": self.zone_axis_label,
             "zone_axis_intent": self.zone_axis_intent,
             "composition_intent": self.composition_intent,
         }
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**self.identity_payload(), "zone_axis_label": self.zone_axis_label}
 
 
 @dataclass(frozen=True)
@@ -111,8 +136,8 @@ class OrientationCandidateSet:
     candidates: tuple[OrientationCandidate, ...]
 
     def __post_init__(self) -> None:
-        if self.schema_version != 1:
-            raise ValueError("unsupported candidate-set schema_version")
+        if type(self.schema_version) is not int or self.schema_version != 1:
+            raise ValueError("schema_version must be integer 1")
         for name in ("phase", "space_group", "orientation_convention", "generation_rationale"):
             _required_text(getattr(self, name), name)
         if self.point_group != _SUPPORTED_POINT_GROUP:
@@ -126,17 +151,32 @@ class OrientationCandidateSet:
             raise ValueError("phi1_semantics must exactly match the supported Bunge phi1 meaning")
         if type(self.exhaustive) is not bool or self.exhaustive:
             raise ValueError("schema v1 bounded proof-set exhaustive must be false")
-        lattice = tuple(float(value) for value in self.lattice_abc_angstrom)
-        if len(lattice) != 3 or any(not math.isfinite(value) or value <= 0 for value in lattice):
+        if not isinstance(self.lattice_abc_angstrom, (list, tuple)) or len(
+            self.lattice_abc_angstrom
+        ) != 3:
+            raise ValueError("lattice_abc_angstrom must contain three finite positive lengths")
+        lattice = tuple(
+            _finite_real(value, "lattice_abc_angstrom")
+            for value in self.lattice_abc_angstrom
+        )
+        if any(value <= 0 for value in lattice):
             raise ValueError("lattice_abc_angstrom must contain three finite positive lengths")
         object.__setattr__(self, "lattice_abc_angstrom", lattice)
-        tolerance = float(self.equivalence_tolerance_deg)
-        if not math.isfinite(tolerance) or tolerance <= 0:
+        tolerance = _finite_real(
+            self.equivalence_tolerance_deg, "equivalence_tolerance_deg"
+        )
+        if tolerance <= 0:
             raise ValueError("equivalence_tolerance_deg must be finite and positive")
         object.__setattr__(self, "equivalence_tolerance_deg", tolerance)
-        if not 9 <= len(self.candidates) <= 12:
+        if not isinstance(self.candidates, (list, tuple)):
+            raise ValueError("candidates must be a sequence of OrientationCandidate values")
+        candidates = tuple(self.candidates)
+        if any(not isinstance(candidate, OrientationCandidate) for candidate in candidates):
+            raise ValueError("candidates must contain OrientationCandidate values")
+        object.__setattr__(self, "candidates", candidates)
+        if not 9 <= len(candidates) <= 12:
             raise ValueError("a proof candidate set must contain 9-12 orientations")
-        ids = [candidate.candidate_id for candidate in self.candidates]
+        ids = [candidate.candidate_id for candidate in candidates]
         if len(ids) != len(set(ids)):
             raise ValueError("candidate IDs must be unique")
 
@@ -156,7 +196,7 @@ class OrientationCandidateSet:
             "generation_rationale": self.generation_rationale,
             "exhaustive": self.exhaustive,
             "lattice_abc_angstrom": list(self.lattice_abc_angstrom),
-            "candidates": [candidate.to_dict() for candidate in self.candidates],
+            "candidates": [candidate.identity_payload() for candidate in self.candidates],
         }
 
     @property
@@ -164,7 +204,9 @@ class OrientationCandidateSet:
         return stable_id("candidate-set", self.identity_payload())
 
     def to_dict(self) -> dict[str, Any]:
-        return {"candidate_set_id": self.candidate_set_id, **self.identity_payload()}
+        serialized = self.identity_payload()
+        serialized["candidates"] = [candidate.to_dict() for candidate in self.candidates]
+        return {"candidate_set_id": self.candidate_set_id, **serialized}
 
 
 @dataclass(frozen=True)
@@ -245,18 +287,16 @@ def zone_axis_sample_misalignment_deg(
 
 
 def _candidate_from_data(data: Mapping[str, Any]) -> OrientationCandidate:
-    eulers = data.get("euler_bunge_deg")
-    if not isinstance(eulers, list):
-        raise ValueError("candidate euler_bunge_deg must be a list")
-    uvw = data.get("zone_axis_uvw")
-    if not isinstance(uvw, list):
-        raise ValueError("candidate zone_axis_uvw must be a list")
+    if not isinstance(data, Mapping):
+        raise ValueError("candidate entry must be a mapping")
+    eulers = _real_sequence(data.get("euler_bunge_deg"), "euler_bunge_deg", length=3)
+    uvw = _integer_sequence(data.get("zone_axis_uvw"), "zone_axis_uvw", length=3)
     return OrientationCandidate(
         candidate_id=_required_text(data.get("id"), "candidate id"),
         name=_required_text(data.get("name"), "candidate name"),
-        orientation=Orientation(tuple(eulers)),
+        orientation=Orientation(eulers),
         bunge_phi1_deg=data.get("bunge_phi1_deg"),
-        zone_axis_uvw=tuple(uvw),
+        zone_axis_uvw=uvw,
         zone_axis_intent=_required_text(data.get("zone_axis_intent"), "zone_axis_intent"),
         composition_intent=_required_text(data.get("composition_intent"), "composition_intent"),
     )
@@ -266,9 +306,9 @@ def load_candidate_set(path: str | Path) -> OrientationCandidateSet:
     """Load and validate an explicit YAML orientation candidate recipe."""
     with Path(path).open(encoding="utf-8") as stream:
         loaded = yaml.safe_load(stream)
-    data = plain_data(loaded)
-    if not isinstance(data, dict):
+    if not isinstance(loaded, Mapping):
         raise ValueError("candidate recipe must contain a YAML mapping")
+    data = loaded
     raw_candidates = data.get("candidates")
     if not isinstance(raw_candidates, list):
         raise ValueError("candidate recipe requires a candidates list")
@@ -286,7 +326,9 @@ def load_candidate_set(path: str | Path) -> OrientationCandidateSet:
             data.get("generation_rationale"), "generation_rationale"
         ),
         exhaustive=data.get("exhaustive"),
-        lattice_abc_angstrom=tuple(data.get("lattice_abc_angstrom", ())),
+        lattice_abc_angstrom=_real_sequence(
+            data.get("lattice_abc_angstrom"), "lattice_abc_angstrom", length=3
+        ),
         candidates=tuple(_candidate_from_data(candidate) for candidate in raw_candidates),
     )
     minimum = min(

@@ -72,7 +72,22 @@ the accepted recipe, all 66 unordered pairs pass; the closest pair is
 degrees. Stable recipe order, explicit candidate IDs, content-derived
 orientation IDs, and the content-derived candidate-set ID make the exact
 comparison set serializable and reproducible. The accepted set ID is
-`candidate-set-d2b48bceb4edcb63`.
+`candidate-set-770010a96a2dbf3e`. This exact identity is pinned by an
+executable regression test and in this decision record.
+
+The candidate set owns an immutable tuple copied from its constructor input,
+and every member must be an `OrientationCandidate`; later mutation of a caller's
+list therefore cannot change set length or identity. Identity retains the
+scientific `[uvw]` indices but excludes the derived `zone_axis_label` display
+string. Display serialization still includes that label, and a regression test
+proves that changing only its formatting leaves the set ID unchanged.
+
+Schema parsing is strict rather than coercive. `schema_version` is the actual
+non-boolean integer `1`. Euler angles, `bunge_phi1_deg`, lattice lengths, and
+the equivalence tolerance must be finite YAML numeric scalars, while `[uvw]`
+entries must be actual integer scalars. Booleans, numeric strings, nulls, and
+non-finite values are rejected with field-specific errors. Top-level and
+nested mapping and sequence shapes are checked before access or iteration.
 
 This is deliberately a bounded, non-exhaustive proof set. It is not a uniform
 SO(3) sample, an inverse-pole-figure fundamental-zone grid, an optimization
@@ -89,6 +104,8 @@ exploration belong after the first proof comparison.
   reason for inclusion.
 - Changing an angle, intent, lattice metric, order, or tolerance changes the
   candidate-set identity.
+- Changing only derived zone-axis label punctuation does not change scientific
+  identity.
 - The final orientation choice remains a separate human decision with its own
   evidence; this ADR only accepts the comparison population.
 - Future phase-general work must choose and document its own symmetry and

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -169,11 +170,48 @@ def test_candidate_set_identity_and_serialization_are_stable() -> None:
     second = load_candidate_set(RECIPE)
 
     assert first.candidate_set_id == second.candidate_set_id
-    assert first.candidate_set_id.startswith("candidate-set-")
+    assert first.candidate_set_id == "candidate-set-770010a96a2dbf3e"
     assert canonical_json(first.to_dict()) == canonical_json(second.to_dict())
     assert [candidate.orientation.orientation_id for candidate in first.candidates] == [
         candidate.orientation.orientation_id for candidate in second.candidates
     ]
+
+
+def test_candidate_set_owns_candidate_tuple_and_resists_source_list_mutation() -> None:
+    baseline = load_candidate_set(RECIPE)
+    mutable_candidates = list(baseline.candidates)
+    owned = replace(baseline, candidates=mutable_candidates)
+    accepted_id = owned.candidate_set_id
+
+    mutable_candidates.pop()
+
+    assert type(owned.candidates) is tuple
+    assert len(owned.candidates) == 12
+    assert owned.candidate_set_id == accepted_id
+
+
+def test_candidate_set_rejects_non_candidate_entries() -> None:
+    baseline = load_candidate_set(RECIPE)
+
+    with pytest.raises(ValueError, match="candidates must contain OrientationCandidate"):
+        replace(baseline, candidates=[*baseline.candidates[:-1], object()])
+
+
+def test_zone_axis_display_formatting_does_not_change_scientific_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from kikuchi_lab.orientations import candidates as candidate_module
+
+    baseline = load_candidate_set(RECIPE)
+    accepted_id = baseline.candidate_set_id
+    original_label = baseline.candidates[0].zone_axis_label
+
+    monkeypatch.setattr(candidate_module, "_zone_axis_label", lambda uvw: f"[{', '.join(map(str, uvw))}]")
+
+    assert baseline.candidates[0].zone_axis_label != original_label
+    assert baseline.candidate_set_id == accepted_id
+    assert "zone_axis_label" not in baseline.identity_payload()["candidates"][0]
+    assert baseline.to_dict()["candidates"][0]["zone_axis_label"] == "[0, 0, 1]"
 
 
 @pytest.mark.parametrize("invalid_exhaustive", [True, "false", 0, None])
@@ -186,4 +224,100 @@ def test_v1_bounded_proof_set_requires_literal_false(
     invalid.write_text(yaml.safe_dump(recipe), encoding="utf-8")
 
     with pytest.raises(ValueError, match="exhaustive must be false"):
+        load_candidate_set(invalid)
+
+
+@pytest.mark.parametrize("invalid_schema", [True, 1.0, "1", None, 2])
+def test_schema_version_requires_exact_integer_one(tmp_path: Path, invalid_schema: object) -> None:
+    recipe = yaml.safe_load(RECIPE.read_text(encoding="utf-8"))
+    recipe["schema_version"] = invalid_schema
+    invalid = tmp_path / "invalid-schema.yml"
+    invalid.write_text(yaml.safe_dump(recipe), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="schema_version must be integer 1"):
+        load_candidate_set(invalid)
+
+
+@pytest.mark.parametrize("invalid_number", [True, "0.0", None, float("inf")])
+@pytest.mark.parametrize(
+    ("field", "mutate", "message"),
+    [
+        (
+            "euler",
+            lambda recipe, value: recipe["candidates"][0].__setitem__(
+                "euler_bunge_deg", [value, 0.0, 0.0]
+            ),
+            "euler_bunge_deg",
+        ),
+        (
+            "phi1",
+            lambda recipe, value: recipe["candidates"][0].__setitem__(
+                "bunge_phi1_deg", value
+            ),
+            "bunge_phi1_deg",
+        ),
+        (
+            "lattice",
+            lambda recipe, value: recipe.__setitem__(
+                "lattice_abc_angstrom", [value, 5.980, 4.756]
+            ),
+            "lattice_abc_angstrom",
+        ),
+        (
+            "tolerance",
+            lambda recipe, value: recipe.__setitem__("equivalence_tolerance_deg", value),
+            "equivalence_tolerance_deg",
+        ),
+    ],
+)
+def test_scientific_real_fields_reject_coercible_or_nonfinite_values(
+    tmp_path: Path,
+    field: str,
+    mutate: object,
+    message: str,
+    invalid_number: object,
+) -> None:
+    del field
+    recipe = yaml.safe_load(RECIPE.read_text(encoding="utf-8"))
+    mutate(recipe, invalid_number)
+    invalid = tmp_path / "invalid-real.yml"
+    invalid.write_text(yaml.safe_dump(recipe), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        load_candidate_set(invalid)
+
+
+@pytest.mark.parametrize("invalid_index", [True, "1", None, 1.5, float("inf")])
+def test_zone_axis_uvw_requires_finite_integer_indices(
+    tmp_path: Path, invalid_index: object
+) -> None:
+    recipe = yaml.safe_load(RECIPE.read_text(encoding="utf-8"))
+    recipe["candidates"][0]["zone_axis_uvw"] = [invalid_index, 0, 1]
+    invalid = tmp_path / "invalid-uvw.yml"
+    invalid.write_text(yaml.safe_dump(recipe), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="zone_axis_uvw"):
+        load_candidate_set(invalid)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda recipe: recipe.__setitem__("candidates", [None]), "candidate entry must be a mapping"),
+        (lambda recipe: recipe.__setitem__("candidates", [17]), "candidate entry must be a mapping"),
+        (lambda recipe: recipe.__setitem__("lattice_abc_angstrom", None), "lattice_abc_angstrom"),
+        (lambda recipe: recipe.__setitem__("lattice_abc_angstrom", 10.207), "lattice_abc_angstrom"),
+        (lambda recipe: recipe.__setitem__("lattice_abc_angstrom", [1.0, 2.0]), "lattice_abc_angstrom"),
+        (lambda recipe: recipe.__setitem__("equivalence_tolerance_deg", None), "equivalence_tolerance_deg"),
+    ],
+)
+def test_malformed_nested_yaml_reports_field_specific_value_error(
+    tmp_path: Path, mutation: object, message: str
+) -> None:
+    recipe = yaml.safe_load(RECIPE.read_text(encoding="utf-8"))
+    mutation(recipe)
+    invalid = tmp_path / "malformed-nested.yml"
+    invalid.write_text(yaml.safe_dump(recipe), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
         load_candidate_set(invalid)
