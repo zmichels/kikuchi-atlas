@@ -7,6 +7,10 @@ parent: KIKU-F001
 created: 2026-07-12
 priority: P0
 tags: [kikuchipy, detector, orientation]
+evidence:
+  - ../../tests/adapters/test_kikuchipy_projection.py
+  - ../../tests/scientific/test_projection_invariants.py
+  - ../../src/kikuchi_lab/projection/kikuchipy_adapter.py
 ---
 
 # KIKU-T004: Implement the kikuchipy Projection Boundary

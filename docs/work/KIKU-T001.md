@@ -12,7 +12,12 @@ tags: [bootstrap, python, tracker]
 links:
   - ../../pyproject.toml
   - ../../tests/unit/test_cli.py
+  - ../../tests/unit/test_work_tracker_helpers.py
   - index.md
+evidence:
+  - ../../tests/unit/test_cli.py
+  - ../../tests/unit/test_work_tracker_helpers.py
+  - ../../scripts/validate_work_items.py
 ---
 
 # KIKU-T001: Bootstrap Package, Tracker, and Environment Gate
@@ -29,3 +34,4 @@ development guidance, and validated repo-native milestone hierarchy.
 - [x] The managed runtime reports Python 3.12 on arm64.
 - [x] `scripts/validate_work_items.py` accepts the symmetric KIKU hierarchy.
 - [x] `scripts/work_status.py --root .` reports exactly one done task.
+- [x] `tests/unit/test_work_tracker_helpers.py` proves new tasks update both sides of the parent/child relationship.

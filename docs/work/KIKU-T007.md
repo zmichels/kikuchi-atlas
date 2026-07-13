@@ -7,6 +7,10 @@ parent: KIKU-F001
 created: 2026-07-12
 priority: P1
 tags: [orientation, symmetry, forsterite]
+evidence:
+  - ../../tests/scientific/test_orientation_candidates.py
+  - ../../recipes/proof/forsterite-candidates.yml
+  - ../decisions/0002-forsterite-proof-candidate-set.md
 ---
 
 # KIKU-T007: Define a Symmetry-Distinct Candidate Set

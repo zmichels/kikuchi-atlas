@@ -1,7 +1,7 @@
 ---
 id: KIKU-F001
 type: feature
-title: Reproducible Proof-to-Final Pipeline
+title: Exceptional forsterite pattern
 status: active
 parent: KIKU-E001
 children:
@@ -22,14 +22,18 @@ priority: P0
 tags: [pipeline, traceability]
 links:
   - ../superpowers/plans/2026-07-12-exceptional-forsterite-pattern.md
+evidence:
+  - ../acceptance/forsterite-milestone.md
+  - ../../recipes/gallery/forsterite-final.yml
 ---
 
-# KIKU-F001: Reproducible Proof-to-Final Pipeline
+# KIKU-F001: Exceptional forsterite pattern
 
 ## Description
 
-Build project-owned contracts and adapters around ebsdsim and kikuchipy, then
-use them to select and render the milestone pattern with durable evidence.
+Deliver one exceptional, scientifically traceable forsterite EBSD pattern by
+building project-owned contracts and adapters around ebsdsim and kikuchipy,
+then selecting and rendering it with durable proof-to-final evidence.
 
 ## Acceptance Criteria
 

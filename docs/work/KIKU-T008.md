@@ -7,6 +7,11 @@ parent: KIKU-F001
 created: 2026-07-12
 priority: P1
 tags: [proof, contact-sheet, comparison]
+evidence:
+  - ../../tests/integration/test_proof_workflow.py
+  - ../../recipes/proof/forsterite-proof.yml
+  - ../../src/kikuchi_lab/artifacts/contact_sheet.py
+  - ../../local/runs/
 ---
 
 # KIKU-T008: Render the Deterministic Proof Comparison

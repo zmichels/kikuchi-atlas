@@ -7,6 +7,12 @@ parent: KIKU-F001
 created: 2026-07-12
 priority: P0
 tags: [forsterite, ebsdsim, gpu]
+evidence:
+  - ../../phases/forsterite/source.yml
+  - ../../tests/adapters/test_forsterite_source.py
+  - ../../tests/adapters/test_ebsdsim_adapter.py
+  - ../../tests/integration/test_ebsdsim_gpu.py
+  - ../../local/master-patterns/
 ---
 
 # KIKU-T003: Validate Forsterite and Isolate ebsdsim
@@ -19,5 +25,5 @@ and expose environment diagnostics without backend substitution.
 ## Acceptance Criteria
 
 - [ ] `tests/adapters/test_forsterite_source.py` verifies the tracked source and catalog evidence.
-- [ ] Adapter tests preserve both master-pattern hemispheres and simulation metadata.
+- [ ] `tests/adapters/test_ebsdsim_adapter.py` preserves both master-pattern hemispheres and simulation metadata.
 - [ ] The GPU smoke result and `kikuchi-lab doctor --json` evidence are linked here.

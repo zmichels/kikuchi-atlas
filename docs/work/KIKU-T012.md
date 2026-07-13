@@ -7,6 +7,11 @@ parent: KIKU-F001
 created: 2026-07-12
 priority: P1
 tags: [incubator, review, closure]
+evidence:
+  - ../incubator/README.md
+  - ../incubator/independent-engine.md
+  - ../incubator/ebsdx-integration.md
+  - ../incubator/decision-state-diagnostics.md
 ---
 
 # KIKU-T012: Park Future Work and Close the Milestone

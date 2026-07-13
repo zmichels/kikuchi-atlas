@@ -12,5 +12,10 @@ uv run python scripts/validate_work_items.py
 uv run python scripts/work_status.py --root .
 ```
 
-The first milestone is `KIKU-E001`. `KIKU-F001` contains the twelve
-review-sized implementation tasks. Only accepted work is marked `done`.
+`KIKU-E001` is the broader dynamical Kikuchi companion. Its first milestone,
+`KIKU-F001`, contains the twelve review-sized implementation tasks for an
+exceptional forsterite pattern. The milestone's specific implementation plan
+intentionally maps those tasks directly to its single feature: adding an
+artificial story layer would not add a meaningful planning or acceptance
+boundary. Parent/child links remain symmetric, and only accepted work is
+marked `done`.

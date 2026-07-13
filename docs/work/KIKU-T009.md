@@ -7,6 +7,10 @@ parent: KIKU-F001
 created: 2026-07-12
 priority: P0
 tags: [decision, orientation, human-gate]
+evidence:
+  - ../../tests/unit/test_orientation_selection.py
+  - ../../src/kikuchi_lab/orientations/selection.py
+  - ../../local/decisions/forsterite-selection/selection.json
 ---
 
 # KIKU-T009: Record the Human Orientation Choice
@@ -19,5 +23,5 @@ comparison identity, and any bounded final-render adjustments.
 ## Acceptance Criteria
 
 - [ ] Selection-schema and CLI validation tests reject ambiguous or stale proof choices.
-- [ ] The signed decision record references one candidate and one proof bundle.
+- [ ] `local/decisions/forsterite-selection/selection.json` references one candidate and one proof bundle.
 - [ ] User approval evidence is linked here before the task is marked done.

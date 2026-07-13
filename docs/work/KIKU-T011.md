@@ -7,6 +7,10 @@ parent: KIKU-F001
 created: 2026-07-12
 priority: P0
 tags: [gpu, production, visual-acceptance]
+evidence:
+  - ../acceptance/forsterite-milestone.md
+  - ../../recipes/gallery/forsterite-final.yml
+  - ../../local/runs/
 ---
 
 # KIKU-T011: Run Production and Visual Acceptance

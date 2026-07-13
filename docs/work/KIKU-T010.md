@@ -7,6 +7,11 @@ parent: KIKU-F001
 created: 2026-07-12
 priority: P0
 tags: [final, rendering, reproducibility]
+evidence:
+  - ../../tests/integration/test_final_workflow.py
+  - ../../tests/integration/test_recipe_reproduction.py
+  - ../../recipes/gallery/forsterite-final.yml
+  - ../../local/runs/
 ---
 
 # KIKU-T010: Implement Final Rendering and Reproduction

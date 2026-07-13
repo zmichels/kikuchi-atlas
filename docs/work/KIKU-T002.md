@@ -9,6 +9,11 @@ priority: P0
 tags: [contracts, provenance, identity]
 links:
   - ../superpowers/plans/2026-07-12-exceptional-forsterite-pattern.md
+evidence:
+  - ../../tests/unit/test_identity.py
+  - ../../tests/unit/test_recipes.py
+  - ../../tests/unit/test_products.py
+  - ../../tests/unit/test_persistence.py
 ---
 
 # KIKU-T002: Define Stable Recipes, Provenance, and Canonical Products
