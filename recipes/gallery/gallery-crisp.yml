@@ -1,0 +1,33 @@
+schema_version: 1
+name: gallery-crisp
+intent: crisp gallery rendering while retaining the same detector projection
+stages:
+  - name: background_divide
+    parameters:
+      sigma_px: 18.0
+      epsilon: 0.000001
+  - name: robust_normalize
+    parameters:
+      low_percentile: 0.0
+      high_percentile: 100.0
+  - name: local_contrast
+    parameters:
+      clip_limit: 0.02
+      kernel_size: [16, 16]
+  - name: multiscale_detail
+    parameters:
+      scales_px: [1.0, 3.0]
+      gains: [0.45, 0.2]
+  - name: unsharp
+    parameters:
+      radius_px: 1.0
+      amount: 0.5
+      threshold: 0.005
+  - name: tone_map
+    parameters:
+      black: 0.0
+      white: 1.0
+      gamma: 0.9
+  - name: downsample
+    parameters:
+      shape: [48, 64]

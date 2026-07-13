@@ -1,0 +1,24 @@
+schema_version: 1
+name: scientific-clean
+intent: restrained acquisition-style processing with explicit detector downsampling
+stages:
+  - name: background_divide
+    parameters:
+      sigma_px: 18.0
+      epsilon: 0.000001
+  - name: robust_normalize
+    parameters:
+      low_percentile: 0.0
+      high_percentile: 100.0
+  - name: local_contrast
+    parameters:
+      clip_limit: 0.01
+      kernel_size: [16, 16]
+  - name: tone_map
+    parameters:
+      black: 0.0
+      white: 1.0
+      gamma: 1.0
+  - name: downsample
+    parameters:
+      shape: [48, 64]
