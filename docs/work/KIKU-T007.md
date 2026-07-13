@@ -2,7 +2,7 @@
 id: KIKU-T007
 type: task
 title: Define a Symmetry-Distinct Candidate Set
-status: ready
+status: done
 parent: KIKU-F001
 created: 2026-07-12
 priority: P1
@@ -22,6 +22,20 @@ proof comparison without redundant symmetry equivalents.
 
 ## Acceptance Criteria
 
-- [ ] Candidate-set tests prove stable ordering and symmetry reduction.
-- [ ] Orientations use active crystal-to-sample Bunge Euler angles in degrees.
-- [ ] The accepted candidate recipe and reduction evidence are linked here.
+- [x] Candidate-set tests prove stable ordering and symmetry reduction.
+- [x] Orientations use active crystal-to-sample Bunge Euler angles in degrees.
+- [x] The accepted candidate recipe and reduction evidence are linked here.
+
+## Accepted Evidence
+
+The twelve-candidate recipe is
+[forsterite-candidates.yml](../../recipes/proof/forsterite-candidates.yml),
+identified as `candidate-set-bf329b87e5427ecd`. The reduction convention,
+`0.01` degree tolerance, bounded generation rationale, and non-exhaustive
+scope are accepted in
+[ADR 0002](../decisions/0002-forsterite-proof-candidate-set.md).
+
+`tests/scientific/test_orientation_candidates.py` proves deterministic IDs
+and order, canonical active Bunge angles, metric-aware zone-axis alignment,
+fixed-sample `mmm` disorientation, and stable serialization. All 66 pairs are
+distinct; the minimum disorientation is approximately `24.0515` degrees.

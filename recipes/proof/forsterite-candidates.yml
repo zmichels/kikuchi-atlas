@@ -1,0 +1,87 @@
+schema_version: 1
+phase: forsterite (Mg2SiO4)
+space_group: Pnma (No. 62, standard setting)
+point_group: mmm
+lattice_abc_angstrom: [10.207, 5.980, 4.756]
+orientation_convention: >-
+  active crystal-to-sample Bunge ZXZ Euler angles in degrees; sample axes are
+  EDAX-TSL [RD, TD, ND]
+equivalence_tolerance_deg: 0.01
+generation_rationale: >-
+  Center selected axial and mixed low-index forsterite zone directions on
+  sample ND, then vary in-plane roll to sample axial, diagonal, asymmetric,
+  open, and dense band compositions with one deterministic review order.
+exhaustive: false
+candidates:
+  - id: fo-001-r000
+    name: c-axis axial
+    euler_bunge_deg: [0.0, 0.0, 0.0]
+    zone_axis_hkl: [0, 0, 1]
+    zone_axis_intent: Center the [001] zone direction on sample ND.
+    composition_intent: Establish a restrained axial baseline with orthogonal band families.
+  - id: fo-001-r035
+    name: c-axis rolled
+    euler_bunge_deg: [35.0, 0.0, 0.0]
+    zone_axis_hkl: [0, 0, 1]
+    zone_axis_intent: Center the [001] zone direction on sample ND with 35 degree roll.
+    composition_intent: Test whether a diagonal axial composition reads more dynamically than the baseline.
+  - id: fo-100-r000
+    name: a-axis axial
+    euler_bunge_deg: [180.0, 90.0, 90.0]
+    zone_axis_hkl: [1, 0, 0]
+    zone_axis_intent: Center the [100] zone direction on sample ND.
+    composition_intent: Expose the contrasting a-axis band hierarchy in a vertically anchored composition.
+  - id: fo-100-r040
+    name: a-axis rolled
+    euler_bunge_deg: [220.0, 90.0, 90.0]
+    zone_axis_hkl: [1, 0, 0]
+    zone_axis_intent: Center the [100] zone direction on sample ND with 40 degree roll.
+    composition_intent: Rotate the a-axis hierarchy into an energetic diagonal arrangement for comparison.
+  - id: fo-010-r015
+    name: b-axis shallow roll
+    euler_bunge_deg: [15.0, 90.0, 0.0]
+    zone_axis_hkl: [0, 1, 0]
+    zone_axis_intent: Center the [010] zone direction on sample ND with 15 degree roll.
+    composition_intent: Sample the long-b-axis view while keeping a modest near-axial visual anchor.
+  - id: fo-010-r055
+    name: b-axis diagonal roll
+    euler_bunge_deg: [55.0, 90.0, 0.0]
+    zone_axis_hkl: [0, 1, 0]
+    zone_axis_intent: Center the [010] zone direction on sample ND with 55 degree roll.
+    composition_intent: Recast the long-b-axis band family as a strongly diagonal graphic composition.
+  - id: fo-110-r010
+    name: ab mixed axis
+    euler_bunge_deg: [100.0, 90.0, 59.63513803]
+    zone_axis_hkl: [1, 1, 0]
+    zone_axis_intent: Center the metric-aware [110] zone direction on sample ND with 10 degree roll.
+    composition_intent: Introduce a low-index mixed-axis crossing with unequal orthorhombic visual weight.
+  - id: fo-101-r025
+    name: ac mixed axis
+    euler_bunge_deg: [205.0, 65.01661156, 90.0]
+    zone_axis_hkl: [1, 0, 1]
+    zone_axis_intent: Center the metric-aware [101] zone direction on sample ND with 25 degree roll.
+    composition_intent: Seek a balanced oblique crossing between the short a and c lattice directions.
+  - id: fo-011-r045
+    name: bc mixed axis
+    euler_bunge_deg: [45.0, 51.50414783, 0.0]
+    zone_axis_hkl: [0, 1, 1]
+    zone_axis_intent: Center the metric-aware [011] zone direction on sample ND with 45 degree roll.
+    composition_intent: Emphasize asymmetry from the long b direction in a centered diagonal crossing.
+  - id: fo-111-r000
+    name: body-diagonal mixed axis
+    euler_bunge_deg: [90.0, 68.09805490, 59.63513803]
+    zone_axis_hkl: [1, 1, 1]
+    zone_axis_intent: Center the metric-aware [111] zone direction on sample ND.
+    composition_intent: Test a dense multi-family convergence as the most explicitly crystalline centerpiece.
+  - id: fo-210-r030
+    name: weighted ab oblique
+    euler_bunge_deg: [120.0, 90.0, 73.67278095]
+    zone_axis_hkl: [2, 1, 0]
+    zone_axis_intent: Center the metric-aware [210] zone direction on sample ND with 30 degree roll.
+    composition_intent: Offset the central crossing toward an a-weighted oblique and open one image quadrant.
+  - id: fo-012-r060
+    name: weighted bc oblique
+    euler_bunge_deg: [60.0, 32.15673591, 0.0]
+    zone_axis_hkl: [0, 1, 2]
+    zone_axis_intent: Center the metric-aware [012] zone direction on sample ND with 60 degree roll.
+    composition_intent: Counterbalance the set with a c-weighted oblique and a broad diagonal sweep.
