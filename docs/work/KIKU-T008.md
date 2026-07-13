@@ -33,8 +33,8 @@ and a legible contact sheet for human orientation selection.
   `uv run pytest tests/integration/test_proof_workflow.py -q` (2 passed).
 - Focused proof/CLI suite:
   `uv run pytest tests/unit/test_proof_recipe.py tests/unit/test_cli.py tests/integration/test_proof_workflow.py -q`
-  (8 passed).
-- Full fast suite: `uv run pytest -q` (303 passed; 23 upstream deprecation
+  (11 passed).
+- Full fast suite: `uv run pytest -q` (306 passed; 23 upstream deprecation
   warnings).
 - Static checks: `uv run ruff check src tests` (clean).
 - Validated proof master manifest:
@@ -43,9 +43,14 @@ and a legible contact sheet for human orientation selection.
 - Real contact sheet:
   `../../local/runs/proof-bb3c2766ff577427/contact-sheet.png`.
 - The authoritative bundle was regenerated from clean revision
-  `1a612f47cdd074a767cc9e2860533e69d80921cf` on branch
+  `8c7461e0d2c87bcc9558b05653bbbfd46e25c684` on branch
   `codex/exceptional-forsterite`; `provenance/execution.json` records
   `dirty=false` and the exact `kikuchi-lab proof` command.
+- The immediately preceding clean bundle with the same scientific identity is
+  preserved at
+  `../../local/runs/proof-bb3c2766ff577427.superseded-pre-cli-boundary-1a612f4/`;
+  it predates concise CLI normalization for invalid candidate and processing
+  dependency recipes.
 - The previous clean proof is preserved at
   `../../local/runs/proof-034550efeb6bf89a.superseded-pre-master-contract-31a1956/`;
   it predates the explicit master-admissibility and complete contact-rendering
@@ -95,6 +100,11 @@ templates, label policy, renderer version, Pillow version, font name/sizes, and
 a glyph-atlas hash. Changing columns, font identity, layout, quality, intended
 use, processing recipe, or the admitted master contract changes the proof
 identity.
+
+Malformed proof, candidate, and processing YAML plus downstream schema/type
+errors are normalized at their declared recipe field and path. The CLI returns
+status 1 with concise stderr and no traceback while leaving unrelated
+programmer and system exceptions outside that normalization boundary.
 
 All 12 candidates carry the same advisory `clipping_fraction` warning at 0.02,
 caused by the explicit 1st/99th percentile normalization before CLAHE. This is
