@@ -110,6 +110,14 @@ def test_final_workflow_materializes_shared_correction_and_both_clarity_branches
     assert any(warning["code"] == "development_not_final_quality" for warning in warnings)
     assert any(warning["code"] == "descriptive_clarity_references_only" for warning in warnings)
     assert all("overlay" not in stage["name"] for lineage in manifest["processing_lineages"].values() for stage in lineage)
+    metrics = json.loads((bundle / "diagnostics/metrics.json").read_text())
+    scientific_high = metrics["scientific-clean"]["radial_frequency_energy"]["high"]
+    gallery_high = metrics["gallery-crisp"]["radial_frequency_energy"]["high"]
+    assert gallery_high <= scientific_high * 1.25
+    assert not any(
+        warning["code"] in {"excessive_high_frequency_gain", "clipping_fraction"}
+        for warning in warnings
+    )
 
 
 def test_final_selection_gate_rejects_proof_manifest_and_superseded_record(
