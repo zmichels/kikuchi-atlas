@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+from copy import deepcopy
 from pathlib import Path
 
 from kikuchi_lab.cli.main import main
@@ -14,6 +15,7 @@ from kikuchi_lab.orientations.selection import (
     SelectionExistsError,
     create_orientation_selection,
     load_orientation_selection,
+    proof_tree_digest,
 )
 
 
@@ -118,6 +120,40 @@ def _tree_checksums(root: Path) -> dict[str, str]:
     }
 
 
+def _reseal_duplicate_candidate_proof(run: Path) -> None:
+    candidate_set_path = run / "metadata/orientation-candidates.json"
+    candidate_set = json.loads(candidate_set_path.read_text())
+    duplicate = deepcopy(candidate_set["candidates"][0])
+    duplicate["orientation"]["euler_bunge_deg"][0] = 46.0
+    duplicate["bunge_phi1_deg"] = 46.0
+    candidate_set["candidates"].append(duplicate)
+    identity_payload = {
+        key: value for key, value in candidate_set.items() if key != "candidate_set_id"
+    }
+    identity_payload["candidates"] = [
+        {key: value for key, value in candidate.items() if key != "zone_axis_label"}
+        for candidate in candidate_set["candidates"]
+    ]
+    candidate_set_id = stable_id("candidate-set", identity_payload)
+    candidate_set["candidate_set_id"] = candidate_set_id
+    _write_json(candidate_set_path, candidate_set)
+
+    manifest_path = run / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    repeated_order = [candidate["id"] for candidate in candidate_set["candidates"]]
+    manifest["candidate_order"] = repeated_order
+    manifest["candidate_set_id"] = candidate_set_id
+    manifest["identity"]["candidate_order"] = repeated_order
+    manifest["identity"]["candidate_set_id"] = candidate_set_id
+    relative = candidate_set_path.relative_to(run).as_posix()
+    manifest["files"][relative] = {
+        "bytes": candidate_set_path.stat().st_size,
+        "sha256": _sha256(candidate_set_path),
+    }
+    manifest["proof_id"] = stable_id("proof", manifest["identity"])
+    _write_json(manifest_path, manifest)
+
+
 def test_selection_is_content_addressed_and_references_sealed_evidence(tmp_path: Path) -> None:
     proof = _proof_bundle(tmp_path)
     before = _tree_checksums(proof)
@@ -152,6 +188,160 @@ def test_selection_is_content_addressed_and_references_sealed_evidence(tmp_path:
     assert len(selected["geometry_sha256"]) == 64
     assert len(selected["metrics_sha256"]) == 64
     assert _tree_checksums(proof) == before
+
+
+def test_selection_rejects_sealed_duplicate_candidate_ids_before_choice(
+    tmp_path: Path,
+) -> None:
+    proof = _proof_bundle(tmp_path)
+    _reseal_duplicate_candidate_proof(proof)
+
+    with pytest.raises(OrientationSelectionError, match="candidate IDs must be globally unique"):
+        create_orientation_selection(
+            run=proof,
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="A human rationale.",
+            selected_on="2026-07-13",
+            output_root=tmp_path / "decisions",
+        )
+
+
+def test_proof_tree_digest_contract_is_exact_and_recomputable(tmp_path: Path) -> None:
+    proof = _proof_bundle(tmp_path)
+    expected_contract = {
+        "schema_version": 1,
+        "algorithm": "sha256",
+        "file_inclusion": (
+            "all non-symlink regular files recursively beneath the proof root, "
+            "including manifest.json"
+        ),
+        "exclusions": [],
+        "entry_fields": ["relative_posix_path", "sha256", "bytes"],
+        "ordering": "ascending Unicode code-point order of relative_posix_path",
+        "serialization": "kikuchi-lab canonical JSON encoded as UTF-8 without a newline",
+        "digest_payload": "canonical JSON object with contract and ordered entries fields",
+    }
+    entries = [
+        {
+            "relative_posix_path": path.relative_to(proof).as_posix(),
+            "sha256": _sha256(path),
+            "bytes": path.stat().st_size,
+        }
+        for path in sorted(
+            (path for path in proof.rglob("*") if path.is_file() and not path.is_symlink()),
+            key=lambda path: path.relative_to(proof).as_posix(),
+        )
+    ]
+    expected_sha256 = hashlib.sha256(
+        canonical_json({"contract": expected_contract, "entries": entries}).encode("utf-8")
+    ).hexdigest()
+
+    observed = proof_tree_digest(proof)
+
+    assert observed == {
+        "contract": expected_contract,
+        "file_count": len(entries),
+        "sha256": expected_sha256,
+    }
+
+
+def test_selection_schema_records_the_recomputable_proof_tree_digest(tmp_path: Path) -> None:
+    proof = _proof_bundle(tmp_path)
+
+    result = create_orientation_selection(
+        run=proof,
+        candidate_id="fo-011-phi1-045",
+        author="Z",
+        rationale="A human rationale.",
+        selected_on="2026-07-13",
+        output_root=tmp_path / "decisions",
+    )
+
+    record = load_orientation_selection(result.selection_path)
+    assert record["schema_version"] == 2
+    assert record["decision"]["schema_version"] == 2
+    assert record["decision"]["proof"]["tree_digest"] == proof_tree_digest(proof)
+
+
+def test_selection_requires_exactly_one_evidence_directory_for_selected_id(
+    tmp_path: Path,
+) -> None:
+    proof = _proof_bundle(tmp_path)
+    source = proof / "candidates/fo-011-phi1-045/evidence.json"
+    duplicate = proof / "candidates/duplicate-folder/evidence.json"
+    duplicate.parent.mkdir(parents=True)
+    shutil.copyfile(source, duplicate)
+    manifest_path = proof / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    relative = duplicate.relative_to(proof).as_posix()
+    manifest["files"][relative] = {
+        "bytes": duplicate.stat().st_size,
+        "sha256": _sha256(duplicate),
+    }
+    _write_json(manifest_path, manifest)
+
+    with pytest.raises(
+        OrientationSelectionError,
+        match="selected candidate ID must match exactly one evidence directory",
+    ):
+        create_orientation_selection(
+            run=proof,
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="A human rationale.",
+            selected_on="2026-07-13",
+            output_root=tmp_path / "decisions",
+        )
+
+
+@pytest.mark.parametrize("declared_order", [[], ["fo-011-phi1-045", "fo-011-phi1-045"]])
+def test_selection_requires_candidate_order_to_cover_each_candidate_once(
+    tmp_path: Path, declared_order: list[str]
+) -> None:
+    proof = _proof_bundle(tmp_path)
+    manifest_path = proof / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["candidate_order"] = declared_order
+    manifest["identity"]["candidate_order"] = declared_order
+    manifest["proof_id"] = stable_id("proof", manifest["identity"])
+    _write_json(manifest_path, manifest)
+
+    with pytest.raises(
+        OrientationSelectionError,
+        match="candidate_order must contain every candidate ID exactly once",
+    ):
+        create_orientation_selection(
+            run=proof,
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="A human rationale.",
+            selected_on="2026-07-13",
+            output_root=tmp_path / "decisions",
+        )
+
+
+def test_selection_normalizes_non_text_candidate_order_entries(tmp_path: Path) -> None:
+    proof = _proof_bundle(tmp_path)
+    manifest_path = proof / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["candidate_order"] = [{"not": "an ID"}]
+    manifest["identity"]["candidate_order"] = [{"not": "an ID"}]
+    manifest["proof_id"] = stable_id("proof", manifest["identity"])
+    _write_json(manifest_path, manifest)
+
+    with pytest.raises(
+        OrientationSelectionError,
+        match="candidate_order must contain every candidate ID exactly once",
+    ):
+        create_orientation_selection(
+            run=proof,
+            candidate_id="fo-011-phi1-045",
+            author="Z",
+            rationale="A human rationale.",
+            selected_on="2026-07-13",
+            output_root=tmp_path / "decisions",
+        )
 
 
 def test_second_decision_for_proof_requires_explicit_supersession(tmp_path: Path) -> None:

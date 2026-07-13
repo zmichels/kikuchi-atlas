@@ -15,6 +15,21 @@ from typing import Any
 from kikuchi_lab.model.identity import canonical_json, stable_id
 
 
+PROOF_TREE_DIGEST_CONTRACT = {
+    "schema_version": 1,
+    "algorithm": "sha256",
+    "file_inclusion": (
+        "all non-symlink regular files recursively beneath the proof root, "
+        "including manifest.json"
+    ),
+    "exclusions": [],
+    "entry_fields": ["relative_posix_path", "sha256", "bytes"],
+    "ordering": "ascending Unicode code-point order of relative_posix_path",
+    "serialization": "kikuchi-lab canonical JSON encoded as UTF-8 without a newline",
+    "digest_payload": "canonical JSON object with contract and ordered entries fields",
+}
+
+
 class OrientationSelectionError(ValueError):
     """A proof run or requested human selection is not valid."""
 
@@ -112,6 +127,31 @@ def _content_sha256(value: Any) -> str:
     return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
 
 
+def proof_tree_digest(run: str | Path) -> dict[str, Any]:
+    """Return the path-stable digest contract and value for a sealed proof tree."""
+    root = Path(run).resolve()
+    if not root.is_dir():
+        raise OrientationSelectionError(f"proof run does not exist: {root}")
+    paths = sorted(
+        (path for path in root.rglob("*") if path.is_file() and not path.is_symlink()),
+        key=lambda path: path.relative_to(root).as_posix(),
+    )
+    entries = [
+        {
+            "relative_posix_path": path.relative_to(root).as_posix(),
+            "sha256": _sha256(path),
+            "bytes": path.stat().st_size,
+        }
+        for path in paths
+    ]
+    payload = {"contract": PROOF_TREE_DIGEST_CONTRACT, "entries": entries}
+    return {
+        "contract": PROOF_TREE_DIGEST_CONTRACT,
+        "file_count": len(entries),
+        "sha256": _content_sha256(payload),
+    }
+
+
 def _selection_records(output_root: Path) -> list[tuple[Path, dict[str, Any]]]:
     records: list[tuple[Path, dict[str, Any]]] = []
     if not output_root.is_dir():
@@ -125,8 +165,9 @@ def load_orientation_selection(path: str | Path) -> dict[str, Any]:
     """Load and validate one content-addressed selection artifact."""
     selection_path = Path(path).resolve()
     record = _load_json(selection_path, "orientation selection")
-    if record.get("schema_version") != 1:
-        raise OrientationSelectionError("selection schema_version must be integer 1")
+    schema_version = record.get("schema_version")
+    if schema_version not in (1, 2):
+        raise OrientationSelectionError("selection schema_version must be integer 1 or 2")
     decision = record.get("decision")
     if not isinstance(decision, dict):
         raise OrientationSelectionError("selection requires decision content")
@@ -138,8 +179,8 @@ def load_orientation_selection(path: str | Path) -> dict[str, Any]:
         raise OrientationSelectionError("selection identity is invalid")
     if selection_path.parent.name != selection_id:
         raise OrientationSelectionError("selection directory must match selection identity")
-    if decision.get("schema_version") != 1:
-        raise OrientationSelectionError("decision schema_version must be integer 1")
+    if decision.get("schema_version") != schema_version:
+        raise OrientationSelectionError("decision schema_version must match selection schema")
     if decision.get("kind") != "human-orientation-selection":
         raise OrientationSelectionError("decision kind must be human-orientation-selection")
     for field in ("author", "rationale", "selected_on"):
@@ -157,6 +198,15 @@ def load_orientation_selection(path: str | Path) -> dict[str, Any]:
     if not isinstance(proof, dict) or not isinstance(proof.get("proof_id"), str):
         raise OrientationSelectionError("decision requires a proof identity")
     _validate_sha256(proof.get("manifest_sha256"), "proof manifest_sha256")
+    if schema_version == 2:
+        tree_digest = proof.get("tree_digest")
+        if not isinstance(tree_digest, dict):
+            raise OrientationSelectionError("schema 2 decision requires a proof tree digest")
+        if tree_digest.get("contract") != PROOF_TREE_DIGEST_CONTRACT:
+            raise OrientationSelectionError("proof tree digest contract is invalid")
+        if type(tree_digest.get("file_count")) is not int or tree_digest["file_count"] <= 0:
+            raise OrientationSelectionError("proof tree digest file_count must be positive")
+        _validate_sha256(tree_digest.get("sha256"), "proof tree digest sha256")
     candidate_set = decision.get("candidate_set")
     if not isinstance(candidate_set, dict) or not isinstance(
         candidate_set.get("candidate_set_id"), str
@@ -268,10 +318,6 @@ def create_orientation_selection(
             )
     _verify_inventory(run_path, manifest)
 
-    candidate_order = manifest.get("candidate_order")
-    if not isinstance(candidate_order, list) or candidate_id not in candidate_order:
-        raise OrientationSelectionError(f"candidate is not in proof run: {candidate_id}")
-
     candidate_set_relative = "metadata/orientation-candidates.json"
     candidate_set_path = run_path / candidate_set_relative
     candidate_set = _load_json(candidate_set_path, "proof candidate set")
@@ -284,20 +330,50 @@ def create_orientation_selection(
     if manifest.get("candidate_set_id") != candidate_set_id:
         raise OrientationSelectionError("proof and candidate-set identities disagree")
     candidates = candidate_set["candidates"]
-    candidate = next(
-        (
-            item
-            for item in candidates
-            if isinstance(item, dict) and item.get("id") == candidate_id
-        ),
-        None,
-    )
-    if candidate is None:
+    if any(not isinstance(item, dict) for item in candidates):
+        raise OrientationSelectionError("candidate metadata entries must be objects")
+    candidate_ids = [item.get("id") for item in candidates]
+    if any(not isinstance(item, str) or not item for item in candidate_ids):
+        raise OrientationSelectionError("candidate metadata requires nonblank IDs")
+    if len(candidate_ids) != len(set(candidate_ids)):
+        raise OrientationSelectionError("candidate IDs must be globally unique")
+    candidate_order = manifest.get("candidate_order")
+    if (
+        not isinstance(candidate_order, list)
+        or any(not isinstance(item, str) or not item for item in candidate_order)
+        or len(candidate_order) != len(candidate_ids)
+        or len(candidate_order) != len(set(candidate_order))
+        or set(candidate_order) != set(candidate_ids)
+    ):
+        raise OrientationSelectionError(
+            "candidate_order must contain every candidate ID exactly once"
+        )
+    if identity.get("candidate_order") != candidate_order:
+        raise OrientationSelectionError("proof identity and candidate_order disagree")
+    if identity.get("candidate_set_id") != candidate_set_id:
+        raise OrientationSelectionError("proof identity and candidate-set identities disagree")
+    if candidate_id not in candidate_order:
+        raise OrientationSelectionError(f"candidate is not in proof run: {candidate_id}")
+    matching_candidates = [item for item in candidates if item["id"] == candidate_id]
+    if not matching_candidates:
         raise OrientationSelectionError(f"candidate is absent from candidate set: {candidate_id}")
+    if len(matching_candidates) != 1:
+        raise OrientationSelectionError("selected candidate ID must match exactly one candidate")
+    candidate = matching_candidates[0]
 
     evidence_relative = f"candidates/{candidate_id}/evidence.json"
     evidence_path = run_path / evidence_relative
-    evidence = _load_json(evidence_path, "candidate evidence")
+    evidence_matches: list[tuple[Path, dict[str, Any]]] = []
+    for path in sorted((run_path / "candidates").glob("*/evidence.json")):
+        item = _load_json(path, "candidate evidence")
+        item_candidate = item.get("candidate")
+        if isinstance(item_candidate, dict) and item_candidate.get("id") == candidate_id:
+            evidence_matches.append((path, item))
+    if len(evidence_matches) != 1 or evidence_matches[0][0] != evidence_path:
+        raise OrientationSelectionError(
+            "selected candidate ID must match exactly one evidence directory"
+        )
+    evidence = evidence_matches[0][1]
     if evidence.get("candidate") != candidate:
         raise OrientationSelectionError("candidate evidence does not preserve candidate content")
     processing_evidence = evidence.get("processing_evidence")
@@ -323,7 +399,7 @@ def create_orientation_selection(
         raise OrientationSelectionError("proof inventory omits selection evidence")
 
     decision = {
-        "schema_version": 1,
+        "schema_version": 2,
         "kind": "human-orientation-selection",
         "selected_on": selected_on,
         "author": author,
@@ -332,6 +408,7 @@ def create_orientation_selection(
             "proof_id": proof_id,
             "manifest_sha256": _sha256(manifest_path),
             "manifest_locator": "manifest.json",
+            "tree_digest": proof_tree_digest(run_path),
         },
         "candidate_set": {
             "candidate_set_id": candidate_set_id,
@@ -354,7 +431,7 @@ def create_orientation_selection(
     decision_sha256 = _content_sha256(decision)
     selection_id = f"orientation-selection-{decision_sha256[:16]}"
     record = {
-        "schema_version": 1,
+        "schema_version": 2,
         "selection_id": selection_id,
         "decision_sha256": decision_sha256,
         "decision": decision,
