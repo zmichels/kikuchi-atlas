@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -36,8 +37,14 @@ def centrosymmetric_source() -> StructureRecord:
 
 
 def noncentrosymmetric_source() -> StructureRecord:
+    source_sha256 = hashlib.sha256(b"synthetic-noncentrosymmetric-source").hexdigest()
     return replace(
         fixture_source(),
+        identifier="synthetic-noncentrosymmetric",
+        sha256=source_sha256,
+        uri="urn:kikuchi-lab:test:synthetic-noncentrosymmetric",
+        page_uri="urn:kikuchi-lab:test:synthetic-noncentrosymmetric",
+        citation="Synthetic non-centrosymmetric test fixture.",
         name="synthetic-noncentrosymmetric",
         space_group_number=1,
     )
@@ -58,6 +65,7 @@ def symmetric_master(*, half_size: int = 2) -> np.ndarray:
 def synthetic_simulation(
     master: np.ndarray,
     *,
+    source: StructureRecord | None = None,
     hemisphere_order: list[str] | None = None,
     row_axis: str = "Y ascending -1 to +1",
     column_axis: str = "X ascending -1 to +1",
@@ -65,7 +73,10 @@ def synthetic_simulation(
     frame: str = "standard-Pnma direct and reciprocal Cartesian frames",
     handedness: str = "right-handed",
 ) -> KinematicalSimulation:
-    energy_kev = load_kinematical_recipe(KINEMATICAL_RECIPE).energy_kev
+    source = source or fixture_source()
+    kinematical_recipe = load_kinematical_recipe(KINEMATICAL_RECIPE)
+    energy_kev = kinematical_recipe.energy_kev
+    source_id = source.source_record.source_id
     stereo = KinematicalArrayProduct.from_array(
         "master-stereographic",
         master,
@@ -73,6 +84,14 @@ def synthetic_simulation(
             "projection": "stereographic",
             "hemisphere": "both",
             "energy_kev": energy_kev,
+            "source_id": source_id,
+            "source_sha256": source.sha256,
+            "recipe_id": kinematical_recipe.recipe_id,
+            "provenance_links": [
+                source_id,
+                kinematical_recipe.recipe_id,
+                f"sha256:{source.sha256}",
+            ],
         },
     )
     lambert = KinematicalArrayProduct.from_array(
@@ -89,8 +108,9 @@ def synthetic_simulation(
         master_stereographic=stereo,
         master_lambert=lambert,
         detector=detector,
-        reflector_catalog={},
+        reflector_catalog={"master": {"energy_kev": energy_kev}},
         projection_ledger={
+            "source_method": {"phase_source_id": source_id},
             "frames": {"crystal": frame, "handedness": handedness},
             "projections": {
                 "stereographic": {

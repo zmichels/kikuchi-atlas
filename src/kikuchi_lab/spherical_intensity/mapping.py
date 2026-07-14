@@ -41,8 +41,9 @@ def _required_mapping(value: object, name: str) -> dict[str, Any]:
 
 def _validated_source(
     simulation: KinematicalSimulation,
+    source: StructureRecord,
     recipe: SphericalIntensityRecipe,
-) -> tuple[np.ndarray, dict[str, Any], float]:
+) -> tuple[np.ndarray, dict[str, Any], float, dict[str, str]]:
     product = simulation.master_stereographic
     master = np.asarray(product.intensity)
     expected_size = 2 * recipe.profile.half_size + 1
@@ -64,6 +65,15 @@ def _validated_source(
         raise ValueError("spherical mapping source projection must be stereographic")
     if product_metadata.get("hemisphere") != "both":
         raise ValueError("spherical mapping source hemisphere must be both")
+    master_source_id = product_metadata.get("source_id")
+    if not isinstance(master_source_id, str) or not master_source_id.strip():
+        raise ValueError("stereographic master source_id provenance is required")
+    master_source_sha256 = product_metadata.get("source_sha256")
+    if not isinstance(master_source_sha256, str) or not master_source_sha256.strip():
+        raise ValueError("stereographic master source_sha256 provenance is required")
+    kinematical_recipe_id = product_metadata.get("recipe_id")
+    if not isinstance(kinematical_recipe_id, str) or not kinematical_recipe_id.strip():
+        raise ValueError("stereographic master recipe_id provenance is required")
     energy = product_metadata.get("energy_kev")
     if (
         isinstance(energy, bool)
@@ -74,6 +84,42 @@ def _validated_source(
         raise ValueError("stereographic source energy_kev must be positive and finite")
 
     ledger = _required_mapping(simulation.projection_ledger, "projection ledger")
+    source_method = _required_mapping(
+        ledger.get("source_method"),
+        "projection ledger source method",
+    )
+    ledger_source_id = source_method.get("phase_source_id")
+    if not isinstance(ledger_source_id, str) or not ledger_source_id.strip():
+        raise ValueError("projection ledger phase_source_id provenance is required")
+    if master_source_id != ledger_source_id:
+        raise ValueError("master and projection ledger source identity must agree")
+    supplied_source_id = source.source_record.source_id
+    if master_source_id != supplied_source_id:
+        raise ValueError(
+            "stereographic master does not match supplied structure source identity"
+        )
+    if master_source_sha256 != source.sha256:
+        raise ValueError("stereographic master does not match supplied structure source hash")
+
+    reflector_catalog = _required_mapping(
+        simulation.reflector_catalog,
+        "reflection catalog",
+    )
+    master_reflections = _required_mapping(
+        reflector_catalog.get("master"),
+        "reflection catalog master",
+    )
+    reflection_energy = master_reflections.get("energy_kev")
+    if (
+        isinstance(reflection_energy, bool)
+        or not isinstance(reflection_energy, (int, float))
+        or not math.isfinite(float(reflection_energy))
+        or float(reflection_energy) <= 0
+    ):
+        raise ValueError("reflection catalog master energy_kev must be positive and finite")
+    if float(energy) != float(reflection_energy):
+        raise ValueError("master and reflector catalog energy provenance must agree")
+
     projections = _required_mapping(ledger.get("projections"), "projection ledger projections")
     projection = _required_mapping(
         projections.get("stereographic"),
@@ -96,7 +142,16 @@ def _validated_source(
         raise ValueError("stereographic crystal frame must be non-empty text")
     if frames.get("handedness") != "right-handed":
         raise ValueError("stereographic frame must be right-handed")
-    return master, frames, float(energy)
+    return (
+        master,
+        frames,
+        float(energy),
+        {
+            "phase_source_id": master_source_id,
+            "source_sha256": master_source_sha256,
+            "kinematical_recipe_id": kinematical_recipe_id,
+        },
+    )
 
 
 def _residual_diagnostic(delta: np.ndarray, scale: float, *, index_rule: str) -> dict[str, object]:
@@ -118,6 +173,7 @@ def _common_metadata(
     recipe: SphericalIntensityRecipe,
     master: np.ndarray,
     frames: dict[str, Any],
+    source_provenance: dict[str, str],
     energy_kev: float,
     disk_tolerance: float,
     point_group: str,
@@ -136,6 +192,7 @@ def _common_metadata(
         "source": {
             "product_id": product.product_id,
             "array_sha256": product.array_sha256,
+            **source_provenance,
             "shape": list(master.shape),
             "dtype": str(master.dtype),
             "energy_kev": energy_kev,
@@ -197,7 +254,11 @@ def build_spherical_intensity(
     recipe: SphericalIntensityRecipe,
 ) -> SphericalIntensityBuild:
     """Map one two-hemisphere stereographic master onto a directional S2 field."""
-    master, frames, energy_kev = _validated_source(simulation, recipe)
+    master, frames, energy_kev, source_provenance = _validated_source(
+        simulation,
+        source,
+        recipe,
+    )
     size = master.shape[-1]
     coordinate = np.linspace(-1.0, 1.0, size, dtype=np.float64)
     x_grid, y_grid = np.meshgrid(coordinate, coordinate)
@@ -326,6 +387,7 @@ def build_spherical_intensity(
         recipe=recipe,
         master=master,
         frames=frames,
+        source_provenance=source_provenance,
         energy_kev=energy_kev,
         disk_tolerance=disk_tolerance,
         point_group=point_group,

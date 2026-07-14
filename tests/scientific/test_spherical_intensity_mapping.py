@@ -143,9 +143,10 @@ def test_seam_mismatch_is_rejected() -> None:
 def test_noncentrosymmetric_field_preserves_directional_values_and_refuses_axial() -> None:
     master = _same_seam_different_interior()
     master[1, 2, 2] += np.float32(7.0)
+    source = noncentrosymmetric_source()
     build = build_spherical_intensity(
-        synthetic_simulation(master),
-        noncentrosymmetric_source(),
+        synthetic_simulation(master, source=source),
+        source,
         spherical_recipe(),
     )
 
@@ -204,7 +205,80 @@ def test_centrosymmetric_low_residual_builds_axial_pairs_before_equator_omission
         dtype=np.float32,
     )
     np.testing.assert_array_equal(axial.intensity_raw, expected_raw)
+    realized_low = build.field.metadata["normalization"]["realized_low"]
+    realized_high = build.field.metadata["normalization"]["realized_high"]
+    expected_normalized = np.clip(
+        (expected_raw.astype(np.float64) - realized_low) / (realized_high - realized_low),
+        0.0,
+        1.0,
+    )
+    np.testing.assert_allclose(axial.intensity_normalized, expected_normalized)
+    np.testing.assert_allclose(
+        axial.density_weight,
+        expected_normalized ** spherical_recipe().density.exponent,
+    )
+    upper_lookup = {
+        (int(row), int(column)): vector
+        for row, column, vector in zip(
+            build.field.source_row[build.field.hemisphere == 1],
+            build.field.source_column[build.field.hemisphere == 1],
+            build.field.xyz[build.field.hemisphere == 1],
+            strict=True,
+        )
+    }
+    np.testing.assert_array_equal(
+        axial.xyz,
+        np.asarray([upper_lookup[tuple(index)] for index in expected_upper]),
+    )
+    assert axial.metadata["axial"] == {
+        "representative_rule": (
+            "upper z > tolerance; on equator X > 0 or (X == 0 and Y >= 0)"
+        ),
+        "source_pair_rule": (
+            "[upper,i,j] paired with original [lower,N-1-i,N-1-j] before "
+            "lower-equator omission"
+        ),
+    }
     assert build.diagnostics["axial"]["status"] == "emitted"
+
+
+def test_mixed_source_master_is_rejected_before_phase_symmetry_is_applied() -> None:
+    master_source = centrosymmetric_source()
+    other_source = noncentrosymmetric_source()
+    simulation = synthetic_simulation(symmetric_master(), source=master_source)
+
+    with pytest.raises(ValueError, match="supplied structure source identity"):
+        build_spherical_intensity(simulation, other_source, spherical_recipe())
+
+
+def test_missing_master_source_identity_is_rejected() -> None:
+    simulation = synthetic_simulation(symmetric_master())
+    metadata = dict(simulation.master_stereographic.metadata)
+    del metadata["source_id"]
+    object.__setattr__(simulation.master_stereographic, "metadata", metadata)
+
+    with pytest.raises(ValueError, match="source_id provenance"):
+        build_spherical_intensity(simulation, centrosymmetric_source(), spherical_recipe())
+
+
+def test_master_and_ledger_source_identity_must_agree() -> None:
+    simulation = synthetic_simulation(symmetric_master())
+    ledger = {
+        **simulation.projection_ledger,
+        "source_method": {"phase_source_id": noncentrosymmetric_source().source_record.source_id},
+    }
+    object.__setattr__(simulation, "projection_ledger", ledger)
+
+    with pytest.raises(ValueError, match="master and projection ledger source identity"):
+        build_spherical_intensity(simulation, centrosymmetric_source(), spherical_recipe())
+
+
+def test_master_and_reflection_catalog_energy_must_agree() -> None:
+    simulation = synthetic_simulation(symmetric_master())
+    object.__setattr__(simulation, "reflector_catalog", {"master": {"energy_kev": 21.0}})
+
+    with pytest.raises(ValueError, match="master and reflector catalog energy"):
+        build_spherical_intensity(simulation, centrosymmetric_source(), spherical_recipe())
 
 
 def test_inversion_with_large_antipodal_residual_does_not_emit_axial() -> None:
@@ -329,7 +403,11 @@ def test_source_energy_must_be_verified_product_metadata() -> None:
     object.__setattr__(
         simulation.master_stereographic,
         "metadata",
-        {"projection": "stereographic", "hemisphere": "both"},
+        {
+            key: value
+            for key, value in simulation.master_stereographic.metadata.items()
+            if key != "energy_kev"
+        },
     )
 
     with pytest.raises(ValueError, match="source energy_kev"):
@@ -345,6 +423,9 @@ def test_directional_metadata_is_complete_and_path_neutral() -> None:
     assert metadata["source"] == {
         "product_id": simulation.master_stereographic.product_id,
         "array_sha256": simulation.master_stereographic.array_sha256,
+        "phase_source_id": source.source_record.source_id,
+        "source_sha256": source.sha256,
+        "kinematical_recipe_id": simulation.master_stereographic.metadata["recipe_id"],
         "shape": [2, 5, 5],
         "dtype": "float32",
         "energy_kev": 20.0,
