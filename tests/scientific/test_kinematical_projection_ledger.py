@@ -5,7 +5,10 @@ from pathlib import Path
 import pytest
 
 from kikuchi_lab.kinematical import load_kinematical_recipe
-from kikuchi_lab.kinematical.kikuchipy_adapter import simulate_kinematical_arrays
+from kikuchi_lab.kinematical.kikuchipy_adapter import (
+    _projection_ledger,
+    simulate_kinematical_arrays,
+)
 from kikuchi_lab.sources.structure import load_structure_record
 
 
@@ -59,18 +62,79 @@ def test_projection_ledger_records_source_methods_frames_and_coordinates(
     assert ledger["frames"]["orientation"] == recipe.orientation.to_dict()
     assert ledger["frames"]["sample"] == "EDAX-TSL [RD, TD, ND]"
     assert ledger["frames"]["handedness"] == "right-handed"
+    assert ledger["frames"]["units"] == {
+        "direct_lattice": "angstrom",
+        "reciprocal_lattice": "angstrom^-1",
+    }
+    assert ledger["frames"]["source_to_crystal"] == {
+        "source_setting": "P b n m",
+        "target_setting": "P n m a",
+        "lattice_transform": {
+            "target_from_source": ["b", "c", "a"],
+            "equation": "(a', b', c') = (b, c, a)",
+        },
+        "fractional_coordinate_transform": {
+            "target_from_source": ["y", "z", "x"],
+            "equation": "(x', y', z') = (y, z, x)",
+        },
+    }
+    assert ledger["frames"]["transform_owners"] == {
+        "source_to_crystal": "kikuchi_lab.kinematical.kikuchipy_adapter._phase_from_record",
+        "crystal_to_sample": (
+            "kikuchi_lab.projection.kikuchipy_adapter."
+            "_active_crystal_to_sample_rotation using orix"
+        ),
+        "sample_to_detector": "kikuchipy.EBSDDetector.sample_to_detector",
+    }
     assert ledger["projections"]["stereographic"]["grid_formula"] == (
         "coordinate[k] = -1 + 2*k/(N-1)"
     )
     assert ledger["projections"]["detector"] == {
         "projection": "gnomonic",
         "pc_convention": "tsl",
+        "coordinate_units": {
+            "pixel": "pixel",
+            "gnomonic": "dimensionless",
+            "projection_center": "fraction",
+        },
+        "transform_owner": "kikuchipy.EBSDMasterPattern.get_patterns",
     }
     assert list(ledger["presentation_space"]) == [
         "labels",
         "minimum stroke width",
         "rim stroke",
     ]
+
+
+@pytest.mark.parametrize(
+    ("hemisphere", "expected_order"),
+    [
+        ("upper", ["upper"]),
+        ("lower", ["lower"]),
+        ("both", ["upper", "lower"]),
+    ],
+)
+def test_projection_ledger_derives_hemisphere_order_from_recipe(
+    hemisphere: str, expected_order: list[str]
+) -> None:
+    recipe = replace(load_kinematical_recipe(RECIPE), hemisphere=hemisphere)
+    ledger = _projection_ledger(load_structure_record(SOURCE), recipe)
+
+    for projection in ("stereographic", "lambert"):
+        assert ledger["projections"][projection]["hemisphere"] == hemisphere
+        assert ledger["projections"][projection]["hemisphere_order"] == expected_order
+
+
+def test_projection_ledger_names_projection_transform_owners(small_simulation) -> None:
+    _, _, simulation = small_simulation
+    projections = simulation.projection_ledger["projections"]
+
+    assert projections["stereographic"]["transform_owner"] == (
+        "kikuchipy.KikuchiPatternSimulator.calculate_master_pattern"
+    )
+    assert projections["lambert"]["transform_owner"] == (
+        "kikuchipy.EBSDMasterPattern.as_lambert"
+    )
 
 
 def test_array_products_record_complete_reproducibility_metadata(

@@ -30,27 +30,24 @@ from .contracts import (
 )
 
 
-class _DeterministicKikuchiPatternSimulator(KikuchiPatternSimulator):
-    """Contain kikuchipy's parallel accumulation at the adapter boundary."""
-
-    def calculate_master_pattern(
-        self,
-        half_size: int = 500,
-        hemisphere: str = "upper",
-        scaling: str | None = "linear",
-    ) -> Any:
-        thread_count = get_num_threads()
-        try:
-            set_num_threads(1)
-            signal = super().calculate_master_pattern(
-                half_size=half_size,
-                hemisphere=hemisphere,
-                scaling=scaling,
-            )
-        finally:
-            set_num_threads(thread_count)
-        signal.data = np.asarray(signal.data, dtype=np.float32)
-        return signal
+def _calculate_master_pattern_single_worker(
+    simulator: KikuchiPatternSimulator,
+    *,
+    half_size: int,
+    hemisphere: str,
+    scaling: str | None,
+) -> Any:
+    """Bound kikuchipy's parallel accumulation without changing its signal."""
+    worker_count = get_num_threads()
+    try:
+        set_num_threads(1)
+        return simulator.calculate_master_pattern(
+            half_size=half_size,
+            hemisphere=hemisphere,
+            scaling=scaling,
+        )
+    finally:
+        set_num_threads(worker_count)
 
 
 @dataclass(frozen=True)
@@ -195,6 +192,11 @@ def _known_axis_check(
 def _projection_ledger(
     record: StructureRecord, recipe: KinematicalRecipe
 ) -> dict[str, object]:
+    hemisphere_order = (
+        ["upper", "lower"]
+        if recipe.hemisphere == "both"
+        else [recipe.hemisphere]
+    )
     return {
         "schema_version": 1,
         "source_method": {
@@ -211,27 +213,67 @@ def _projection_ledger(
             "sample": "EDAX-TSL [RD, TD, ND]",
             "detector": "kikuchipy EBSDDetector with explicit PC convention",
             "handedness": "right-handed",
+            "units": {
+                "direct_lattice": "angstrom",
+                "reciprocal_lattice": "angstrom^-1",
+            },
+            "source_to_crystal": {
+                "source_setting": record.setting,
+                "target_setting": record.simulation_setting["target_setting"],
+                "lattice_transform": {
+                    "target_from_source": record.simulation_setting[
+                        "target_lattice_from_source"
+                    ],
+                    "equation": "(a', b', c') = (b, c, a)",
+                },
+                "fractional_coordinate_transform": {
+                    "target_from_source": record.simulation_setting[
+                        "target_fractional_from_source"
+                    ],
+                    "equation": "(x', y', z') = (y, z, x)",
+                },
+            },
+            "transform_owners": {
+                "source_to_crystal": (
+                    "kikuchi_lab.kinematical.kikuchipy_adapter._phase_from_record"
+                ),
+                "crystal_to_sample": (
+                    "kikuchi_lab.projection.kikuchipy_adapter."
+                    "_active_crystal_to_sample_rotation using orix"
+                ),
+                "sample_to_detector": "kikuchipy.EBSDDetector.sample_to_detector",
+            },
         },
         "projections": {
             "stereographic": {
-                "hemisphere": "both",
-                "hemisphere_order": ["upper", "lower"],
+                "hemisphere": recipe.hemisphere,
+                "hemisphere_order": hemisphere_order,
                 "origin": "projection center",
                 "row_axis": "Y ascending -1 to +1",
                 "column_axis": "X ascending -1 to +1",
                 "grid_formula": "coordinate[k] = -1 + 2*k/(N-1)",
                 "valid_domain": "X^2 + Y^2 <= 1",
                 "wrap": "none",
+                "transform_owner": (
+                    "kikuchipy.KikuchiPatternSimulator.calculate_master_pattern"
+                ),
             },
             "lambert": {
-                "hemisphere": "both",
-                "hemisphere_order": ["upper", "lower"],
+                "hemisphere": recipe.hemisphere,
+                "hemisphere_order": hemisphere_order,
                 "origin": "square center",
                 "wrap": "none",
+                "transform_owner": "kikuchipy.EBSDMasterPattern.as_lambert",
             },
             "detector": {
                 "projection": "gnomonic",
                 "pc_convention": recipe.detector.pc_convention,
+                "coordinate_units": {
+                    "pixel": "pixel",
+                    "gnomonic": "dimensionless",
+                    "projection_center": "fraction",
+                },
+                "transform_owner": "kikuchipy.EBSDMasterPattern.get_patterns",
             },
         },
         "known_axis_check": _known_axis_check(record, recipe),
@@ -301,13 +343,14 @@ def simulate_kinematical_arrays(
         )
         for style in recipe.styles
     }
-    master_simulator = _DeterministicKikuchiPatternSimulator(master_reflectors)
+    master_simulator = KikuchiPatternSimulator(master_reflectors)
     overlay_simulators = {
         name: KikuchiPatternSimulator(selected)
         for name, selected in overlay_reflectors.items()
     }
 
-    master_signal = master_simulator.calculate_master_pattern(
+    master_signal = _calculate_master_pattern_single_worker(
+        master_simulator,
         half_size=recipe.half_size,
         hemisphere=recipe.hemisphere,
         scaling=recipe.master_scaling,
