@@ -1,5 +1,6 @@
 """Kinematical reference-simulation contracts and recipe loading."""
 
+from .bundle import KinematicalBundleResult, write_kinematical_bundle
 from .contracts import (
     EtchedMasterStyle,
     KinematicalArrayProduct,
@@ -18,6 +19,7 @@ from .render import (
 __all__ = [
     "EtchedMasterStyle",
     "KinematicalArrayProduct",
+    "KinematicalBundleResult",
     "KinematicalExecution",
     "KinematicalRecipe",
     "KinematicalSimulation",
@@ -26,4 +28,5 @@ __all__ = [
     "execute_kinematical",
     "load_kinematical_recipe",
     "render_kinematical_figures",
+    "write_kinematical_bundle",
 ]

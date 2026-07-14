@@ -22,6 +22,7 @@ from .proof import (
     load_proof_recipe,
     render_proof,
 )
+from .kinematical import KinematicalRunResult, render_kinematical
 
 __all__ = [
     "FinalRecipe",
@@ -29,6 +30,7 @@ __all__ = [
     "FinalReproductionResult",
     "FinalRunResult",
     "FinalSelectionError",
+    "KinematicalRunResult",
     "ReproductionComparison",
     "ReproductionMismatch",
     "ProofMasterError",
@@ -40,6 +42,7 @@ __all__ = [
     "load_proof_recipe",
     "render_proof",
     "render_final",
+    "render_kinematical",
     "validate_final_selection",
     "reproduce_final",
 ]
