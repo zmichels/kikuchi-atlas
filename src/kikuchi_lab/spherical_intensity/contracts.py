@@ -132,6 +132,19 @@ def _validated_metadata(
     checksum = source.get("array_sha256")
     if not isinstance(checksum, str) or not _SHA256.fullmatch(checksum):
         raise ValueError("metadata source.array_sha256 must be a lowercase SHA-256 digest")
+    source_shape = source.get("shape")
+    if (
+        not isinstance(source_shape, list)
+        or len(source_shape) != 3
+        or any(type(dimension) is not int or dimension <= 0 for dimension in source_shape)
+        or source_shape[0] != 2
+        or source_shape[1] != source_shape[2]
+    ):
+        raise ValueError(
+            "metadata source.shape must be [2, N, N] with positive integer dimensions"
+        )
+    _require_text(source.get("dtype"), "metadata source.dtype")
+    _require_real(source.get("energy_kev"), "metadata source.energy_kev", positive=True)
 
     projection = _metadata_mapping(plain, "projection")
     if projection.get("name") != "stereographic":
@@ -141,11 +154,23 @@ def _validated_metadata(
     poles = projection.get("poles")
     if not isinstance(poles, dict) or poles.get("upper") != -1 or poles.get("lower") != 1:
         raise ValueError("metadata projection.poles must define upper=-1 and lower=1")
+    if projection.get("transform_owner") != (
+        "orix.projections.InverseStereographicProjection"
+    ):
+        raise ValueError(
+            "metadata projection.transform_owner must name "
+            "orix.projections.InverseStereographicProjection"
+        )
+    _require_text(
+        projection.get("transform_version"), "metadata projection.transform_version"
+    )
 
     frame = _metadata_mapping(plain, "frame")
     _require_text(frame.get("name"), "metadata frame.name")
     if frame.get("handedness") != "right-handed":
         raise ValueError("metadata frame.handedness must be right-handed")
+    if frame.get("vector_units") != "dimensionless":
+        raise ValueError("metadata frame.vector_units must be dimensionless")
 
     grid = _metadata_mapping(plain, "grid")
     _require_positive_integer(grid.get("size"), "metadata grid.size")
@@ -153,7 +178,12 @@ def _validated_metadata(
         raise ValueError("metadata grid.row_axis is missing or unsupported")
     if grid.get("column_axis") != "X ascending -1 to +1":
         raise ValueError("metadata grid.column_axis is missing or unsupported")
-    _require_text(grid.get("formula"), "metadata grid.formula")
+    if grid.get("X_formula") != "X(j) = -1 + 2*j/(N - 1)":
+        raise ValueError("metadata grid.X_formula is missing or unsupported")
+    if grid.get("Y_formula") != "Y(i) = -1 + 2*i/(N - 1)":
+        raise ValueError("metadata grid.Y_formula is missing or unsupported")
+    if source_shape[1:] != [grid["size"], grid["size"]]:
+        raise ValueError("metadata source.shape must agree with metadata grid.size")
 
     phase = _metadata_mapping(plain, "phase")
     _require_positive_integer(phase.get("space_group"), "metadata phase.space_group")
@@ -189,6 +219,9 @@ def _validate_intensity_columns(
 ) -> None:
     if any(column.shape != (count,) for column in columns.values()):
         raise ValueError("spherical field columns must have equal length")
+    normalized = columns["intensity_normalized"]
+    if np.any((normalized < 0) | (normalized > 1)):
+        raise ValueError("intensity_normalized must be within inclusive [0, 1]")
     if np.any(columns["density_weight"] < 0):
         raise ValueError("density_weight must be nonnegative")
 

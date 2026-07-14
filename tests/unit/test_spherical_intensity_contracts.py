@@ -43,21 +43,28 @@ def minimal_directional_metadata() -> dict[str, object]:
         "source": {
             "product_id": "kinematical-0123456789abcdef",
             "array_sha256": "0" * 64,
+            "shape": [2, 3, 3],
+            "dtype": "float32",
+            "energy_kev": 20.0,
         },
         "projection": {
             "name": "stereographic",
             "hemisphere_order": ["upper", "lower"],
             "poles": {"upper": -1, "lower": 1},
+            "transform_owner": "orix.projections.InverseStereographicProjection",
+            "transform_version": "0.14.3",
         },
         "frame": {
             "name": "standard-Pnma reciprocal Cartesian",
             "handedness": "right-handed",
+            "vector_units": "dimensionless",
         },
         "grid": {
             "size": 3,
             "row_axis": "Y ascending -1 to +1",
             "column_axis": "X ascending -1 to +1",
-            "formula": "coordinate[k] = -1 + 2*k/(N-1)",
+            "X_formula": "X(j) = -1 + 2*j/(N - 1)",
+            "Y_formula": "Y(i) = -1 + 2*i/(N - 1)",
         },
         "phase": {
             "space_group": 62,
@@ -386,6 +393,23 @@ def test_directional_field_rejects_invalid_vector_hemisphere_or_density(
         )
 
 
+@pytest.mark.parametrize("normalized", [[-1.0e-12], [1.0 + 1.0e-12]])
+def test_directional_field_rejects_normalized_intensity_outside_closed_unit_interval(
+    normalized: list[float],
+) -> None:
+    with pytest.raises(ValueError, match=r"intensity_normalized.*\[0, 1\]"):
+        SphericalIntensityField.from_columns(
+            xyz=[[1.0, 0.0, 0.0]],
+            hemisphere=[1],
+            source_row=[0],
+            source_column=[0],
+            intensity_raw=[1.0],
+            intensity_normalized=normalized,
+            density_weight=[1.0],
+            metadata=minimal_directional_metadata(),
+        )
+
+
 @pytest.mark.parametrize(
     "key", ["source", "projection", "frame", "grid", "phase", "equator", "normalization"]
 )
@@ -395,6 +419,65 @@ def test_directional_field_requires_all_semantic_metadata(key: str) -> None:
 
     with pytest.raises(ValueError, match=key):
         _directional_field(metadata=metadata)
+
+
+@pytest.mark.parametrize(
+    ("section", "key"),
+    [
+        ("source", "shape"),
+        ("source", "dtype"),
+        ("source", "energy_kev"),
+        ("projection", "transform_owner"),
+        ("projection", "transform_version"),
+        ("frame", "vector_units"),
+        ("grid", "X_formula"),
+        ("grid", "Y_formula"),
+    ],
+)
+def test_directional_field_requires_complete_source_and_transform_provenance(
+    section: str, key: str
+) -> None:
+    metadata = minimal_directional_metadata()
+    del _mapping(metadata, section)[key]
+
+    with pytest.raises(ValueError, match=rf"metadata {section}\.{key}"):
+        _directional_field(metadata=metadata)
+
+
+@pytest.mark.parametrize(
+    "absolute_path",
+    [
+        "/tmp/local/source.npy",
+        "file:///tmp/local/source.npy",
+        r"C:\local\source.npy",
+    ],
+)
+def test_directional_field_rejects_nested_absolute_local_paths(
+    absolute_path: str,
+) -> None:
+    metadata = minimal_directional_metadata()
+    _mapping(metadata, "source")["runtime_reference"] = {
+        "nested": {"candidate": absolute_path}
+    }
+
+    with pytest.raises(
+        ValueError, match=r"metadata\.source\.runtime_reference\.nested\.candidate.*absolute"
+    ):
+        _directional_field(metadata=metadata)
+
+
+def test_directional_field_accepts_nested_non_path_provenance_text() -> None:
+    metadata = minimal_directional_metadata()
+    _mapping(metadata, "source")["runtime_reference"] = {
+        "nested": {"candidate": "runtime-independent scientific provenance"}
+    }
+
+    field = _directional_field(metadata=metadata)
+
+    assert (
+        field.metadata["source"]["runtime_reference"]["nested"]["candidate"]
+        == "runtime-independent scientific provenance"
+    )
 
 
 @pytest.mark.parametrize(
@@ -504,6 +587,21 @@ def test_axial_field_requires_axial_derived_metadata_and_pair_rules() -> None:
     directional = minimal_directional_metadata()
     with pytest.raises(ValueError, match="domain_semantics"):
         _axial_field(metadata=directional)
+
+
+@pytest.mark.parametrize("normalized", [[-1.0e-12], [1.0 + 1.0e-12]])
+def test_axial_field_rejects_normalized_intensity_outside_closed_unit_interval(
+    normalized: list[float],
+) -> None:
+    with pytest.raises(ValueError, match=r"intensity_normalized.*\[0, 1\]"):
+        SphericalAxialField.from_columns(
+            xyz=[[1.0, 0.0, 0.0]],
+            source_pairs=[[[1, 0, 0], [-1, 2, 2]]],
+            intensity_raw=[1.0],
+            intensity_normalized=normalized,
+            density_weight=[1.0],
+            metadata=minimal_axial_metadata(),
+        )
 
 
 def test_spherical_intensity_build_deeply_freezes_diagnostics() -> None:
