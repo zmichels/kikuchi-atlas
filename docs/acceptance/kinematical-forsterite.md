@@ -6,8 +6,20 @@
 - Promoted/default style: `quiet`, approved unchanged
 - Retained density diagnostic: `balanced`
 
-The native-scale review was completed at fit-to-window and 100 percent. The
-recorded next-slice decision is `plan-evidence-guided-hybrid`.
+The review has split provenance. Representative production assets (`quiet`,
+`balanced`, spherical, and Lambert, plus the prior stereographic presentation)
+were presented in-app. The user explicitly approved the observations recorded
+below, approved the `quiet` parameters unchanged, retained `balanced` as the
+diagnostic, and selected `plan-evidence-guided-hybrid`. The app does not
+establish the user's zoom state, so this record does not claim that the user
+personally viewed every asset at fit-to-window or 100 percent.
+
+After a review finding requested clearer provenance, the controller opened all
+eight retained production assets at original/native detail with `view_image`.
+Because `view_image` could not process SVG directly, the stereographic SVG was
+rendered with macOS Quick Look at 2048 px for that inspection. The controller
+visually inspected all eight assets and found no anomaly that changed the
+user-approved observations or decision.
 
 ## Objective production run metadata
 
@@ -54,37 +66,35 @@ The canonical six-figure CLI inventory also contains
 `figures/kinematical-detector-overlay.png`; the three product PNGs above are
 additional bundle exports required by this native-scale gate.
 
-## Human review checklist
+## User-approved visual observations
 
 ### Grayscale hierarchy
 
-- Reviewer observation at fit-to-window and 100 percent: Grayscale hierarchy
-  is strong with genuinely dark quiet regions; major and secondary bands
-  remain sharply differentiated.
+- Grayscale hierarchy is strong with genuinely dark quiet regions; major and
+  secondary bands remain sharply differentiated.
 
 ### Trace density
 
-- Reviewer observation: Quiet trace density preserves substantially more
-  breathing room while retaining fine structure; balanced remains as the
-  denser diagnostic companion.
+- Quiet trace density preserves substantially more breathing room while
+  retaining fine structure; balanced remains as the denser diagnostic
+  companion.
 
 ### Node saturation
 
-- Reviewer observation: Nodes are luminous/deliberately hot but not blurred.
+- Nodes are luminous/deliberately hot but not blurred.
 
 ### Rim
 
-- Reviewer observation: Circular rim stays crisp; cardinal intersections are
-  intensely bright.
+- Circular rim stays crisp; cardinal intersections are intensely bright.
 
 ### Quiet regions
 
-- Reviewer observation: Quiet regions are sufficient.
+- Quiet regions are sufficient.
 
 ### Quiet-parameter adjustment
 
-- Reviewer decision: Quiet parameters approved unchanged. Retain quiet as
-  promoted/default and balanced as diagnostic.
+- Quiet parameters approved unchanged. Retain quiet as promoted/default and
+  balanced as diagnostic.
 
 ## Required next-slice decision
 
