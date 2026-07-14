@@ -38,6 +38,7 @@ BASE_FILES = {
     "forsterite-s2-intensity.csv",
     "forsterite-s2-intensity.npz",
     "forsterite-s2-intensity.json",
+    "forsterite-s2-mtex.m",
     "forsterite-s2-axial.csv",
     "diagnostics/mtex-status.json",
 }
@@ -366,9 +367,49 @@ def test_repeated_staging_writes_identical_scientific_artifact_bytes(
         "forsterite-s2-intensity.csv",
         "forsterite-s2-intensity.npz",
         "forsterite-s2-intensity.json",
+        "forsterite-s2-mtex.m",
         "forsterite-s2-axial.csv",
     ):
         assert (first / relative).read_bytes() == (second / relative).read_bytes()
+
+
+def test_stage_generates_script_exactly_once_before_ledger_and_registers_hash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from kikuchi_lab.spherical_intensity import bundle as bundle_module
+
+    build = small_spherical_build()
+    recipe = spherical_recipe()
+    calls: list[tuple[object, int, bool]] = []
+    payload = b"% generated exactly once\n"
+
+    def generate(recipe_arg, expected_node_count, axial_available):
+        calls.append((recipe_arg, expected_node_count, axial_available))
+        return payload.decode("utf-8")
+
+    original_write_json = bundle_module._write_json
+
+    def write_json(path: Path, value: object) -> None:
+        if path.name == "forsterite-s2-intensity.json":
+            assert (path.parent / "forsterite-s2-mtex.m").read_bytes() == payload
+        original_write_json(path, value)
+
+    monkeypatch.setattr(bundle_module, "generate_mtex_script", generate, raising=False)
+    monkeypatch.setattr(bundle_module, "_write_json", write_json)
+    stage = _stage(tmp_path, build=build, recipe=recipe)
+
+    assert calls == [(recipe, len(build.field.xyz), True)]
+    script = stage.staging_path / "forsterite-s2-mtex.m"
+    assert script.read_bytes() == payload
+    ledger = json.loads(
+        (stage.staging_path / "forsterite-s2-intensity.json").read_text()
+    )
+    assert ledger["extension_artifacts"] == {
+        "forsterite-s2-mtex.m": {
+            "bytes": len(payload),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+        }
+    }
 
 
 def test_ledger_is_path_free_canonical_and_links_exact_scientific_identities(
@@ -396,7 +437,13 @@ def test_ledger_is_path_free_canonical_and_links_exact_scientific_identities(
     assert ledger["axial_available"] is True
     assert ledger["axial_field_id"] == build.axial_field.field_id
     assert ledger["axial_channel_sha256"] == dict(build.axial_field.channel_sha256)
-    assert ledger["extension_artifacts"] == {}
+    script_payload = (stage.staging_path / "forsterite-s2-mtex.m").read_bytes()
+    assert ledger["extension_artifacts"] == {
+        "forsterite-s2-mtex.m": {
+            "bytes": len(script_payload),
+            "sha256": hashlib.sha256(script_payload).hexdigest(),
+        }
+    }
     assert set(ledger["artifacts"]) == {
         "forsterite-s2-intensity.csv",
         "forsterite-s2-intensity.npz",
@@ -701,7 +748,7 @@ def test_finalization_rejects_scientific_artifact_corruption(tmp_path: Path) -> 
     ("relative", "expected"),
     [
         ("unexpected.txt", "unregistered"),
-        ("forsterite-s2-mtex.m", "unregistered"),
+        ("forsterite-s2-mtex.m", "extension|corrupt"),
     ],
 )
 def test_finalization_rejects_every_unregistered_non_diagnostic_file(

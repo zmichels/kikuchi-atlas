@@ -21,6 +21,7 @@ from .bundle import (
     stage_spherical_bundle,
 )
 from .mapping import build_spherical_intensity
+from .mtex_script import generate_mtex_script
 from .recipe import load_spherical_intensity_recipe
 
 __all__ = [
@@ -40,6 +41,7 @@ __all__ = [
     "SphericalToleranceRecipe",
     "build_spherical_intensity",
     "finalize_spherical_bundle",
+    "generate_mtex_script",
     "load_spherical_intensity_recipe",
     "stage_spherical_bundle",
 ]

@@ -33,6 +33,7 @@ from .contracts import (
     SphericalIntensityField,
     SphericalIntensityRecipe,
 )
+from .mtex_script import generate_mtex_script
 
 
 _DIRECTIONAL_CSV = "forsterite-s2-intensity.csv"
@@ -643,9 +644,15 @@ def _scientific_extensions(
     build: SphericalIntensityBuild,
     recipe: SphericalIntensityRecipe,
 ) -> Mapping[str, bytes]:
-    """Internal Task-4 seam; T021 intentionally registers no generated script."""
-    del build, recipe
-    return {}
+    """Return the closed, internally generated scientific extension inventory."""
+    if not isinstance(build, SphericalIntensityBuild):
+        raise TypeError("build must be a SphericalIntensityBuild")
+    script = generate_mtex_script(
+        recipe,
+        expected_node_count=len(build.field.xyz),
+        axial_available=build.axial_field is not None,
+    )
+    return {_MTEX_SCRIPT: script.encode("utf-8")}
 
 
 def _validated_extension_payloads(
