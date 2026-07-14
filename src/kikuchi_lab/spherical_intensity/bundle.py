@@ -6,13 +6,14 @@ import errno
 import hashlib
 import io
 import json
+import math
 import os
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any
+from typing import Any, Protocol
 from uuid import uuid4
 import zipfile
 
@@ -40,6 +41,18 @@ _LEDGER_JSON = "forsterite-s2-intensity.json"
 _AXIAL_CSV = "forsterite-s2-axial.csv"
 _MTEX_STATUS = "diagnostics/mtex-status.json"
 _MANIFEST = "manifest.json"
+_MTEX_SCRIPT = "forsterite-s2-mtex.m"
+_ALLOWED_SCIENTIFIC_EXTENSIONS = {_MTEX_SCRIPT}
+_MTEX_STATUSES = {"passed", "unavailable", "failed", "timed-out"}
+_MTEX_COMMON_OUTPUTS = {
+    "forsterite-s2-density-vectors.csv",
+    "forsterite-s2-mtex-preview.png",
+    "diagnostics/mtex-result.json",
+    "figures/exact-node-scatter.png",
+    "figures/colored-sphere.png",
+    "figures/density-cloud.png",
+    "figures/raw-vs-density-channels.png",
+}
 _DIRECTIONAL_HEADER = (
     "x,y,z,hemisphere,source_row,source_column,intensity_raw,"
     "intensity_normalized,density_weight"
@@ -50,6 +63,16 @@ _AXIAL_HEADER = (
     "intensity_normalized,density_weight"
 )
 _CSV_CHUNK_ROWS = 65_536
+
+
+class _MtexRunResultLike(Protocol):
+    status: str
+    command: tuple[str, ...]
+    normalized_error: str | None
+    metrics: Mapping[str, object]
+    produced_files: tuple[str, ...]
+    last_stage: str | None
+    elapsed_seconds: float
 
 
 class SphericalBundleExistsError(FileExistsError):
@@ -315,6 +338,138 @@ def _validate_axial_identity(field: SphericalAxialField) -> None:
         raise SphericalBundleCorruptionError("axial field identity is corrupt")
 
 
+def _metadata_without_axial_semantics(metadata: Mapping[str, object]) -> dict[str, object]:
+    plain = plain_data(metadata)
+    if not isinstance(plain, dict):
+        raise SphericalBundleCorruptionError("spherical metadata must be a mapping")
+    plain.pop("domain_semantics", None)
+    plain.pop("axial", None)
+    return plain
+
+
+def _validate_axial_coherence(
+    field: SphericalIntensityField,
+    axial: SphericalAxialField,
+    recipe: SphericalIntensityRecipe,
+    diagnostics: Mapping[str, object],
+) -> None:
+    directional_metadata = field.metadata_dict()
+    axial_metadata = axial.metadata_dict()
+    if _metadata_without_axial_semantics(axial_metadata) != (
+        _metadata_without_axial_semantics(directional_metadata)
+    ):
+        raise SphericalBundleCorruptionError(
+            "axial and directional metadata coherence check failed"
+        )
+
+    axial_diagnostics = plain_data(diagnostics.get("axial"))
+    if not isinstance(axial_diagnostics, dict):
+        raise SphericalBundleCorruptionError("axial diagnostics are invalid")
+    count = len(axial.xyz)
+    if axial_diagnostics.get("representative_count") != count:
+        raise SphericalBundleCorruptionError(
+            "axial representative count disagrees with diagnostics"
+        )
+
+    grid = directional_metadata["grid"]
+    equator = directional_metadata["equator"]
+    normalization = directional_metadata["normalization"]
+    if not isinstance(grid, dict) or not isinstance(equator, dict) or not isinstance(
+        normalization, dict
+    ):
+        raise SphericalBundleCorruptionError("directional axial metadata is invalid")
+    size = grid["size"]
+    tolerance = equator["tolerance"]
+    if type(size) is not int or not isinstance(tolerance, (int, float)):
+        raise SphericalBundleCorruptionError("directional grid/equator metadata is invalid")
+
+    upper = field.hemisphere == 1
+    upper_xyz = field.xyz[upper]
+    upper_rows = field.source_row[upper]
+    upper_columns = field.source_column[upper]
+    representative = (upper_xyz[:, 2] > float(tolerance)) | (
+        (np.abs(upper_xyz[:, 2]) <= float(tolerance))
+        & (
+            (upper_xyz[:, 0] > 0)
+            | ((upper_xyz[:, 0] == 0) & (upper_xyz[:, 1] >= 0))
+        )
+    )
+    expected_rows = upper_rows[representative]
+    expected_columns = upper_columns[representative]
+    if len(expected_rows) != count:
+        raise SphericalBundleCorruptionError(
+            "axial representative count disagrees with directional ownership"
+        )
+    expected_pairs = np.stack(
+        [
+            np.column_stack(
+                [np.ones(count, dtype=np.int32), expected_rows, expected_columns]
+            ),
+            np.column_stack(
+                [
+                    -np.ones(count, dtype=np.int32),
+                    size - 1 - expected_rows,
+                    size - 1 - expected_columns,
+                ]
+            ),
+        ],
+        axis=1,
+    )
+    if not np.array_equal(axial.source_pairs, expected_pairs):
+        raise SphericalBundleCorruptionError(
+            "axial source-pair order, ownership, range, or uniqueness is invalid"
+        )
+    if not np.array_equal(axial.xyz, upper_xyz[representative]):
+        raise SphericalBundleCorruptionError(
+            "axial vectors do not match their directional representatives"
+        )
+    if np.unique(axial.source_pairs.reshape(count, 6), axis=0).shape[0] != count:
+        raise SphericalBundleCorruptionError("axial source pairs must be unique")
+
+    directional_raw = {
+        (int(hemisphere), int(row), int(column)): raw
+        for hemisphere, row, column, raw in zip(
+            field.hemisphere,
+            field.source_row,
+            field.source_column,
+            field.intensity_raw,
+            strict=True,
+        )
+    }
+    for index, pair in enumerate(axial.source_pairs):
+        member_a = tuple(int(value) for value in pair[0])
+        member_b = tuple(int(value) for value in pair[1])
+        if member_a not in directional_raw:
+            raise SphericalBundleCorruptionError("axial representative is missing directionally")
+        if member_b in directional_raw:
+            expected_raw = np.float32(
+                (np.float64(directional_raw[member_a]) + directional_raw[member_b]) / 2.0
+            )
+            if axial.intensity_raw[index] != expected_raw:
+                raise SphericalBundleCorruptionError(
+                    "axial raw intensity is not the directional pair mean"
+                )
+
+    low = normalization.get("realized_low")
+    high = normalization.get("realized_high")
+    if not isinstance(low, (int, float)) or not isinstance(high, (int, float)):
+        raise SphericalBundleCorruptionError("axial normalization window is invalid")
+    expected_normalized = np.clip(
+        (axial.intensity_raw.astype(np.float64) - float(low)) / (float(high) - float(low)),
+        0.0,
+        1.0,
+    )
+    expected_density = expected_normalized**recipe.density.exponent
+    if not np.array_equal(axial.intensity_normalized, expected_normalized):
+        raise SphericalBundleCorruptionError(
+            "axial normalization does not use the shared directional window"
+        )
+    if not np.array_equal(axial.density_weight, expected_density):
+        raise SphericalBundleCorruptionError(
+            "axial density does not use the shared directional exponent"
+        )
+
+
 def _verified_source_links(source: StructureRecord) -> dict[str, str]:
     return {
         "phase_source_id": source.source_record.source_id,
@@ -330,10 +485,41 @@ def _scientific_recipe(recipe: SphericalIntensityRecipe) -> dict[str, object]:
     return {"recipe_id": recipe.recipe_id, "content": content}
 
 
+def _scientific_extensions(
+    build: SphericalIntensityBuild,
+    recipe: SphericalIntensityRecipe,
+) -> Mapping[str, bytes]:
+    """Internal Task-4 seam; T021 intentionally registers no generated script."""
+    del build, recipe
+    return {}
+
+
+def _validated_extension_payloads(
+    value: Mapping[str, bytes],
+) -> tuple[dict[str, bytes], dict[str, dict[str, object]]]:
+    if not isinstance(value, Mapping):
+        raise TypeError("scientific extensions must be an internal mapping")
+    if not set(value).issubset(_ALLOWED_SCIENTIFIC_EXTENSIONS):
+        raise ValueError("scientific extension inventory contains an unsupported filename")
+    payloads: dict[str, bytes] = {}
+    records: dict[str, dict[str, object]] = {}
+    for relative in sorted(value):
+        payload = value[relative]
+        if type(payload) is not bytes or not payload:
+            raise ValueError("scientific extension payloads must be non-empty bytes")
+        payloads[relative] = payload
+        records[relative] = {
+            "bytes": len(payload),
+            "sha256": _sha256_bytes(payload),
+        }
+    return payloads, records
+
+
 def _validate_inputs(
     build: SphericalIntensityBuild,
     recipe: SphericalIntensityRecipe,
     source: StructureRecord,
+    extension_records: Mapping[str, Mapping[str, object]],
 ) -> tuple[dict[str, object], dict[str, object]]:
     if not isinstance(build, SphericalIntensityBuild):
         raise TypeError("build must be a SphericalIntensityBuild")
@@ -375,6 +561,7 @@ def _validate_inputs(
             for key in ("phase_source_id", "source_sha256")
         ):
             raise ValueError("axial field and supplied source identities do not agree")
+        _validate_axial_coherence(build.field, axial, recipe, build.diagnostics)
 
     scientific_identity: dict[str, object] = {
         "schema_version": 1,
@@ -385,6 +572,7 @@ def _validate_inputs(
         "axial_available": axial is not None,
         "axial_field_id": axial.field_id if axial is not None else None,
         "axial_channel_sha256": dict(axial.channel_sha256) if axial is not None else None,
+        "extension_artifacts": plain_data(extension_records),
     }
     return scientific_identity, links
 
@@ -394,6 +582,7 @@ def _ledger(
     build: SphericalIntensityBuild,
     recipe: SphericalIntensityRecipe,
     links: Mapping[str, str],
+    extension_records: Mapping[str, Mapping[str, object]],
 ) -> dict[str, object]:
     axial = build.axial_field
     artifact_names = [_DIRECTIONAL_CSV, _DIRECTIONAL_NPZ]
@@ -410,7 +599,7 @@ def _ledger(
         "axial_field_id": axial.field_id if axial is not None else None,
         "axial_channel_sha256": dict(axial.channel_sha256) if axial is not None else None,
         "artifacts": {name: _artifact_record(root / name) for name in artifact_names},
-        "extension_artifacts": {},
+        "extension_artifacts": plain_data(extension_records),
     }
 
 
@@ -421,11 +610,22 @@ def stage_spherical_bundle(
     source: StructureRecord,
 ) -> SphericalBundleStage:
     """Validate and stage deterministic Python exchange artifacts without promotion."""
-    scientific_identity, links = _validate_inputs(build, recipe, source)
+    extension_payloads, extension_records = _validated_extension_payloads(
+        _scientific_extensions(build, recipe)
+    )
+    scientific_identity, links = _validate_inputs(
+        build, recipe, source, extension_records
+    )
     root = Path(output_root).resolve()
+    staging = root / f".s2-partial-{uuid4().hex}"
+    stage = SphericalBundleStage(
+        staging_path=staging,
+        output_root=root,
+        scientific_identity=scientific_identity,
+        field_id=build.field.field_id,
+    )
     root.mkdir(parents=True, exist_ok=True)
     _fsync_directory(root)
-    staging = root / f".s2-partial-{uuid4().hex}"
     try:
         staging.mkdir()
     except FileExistsError:
@@ -436,14 +636,14 @@ def stage_spherical_bundle(
     _write_npz(staging / _DIRECTIONAL_NPZ, build.field)
     if build.axial_field is not None:
         _write_axial_csv(staging / _AXIAL_CSV, build.axial_field, recipe.csv_float_format)
-    _write_json(staging / _LEDGER_JSON, _ledger(staging, build, recipe, links))
-    _fsync_directory_tree(staging)
-    return SphericalBundleStage(
-        staging_path=staging,
-        output_root=root,
-        scientific_identity=scientific_identity,
-        field_id=build.field.field_id,
+    for relative, payload in extension_payloads.items():
+        _write_bytes(staging / relative, payload)
+    _write_json(
+        staging / _LEDGER_JSON,
+        _ledger(staging, build, recipe, links, extension_records),
     )
+    _fsync_directory_tree(staging)
+    return stage
 
 
 def _read_ledger(stage: SphericalBundleStage) -> dict[str, Any]:
@@ -479,6 +679,7 @@ def _validate_stage(stage: SphericalBundleStage) -> dict[str, Any]:
         "axial_available",
         "axial_field_id",
         "axial_channel_sha256",
+        "extension_artifacts",
     ):
         if ledger.get(key) != identity.get(key):
             raise SphericalBundleCorruptionError(
@@ -517,6 +718,19 @@ def _validate_stage(stage: SphericalBundleStage) -> dict[str, Any]:
             raise SphericalBundleCorruptionError(
                 f"staged spherical artifact is missing or corrupt: {relative}"
             )
+    extensions = ledger.get("extension_artifacts")
+    if not isinstance(extensions, dict) or not set(extensions).issubset(
+        _ALLOWED_SCIENTIFIC_EXTENSIONS
+    ):
+        raise SphericalBundleCorruptionError(
+            "spherical ledger extension artifact inventory is invalid"
+        )
+    for relative, record in extensions.items():
+        path = stage.staging_path / relative
+        if not path.is_file() or record != _artifact_record(path):
+            raise SphericalBundleCorruptionError(
+                f"registered scientific extension is missing or corrupt: {relative}"
+            )
     return ledger
 
 
@@ -531,9 +745,205 @@ def _partial_files(root: Path) -> list[Path]:
     )
 
 
+def _structural_mtex_result(result: object) -> dict[str, object]:
+    if isinstance(result, Mapping):
+        raise TypeError("mtex_result must satisfy the frozen MtexRunResult contract")
+    required = (
+        "status",
+        "command",
+        "normalized_error",
+        "metrics",
+        "produced_files",
+        "last_stage",
+        "elapsed_seconds",
+    )
+    try:
+        values = {name: getattr(result, name) for name in required}
+    except AttributeError as error:
+        raise TypeError("mtex_result must satisfy the frozen MtexRunResult contract") from error
+    if not isinstance(values["status"], str) or values["status"] not in _MTEX_STATUSES:
+        raise ValueError("mtex_result status is not canonical")
+    command = values["command"]
+    if not isinstance(command, tuple) or any(
+        not isinstance(part, str) or not part for part in command
+    ):
+        raise TypeError("mtex_result command must be a tuple of non-empty strings")
+    normalized_error = values["normalized_error"]
+    if normalized_error is not None and (
+        not isinstance(normalized_error, str) or not normalized_error
+    ):
+        raise TypeError("mtex_result normalized_error must be text or None")
+    metrics = values["metrics"]
+    if not isinstance(metrics, Mapping):
+        raise TypeError("mtex_result metrics must be a mapping")
+    plain_metrics = plain_data(metrics)
+    if not isinstance(plain_metrics, dict):
+        raise TypeError("mtex_result metrics must be a mapping")
+    produced_files = values["produced_files"]
+    if not isinstance(produced_files, tuple) or any(
+        not isinstance(relative, str) or not relative for relative in produced_files
+    ):
+        raise TypeError("mtex_result produced_files must be a tuple of relative names")
+    if len(set(produced_files)) != len(produced_files):
+        raise ValueError("mtex_result produced_files must be unique")
+    last_stage = values["last_stage"]
+    if last_stage is not None and (not isinstance(last_stage, str) or not last_stage):
+        raise TypeError("mtex_result last_stage must be text or None")
+    elapsed = values["elapsed_seconds"]
+    if (
+        isinstance(elapsed, bool)
+        or not isinstance(elapsed, (int, float))
+        or not math.isfinite(float(elapsed))
+        or float(elapsed) < 0
+    ):
+        raise ValueError("mtex_result elapsed_seconds must be finite and nonnegative")
+    return {
+        "status": values["status"],
+        "command": list(command),
+        "normalized_error": normalized_error,
+        "metrics": plain_metrics,
+        "produced_files": list(produced_files),
+        "last_stage": last_stage,
+        "elapsed_seconds": float(elapsed),
+    }
+
+
+def _require_exact_metric(metrics: Mapping[str, object], name: str, expected: object) -> None:
+    if metrics.get(name) != expected:
+        raise ValueError(f"passed MTEX metric {name} does not match the staged profile")
+
+
+def _passed_mtex_identity(
+    stage: SphericalBundleStage,
+    ledger: Mapping[str, object],
+    diagnostic: Mapping[str, object],
+) -> tuple[dict[str, object], set[str]]:
+    identity = plain_data(stage.scientific_identity)
+    recipe_record = identity.get("recipe")
+    if not isinstance(recipe_record, dict) or not isinstance(
+        recipe_record.get("content"), dict
+    ):
+        raise SphericalBundleCorruptionError("stage recipe identity is invalid")
+    recipe = recipe_record["content"]
+    profile = recipe.get("profile")
+    tolerances = recipe.get("tolerances")
+    if not isinstance(profile, dict) or not isinstance(tolerances, dict):
+        raise SphericalBundleCorruptionError("stage recipe profile is invalid")
+    extensions = ledger.get("extension_artifacts")
+    if not isinstance(extensions, dict) or set(extensions) != {_MTEX_SCRIPT}:
+        raise ValueError("passed MTEX result requires the registered generated script")
+
+    command = diagnostic["command"]
+    if not isinstance(command, list) or not command:
+        raise ValueError("passed MTEX result requires an observed command")
+    if diagnostic["normalized_error"] is not None:
+        raise ValueError("passed MTEX result cannot retain a normalized error")
+    produced_list = diagnostic["produced_files"]
+    assert isinstance(produced_list, list)
+    produced = set(produced_list)
+    required = set(_MTEX_COMMON_OUTPUTS)
+    axial_available = ledger.get("axial_available") is True
+    if axial_available:
+        required.add("figures/directional-vs-axial.png")
+    if produced != required or produced_list != sorted(required):
+        raise ValueError("passed MTEX produced output inventory is not exact")
+
+    metrics = diagnostic["metrics"]
+    if not isinstance(metrics, dict):
+        raise TypeError("passed MTEX metrics must be canonical")
+    required_metrics = {
+        "schema_version",
+        "profile",
+        "node_count",
+        "node_normalized_error",
+        "point_count",
+        "rng_seed",
+        "rng_generator",
+        "sampling_resolution_deg",
+        "display_resolution_deg",
+        "axial_available",
+        "matlab_version",
+        "mtex_version",
+        "validated_files",
+    }
+    if set(metrics) != required_metrics or metrics.get("schema_version") != 1:
+        raise ValueError("passed MTEX metrics do not use canonical schema 1")
+    metadata = ledger.get("metadata")
+    if not isinstance(metadata, dict) or not isinstance(metadata.get("diagnostics"), dict):
+        raise SphericalBundleCorruptionError("ledger diagnostics are invalid")
+    _require_exact_metric(metrics, "profile", profile.get("name"))
+    _require_exact_metric(
+        metrics, "node_count", metadata["diagnostics"].get("point_count")
+    )
+    _require_exact_metric(metrics, "point_count", profile.get("point_count"))
+    _require_exact_metric(metrics, "rng_seed", recipe.get("rng_seed"))
+    _require_exact_metric(metrics, "rng_generator", recipe.get("rng_generator"))
+    _require_exact_metric(
+        metrics, "sampling_resolution_deg", profile.get("sampling_resolution_deg")
+    )
+    _require_exact_metric(
+        metrics, "display_resolution_deg", recipe.get("display_resolution_deg")
+    )
+    _require_exact_metric(metrics, "axial_available", axial_available)
+    _require_exact_metric(metrics, "mtex_version", recipe.get("expected_mtex_version"))
+    matlab_version = metrics.get("matlab_version")
+    if not isinstance(matlab_version, str) or not matlab_version:
+        raise ValueError("passed MTEX metrics require an actual MATLAB version")
+    node_error = metrics.get("node_normalized_error")
+    node_limit = tolerances.get("mtex_node_normalized_max")
+    if (
+        isinstance(node_error, bool)
+        or not isinstance(node_error, (int, float))
+        or not math.isfinite(float(node_error))
+        or float(node_error) < 0
+        or not isinstance(node_limit, (int, float))
+        or float(node_error) > float(node_limit)
+    ):
+        raise ValueError("passed MTEX node error exceeds the staged tolerance")
+
+    validated_files = metrics.get("validated_files")
+    if not isinstance(validated_files, dict) or set(validated_files) != required:
+        raise ValueError("passed MTEX validated output hashes are not exact")
+    for relative in sorted(required):
+        path = stage.staging_path / relative
+        record = validated_files[relative]
+        if not path.is_file() or record != _artifact_record(path):
+            raise ValueError(f"passed MTEX output/hash validation failed: {relative}")
+
+    stable_validation = {
+        key: metrics[key]
+        for key in (
+            "profile",
+            "node_count",
+            "node_normalized_error",
+            "point_count",
+            "rng_seed",
+            "rng_generator",
+            "sampling_resolution_deg",
+            "display_resolution_deg",
+            "axial_available",
+        )
+    }
+    stable_validation["produced_files"] = sorted(required)
+    stable_validation["validated_files"] = validated_files
+    stable = {
+        "requested_profile": profile["name"],
+        "status": "passed",
+        "versions": {
+            "matlab": matlab_version,
+            "mtex": metrics["mtex_version"],
+        },
+        "validation": stable_validation,
+    }
+    _reject_absolute_local_paths(stable, "stable_mtex_identity")
+    return stable, required
+
+
 def _mtex_records(
-    stage: SphericalBundleStage, mtex_result: Mapping[str, object] | None
-) -> tuple[dict[str, object], dict[str, object]]:
+    stage: SphericalBundleStage,
+    ledger: Mapping[str, object],
+    mtex_result: _MtexRunResultLike | None,
+) -> tuple[dict[str, object], dict[str, object], set[str]]:
     identity = plain_data(stage.scientific_identity)
     recipe = identity.get("recipe")
     if not isinstance(recipe, dict) or not isinstance(recipe.get("content"), dict):
@@ -541,42 +951,59 @@ def _mtex_records(
     profile = recipe["content"].get("profile")
     if not isinstance(profile, dict) or not isinstance(profile.get("name"), str):
         raise SphericalBundleCorruptionError("stage recipe profile is invalid")
-    default_profile = profile["name"]
+    requested_profile = profile["name"]
     if mtex_result is None:
         diagnostic = {
             "schema_version": 1,
-            "requested_profile": default_profile,
+            "requested_profile": requested_profile,
             "status": "not-requested",
         }
+        stable = {
+            "requested_profile": requested_profile,
+            "status": "not-requested",
+        }
+        return diagnostic, stable, set()
     else:
-        if not isinstance(mtex_result, Mapping):
-            raise TypeError("mtex_result must be a mapping or None")
-        converted = plain_data(mtex_result)
-        if not isinstance(converted, dict):
-            raise TypeError("mtex_result must be a mapping or None")
-        diagnostic = {**converted, "schema_version": 1}
-        requested = diagnostic.get("requested_profile")
-        status = diagnostic.get("status")
-        if not isinstance(requested, str) or not requested:
-            raise ValueError("mtex_result requires requested_profile")
-        if not isinstance(status, str) or not status:
-            raise ValueError("mtex_result requires status")
-
+        observed = _structural_mtex_result(mtex_result)
+        diagnostic = {
+            "schema_version": 1,
+            "requested_profile": requested_profile,
+            **observed,
+        }
+    if diagnostic["status"] == "passed":
+        stable, produced = _passed_mtex_identity(stage, ledger, diagnostic)
+        return diagnostic, stable, produced
+    if diagnostic["produced_files"]:
+        raise ValueError("non-passed MTEX result cannot register scientific outputs")
+    if not diagnostic["normalized_error"]:
+        raise ValueError("non-passed MTEX result requires a normalized error")
     stable = {
-        "requested_profile": diagnostic["requested_profile"],
+        "requested_profile": requested_profile,
         "status": diagnostic["status"],
     }
-    if diagnostic["status"] == "success":
-        versions = diagnostic.get("versions")
-        if (
-            not isinstance(versions, dict)
-            or not versions
-            or any(not isinstance(key, str) or not isinstance(value, str) for key, value in versions.items())
-        ):
-            raise ValueError("successful mtex_result requires string versions")
-        stable["versions"] = versions
-    _reject_absolute_local_paths(stable, "stable_mtex_identity")
-    return diagnostic, stable
+    return diagnostic, stable, set()
+
+
+def _validate_registered_inventory(
+    stage: SphericalBundleStage,
+    ledger: Mapping[str, object],
+    produced_files: set[str],
+) -> None:
+    artifacts = ledger.get("artifacts")
+    extensions = ledger.get("extension_artifacts")
+    if not isinstance(artifacts, dict) or not isinstance(extensions, dict):
+        raise SphericalBundleCorruptionError("registered scientific inventory is invalid")
+    registered = set(artifacts) | set(extensions) | produced_files | {_LEDGER_JSON}
+    for path in stage.staging_path.rglob("*"):
+        if not path.is_file():
+            continue
+        relative = str(path.relative_to(stage.staging_path))
+        if relative == _MANIFEST or relative.startswith("diagnostics/"):
+            continue
+        if relative not in registered:
+            raise SphericalBundleCorruptionError(
+                f"unregistered non-diagnostic file cannot be published: {relative}"
+            )
 
 
 def _write_failure_status(stage: SphericalBundleStage, failure_kind: str) -> None:
@@ -610,16 +1037,20 @@ def _manifest(
         "run_identity": dict(run_identity),
         "field_id": stage.field_id,
         "files": files,
+        "identity_policy": {
+            "scientific_files": "registered hashes included in stable run identity",
+            "diagnostics": "inventoried by manifest and excluded from stable run identity",
+        },
     }
 
 
 def finalize_spherical_bundle(
     stage: SphericalBundleStage,
     *,
-    mtex_result: Mapping[str, object] | None = None,
+    mtex_result: _MtexRunResultLike | None = None,
 ) -> SphericalIntensityBundleResult:
     """Inventory, fsync, and atomically promote a validated S2 exchange stage."""
-    _validate_stage(stage)
+    ledger = _validate_stage(stage)
     partials = _partial_files(stage.staging_path)
     if partials:
         _write_failure_status(stage, "partial-artifact")
@@ -627,7 +1058,10 @@ def finalize_spherical_bundle(
         raise SphericalBundlePartialError(f"staged file still ends in .partial: {relative}")
 
     try:
-        diagnostic, stable_mtex_identity = _mtex_records(stage, mtex_result)
+        diagnostic, stable_mtex_identity, produced_files = _mtex_records(
+            stage, ledger, mtex_result
+        )
+        _validate_registered_inventory(stage, ledger, produced_files)
     except (TypeError, ValueError):
         _write_failure_status(stage, "invalid-mtex-result")
         raise

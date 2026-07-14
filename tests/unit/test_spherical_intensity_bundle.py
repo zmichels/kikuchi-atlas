@@ -3,9 +3,10 @@ from __future__ import annotations
 import hashlib
 from importlib import import_module
 import json
-from dataclasses import FrozenInstanceError, replace
+from dataclasses import dataclass, FrozenInstanceError, replace
 from pathlib import Path
 import sys
+from typing import Mapping
 import zipfile
 
 import numpy as np
@@ -16,6 +17,7 @@ from kikuchi_lab.spherical_intensity import (
     SphericalBundleExistsError,
     SphericalBundlePartialError,
     SphericalBundleStage,
+    SphericalAxialField,
     SphericalIntensityBuild,
     build_spherical_intensity,
     finalize_spherical_bundle,
@@ -56,18 +58,141 @@ NPZ_MEMBERS = [
     "source_row.npy",
     "xyz.npy",
 ]
+MTEX_COMMON_OUTPUTS = {
+    "forsterite-s2-density-vectors.csv",
+    "forsterite-s2-mtex-preview.png",
+    "diagnostics/mtex-result.json",
+    "figures/exact-node-scatter.png",
+    "figures/colored-sphere.png",
+    "figures/density-cloud.png",
+    "figures/raw-vs-density-channels.png",
+}
+
+
+@dataclass(frozen=True)
+class FutureMtexRunResult:
+    status: str
+    command: tuple[str, ...]
+    normalized_error: str | None
+    metrics: Mapping[str, object]
+    produced_files: tuple[str, ...]
+    last_stage: str | None
+    elapsed_seconds: float
 
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _stage(root: Path, *, build: SphericalIntensityBuild | None = None) -> SphericalBundleStage:
+def _stage(
+    root: Path,
+    *,
+    build: SphericalIntensityBuild | None = None,
+    recipe=None,
+    source=None,
+) -> SphericalBundleStage:
     return stage_spherical_bundle(
         root,
         build or small_spherical_build(),
-        spherical_recipe(),
-        fixture_source(),
+        recipe or spherical_recipe(),
+        source or fixture_source(),
+    )
+
+
+def _stage_with_registered_script(
+    root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    build: SphericalIntensityBuild | None = None,
+    recipe=None,
+    source=None,
+) -> SphericalBundleStage:
+    from kikuchi_lab.spherical_intensity import bundle as bundle_module
+
+    monkeypatch.setattr(
+        bundle_module,
+        "_scientific_extensions",
+        lambda _build, _recipe: {"forsterite-s2-mtex.m": b"% deterministic fixture\n"},
+        raising=False,
+    )
+    return _stage(root, build=build, recipe=recipe, source=source)
+
+
+def _nonpassed_mtex_result(
+    status: str,
+    *,
+    command: tuple[str, ...] = ("/private/tools/matlab", "-batch", "run"),
+    elapsed_seconds: float = 1.25,
+    normalized_error: str = "normalized diagnostic /private/run",
+) -> FutureMtexRunResult:
+    return FutureMtexRunResult(
+        status=status,
+        command=command,
+        normalized_error=normalized_error,
+        metrics={"diagnostic_observation": "retained only"},
+        produced_files=(),
+        last_stage="triangulation",
+        elapsed_seconds=elapsed_seconds,
+    )
+
+
+def _passed_mtex_result(
+    stage: SphericalBundleStage,
+    *,
+    matlab_version: str = "24.2.0",
+    mtex_version: str = "mtex-6.1.1",
+    payload_tag: str = "canonical",
+    command: tuple[str, ...] = ("/private/tools/matlab", "-batch", "run"),
+    elapsed_seconds: float = 1.25,
+) -> FutureMtexRunResult:
+    ledger = json.loads(
+        (stage.staging_path / "forsterite-s2-intensity.json").read_text(encoding="utf-8")
+    )
+    recipe = ledger["recipe"]["content"]
+    axial_available = ledger["axial_available"]
+    produced = set(MTEX_COMMON_OUTPUTS)
+    if axial_available:
+        produced.add("figures/directional-vs-axial.png")
+    for relative in sorted(produced):
+        path = stage.staging_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if relative == "forsterite-s2-density-vectors.csv":
+            payload = b"x,y,z\n1,0,0\n"
+        elif relative == "diagnostics/mtex-result.json":
+            payload = canonical_json({"status": "passed", "tag": payload_tag}).encode()
+        else:
+            payload = f"fixture:{payload_tag}:{relative}\n".encode()
+        path.write_bytes(payload)
+    validated_files = {
+        relative: {
+            "bytes": (stage.staging_path / relative).stat().st_size,
+            "sha256": _sha256(stage.staging_path / relative),
+        }
+        for relative in sorted(produced)
+    }
+    metrics = {
+        "schema_version": 1,
+        "profile": recipe["profile"]["name"],
+        "node_count": ledger["metadata"]["diagnostics"]["point_count"],
+        "node_normalized_error": 5.0e-9,
+        "point_count": recipe["profile"]["point_count"],
+        "rng_seed": recipe["rng_seed"],
+        "rng_generator": recipe["rng_generator"],
+        "sampling_resolution_deg": recipe["profile"]["sampling_resolution_deg"],
+        "display_resolution_deg": recipe["display_resolution_deg"],
+        "axial_available": axial_available,
+        "matlab_version": matlab_version,
+        "mtex_version": mtex_version,
+        "validated_files": validated_files,
+    }
+    return FutureMtexRunResult(
+        status="passed",
+        command=command,
+        normalized_error=None,
+        metrics=metrics,
+        produced_files=tuple(sorted(produced)),
+        last_stage="figure-export",
+        elapsed_seconds=elapsed_seconds,
     )
 
 
@@ -83,6 +208,36 @@ def _without_axial_build() -> SphericalIntensityBuild:
         synthetic_simulation(symmetric_master(), source=source),
         source,
         spherical_recipe(),
+    )
+
+
+def _build_with_axial_columns(
+    build: SphericalIntensityBuild,
+    *,
+    source_pairs: np.ndarray | None = None,
+    intensity_raw: np.ndarray | None = None,
+    intensity_normalized: np.ndarray | None = None,
+    density_weight: np.ndarray | None = None,
+    metadata: Mapping[str, object] | None = None,
+) -> SphericalIntensityBuild:
+    assert build.axial_field is not None
+    axial = build.axial_field
+    replacement = SphericalAxialField.from_columns(
+        xyz=axial.xyz,
+        source_pairs=axial.source_pairs if source_pairs is None else source_pairs,
+        intensity_raw=axial.intensity_raw if intensity_raw is None else intensity_raw,
+        intensity_normalized=(
+            axial.intensity_normalized
+            if intensity_normalized is None
+            else intensity_normalized
+        ),
+        density_weight=axial.density_weight if density_weight is None else density_weight,
+        metadata=axial.metadata_dict() if metadata is None else metadata,
+    )
+    return SphericalIntensityBuild(
+        field=build.field,
+        axial_field=replacement,
+        diagnostics=build.diagnostics,
     )
 
 
@@ -252,6 +407,68 @@ def test_axial_absence_rejects_a_reserved_axial_file_added_after_staging(
         finalize_spherical_bundle(stage, mtex_result=None)
 
 
+def test_valid_but_spliced_axial_metadata_is_rejected_before_staging(
+    tmp_path: Path,
+) -> None:
+    build = small_spherical_build()
+    assert build.axial_field is not None
+    metadata = build.axial_field.metadata_dict()
+    metadata["source"]["product_id"] = "kinematical-spliced000000"
+    spliced = _build_with_axial_columns(build, metadata=metadata)
+    output = tmp_path / "must-not-exist"
+
+    with pytest.raises(ValueError, match="axial.*directional|coherence|metadata"):
+        _stage(output, build=spliced)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("corruption", ["pair", "raw", "normalized", "density"])
+def test_valid_axial_contract_with_corrupt_pair_or_channel_is_rejected(
+    tmp_path: Path, corruption: str
+) -> None:
+    build = small_spherical_build()
+    assert build.axial_field is not None
+    axial = build.axial_field
+    kwargs: dict[str, np.ndarray] = {}
+    if corruption == "pair":
+        pairs = axial.source_pairs.copy()
+        pairs[0, 1, 1] = 2
+        kwargs["source_pairs"] = pairs
+    elif corruption == "raw":
+        raw = axial.intensity_raw.copy()
+        raw[0] += np.float32(0.125)
+        kwargs["intensity_raw"] = raw
+    elif corruption == "normalized":
+        normalized = axial.intensity_normalized.copy()
+        normalized[0] *= 0.5
+        kwargs["intensity_normalized"] = normalized
+    else:
+        density = axial.density_weight.copy()
+        density[0] *= 0.5
+        kwargs["density_weight"] = density
+    corrupted = _build_with_axial_columns(build, **kwargs)
+    output = tmp_path / "must-not-exist"
+
+    with pytest.raises(ValueError, match="axial|pair|normalization|density|mean"):
+        _stage(output, build=corrupted)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize(
+    "local_page_uri",
+    ["/private/source.yml", "file:///private/source.yml", r"C:\\data\\source.yml"],
+)
+def test_nested_local_provenance_is_rejected_before_output_root_creation(
+    tmp_path: Path, local_page_uri: str
+) -> None:
+    source = replace(fixture_source(), page_uri=local_page_uri)
+    output = tmp_path / "must-not-exist"
+
+    with pytest.raises(ValueError, match="local path"):
+        stage_spherical_bundle(output, small_spherical_build(), spherical_recipe(), source)
+    assert not output.exists()
+
+
 def test_stage_validates_recipe_source_and_build_integrity_before_writing(
     tmp_path: Path,
 ) -> None:
@@ -284,6 +501,49 @@ def test_finalization_rejects_scientific_artifact_corruption(tmp_path: Path) -> 
         finalize_spherical_bundle(stage, mtex_result=None)
     assert stage.staging_path.is_dir()
     assert not [path for path in tmp_path.iterdir() if path.name.startswith("s2-run-")]
+
+
+@pytest.mark.parametrize(
+    ("relative", "expected"),
+    [
+        ("unexpected.txt", "unregistered"),
+        ("forsterite-s2-mtex.m", "unregistered"),
+    ],
+)
+def test_finalization_rejects_every_unregistered_non_diagnostic_file(
+    tmp_path: Path, relative: str, expected: str
+) -> None:
+    stage = _stage(tmp_path)
+    (stage.staging_path / relative).write_text("unregistered\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=expected):
+        finalize_spherical_bundle(stage, mtex_result=None)
+    assert stage.staging_path.is_dir()
+
+
+def test_registered_script_hash_detects_post_stage_alteration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stage = _stage_with_registered_script(tmp_path, monkeypatch)
+    script = stage.staging_path / "forsterite-s2-mtex.m"
+    assert script.is_file()
+    script.write_text("% altered after registration\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="extension|script|corrupt"):
+        finalize_spherical_bundle(stage, mtex_result=None)
+    assert stage.staging_path.is_dir()
+
+
+def test_passed_mtex_rejects_unregistered_extra_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stage = _stage_with_registered_script(tmp_path, monkeypatch)
+    result = _passed_mtex_result(stage)
+    (stage.staging_path / "surprise-render.png").write_bytes(b"not registered")
+
+    with pytest.raises(ValueError, match="unregistered"):
+        finalize_spherical_bundle(stage, mtex_result=result)
+    assert stage.staging_path.is_dir()
 
 
 def test_failed_writer_leaves_diagnostic_partial_but_never_promotes(
@@ -388,7 +648,7 @@ def test_existing_destination_is_never_replaced_even_at_final_boundary(
 
 
 def test_run_id_is_path_neutral_and_only_stable_mtex_observations_affect_it(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     first = _python_only_bundle(tmp_path / "relocated-a")
     second = _python_only_bundle(tmp_path / "relocated-b")
@@ -409,45 +669,146 @@ def test_run_id_is_path_neutral_and_only_stable_mtex_observations_affect_it(
     changed_science = finalize_spherical_bundle(changed_stage, mtex_result=None)
     assert changed_science.run_id != first.run_id
 
-    success_a = finalize_spherical_bundle(
-        _stage(tmp_path / "mtex-a"),
-        mtex_result={
-            "status": "success",
-            "requested_profile": "smoke",
-            "versions": {"mtex": "6.1.1", "matlab": "24.2"},
-            "elapsed_seconds": 1.0,
-            "command": "/private/a/matlab -batch run",
-            "log": "first path /private/a",
-        },
+    stage_a = _stage_with_registered_script(tmp_path / "mtex-a", monkeypatch)
+    result_a = _passed_mtex_result(stage_a)
+    success_a = finalize_spherical_bundle(stage_a, mtex_result=result_a)
+    stage_b = _stage_with_registered_script(tmp_path / "mtex-b", monkeypatch)
+    result_b = _passed_mtex_result(
+        stage_b,
+        command=("/different/local/matlab", "-batch", "run"),
+        elapsed_seconds=99.0,
     )
-    success_b = finalize_spherical_bundle(
-        _stage(tmp_path / "mtex-b"),
-        mtex_result={
-            "status": "success",
-            "requested_profile": "smoke",
-            "versions": {"mtex": "6.1.1", "matlab": "24.2"},
-            "elapsed_seconds": 99.0,
-            "command": "/private/b/matlab -batch run",
-            "log": "different prose",
-        },
-    )
+    success_b = finalize_spherical_bundle(stage_b, mtex_result=result_b)
     assert success_a.run_id == success_b.run_id
     assert success_a.run_id != first.run_id
 
+    stage_c = _stage_with_registered_script(tmp_path / "mtex-c", monkeypatch)
     changed_version = finalize_spherical_bundle(
-        _stage(tmp_path / "mtex-c"),
-        mtex_result={
-            "status": "success",
-            "requested_profile": "smoke",
-            "versions": {"mtex": "6.2.0", "matlab": "24.2"},
-        },
+        stage_c,
+        mtex_result=_passed_mtex_result(stage_c, matlab_version="24.3.0"),
     )
+    stage_d = _stage_with_registered_script(tmp_path / "mtex-d", monkeypatch)
     changed_status = finalize_spherical_bundle(
-        _stage(tmp_path / "mtex-d"),
-        mtex_result={"status": "failed", "requested_profile": "smoke", "error": "boom"},
+        stage_d,
+        mtex_result=_nonpassed_mtex_result("failed"),
+    )
+    stage_e = _stage_with_registered_script(tmp_path / "mtex-e", monkeypatch)
+    changed_output = finalize_spherical_bundle(
+        stage_e,
+        mtex_result=_passed_mtex_result(stage_e, payload_tag="different-content"),
     )
     assert changed_version.run_id != success_a.run_id
     assert changed_status.run_id != success_a.run_id
+    assert changed_output.run_id != success_a.run_id
+
+
+@pytest.mark.parametrize("status", ["unavailable", "failed", "timed-out"])
+def test_future_nonpassed_mtex_contract_is_diagnostic_but_status_stable(
+    tmp_path: Path, status: str
+) -> None:
+    result = finalize_spherical_bundle(
+        _stage(tmp_path),
+        mtex_result=_nonpassed_mtex_result(status),
+    )
+    manifest = json.loads((result.path / "manifest.json").read_text())
+    assert result.mtex_status == status
+    assert manifest["run_identity"]["mtex"] == {
+        "requested_profile": "smoke",
+        "status": status,
+    }
+    diagnostic = json.loads((result.path / "diagnostics/mtex-status.json").read_text())
+    assert diagnostic["command"][0] == "/private/tools/matlab"
+    assert diagnostic["normalized_error"].startswith("normalized diagnostic")
+
+
+@pytest.mark.parametrize("invalid_status", ["success", "cancelled", "passed "])
+def test_future_mtex_contract_rejects_noncanonical_status(
+    tmp_path: Path, invalid_status: str
+) -> None:
+    stage = _stage(tmp_path)
+    with pytest.raises(ValueError, match="status"):
+        finalize_spherical_bundle(
+            stage,
+            mtex_result=_nonpassed_mtex_result(invalid_status),
+        )
+    assert stage.staging_path.is_dir()
+
+
+def test_future_mtex_seam_rejects_arbitrary_mapping(tmp_path: Path) -> None:
+    stage = _stage(tmp_path)
+    with pytest.raises(TypeError, match="MtexRunResult|contract"):
+        finalize_spherical_bundle(stage, mtex_result={"status": "failed"})
+
+
+@pytest.mark.parametrize(
+    "corruption",
+    ["missing-output", "hash", "point-count", "node-error", "mtex-version"],
+)
+def test_passed_mtex_requires_complete_validated_outputs_and_profile_constants(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corruption: str
+) -> None:
+    stage = _stage_with_registered_script(tmp_path, monkeypatch)
+    result = _passed_mtex_result(stage)
+    metrics = dict(result.metrics)
+    if corruption == "missing-output":
+        (stage.staging_path / result.produced_files[0]).unlink()
+    elif corruption == "hash":
+        validated = dict(metrics["validated_files"])
+        first = result.produced_files[0]
+        validated[first] = {"bytes": 1, "sha256": "0" * 64}
+        metrics["validated_files"] = validated
+        result = replace(result, metrics=metrics)
+    elif corruption == "point-count":
+        metrics["point_count"] = int(metrics["point_count"]) + 1
+        result = replace(result, metrics=metrics)
+    elif corruption == "node-error":
+        metrics["node_normalized_error"] = 1.1e-8
+        result = replace(result, metrics=metrics)
+    else:
+        metrics["mtex_version"] = "mtex-6.2.0"
+        result = replace(result, metrics=metrics)
+
+    with pytest.raises(ValueError, match="MTEX|mtex|output|hash|point|node|version"):
+        finalize_spherical_bundle(stage, mtex_result=result)
+    assert stage.staging_path.is_dir()
+
+
+def test_passed_mtex_output_set_tracks_axial_absence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = noncentrosymmetric_source()
+    build = _without_axial_build()
+    stage = _stage_with_registered_script(
+        tmp_path,
+        monkeypatch,
+        build=build,
+        source=source,
+    )
+    mtex = _passed_mtex_result(stage)
+    assert "figures/directional-vs-axial.png" not in mtex.produced_files
+    result = finalize_spherical_bundle(stage, mtex_result=mtex)
+    assert result.mtex_status == "passed"
+
+
+def test_same_passed_mtex_content_keeps_run_id_and_never_replaces_winner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first_stage = _stage_with_registered_script(tmp_path, monkeypatch)
+    first_mtex = _passed_mtex_result(first_stage)
+    first = finalize_spherical_bundle(first_stage, mtex_result=first_mtex)
+    sentinel = first.path / "winner.txt"
+    sentinel.write_text("winner", encoding="utf-8")
+
+    second_stage = _stage_with_registered_script(tmp_path, monkeypatch)
+    second_mtex = _passed_mtex_result(
+        second_stage,
+        command=("/another/local/matlab", "-batch", "run"),
+        elapsed_seconds=44.0,
+    )
+    with pytest.raises(SphericalBundleExistsError):
+        finalize_spherical_bundle(second_stage, mtex_result=second_mtex)
+    assert sentinel.read_text(encoding="utf-8") == "winner"
+    assert second_stage.staging_path.is_dir()
 
 
 def test_manifest_run_identity_matches_path_and_excludes_diagnostic_prose(
@@ -455,12 +816,11 @@ def test_manifest_run_identity_matches_path_and_excludes_diagnostic_prose(
 ) -> None:
     result = finalize_spherical_bundle(
         _stage(tmp_path),
-        mtex_result={
-            "status": "failed",
-            "requested_profile": "smoke",
-            "error": "local error /private/tmp/example",
-            "elapsed_seconds": 12.5,
-        },
+        mtex_result=_nonpassed_mtex_result(
+            "failed",
+            normalized_error="local error /private/tmp/example",
+            elapsed_seconds=12.5,
+        ),
     )
     manifest = json.loads((result.path / "manifest.json").read_text())
     assert manifest["run_identity"]["schema_version"] == 1
@@ -474,23 +834,42 @@ def test_manifest_run_identity_matches_path_and_excludes_diagnostic_prose(
         "status": "failed",
     }
     assert "local error" not in canonical_json(manifest["run_identity"])
+    assert manifest["identity_policy"] == {
+        "scientific_files": "registered hashes included in stable run identity",
+        "diagnostics": "inventoried by manifest and excluded from stable run identity",
+    }
     status = json.loads((result.path / "diagnostics/mtex-status.json").read_text())
-    assert status["error"] == "local error /private/tmp/example"
+    assert status["normalized_error"] == "local error /private/tmp/example"
+
+
+def test_diagnostic_files_are_inventoried_without_perturbing_run_identity(
+    tmp_path: Path,
+) -> None:
+    first_stage = _stage(tmp_path / "first")
+    first_log = first_stage.staging_path / "diagnostics/local.log"
+    first_log.parent.mkdir(parents=True, exist_ok=True)
+    first_log.write_text("machine-local first\n", encoding="utf-8")
+    first = finalize_spherical_bundle(first_stage, mtex_result=None)
+
+    second_stage = _stage(tmp_path / "second")
+    second_log = second_stage.staging_path / "diagnostics/local.log"
+    second_log.parent.mkdir(parents=True, exist_ok=True)
+    second_log.write_text("machine-local second\n", encoding="utf-8")
+    second = finalize_spherical_bundle(second_stage, mtex_result=None)
+
+    assert first.run_id == second.run_id
+    assert first.manifest_sha256 != second.manifest_sha256
+    manifest = json.loads((first.path / "manifest.json").read_text())
+    assert "diagnostics/local.log" in manifest["files"]
 
 
 def test_successful_mtex_versions_cannot_smuggle_a_local_path_into_run_identity(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    stage = _stage(tmp_path)
+    stage = _stage_with_registered_script(tmp_path, monkeypatch)
+    result = _passed_mtex_result(stage, matlab_version="/Applications/MATLAB_R2024b.app")
     with pytest.raises(ValueError, match="local path"):
-        finalize_spherical_bundle(
-            stage,
-            mtex_result={
-                "status": "success",
-                "requested_profile": "smoke",
-                "versions": {"mtex": "/Applications/MATLAB_R2024b.app"},
-            },
-        )
+        finalize_spherical_bundle(stage, mtex_result=result)
     assert stage.staging_path.is_dir()
     assert not [path for path in tmp_path.iterdir() if path.name.startswith("s2-run-")]
 
