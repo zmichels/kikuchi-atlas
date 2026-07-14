@@ -40,6 +40,7 @@ _DIRECTIONAL_NPZ = "forsterite-s2-intensity.npz"
 _LEDGER_JSON = "forsterite-s2-intensity.json"
 _AXIAL_CSV = "forsterite-s2-axial.csv"
 _MTEX_STATUS = "diagnostics/mtex-status.json"
+_COLLISION_INVESTIGATION = "diagnostics/collision-investigation.json"
 _MANIFEST = "manifest.json"
 _MTEX_SCRIPT = "forsterite-s2-mtex.m"
 _ALLOWED_SCIENTIFIC_EXTENSIONS = {_MTEX_SCRIPT}
@@ -77,6 +78,10 @@ class _MtexRunResultLike(Protocol):
 
 class SphericalBundleExistsError(FileExistsError):
     """Raised when an immutable S2 run already exists at publication time."""
+
+
+class SphericalBundleInvestigationError(SphericalBundleExistsError):
+    """Raised when one stable run identity has differing validated derivatives."""
 
 
 class SphericalBundlePartialError(FileExistsError):
@@ -347,6 +352,125 @@ def _metadata_without_axial_semantics(metadata: Mapping[str, object]) -> dict[st
     return plain
 
 
+def _expected_axial_representative_count(field: SphericalIntensityField) -> int:
+    metadata = field.metadata_dict()
+    equator = metadata.get("equator")
+    tolerance_value = equator.get("tolerance") if isinstance(equator, dict) else None
+    if (
+        isinstance(tolerance_value, bool)
+        or not isinstance(tolerance_value, (int, float))
+        or not math.isfinite(float(tolerance_value))
+        or float(tolerance_value) < 0
+    ):
+        raise SphericalBundleCorruptionError("directional equator metadata is invalid")
+    tolerance = float(tolerance_value)
+    upper_xyz = field.xyz[field.hemisphere == 1]
+    representative = (upper_xyz[:, 2] > tolerance) | (
+        (np.abs(upper_xyz[:, 2]) <= tolerance)
+        & (
+            (upper_xyz[:, 0] > 0)
+            | ((upper_xyz[:, 0] == 0) & (upper_xyz[:, 1] >= 0))
+        )
+    )
+    return int(np.count_nonzero(representative))
+
+
+def _validate_axial_eligibility(
+    build: SphericalIntensityBuild,
+    recipe: SphericalIntensityRecipe,
+    metadata: Mapping[str, object],
+) -> None:
+    diagnostics = build.diagnostics_dict()
+    axial_diagnostics = diagnostics.get("axial")
+    antipodal = diagnostics.get("antipodal")
+    phase = metadata.get("phase")
+    if not isinstance(axial_diagnostics, dict) or not isinstance(antipodal, dict):
+        raise SphericalBundleCorruptionError(
+            "axial eligibility diagnostics are missing or invalid"
+        )
+    if not isinstance(phase, dict) or type(phase.get("contains_inversion")) is not bool:
+        raise SphericalBundleCorruptionError("axial eligibility inversion is invalid")
+    expected_fields = {
+        "status",
+        "contains_inversion",
+        "observed_normalized_rms",
+        "observed_normalized_max",
+        "normalized_rms_limit",
+        "normalized_max_limit",
+        "representative_count",
+    }
+    if set(axial_diagnostics) != expected_fields:
+        raise SphericalBundleCorruptionError(
+            "axial eligibility diagnostic fields are not exact"
+        )
+    observed_rms = antipodal.get("normalized_rms")
+    observed_max = antipodal.get("normalized_max")
+    if any(
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(float(value))
+        or float(value) < 0
+        for value in (observed_rms, observed_max)
+    ):
+        raise SphericalBundleCorruptionError(
+            "axial eligibility antipodal observations are invalid"
+        )
+    inversion = phase["contains_inversion"]
+    expected_values: dict[str, object] = {
+        "contains_inversion": inversion,
+        "observed_normalized_rms": observed_rms,
+        "observed_normalized_max": observed_max,
+        "normalized_rms_limit": recipe.tolerances.axial_normalized_rms_max,
+        "normalized_max_limit": recipe.tolerances.axial_normalized_max,
+    }
+    for name, expected in expected_values.items():
+        observed = axial_diagnostics[name]
+        if type(expected) is bool:
+            matches = observed is expected
+        else:
+            matches = (
+                not isinstance(observed, bool)
+                and isinstance(observed, (int, float))
+                and math.isfinite(float(observed))
+                and observed == expected
+            )
+        if not matches:
+            raise SphericalBundleCorruptionError(
+                f"axial eligibility diagnostic {name} does not match its source"
+            )
+
+    if not recipe.emit_axial:
+        expected_status = "disabled-by-recipe"
+    elif not inversion:
+        expected_status = "phase-has-no-inversion"
+    elif (
+        float(observed_rms) > recipe.tolerances.axial_normalized_rms_max
+        or float(observed_max) > recipe.tolerances.axial_normalized_max
+    ):
+        expected_status = "antipodal-residual-exceeds-tolerance"
+    else:
+        expected_status = "emitted"
+    if axial_diagnostics["status"] != expected_status:
+        raise SphericalBundleCorruptionError(
+            "axial eligibility status does not match the canonical branch"
+        )
+    expected_present = expected_status == "emitted"
+    if (build.axial_field is not None) != expected_present:
+        raise SphericalBundleCorruptionError(
+            "axial eligibility status and field presence disagree"
+        )
+    expected_count = (
+        _expected_axial_representative_count(build.field) if expected_present else 0
+    )
+    if (
+        type(axial_diagnostics["representative_count"]) is not int
+        or axial_diagnostics["representative_count"] != expected_count
+    ):
+        raise SphericalBundleCorruptionError(
+            "axial eligibility representative count is not canonical"
+        )
+
+
 def _validate_axial_coherence(
     field: SphericalIntensityField,
     axial: SphericalAxialField,
@@ -449,6 +573,36 @@ def _validate_axial_coherence(
                 raise SphericalBundleCorruptionError(
                     "axial raw intensity is not the directional pair mean"
                 )
+        else:
+            antipodal = diagnostics.get("antipodal")
+            if not isinstance(antipodal, Mapping):
+                raise SphericalBundleCorruptionError(
+                    "equator axial validation requires antipodal diagnostics"
+                )
+            maximum_absolute = antipodal.get("maximum_absolute")
+            if (
+                isinstance(maximum_absolute, bool)
+                or not isinstance(maximum_absolute, (int, float))
+                or not math.isfinite(float(maximum_absolute))
+                or float(maximum_absolute) < 0
+            ):
+                raise SphericalBundleCorruptionError(
+                    "equator axial antipodal residual is invalid"
+                )
+            if abs(float(axial.xyz[index, 2])) > float(tolerance):
+                raise SphericalBundleCorruptionError(
+                    "missing directional pair member is not on the equator"
+                )
+            retained = np.float32(directional_raw[member_a])
+            observed = np.float32(axial.intensity_raw[index])
+            rounding_allowance = float(
+                max(abs(np.spacing(retained)), abs(np.spacing(observed)))
+            )
+            allowed = 0.5 * float(maximum_absolute) + rounding_allowance
+            if abs(float(observed) - float(retained)) > allowed:
+                raise SphericalBundleCorruptionError(
+                    "equator axial raw exceeds the half-antipodal-residual bound"
+                )
 
     low = normalization.get("realized_low")
     high = normalization.get("realized_high")
@@ -541,18 +695,11 @@ def _validate_inputs(
     if metadata.get("diagnostics") != build.diagnostics_dict():
         raise SphericalBundleCorruptionError("build and field diagnostics do not agree")
 
+    _validate_axial_eligibility(build, recipe, metadata)
     axial = build.axial_field
-    axial_status = build.diagnostics_dict().get("axial")
-    if not isinstance(axial_status, dict):
-        raise ValueError("build axial diagnostics are missing")
-    if axial is None:
-        if axial_status.get("status") == "emitted":
-            raise SphericalBundleCorruptionError("axial diagnostics claim a missing field was emitted")
-    else:
+    if axial is not None:
         _validate_axial_identity(axial)
         axial_metadata = axial.metadata_dict()
-        if axial_status.get("status") != "emitted":
-            raise SphericalBundleCorruptionError("axial field conflicts with axial diagnostics")
         if axial_metadata.get("recipe_id") != recipe.recipe_id:
             raise ValueError("axial field and spherical recipe identities do not agree")
         axial_source = axial_metadata.get("source")
@@ -739,7 +886,10 @@ def _partial_files(root: Path) -> list[Path]:
         (
             path
             for path in root.rglob("*")
-            if path.is_file() and path.name.endswith(".partial")
+            if path.is_file()
+            and path.name.endswith(".partial")
+            and tuple(path.relative_to(root).parts[:2])
+            != ("diagnostics", "quarantine")
         ),
         key=lambda path: str(path.relative_to(root)),
     )
@@ -910,22 +1060,6 @@ def _passed_mtex_identity(
         if not path.is_file() or record != _artifact_record(path):
             raise ValueError(f"passed MTEX output/hash validation failed: {relative}")
 
-    stable_validation = {
-        key: metrics[key]
-        for key in (
-            "profile",
-            "node_count",
-            "node_normalized_error",
-            "point_count",
-            "rng_seed",
-            "rng_generator",
-            "sampling_resolution_deg",
-            "display_resolution_deg",
-            "axial_available",
-        )
-    }
-    stable_validation["produced_files"] = sorted(required)
-    stable_validation["validated_files"] = validated_files
     stable = {
         "requested_profile": profile["name"],
         "status": "passed",
@@ -933,7 +1067,6 @@ def _passed_mtex_identity(
             "matlab": matlab_version,
             "mtex": metrics["mtex_version"],
         },
-        "validation": stable_validation,
     }
     _reject_absolute_local_paths(stable, "stable_mtex_identity")
     return stable, required
@@ -1021,6 +1154,86 @@ def _write_failure_status(stage: SphericalBundleStage, failure_kind: str) -> Non
     _fsync_directory_tree(stage.staging_path)
 
 
+def _passed_output_records(diagnostic: Mapping[str, object]) -> dict[str, object] | None:
+    if diagnostic.get("status") != "passed":
+        return None
+    metrics = diagnostic.get("metrics")
+    if not isinstance(metrics, dict):
+        return None
+    records = metrics.get("validated_files")
+    if not isinstance(records, dict):
+        return None
+    return records
+
+
+def _read_winner_mtex_status(completed: Path) -> dict[str, object] | None:
+    try:
+        value = json.loads((completed / _MTEX_STATUS).read_bytes())
+    except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _raise_existing_bundle(
+    stage: SphericalBundleStage,
+    completed: Path,
+    run_id: str,
+    candidate_diagnostic: Mapping[str, object],
+) -> None:
+    candidate_records = _passed_output_records(candidate_diagnostic)
+    if candidate_records is not None:
+        winner_diagnostic = _read_winner_mtex_status(completed)
+        winner_records = (
+            _passed_output_records(winner_diagnostic)
+            if winner_diagnostic is not None
+            else None
+        )
+        differing: dict[str, object] = {}
+        if winner_records is None:
+            differing["diagnostics/mtex-status.json"] = {
+                "winner": None,
+                "candidate": _artifact_record(stage.staging_path / _MTEX_STATUS),
+            }
+        else:
+            for relative in sorted(set(winner_records) | set(candidate_records)):
+                winner_record = winner_records.get(relative)
+                candidate_record = candidate_records.get(relative)
+                if winner_record != candidate_record:
+                    differing[relative] = {
+                        "winner": winner_record,
+                        "candidate": candidate_record,
+                    }
+        if differing:
+            winner_status_path = completed / _MTEX_STATUS
+            investigation = {
+                "schema_version": 1,
+                "run_id": run_id,
+                "status": "collision-requires-investigation",
+                "differing_output_records": differing,
+                "diagnostic_provenance": {
+                    "candidate_mtex_status": _artifact_record(
+                        stage.staging_path / _MTEX_STATUS
+                    ),
+                    "winner_mtex_status": (
+                        _artifact_record(winner_status_path)
+                        if winner_status_path.is_file()
+                        else None
+                    ),
+                },
+            }
+            _write_json(
+                stage.staging_path / _COLLISION_INVESTIGATION,
+                investigation,
+            )
+            _fsync_directory_tree(stage.staging_path)
+            raise SphericalBundleInvestigationError(
+                f"stable spherical run collision requires investigation: {run_id}"
+            )
+    raise SphericalBundleExistsError(
+        f"completed spherical bundle already exists: {completed}"
+    )
+
+
 def _manifest(
     stage: SphericalBundleStage,
     run_id: str,
@@ -1074,13 +1287,12 @@ def finalize_spherical_bundle(
     run_id = stable_id("s2-run", run_identity)
     completed = stage.output_root / run_id
     ownership = stage.output_root / f".{run_id}.publishing"
+    _write_json(stage.staging_path / _MTEX_STATUS, diagnostic)
     try:
         ownership.mkdir()
     except FileExistsError:
         if completed.exists():
-            raise SphericalBundleExistsError(
-                f"completed spherical bundle already exists: {completed}"
-            ) from None
+            _raise_existing_bundle(stage, completed, run_id, diagnostic)
         raise SphericalBundlePartialError(
             f"same-run spherical publication already in progress: {ownership}"
         ) from None
@@ -1088,15 +1300,12 @@ def finalize_spherical_bundle(
     try:
         _fsync_directory(stage.output_root)
         if completed.exists():
-            raise SphericalBundleExistsError(
-                f"completed spherical bundle already exists: {completed}"
-            )
+            _raise_existing_bundle(stage, completed, run_id, diagnostic)
         stale_manifest = stage.staging_path / _MANIFEST
         if stale_manifest.exists():
             if not stale_manifest.is_file() or stale_manifest.is_symlink():
                 raise SphericalBundleCorruptionError("stale spherical manifest is unsafe")
             stale_manifest.unlink()
-        _write_json(stage.staging_path / _MTEX_STATUS, diagnostic)
         for path in sorted(stage.staging_path.rglob("*")):
             if path.is_file():
                 _fsync_existing_file(path)
@@ -1108,6 +1317,8 @@ def finalize_spherical_bundle(
             _promote_directory_no_replace(stage.staging_path, completed)
         except OSError as error:
             if error.errno in {errno.EEXIST, errno.ENOTEMPTY} or completed.exists():
+                if completed.exists():
+                    _raise_existing_bundle(stage, completed, run_id, diagnostic)
                 raise SphericalBundleExistsError(
                     f"completed spherical bundle already exists: {completed}"
                 ) from None
@@ -1129,6 +1340,7 @@ def finalize_spherical_bundle(
 __all__ = [
     "SphericalBundleCorruptionError",
     "SphericalBundleExistsError",
+    "SphericalBundleInvestigationError",
     "SphericalBundlePartialError",
     "SphericalBundleStage",
     "SphericalIntensityBundleResult",

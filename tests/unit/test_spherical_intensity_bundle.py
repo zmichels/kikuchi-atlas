@@ -19,6 +19,7 @@ from kikuchi_lab.spherical_intensity import (
     SphericalBundleStage,
     SphericalAxialField,
     SphericalIntensityBuild,
+    SphericalIntensityField,
     build_spherical_intensity,
     finalize_spherical_bundle,
     stage_spherical_bundle,
@@ -241,6 +242,44 @@ def _build_with_axial_columns(
     )
 
 
+def _rebuild_with_diagnostics(
+    build: SphericalIntensityBuild,
+    diagnostics: Mapping[str, object],
+    *,
+    include_axial: bool,
+) -> SphericalIntensityBuild:
+    field_metadata = build.field.metadata_dict()
+    field_metadata["diagnostics"] = diagnostics
+    field = SphericalIntensityField.from_columns(
+        xyz=build.field.xyz,
+        hemisphere=build.field.hemisphere,
+        source_row=build.field.source_row,
+        source_column=build.field.source_column,
+        intensity_raw=build.field.intensity_raw,
+        intensity_normalized=build.field.intensity_normalized,
+        density_weight=build.field.density_weight,
+        metadata=field_metadata,
+    )
+    axial = None
+    if include_axial:
+        assert build.axial_field is not None
+        axial_metadata = build.axial_field.metadata_dict()
+        axial_metadata["diagnostics"] = diagnostics
+        axial = SphericalAxialField.from_columns(
+            xyz=build.axial_field.xyz,
+            source_pairs=build.axial_field.source_pairs,
+            intensity_raw=build.axial_field.intensity_raw,
+            intensity_normalized=build.axial_field.intensity_normalized,
+            density_weight=build.axial_field.density_weight,
+            metadata=axial_metadata,
+        )
+    return SphericalIntensityBuild(
+        field=field,
+        axial_field=axial,
+        diagnostics=diagnostics,
+    )
+
+
 def test_python_bundle_has_exact_inventory_and_hashes(tmp_path: Path) -> None:
     result = _python_only_bundle(tmp_path)
     manifest_path = result.path / "manifest.json"
@@ -455,6 +494,161 @@ def test_valid_axial_contract_with_corrupt_pair_or_channel_is_rejected(
 
 
 @pytest.mark.parametrize(
+    ("branch", "expected_status", "expected_axial"),
+    [
+        ("eligible", "emitted", True),
+        ("disabled", "disabled-by-recipe", False),
+        ("no-inversion", "phase-has-no-inversion", False),
+        ("over-rms", "antipodal-residual-exceeds-tolerance", False),
+        ("over-max", "antipodal-residual-exceeds-tolerance", False),
+    ],
+)
+def test_bundle_recomputes_every_canonical_axial_eligibility_branch(
+    tmp_path: Path, branch: str, expected_status: str, expected_axial: bool
+) -> None:
+    recipe = spherical_recipe()
+    source = fixture_source()
+    master = symmetric_master()
+    if branch == "disabled":
+        recipe = replace(recipe, emit_axial=False)
+    elif branch == "no-inversion":
+        source = noncentrosymmetric_source()
+    elif branch in {"over-rms", "over-max"}:
+        master = master.copy()
+        master[1, 3, 3] += np.float32(0.01)
+        if branch == "over-rms":
+            recipe = replace(
+                recipe,
+                tolerances=replace(
+                    recipe.tolerances,
+                    axial_normalized_rms_max=1.0e-6,
+                    axial_normalized_max=1.0,
+                ),
+            )
+        else:
+            recipe = replace(
+                recipe,
+                tolerances=replace(
+                    recipe.tolerances,
+                    axial_normalized_rms_max=1.0,
+                    axial_normalized_max=1.0e-5,
+                ),
+            )
+    build = build_spherical_intensity(
+        synthetic_simulation(master, source=source), source, recipe
+    )
+    axial = build.diagnostics_dict()["axial"]
+    antipodal = build.diagnostics_dict()["antipodal"]
+    assert axial["status"] == expected_status
+    assert (build.axial_field is not None) is expected_axial
+    assert axial["contains_inversion"] == build.field.metadata["phase"][
+        "contains_inversion"
+    ]
+    assert axial["observed_normalized_rms"] == antipodal["normalized_rms"]
+    assert axial["observed_normalized_max"] == antipodal["normalized_max"]
+    assert axial["normalized_rms_limit"] == recipe.tolerances.axial_normalized_rms_max
+    assert axial["normalized_max_limit"] == recipe.tolerances.axial_normalized_max
+    assert axial["representative_count"] == (
+        len(build.axial_field.xyz) if build.axial_field is not None else 0
+    )
+
+    stage = stage_spherical_bundle(tmp_path / branch, build, recipe, source)
+    assert stage.staging_path.is_dir()
+
+
+@pytest.mark.parametrize(
+    ("forged_status", "include_axial"),
+    [
+        ("disabled-by-recipe", True),
+        ("emitted", False),
+        ("antipodal-residual-exceeds-tolerance", True),
+    ],
+)
+def test_bundle_rejects_contradictory_axial_status_or_field_presence(
+    tmp_path: Path, forged_status: str, include_axial: bool
+) -> None:
+    build = small_spherical_build()
+    diagnostics = build.diagnostics_dict()
+    diagnostics["axial"]["status"] = forged_status
+    diagnostics["axial"]["representative_count"] = (
+        len(build.axial_field.xyz) if include_axial else 0
+    )
+    forged = _rebuild_with_diagnostics(
+        build,
+        diagnostics,
+        include_axial=include_axial,
+    )
+    output = tmp_path / "must-not-exist"
+
+    with pytest.raises(ValueError, match="axial.*status|eligibility|presence"):
+        _stage(output, build=forged)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize(
+    ("diagnostic_key", "forged_value"),
+    [
+        ("contains_inversion", False),
+        ("observed_normalized_rms", 0.5),
+        ("observed_normalized_max", 0.5),
+        ("normalized_rms_limit", 0.5),
+        ("normalized_max_limit", 0.5),
+    ],
+)
+def test_bundle_rejects_forged_axial_eligibility_diagnostics(
+    tmp_path: Path, diagnostic_key: str, forged_value: object
+) -> None:
+    build = small_spherical_build()
+    diagnostics = build.diagnostics_dict()
+    diagnostics["axial"][diagnostic_key] = forged_value
+    forged = _rebuild_with_diagnostics(build, diagnostics, include_axial=True)
+
+    with pytest.raises(ValueError, match="axial.*diagnostic|eligibility|limit|observed"):
+        _stage(tmp_path, build=forged)
+
+
+def test_equator_axial_raw_is_bound_to_retained_upper_by_half_antipodal_residual(
+    tmp_path: Path,
+) -> None:
+    build = small_spherical_build()
+    assert build.axial_field is not None
+    directional_keys = {
+        (int(h), int(r), int(c))
+        for h, r, c in zip(
+            build.field.hemisphere,
+            build.field.source_row,
+            build.field.source_column,
+            strict=True,
+        )
+    }
+    equator_index = next(
+        index
+        for index, pair in enumerate(build.axial_field.source_pairs)
+        if tuple(int(value) for value in pair[1]) not in directional_keys
+    )
+    raw = build.axial_field.intensity_raw.copy()
+    assert raw[equator_index] != 0
+    raw[equator_index] += np.float32(0.01)
+    normalization = build.field.metadata["normalization"]
+    normalized = np.clip(
+        (raw.astype(np.float64) - normalization["realized_low"])
+        / (normalization["realized_high"] - normalization["realized_low"]),
+        0.0,
+        1.0,
+    )
+    density = normalized**spherical_recipe().density.exponent
+    corrupted = _build_with_axial_columns(
+        build,
+        intensity_raw=raw,
+        intensity_normalized=normalized,
+        density_weight=density,
+    )
+
+    with pytest.raises(ValueError, match="equator|antipodal|residual"):
+        _stage(tmp_path, build=corrupted)
+
+
+@pytest.mark.parametrize(
     "local_page_uri",
     ["/private/source.yml", "file:///private/source.yml", r"C:\\data\\source.yml"],
 )
@@ -581,6 +775,29 @@ def test_partial_suffix_is_rejected_and_controlled_failure_status_is_preserved(
     assert not [path for path in tmp_path.iterdir() if path.name.startswith("s2-run-")]
 
 
+@pytest.mark.parametrize("status", ["failed", "timed-out"])
+def test_quarantined_partial_is_inert_manifested_failure_evidence(
+    tmp_path: Path, status: str
+) -> None:
+    stage = _stage(tmp_path)
+    quarantine = stage.staging_path / "diagnostics/quarantine/density.partial"
+    quarantine.parent.mkdir(parents=True, exist_ok=True)
+    quarantine.write_text("retained partial evidence\n", encoding="utf-8")
+
+    result = finalize_spherical_bundle(
+        stage,
+        mtex_result=_nonpassed_mtex_result(status),
+    )
+    assert result.mtex_status == status
+    assert (result.path / "diagnostics/quarantine/density.partial").read_text() == (
+        "retained partial evidence\n"
+    )
+    manifest = json.loads((result.path / "manifest.json").read_text())
+    assert "diagnostics/quarantine/density.partial" in manifest["files"]
+    diagnostic = json.loads((result.path / "diagnostics/mtex-status.json").read_text())
+    assert diagnostic["status"] == status
+
+
 def test_manifest_is_written_last_and_never_self_hashes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -697,9 +914,24 @@ def test_run_id_is_path_neutral_and_only_stable_mtex_observations_affect_it(
         stage_e,
         mtex_result=_passed_mtex_result(stage_e, payload_tag="different-content"),
     )
+    stage_f = _stage_with_registered_script(tmp_path / "mtex-f", monkeypatch)
+    changed_error_result = _passed_mtex_result(stage_f)
+    changed_error_metrics = dict(changed_error_result.metrics)
+    changed_error_metrics["node_normalized_error"] = 1.0e-9
+    changed_error = finalize_spherical_bundle(
+        stage_f,
+        mtex_result=replace(changed_error_result, metrics=changed_error_metrics),
+    )
     assert changed_version.run_id != success_a.run_id
     assert changed_status.run_id != success_a.run_id
-    assert changed_output.run_id != success_a.run_id
+    assert changed_output.run_id == success_a.run_id
+    assert changed_error.run_id == success_a.run_id
+    passed_manifest = json.loads((success_a.path / "manifest.json").read_text())
+    assert passed_manifest["run_identity"]["mtex"] == {
+        "requested_profile": "smoke",
+        "status": "passed",
+        "versions": {"matlab": "24.2.0", "mtex": "mtex-6.1.1"},
+    }
 
 
 @pytest.mark.parametrize("status", ["unavailable", "failed", "timed-out"])
@@ -809,6 +1041,34 @@ def test_same_passed_mtex_content_keeps_run_id_and_never_replaces_winner(
         finalize_spherical_bundle(second_stage, mtex_result=second_mtex)
     assert sentinel.read_text(encoding="utf-8") == "winner"
     assert second_stage.staging_path.is_dir()
+
+
+def test_same_stable_id_with_different_derivatives_retains_investigation_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from kikuchi_lab.spherical_intensity import bundle as bundle_module
+
+    first_stage = _stage_with_registered_script(tmp_path, monkeypatch)
+    first = finalize_spherical_bundle(
+        first_stage,
+        mtex_result=_passed_mtex_result(first_stage, payload_tag="winner"),
+    )
+    winner_manifest = first.manifest_sha256
+
+    losing_stage = _stage_with_registered_script(tmp_path, monkeypatch)
+    losing_result = _passed_mtex_result(losing_stage, payload_tag="different")
+    with pytest.raises(bundle_module.SphericalBundleInvestigationError, match="investigat"):
+        finalize_spherical_bundle(losing_stage, mtex_result=losing_result)
+
+    assert losing_stage.staging_path.is_dir()
+    assert _sha256(first.path / "manifest.json") == winner_manifest
+    investigation = json.loads(
+        (losing_stage.staging_path / "diagnostics/collision-investigation.json").read_text()
+    )
+    assert investigation["run_id"] == first.run_id
+    assert investigation["status"] == "collision-requires-investigation"
+    assert investigation["differing_output_records"]
+    assert (losing_stage.staging_path / "diagnostics/mtex-status.json").is_file()
 
 
 def test_manifest_run_identity_matches_path_and_excludes_diagnostic_prose(

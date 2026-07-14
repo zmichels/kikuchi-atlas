@@ -28,9 +28,11 @@ hash-inventoried atomic bundle boundary.
 
 ## Verification
 
-- Focused deterministic bundle suite: `45 passed`, including the review-hardening
-  cases for structural MTEX results, registered extensions/outputs, axial
-  coherence, and filesystem-free prevalidation.
+- Focused deterministic bundle suite: `62 passed`, including review-hardening
+  cases for canonical axial eligibility, bounded omitted equator pairs,
+  diagnostic-only MTEX validation identity, collision investigation, strict
+  registered inventory, quarantined partial evidence, and filesystem-free
+  prevalidation.
 - Existing artifact and persistence regression: `44 passed`.
 - Spherical contract and mapping regression: `93 passed`.
 - Ruff, work-item validation, and diff checks pass on the completed slice.

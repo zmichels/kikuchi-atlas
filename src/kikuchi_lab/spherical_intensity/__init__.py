@@ -13,6 +13,7 @@ from .contracts import (
 from .bundle import (
     SphericalBundleCorruptionError,
     SphericalBundleExistsError,
+    SphericalBundleInvestigationError,
     SphericalBundlePartialError,
     SphericalBundleStage,
     SphericalIntensityBundleResult,
@@ -28,6 +29,7 @@ __all__ = [
     "SphericalAxialField",
     "SphericalBundleCorruptionError",
     "SphericalBundleExistsError",
+    "SphericalBundleInvestigationError",
     "SphericalBundlePartialError",
     "SphericalBundleStage",
     "SphericalIntensityBuild",
