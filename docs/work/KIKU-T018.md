@@ -2,7 +2,7 @@
 id: KIKU-T018
 type: task
 title: Add CLI and Conduct Native-Scale Visual Gate
-status: active
+status: done
 parent: KIKU-F002
 created: 2026-07-13
 priority: P0
@@ -27,5 +27,5 @@ science-art direction before planning a hybrid renderer.
 
 - [x] The CLI reports the run path, identity, selected reflector count, and figure inventory.
 - [x] The retained review includes stereographic, spherical, Lambert, detector, and threshold-comparison views.
-- [ ] The decision record explicitly chooses pure kinematical refinement or a separately planned evidence-guided hybrid.
+- [x] The decision record explicitly chooses pure kinematical refinement or a separately planned evidence-guided hybrid.
 - [x] Interactive sphere and openable 3D viewing are linked as an additive incubated direction, not a replacement for projected images.

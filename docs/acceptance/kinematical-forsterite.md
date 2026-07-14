@@ -1,14 +1,13 @@
 # Forsterite Kinematical Native-Scale Review
 
 - Work item: [KIKU-T018](../work/KIKU-T018.md)
-- Production state: Machine-verified bundle retained locally
-- Human visual decision: **pending**
-- Promoted style fixed before this gate: `quiet`
+- Production state: Machine-verified bundle retained locally and visually accepted
+- Human visual decision: **approved**
+- Promoted/default style: `quiet`, approved unchanged
 - Retained density diagnostic: `balanced`
 
-No reviewer observations or next-slice choice are recorded here yet. The files
-below must be presented at fit-to-window and 100 percent before this acceptance
-record can be completed.
+The native-scale review was completed at fit-to-window and 100 percent. The
+recorded next-slice decision is `plan-evidence-guided-hybrid`.
 
 ## Objective production run metadata
 
@@ -59,37 +58,42 @@ additional bundle exports required by this native-scale gate.
 
 ### Grayscale hierarchy
 
-- Fit-to-window observation: **pending**
-- 100 percent observation: **pending**
+- Reviewer observation at fit-to-window and 100 percent: Grayscale hierarchy
+  is strong with genuinely dark quiet regions; major and secondary bands
+  remain sharply differentiated.
 
 ### Trace density
 
-- `quiet` observation: **pending**
-- `balanced` diagnostic comparison: **pending**
+- Reviewer observation: Quiet trace density preserves substantially more
+  breathing room while retaining fine structure; balanced remains as the
+  denser diagnostic companion.
 
 ### Node saturation
 
-- Bright zone-axis and crossing behavior: **pending**
+- Reviewer observation: Nodes are luminous/deliberately hot but not blurred.
 
 ### Rim
 
-- Circular rim continuity, weight, and distraction: **pending**
+- Reviewer observation: Circular rim stays crisp; cardinal intersections are
+  intensely bright.
 
 ### Quiet regions
 
-- Preservation of low-density and low-intensity regions: **pending**
+- Reviewer observation: Quiet regions are sufficient.
 
 ### Quiet-parameter adjustment
 
-- Whether the fixed `quiet` parameters need a recorded adjustment: **pending**
+- Reviewer decision: Quiet parameters approved unchanged. Retain quiet as
+  promoted/default and balanced as diagnostic.
 
 ## Required next-slice decision
 
 - [ ] `pure-kinematical-refinement`
-- [ ] `plan-evidence-guided-hybrid`
+- [x] `plan-evidence-guided-hybrid`
 
-Human visual decision: **pending**. No hybrid implementation plan is authorized
-by this draft record.
+Human visual decision: **approved**. This record selects the evidence-guided
+hybrid as the next planning slice; it does not implement or pre-empt that
+separately scoped plan.
 
 ## Additive interactive direction
 
@@ -112,8 +116,8 @@ The gates were run sequentially after the production bundle was retained:
 | `git diff --check` | PASS: no output |
 
 The warnings are upstream `diffpy`/`orix`/`diffsims` deprecations already
-exercised by the kinematical tests; no test failed. These machine results do
-not constitute human visual acceptance.
+exercised by the kinematical tests; no test failed. These machine results
+support, but do not substitute for, the now-recorded human visual acceptance.
 
 ## Machine-verifiable final checklist
 
@@ -123,5 +127,22 @@ not constitute human visual acceptance.
 - [x] The retained implementation and recipe use no blur-like operation, generated-image layer, or raster edge detector.
 - [x] The bundle contains projection and frame ledgers plus circular, spherical, Lambert, and detector products.
 - [x] The existing dynamical final bundle and `scientific-clean` test coverage remain passing in the full machine gate.
-- [ ] The human visual decision is recorded before any hybrid implementation plan is created.
+- [x] The human visual decision is recorded before any hybrid implementation plan is created.
 - [x] The fixed spherical figure is present while interactive sphere, GLB, and VTP work remains linked to its incubator record.
+
+## Post-approval closure gates
+
+The focused and final pytest commands ran sequentially without overlap after
+the human decision was recorded:
+
+| Gate | Result |
+| --- | --- |
+| `uv run pytest tests/unit/test_cli.py -q` | PASS: `9 passed in 2.46 s` |
+| `uv run pytest -m "not slow and not gpu" -q` | PASS: `443 passed, 1 deselected, 798 warnings in 82.58 s` |
+| `uv run ruff check src tests` | PASS: `All checks passed!` |
+| `uv run python scripts/validate_work_items.py` | PASS: `Validated 28 work items in docs/work` |
+| `uv run python scripts/work_status.py --root .` | PASS: tracker summary completed; `17 done`, `8 ready`, `3 active` |
+| `git diff --check` | PASS: no output |
+
+With the visual record approved and all closure gates passing, KIKU-T018 and
+KIKU-F002 satisfy their acceptance criteria.
