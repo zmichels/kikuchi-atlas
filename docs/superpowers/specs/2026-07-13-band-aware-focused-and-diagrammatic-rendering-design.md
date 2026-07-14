@@ -16,7 +16,14 @@ must preserve or increase the focus of supported band edges, retain measured
 light/dark band profiles and asymmetry, omit unsupported granular residuals,
 and keep the original scientific product immutable.
 
-The same evidence model will support two deliberately different products:
+The first implementation slice exposes kikuchipy's existing kinematical
+simulation surfaces as reproducible project products before introducing custom
+reconstruction. This gives us crisp, crystallographically generated reference
+figures immediately and establishes an upstream baseline that our code must not
+silently duplicate.
+
+The later evidence model will support two deliberately different custom
+products:
 
 1. `gallery-focused`, a full-resolution reconstruction whose visible bands
    must be supported by the dynamical image; and
@@ -47,6 +54,17 @@ future phase-general or independent rendering engine.
 8. The initial diagrammatic style is luminous grayscale bands and nodes on a
    quiet charcoal-gray field. Style is separate from band geometry and
    evidence.
+9. The project reuses the pinned diffsims and kikuchipy reflection, master-
+   pattern, spherical, and detector-projection APIs. Project code owns recipes,
+   selection policy, plain-data contracts, provenance, and validation rather
+   than duplicating those libraries' crystallographic mathematics.
+10. Every projection records a source/method/coordinate ledger: crystal,
+    sample, and detector frames; angular and detector units; hemisphere;
+    projection; origin and wrap convention; transform owner; and known-axis
+    spot checks.
+11. Any generated visual polish is a separate, explicitly decorative
+    derivative. Deterministic Kikuchi bands, zone axes, dimensions, labels,
+    data, and print geometry remain owned by scientific code.
 
 ## Meaning of No Blur
 
@@ -75,6 +93,22 @@ remains the authoritative diagrammatic output, and a hard-edged raster option
 can be added later if it proves aesthetically useful.
 
 ## Product Boundary
+
+### Kinematical reference products
+
+The first slice wraps kikuchipy's public kinematical APIs to emit:
+
+- upper- and lower-hemisphere stereographic master patterns;
+- spherical line and band views;
+- Lambert master-pattern arrays; and
+- detector-projected kinematical patterns for explicit orientations and
+  detector geometry.
+
+These products may expose structure-factor amplitude, structure-factor
+intensity, or uniform geometric weighting. Their reflection-selection policy
+is explicit and inspectable. They are crisp crystallographic references and
+schematics, not quantitatively equivalent substitutes for dynamical EBSD
+intensity.
 
 ### Scientific product
 
@@ -112,10 +146,18 @@ option may show geometry-only plane families for teaching or design studies.
 Canonical phase + energy + orientation + detector
                          |
                          v
-                 Reflection catalog
+       diffsims reflection enumeration and factors
                          |
                          v
-             Projected angular band corridors
+          kikuchipy kinematical simulator adapter
+           /          |          |          \
+          v           v          v           v
+  stereographic   spherical    Lambert     detector
+      master      lines/bands   master     projection
+                         |
+                         | optional later hybrid
+                         v
+              Projected angular band corridors
                          |
          Original dynamical detector projection
                          |
@@ -138,6 +180,25 @@ does not rediscover crystallography or silently alter the evidence policy.
 
 ## Components
 
+### Kinematical simulator adapter
+
+The adapter follows the public diffsims and kikuchipy pipeline:
+
+1. enumerate reciprocal-lattice vectors from an explicit minimum spacing;
+2. keep allowed reflections;
+3. collapse and symmetrise equivalent families;
+4. sanitise the phase;
+5. calculate structure factors and Bragg angles at the explicit beam energy;
+6. apply a recorded reflector-selection rule; and
+7. construct `KikuchiPatternSimulator` products through
+   `calculate_master_pattern()`, `plot()`, `as_lambert()`, `get_patterns()`,
+   and `on_detector()` as appropriate.
+
+The project adapter converts upstream results to project-owned recipes,
+arrays, tables, and ledgers. It also provides parity checks against direct
+public-library calls. Upstream simulator objects do not become durable project
+contracts.
+
 ### Reflection catalog
 
 The reflection-catalog adapter consumes the canonical phase, lattice,
@@ -151,14 +212,19 @@ emits collapsed symmetry families with stable identities and at least:
 - multiplicity and any available structure-factor evidence;
 - source, phase, energy, software, and cutoff provenance.
 
-The catalog is project-owned even when an upstream library performs reflection
-enumeration. Upstream objects do not cross the adapter boundary.
+The catalog schema and selection record are project-owned while diffsims
+performs reflection enumeration and structure-factor calculation. Upstream
+objects do not cross the adapter boundary. The first visual checkpoint compares
+candidate cutoff policies because retaining every allowed reflection can make a
+line rendering visually impenetrable even when it is crystallographically
+valid.
 
 ### Band projector
 
-The band projector applies the explicit crystal-to-sample orientation and
-detector convention. It evaluates angular distance to each crystal plane and
-produces exact band-center and boundary geometry in detector coordinates.
+The band projector first reuses kikuchipy's master-pattern and `on_detector()`
+projection paths. Project-owned projection code is added only for a required
+geometry field or export that the public API does not expose. Any custom path
+must be checked against kikuchipy at known orientations and detector centers.
 
 The detector-space proof may serialize sampled paths for rendering, but the
 canonical representation retains the crystal normal and angular width. This
@@ -233,6 +299,44 @@ identity. The first style exposes:
 The renderer must not hard-code forsterite symmetry or the selected `[011]`
 orientation.
 
+## Projection and Coordinate Ledger
+
+The sphere and detector products are map-like scientific projections because
+angular position, adjacency, hemisphere, and distortion materially affect the
+meaning of the figure. They therefore use cartographic discipline without
+introducing a terrestrial web-map stack.
+
+Each artifact records:
+
+- authoritative source phase and reflection-selection recipe;
+- crystal, sample, and detector coordinate frames and handedness;
+- orientation convention and transform direction;
+- angular, reciprocal-space, and detector units;
+- projection name, hemisphere, origin, axis direction, and wrap convention;
+- the library or project component responsible for each transform;
+- spot checks for known zone axes and selected band traces; and
+- which marks are geometric data and which strokes or labels are
+  screen-stable presentation.
+
+Spherical or projected band geometry stays in scientific map space. Labels,
+minimum stroke widths, and interaction affordances may be presentation-stable,
+but they may not move the underlying geometry.
+
+## Creative Derivative Boundary
+
+The canonical kinematical, scientific-clean, focused, diagrammatic, and future
+print-source artifacts are deterministic. If a later science-art treatment
+uses ImageGen or a generative-polish workflow, the generated layer is limited
+to atmosphere, background texture, material suggestion, lighting, or
+presentation depth. It must not generate or repaint Kikuchi bands, zone axes,
+labels, dimensions, scalar data, or fabrication geometry.
+
+Generated layers are stored separately with their prompt and provenance, then
+combined with the deterministic foreground by a repeatable composition step.
+They are labeled `art-polished` and are never accepted as scientific or print
+source. The first implementation slice performs no image generation: its
+figures are direct, reviewable outputs from scientific code.
+
 ## Provenance and Artifact Layout
 
 The final run bundle gains:
@@ -242,15 +346,26 @@ models/
   band-model.json
   reflection-catalog.json
 products/
+  kinematical-master-stereographic.npy
+  kinematical-master-stereographic.png
+  kinematical-master-lambert.npy
+  kinematical-master-lambert.png
+  kinematical-spherical-bands.svg
+  kinematical-spherical-bands.png
+  kinematical-detector.npy
+  kinematical-detector.png
   gallery-focused.npy
   gallery-focused.tif
   gallery-focused.png
   diagrammatic.svg
   diagrammatic.png
 diagnostics/
+  projection-ledger.json
+  reflector-selection.json
   band-evidence.json
   band-fit-metrics.json
 recipes/
+  kinematical.json
   band-model.json
   gallery-focused.json
   diagrammatic.json
@@ -310,6 +425,7 @@ Implementation remains test-driven.
 
 ### Unit tests
 
+- kinematical recipe, reflector-selection, and projection-ledger validation;
 - reflection-family collapse and stable identity;
 - orthorhombic metric and plane-normal calculations;
 - detector projection under known orientations and projection centers;
@@ -328,6 +444,10 @@ or moving the former.
 
 ### Integration tests
 
+- compare adapter outputs with direct pinned kikuchipy public calls;
+- verify known zone-axis positions and hemisphere/frame conventions;
+- reproduce stereographic, spherical, Lambert, and detector kinematical
+  artifacts deterministically;
 - construct a development `BandModel` for the selected forsterite orientation;
 - render all three product lineages from one immutable projection;
 - prove `scientific-clean` remains byte-identical;
@@ -337,29 +457,41 @@ or moving the former.
 
 ### Visual acceptance
 
-The retained forsterite image is reviewed at fit-to-window and 100 percent.
-Acceptance requires continuous band hierarchy, quiet unsupported regions,
-sharp edges without halos, nodes with internal tonal structure, recognizable
-dynamical light/dark pairing in `gallery-focused`, and an intentionally clear
-luminous hierarchy in `diagrammatic`.
+Visual review begins with contact sheets comparing reflector-selection
+policies across stereographic or spherical lines, master intensity, and one
+detector projection. The selected kinematical products are inspected at native
+scale with known-axis overlays before any hybrid reconstruction begins.
+
+The retained forsterite dynamical image is then reviewed at fit-to-window and
+100 percent. Hybrid acceptance requires continuous band hierarchy, quiet
+unsupported regions, sharp edges without halos, nodes with internal tonal
+structure, recognizable dynamical light/dark pairing in `gallery-focused`, and
+an intentionally clear luminous hierarchy in `diagrammatic`.
 
 No new focused output replaces the current retained evidence until the user
 approves the comparison.
 
 ## Delivery Sequence
 
-1. Define and test project-owned reflection and `BandModel` contracts.
-2. Implement detector-space band geometry for the selected forsterite proof.
-3. Fit and inspect evidence without rendering a replacement image.
-4. Render `diagrammatic` from the validated geometry and evidence.
-5. Render `gallery-focused` from measured profiles.
-6. Compare original, current blur-based experiment, focused, and diagrammatic
-   outputs with local diagnostics and native-scale images.
-7. On user acceptance, remove `fine_detail_attenuate` from the promoted recipe
-   and update the milestone ledger.
+1. Define and test project-owned kinematical recipes, reflector-selection
+   records, projection ledgers, and plain-data product contracts.
+2. Wrap the pinned diffsims and kikuchipy public APIs without duplicating their
+   crystallographic or projection mathematics.
+3. Compare reflector-selection policies with stereographic, spherical, master,
+   and detector figures; retain the visual and numeric diagnostics.
+4. Emit a reproducible forsterite kinematical artifact bundle and review it at
+   native scale with frame and known-axis checks.
+5. Decide from those figures whether custom evidence-guided reconstruction is
+   still needed for the desired dynamical light/dark aesthetic.
+6. If needed, implement detector-space `BandModel` geometry and inspect fitted
+   evidence before rendering a replacement image.
+7. Render and compare `diagrammatic` and `gallery-focused` products with the
+   kinematical and original dynamical references.
+8. Only on user acceptance, remove `fine_detail_attenuate` from the promoted
+   recipe and update the milestone ledger.
 
-This order makes the diagrammatic product available early while preventing its
-analytic styling from being mistaken for evidence reconstruction.
+This order captures kikuchipy's low-hanging fruit immediately and makes the
+custom hybrid an evidence-based decision rather than a foregone conclusion.
 
 ## Non-Goals and Later Work
 
@@ -371,7 +503,10 @@ The first slice does not include:
 - 3D relief or watertight print geometry;
 - geometry-only plane-family display by default;
 - automatic aesthetic ranking; or
-- phase-general acceptance beyond keeping the contracts phase-neutral.
+- phase-general acceptance beyond keeping the contracts phase-neutral;
+- a Leaflet, MapLibre, or other terrestrial web-map stack; or
+- generated imagery in scientific, schematic-source, or fabrication-source
+  products.
 
 After detector-space validation, the same angular `BandModel` can move to the
 Lambert master. That promotion would allow one focused phase model to generate
