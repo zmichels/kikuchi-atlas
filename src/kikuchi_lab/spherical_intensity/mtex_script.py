@@ -57,20 +57,18 @@ assert(axialNodeError / axialNodeScale <= nodeTolerance);
 
 
 _AXIAL_FIGURE_BLOCK = """\
-comparisonFigure = newEvidenceFigure();
-comparisonLayout = tiledlayout(comparisonFigure, 1, 2, ...
-  'TileSpacing', 'compact', 'Padding', 'compact');
-nexttile(comparisonLayout);
-scatter(nodes, T.intensity_raw, 'complete', 'MarkerSize', 8);
-title('Directional raw intensity');
-applyFixedView(rawLimits);
-nexttile(comparisonLayout);
-scatter(axialNodes, AT.intensity_raw, 'complete', 'MarkerSize', 8);
-title('Axial raw intensity');
-applyFixedView(rawLimits);
+[comparisonFigure, comparisonFigureCleanup, comparisonMtexFigure] = ...
+  newMtexEvidenceFigure([2 2]);
+comparisonLimits = finiteLimits([T.intensity_raw; AT.intensity_raw]);
+directionalAxes = plotCompleteValues(comparisonMtexFigure, 1, nodes, ...
+  T.intensity_raw, 'Directional raw intensity', comparisonLimits);
+axialAxes = plotCompleteValues(comparisonMtexFigure, 3, axialNodes, ...
+  AT.intensity_raw, 'Axial raw intensity', comparisonLimits);
+assertIdenticalProjectionSettings(directionalAxes, axialAxes);
 exportAtomicFigure(comparisonFigure, bundleRoot, ...
   'figures/directional-vs-axial.partial.png', ...
   'figures/directional-vs-axial.png');
+clear comparisonFigureCleanup;
 panelFiles{end + 1} = fullfile(bundleRoot, 'figures', ...
   'directional-vs-axial.png');
 panelLabels{end + 1} = 'Directional vs axial';
@@ -140,7 +138,14 @@ assert(isa(densityField, 'S2FunTri'));
 writeHeartbeat(progressPath, 'node-evaluation', 'start');
 nodeError = max(abs(rawField.eval(nodes) - T.intensity_raw));
 nodeScale = max(max(abs(T.intensity_raw)), eps);
-assert(nodeError / nodeScale <= 1e-08);
+nodeNormalizedError = nodeError / nodeScale;
+assert(nodeNormalizedError <= 1e-08);
+assert(nodeNormalizedError <= nodeTolerance);
+densityNodeError = max(abs(densityField.eval(nodes) - T.density_weight));
+densityNodeScale = max(max(abs(T.density_weight)), eps);
+densityNodeNormalizedError = densityNodeError / densityNodeScale;
+assert(densityNodeNormalizedError <= 1e-08);
+assert(densityNodeNormalizedError <= nodeTolerance);
 {axial_node_evaluation_block}writeHeartbeat(progressPath, 'node-evaluation', 'end');
 
 writeHeartbeat(progressPath, 'density-sampling', 'start');
@@ -170,69 +175,72 @@ writeHeartbeat(progressPath, 'density-sampling', 'end');
 writeHeartbeat(progressPath, 'figure-export', 'start');
 rawLimits = finiteLimits(T.intensity_raw);
 densityLimits = finiteLimits(T.density_weight);
+channelLimits = finiteLimits([T.intensity_raw; T.density_weight]);
 panelFiles = {{}};
 panelLabels = {{}};
 
-nodeFigure = newEvidenceFigure();
-scatter(nodes, T.intensity_raw, 'complete', 'MarkerSize', 8);
-title('Exact directional nodes');
-applyFixedView(rawLimits);
+[nodeFigure, nodeFigureCleanup, nodeMtexFigure] = ...
+  newMtexEvidenceFigure([1 2]);
+plotCompleteValues(nodeMtexFigure, 1, nodes, T.intensity_raw, ...
+  'Exact directional nodes', rawLimits);
 exportAtomicFigure(nodeFigure, bundleRoot, ...
   'figures/exact-node-scatter.partial.png', ...
   'figures/exact-node-scatter.png');
+clear nodeFigureCleanup;
 panelFiles{{end + 1}} = fullfile(bundleRoot, 'figures', ...
   'exact-node-scatter.png');
 panelLabels{{end + 1}} = 'Exact nodes';
 
-sphereFigure = newEvidenceFigure();
-plot3d(rawField, 'resolution', displayResolutionDeg * degree);
-title('Triangulated raw intensity');
-applyFixedView(rawLimits);
+[sphereFigure, sphereFigureCleanup, sphereMtexFigure] = ...
+  newMtexEvidenceFigure([1 1]);
+plotOwnedSphere(sphereMtexFigure, rawField, displayResolutionDeg, ...
+  'Triangulated raw intensity', rawLimits);
 exportAtomicFigure(sphereFigure, bundleRoot, ...
   'figures/colored-sphere.partial.png', 'figures/colored-sphere.png');
+clear sphereFigureCleanup;
 panelFiles{{end + 1}} = fullfile(bundleRoot, 'figures', 'colored-sphere.png');
 panelLabels{{end + 1}} = 'Colored sphere';
 
-densityFigure = newEvidenceFigure();
-scatter(densityVectors, 'complete', 'MarkerSize', 2);
-title('Density sampled vectors');
-applyFixedView(densityLimits);
+[densityFigure, densityFigureCleanup, densityMtexFigure] = ...
+  newMtexEvidenceFigure([1 2]);
+plotCompletePoints(densityMtexFigure, 1, densityVectors, ...
+  'Density sampled vectors', densityLimits);
 exportAtomicFigure(densityFigure, bundleRoot, ...
   'figures/density-cloud.partial.png', 'figures/density-cloud.png');
+clear densityFigureCleanup;
 panelFiles{{end + 1}} = fullfile(bundleRoot, 'figures', 'density-cloud.png');
 panelLabels{{end + 1}} = 'Density cloud';
 
-channelFigure = newEvidenceFigure();
-channelLayout = tiledlayout(channelFigure, 1, 2, ...
-  'TileSpacing', 'compact', 'Padding', 'compact');
-nexttile(channelLayout);
-scatter(nodes, T.intensity_raw, 'complete', 'MarkerSize', 8);
-title('Raw intensity');
-applyFixedView(rawLimits);
-nexttile(channelLayout);
-scatter(nodes, T.density_weight, 'complete', 'MarkerSize', 8);
-title('Density weight');
-applyFixedView(rawLimits);
+[channelFigure, channelFigureCleanup, channelMtexFigure] = ...
+  newMtexEvidenceFigure([2 2]);
+rawChannelAxes = plotCompleteValues(channelMtexFigure, 1, nodes, ...
+  T.intensity_raw, 'Raw intensity', channelLimits);
+densityChannelAxes = plotCompleteValues(channelMtexFigure, 3, nodes, ...
+  T.density_weight, 'Density weight', channelLimits);
+assertIdenticalProjectionSettings(rawChannelAxes, densityChannelAxes);
 exportAtomicFigure(channelFigure, bundleRoot, ...
   'figures/raw-vs-density-channels.partial.png', ...
   'figures/raw-vs-density-channels.png');
+clear channelFigureCleanup;
 panelFiles{{end + 1}} = fullfile(bundleRoot, 'figures', ...
   'raw-vs-density-channels.png');
 panelLabels{{end + 1}} = 'Raw vs density';
 
-{axial_figure_block}previewFigure = newEvidenceFigure();
+{axial_figure_block}[previewFigure, previewFigureCleanup] = newEvidenceFigure();
 previewLayout = tiledlayout(previewFigure, 2, 3, ...
   'TileSpacing', 'compact', 'Padding', 'compact');
 for panelIndex = 1:numel(panelFiles)
-  nexttile(previewLayout);
+  previewAxis = nexttile(previewLayout);
   panelImage = imread(panelFiles{{panelIndex}});
-  image(panelImage);
-  axis image off;
-  title(panelLabels{{panelIndex}});
+  image(previewAxis, panelImage);
+  axis(previewAxis, 'image');
+  axis(previewAxis, 'off');
+  title(previewAxis, panelLabels{{panelIndex}});
 end
 exportAtomicFigure(previewFigure, bundleRoot, ...
   'forsterite-s2-mtex-preview.partial.png', ...
   'forsterite-s2-mtex-preview.png');
+clear previewFigureCleanup;
 writeHeartbeat(progressPath, 'figure-export', 'end');
 
 completedStages = {{'startup','load','triangulation','node-evaluation', ...
@@ -255,7 +263,8 @@ result = struct( ...
   'schema_version', 1, ...
   'profile', '{profile_name}', ...
   'node_count', expectedNodeCount, ...
-  'node_normalized_error', nodeError / nodeScale, ...
+  'node_normalized_error', nodeNormalizedError, ...
+  'density_node_normalized_error', densityNodeNormalizedError, ...
   'point_count', pointCount, ...
   'rng_seed', seed, ...
   'rng_generator', '{rng_generator}', ...
@@ -276,21 +285,121 @@ clear resultCleanup;
 movefile(resultPartial, resultFinal, 'f');
 clear restoreFolder;
 
-function figureHandle = newEvidenceFigure()
+function [figureHandle, figureCleanup] = newEvidenceFigure()
 figureHandle = figure('Visible', 'off', 'Color', 'w', ...
   'Position', [100 100 1600 900]);
+figureCleanup = onCleanup(@() closeEvidenceFigure(figureHandle));
 end
 
-function applyFixedView(colorLimits)
-axis equal;
-axis vis3d;
-axis([-1 1 -1 1 -1 1]);
-view(135, 25);
-camup([0 0 1]);
-colormap(gray(256));
-clim(colorLimits);
-set(gca, 'Color', 'w');
+function [figureHandle, figureCleanup, mtexFig] = newMtexEvidenceFigure(layout)
+[figureHandle, figureCleanup] = newEvidenceFigure();
+mtexFig = mtexFigure('layout', layout, 'Visible', 'off');
+assert(isequal(mtexFig.parent, figureHandle));
+set(mtexFig.parent, 'Visible', 'off');
+end
+
+function axesHandles = plotCompleteValues(mtexFig, startAxis, vectors, ...
+  values, label, colorLimits)
+activateMtexFigure(mtexFig);
+mtexFig.nextAxis(startAxis);
+[~, axesHandles] = scatter(vectors, values, 'complete', ...
+  'projection', 'earea', 'MarkerSize', 8);
+assertOwnedAxes(mtexFig, axesHandles);
+mtexFig.drawNow('figSize', 'large');
+applyFixedProjection(axesHandles, colorLimits);
+applyAxesTitle(axesHandles, label);
+set(mtexFig.parent, 'Visible', 'off');
+end
+
+function axesHandles = plotCompletePoints(mtexFig, startAxis, vectors, ...
+  label, colorLimits)
+activateMtexFigure(mtexFig);
+mtexFig.nextAxis(startAxis);
+[~, axesHandles] = scatter(vectors, 'complete', ...
+  'projection', 'earea', 'MarkerSize', 2);
+assertOwnedAxes(mtexFig, axesHandles);
+mtexFig.drawNow('figSize', 'large');
+applyFixedProjection(axesHandles, colorLimits);
+applyAxesTitle(axesHandles, label);
+set(mtexFig.parent, 'Visible', 'off');
+end
+
+function plotOwnedSphere(mtexFig, rawField, displayResolutionDeg, ...
+  label, colorLimits)
+activateMtexFigure(mtexFig);
+sphereAxis = mtexFig.nextAxis(1);
+plot3d(rawField, 'resolution', displayResolutionDeg * degree, ...
+  'parent', sphereAxis);
+assertOwnedAxes(mtexFig, sphereAxis);
+mtexFig.drawNow('figSize', 'large');
+applyFixedCamera3d(sphereAxis, colorLimits);
+title(sphereAxis, label);
+set(mtexFig.parent, 'Visible', 'off');
+end
+
+function activateMtexFigure(mtexFig)
+set(groot, 'CurrentFigure', mtexFig.parent);
+set(mtexFig.parent, 'Visible', 'off');
+end
+
+function assertOwnedAxes(mtexFig, axesHandles)
+for axisIndex = 1:numel(axesHandles)
+  ax = axesHandles(axisIndex);
+  assert(isequal(ancestor(ax, 'figure'), mtexFig.parent));
+end
+end
+
+function applyFixedProjection(axesHandles, colorLimits)
+for axisIndex = 1:numel(axesHandles)
+  ax = axesHandles(axisIndex);
+  axis(ax, 'equal');
+  axis(ax, 'manual');
+  view(ax, 2);
+  xlim(ax, [-1.45 1.45]);
+  ylim(ax, [-1.45 1.45]);
+  colormap(ax, gray(256));
+  clim(ax, colorLimits);
+  set(ax, 'Color', 'w');
+end
 drawnow;
+end
+
+function applyFixedCamera3d(ax, colorLimits)
+axis(ax, 'equal');
+axis(ax, 'vis3d');
+xlim(ax, [-1.05 1.05]);
+ylim(ax, [-1.05 1.05]);
+zlim(ax, [-1.05 1.05]);
+view(ax, 135, 25);
+camup(ax, [0 0 1]);
+camtarget(ax, [0 0 0]);
+camproj(ax, 'orthographic');
+colormap(ax, gray(256));
+clim(ax, colorLimits);
+set(ax, 'Color', 'w');
+drawnow;
+end
+
+function applyAxesTitle(axesHandles, label)
+for axisIndex = 1:numel(axesHandles)
+  title(axesHandles(axisIndex), label);
+end
+end
+
+function assertIdenticalProjectionSettings(leftAxes, rightAxes)
+assert(numel(leftAxes) == numel(rightAxes));
+for axisIndex = 1:numel(leftAxes)
+  assert(isequal(xlim(leftAxes(axisIndex)), xlim(rightAxes(axisIndex))));
+  assert(isequal(ylim(leftAxes(axisIndex)), ylim(rightAxes(axisIndex))));
+  assert(isequal(clim(leftAxes(axisIndex)), clim(rightAxes(axisIndex))));
+  assert(isequal(view(leftAxes(axisIndex)), view(rightAxes(axisIndex))));
+end
+end
+
+function closeEvidenceFigure(figureHandle)
+if isgraphics(figureHandle, 'figure')
+  close(figureHandle);
+end
 end
 
 function limits = finiteLimits(values)
@@ -302,14 +411,12 @@ end
 end
 
 function exportAtomicFigure(figureHandle, bundleRoot, partialName, finalName)
-figureCleanup = onCleanup(@() close(figureHandle));
 drawnow;
 partialPath = fullfile(bundleRoot, partialName);
 finalPath = fullfile(bundleRoot, finalName);
 exportgraphics(figureHandle, partialPath, 'Resolution', 150, ...
   'BackgroundColor', 'white');
 movefile(partialPath, finalPath, 'f');
-clear figureCleanup;
 end
 
 function digestText = sha256File(path)

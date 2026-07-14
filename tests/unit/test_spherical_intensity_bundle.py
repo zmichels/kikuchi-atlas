@@ -177,6 +177,7 @@ def _passed_mtex_result(
         "profile": recipe["profile"]["name"],
         "node_count": ledger["metadata"]["diagnostics"]["point_count"],
         "node_normalized_error": 5.0e-9,
+        "density_node_normalized_error": 6.0e-9,
         "point_count": recipe["profile"]["point_count"],
         "rng_seed": recipe["rng_seed"],
         "rng_generator": recipe["rng_generator"],
@@ -1071,7 +1072,14 @@ def test_future_mtex_seam_rejects_arbitrary_mapping(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "corruption",
-    ["missing-output", "hash", "point-count", "node-error", "mtex-version"],
+    [
+        "missing-output",
+        "hash",
+        "point-count",
+        "node-error",
+        "density-node-error",
+        "mtex-version",
+    ],
 )
 def test_passed_mtex_requires_complete_validated_outputs_and_profile_constants(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corruption: str
@@ -1092,6 +1100,9 @@ def test_passed_mtex_requires_complete_validated_outputs_and_profile_constants(
         result = replace(result, metrics=metrics)
     elif corruption == "node-error":
         metrics["node_normalized_error"] = 1.1e-8
+        result = replace(result, metrics=metrics)
+    elif corruption == "density-node-error":
+        metrics["density_node_normalized_error"] = 1.1e-8
         result = replace(result, metrics=metrics)
     else:
         metrics["mtex_version"] = "mtex-6.2.0"
@@ -1117,6 +1128,57 @@ def test_passed_mtex_output_set_tracks_axial_absence(
     assert "figures/directional-vs-axial.png" not in mtex.produced_files
     result = finalize_spherical_bundle(stage, mtex_result=mtex)
     assert result.mtex_status == "passed"
+
+
+def test_passed_mtex_requires_separate_density_node_error_metric(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stage = _stage_with_registered_script(tmp_path, monkeypatch)
+    result = _passed_mtex_result(stage)
+    metrics = dict(result.metrics)
+    metrics.pop("density_node_normalized_error", None)
+
+    with pytest.raises(ValueError, match="density.*node|metric"):
+        finalize_spherical_bundle(
+            stage,
+            mtex_result=replace(result, metrics=metrics),
+        )
+    assert stage.staging_path.is_dir()
+
+
+def test_passed_mtex_validates_density_node_error_without_weakening_raw_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    valid_stage = _stage_with_registered_script(tmp_path / "valid", monkeypatch)
+    valid_result = _passed_mtex_result(valid_stage)
+    valid_metrics = dict(valid_result.metrics)
+    valid_metrics["density_node_normalized_error"] = 7.0e-9
+    passed = finalize_spherical_bundle(
+        valid_stage,
+        mtex_result=replace(valid_result, metrics=valid_metrics),
+    )
+    assert passed.mtex_status == "passed"
+
+    density_stage = _stage_with_registered_script(tmp_path / "density", monkeypatch)
+    density_result = _passed_mtex_result(density_stage)
+    density_metrics = dict(density_result.metrics)
+    density_metrics["density_node_normalized_error"] = 1.1e-8
+    with pytest.raises(ValueError, match="density.*node|node.*density"):
+        finalize_spherical_bundle(
+            density_stage,
+            mtex_result=replace(density_result, metrics=density_metrics),
+        )
+
+    raw_stage = _stage_with_registered_script(tmp_path / "raw", monkeypatch)
+    raw_result = _passed_mtex_result(raw_stage)
+    raw_metrics = dict(raw_result.metrics)
+    raw_metrics["density_node_normalized_error"] = 7.0e-9
+    raw_metrics["node_normalized_error"] = 1.1e-8
+    with pytest.raises(ValueError, match="node"):
+        finalize_spherical_bundle(
+            raw_stage,
+            mtex_result=replace(raw_result, metrics=raw_metrics),
+        )
 
 
 def test_same_passed_mtex_content_keeps_run_id_and_never_replaces_winner(

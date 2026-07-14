@@ -1018,6 +1018,7 @@ def _passed_mtex_identity(
         "profile",
         "node_count",
         "node_normalized_error",
+        "density_node_normalized_error",
         "point_count",
         "rng_seed",
         "rng_generator",
@@ -1052,6 +1053,7 @@ def _passed_mtex_identity(
     if not isinstance(matlab_version, str) or not matlab_version:
         raise ValueError("passed MTEX metrics require an actual MATLAB version")
     node_error = metrics.get("node_normalized_error")
+    density_node_error = metrics.get("density_node_normalized_error")
     node_limit = tolerances.get("mtex_node_normalized_max")
     if (
         isinstance(node_error, bool)
@@ -1062,6 +1064,17 @@ def _passed_mtex_identity(
         or float(node_error) > float(node_limit)
     ):
         raise ValueError("passed MTEX node error exceeds the staged tolerance")
+    if (
+        isinstance(density_node_error, bool)
+        or not isinstance(density_node_error, (int, float))
+        or not math.isfinite(float(density_node_error))
+        or float(density_node_error) < 0
+        or not isinstance(node_limit, (int, float))
+        or float(density_node_error) > float(node_limit)
+    ):
+        raise ValueError(
+            "passed MTEX density node error exceeds the staged tolerance"
+        )
 
     validated_files = metrics.get("validated_files")
     if not isinstance(validated_files, dict) or set(validated_files) != required:

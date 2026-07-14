@@ -38,3 +38,7 @@ Generate deterministic, machine-path-neutral MATLAB source for exact-node
 - Contract, scientific mapping, orix adapter, artifact, and persistence
   regression: `140 passed`.
 - MATLAB/MTEX was deliberately not invoked in this source-generation task.
+- Review-fix suite: `86 passed`; complete maps now use MTEX-managed invisible
+  layouts, the 3-D sphere has an explicit owned parent axis, all figures install
+  immediate cleanup, and raw/density exact-node metrics are independently
+  bounded and checked by bundle promotion policy.

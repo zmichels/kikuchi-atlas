@@ -50,7 +50,8 @@ def test_generated_mtex_script_is_portable_directional_and_exact_node() -> None:
         "densityField = interp(nodes, T.density_weight, 'linear');",
         "assert(isa(rawField, 'S2FunTri'));",
         "assert(isa(densityField, 'S2FunTri'));",
-        "assert(nodeError / nodeScale <= 1e-08);",
+        "nodeNormalizedError = nodeError / nodeScale;",
+        "assert(nodeNormalizedError <= nodeTolerance);",
         "rng(20260713, 'twister');",
         "discreteSample(densityField, pointCount",
         "onCleanup(@() rng(oldRng))",
@@ -226,17 +227,118 @@ def test_script_has_fixed_atomic_outputs_evidence_and_flushed_heartbeats() -> No
     assert "'Position', [100 100 1600 900]" in script
     assert "'Visible', 'off'" in script
     assert "'Color', 'w'" in script
-    assert "axis vis3d" in script
+    assert "axis(ax, 'vis3d')" in script
     assert "drawnow" in script
     assert "exportgraphics" in script
-    assert "scatter(nodes, T.intensity_raw, 'complete'" in script
-    assert "plot3d(rawField, 'resolution', displayResolutionDeg * degree)" in script
-    assert "scatter(densityVectors, 'complete'" in script
+    assert "plotCompleteValues(nodeMtexFigure, 1, nodes, T.intensity_raw" in script
+    assert "plot3d(rawField, 'resolution', displayResolutionDeg * degree" in script
+    assert "plotCompletePoints(densityMtexFigure, 1, densityVectors" in script
     assert "movefile(cloudPartial, cloudFinal, 'f');" in script
     assert "movefile(resultPartial, resultFinal, 'f');" in script
     assert script.index("movefile(resultPartial, resultFinal, 'f');") > script.index(
         "writeHeartbeat(progressPath, 'figure-export', 'end');"
     )
+
+
+def test_every_mtex_plot_is_owned_headless_and_uses_axis_specific_view_settings() -> None:
+    script = generate_mtex_script(
+        spherical_recipe(), expected_node_count=97, axial_available=True
+    )
+
+    # Complete MTEX projections require two MTEX-managed axes.  They must not
+    # be dropped into a vanilla tiledlayout that mtexFigure can reset.
+    assert "channelLayout = tiledlayout" not in script
+    assert "comparisonLayout = tiledlayout" not in script
+    assert "newMtexEvidenceFigure([1 2])" in script
+    assert "newMtexEvidenceFigure([2 2])" in script
+    assert "plotCompleteValues(" in script
+    assert "plotCompletePoints(" in script
+
+    # The one true 3-D product uses MTEX's supported parent option; complete
+    # 2-D projections instead carry an explicit mtexFigure owner and verify
+    # their produced axes remain descendants of that owner.
+    assert (
+        "plot3d(rawField, 'resolution', displayResolutionDeg * degree, ...\n"
+        "  'parent', sphereAxis)"
+    ) in script
+    assert "function axesHandles = plotCompleteValues(mtexFig" in script
+    assert "function axesHandles = plotCompletePoints(mtexFig" in script
+    assert "ancestor(ax, 'figure')" in script
+    assert "mtexFig.parent" in script
+
+    assert "function applyFixedProjection(axesHandles, colorLimits)" in script
+    assert "view(ax, 2);" in script
+    assert "xlim(ax, [-1.45 1.45]);" in script
+    assert "ylim(ax, [-1.45 1.45]);" in script
+    assert "function applyFixedCamera3d(ax, colorLimits)" in script
+    assert "view(ax, 135, 25);" in script
+    assert "zlim(ax, [-1.05 1.05]);" in script
+    assert "applyFixedView" not in script
+
+
+def test_every_figure_installs_cleanup_immediately_and_stays_invisible() -> None:
+    script = generate_mtex_script(
+        spherical_recipe(), expected_node_count=97, axial_available=True
+    )
+
+    assert "function [figureHandle, figureCleanup] = newEvidenceFigure()" in script
+    assert (
+        "figureCleanup = onCleanup(@() closeEvidenceFigure(figureHandle));"
+        in script
+    )
+    assert (
+        "function [figureHandle, figureCleanup, mtexFig] = "
+        "newMtexEvidenceFigure(layout)"
+    ) in script
+    assert "mtexFigure('layout', layout, 'Visible', 'off')" in script
+    assert "set(mtexFig.parent, 'Visible', 'off')" in script
+    assert "function closeEvidenceFigure(figureHandle)" in script
+
+    for cleanup_name in (
+        "nodeFigureCleanup",
+        "sphereFigureCleanup",
+        "densityFigureCleanup",
+        "channelFigureCleanup",
+        "comparisonFigureCleanup",
+        "previewFigureCleanup",
+    ):
+        clear = f"clear {cleanup_name};"
+        assignment = re.search(
+            rf"\[[^\]]*\b{cleanup_name}\b[^\]]*\] =", script
+        )
+        assert assignment is not None
+        assert clear in script
+        assert assignment.start() < script.index(clear)
+
+    # The image-only preview is intentionally MATLAB-owned, but every tile
+    # still receives an explicit captured axis and it is assembled only from
+    # already-exported evidence paths.
+    assert "previewAxis = nexttile(previewLayout);" in script
+    assert "image(previewAxis, panelImage);" in script
+    assert script.index("panelImage = imread(panelFiles{panelIndex});") < script.index(
+        "image(previewAxis, panelImage);"
+    )
+
+
+def test_density_interpolant_has_its_own_exact_node_metric_and_policy_field() -> None:
+    script = generate_mtex_script(
+        spherical_recipe(), expected_node_count=97, axial_available=True
+    )
+
+    statements = (
+        "densityNodeError = max(abs(densityField.eval(nodes) - T.density_weight));",
+        "densityNodeScale = max(max(abs(T.density_weight)), eps);",
+        "densityNodeNormalizedError = densityNodeError / densityNodeScale;",
+        "assert(densityNodeNormalizedError <= nodeTolerance);",
+        "'density_node_normalized_error', densityNodeNormalizedError, ...",
+    )
+    for statement in statements:
+        assert statement in script
+    assert "nodeNormalizedError = nodeError / nodeScale;" in script
+    assert "assert(nodeNormalizedError <= 1e-08);" in script
+    assert "assert(nodeNormalizedError <= nodeTolerance);" in script
+    assert "assert(densityNodeNormalizedError <= 1e-08);" in script
+    assert "'node_normalized_error', nodeNormalizedError, ..." in script
 
 
 @pytest.mark.parametrize("expected_node_count", [True, 0, -1, 1.5])
