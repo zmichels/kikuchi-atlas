@@ -86,7 +86,9 @@ def _integer_triplet(value: Any, field: str) -> tuple[int, int, int]:
         or any(type(component) is not int for component in value)
         or value == [0, 0, 0]
     ):
-        raise ValueError(f"kinematical recipe {field} must contain three nonzero integer indices")
+        raise ValueError(
+            f"kinematical recipe {field} must contain three integer indices, not all zero"
+        )
     return value[0], value[1], value[2]
 
 
