@@ -25,9 +25,17 @@ from kikuchi_lab.sources.structure import StructureRecord, verify_structure
 
 from .contracts import (
     KinematicalArrayProduct,
+    KinematicalExecution,
     KinematicalRecipe,
     KinematicalSimulation,
 )
+
+
+_SPHERICAL_CAMERA_DEG = {
+    "elevation": 20.0,
+    "azimuth": -35.0,
+    "roll": 0.0,
+}
 
 
 def _calculate_master_pattern_single_worker(
@@ -275,6 +283,16 @@ def _projection_ledger(
                 },
                 "transform_owner": "kikuchipy.EBSDMasterPattern.get_patterns",
             },
+            "spherical": {
+                "projection": "spherical",
+                "backend": "matplotlib",
+                "camera_deg": dict(_SPHERICAL_CAMERA_DEG),
+                "renderer_versions": {
+                    "kikuchipy": version("kikuchipy"),
+                    "matplotlib": version("matplotlib"),
+                },
+                "transform_owner": "kikuchipy.KikuchiPatternSimulator.plot",
+            },
         },
         "known_axis_check": _known_axis_check(record, recipe),
         "presentation_space": ["labels", "minimum stroke width", "rim stroke"],
@@ -428,3 +446,14 @@ def simulate_kinematical_arrays(
         detector_geometry=detector_geometry,
     )
     return simulation, context
+
+
+def execute_kinematical(
+    record: StructureRecord, recipe: KinematicalRecipe
+) -> KinematicalExecution:
+    """Simulate project-owned arrays and render their deterministic figures."""
+    from .render import render_kinematical_figures
+
+    simulation, context = simulate_kinematical_arrays(record, recipe)
+    figures = render_kinematical_figures(context, simulation, recipe)
+    return KinematicalExecution(simulation=simulation, figures=figures)
