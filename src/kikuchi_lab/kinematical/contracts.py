@@ -95,7 +95,9 @@ class KinematicalRecipe:
 
     @property
     def recipe_id(self) -> str:
-        return stable_id("recipe", self.to_dict())
+        scientific_recipe = self.to_dict()
+        del scientific_recipe["source_record"]
+        return stable_id("recipe", scientific_recipe)
 
 
 @dataclass(frozen=True, init=False, eq=False)
@@ -124,9 +126,7 @@ class KinematicalArrayProduct:
         object.__setattr__(
             product,
             "product_id",
-            stable_id(
-                "kinematical", {"label": label, "metadata": plain, "array_sha256": checksum}
-            ),
+            stable_id("kinematical", {"label": label, "metadata": plain, "array_sha256": checksum}),
         )
         return product
 

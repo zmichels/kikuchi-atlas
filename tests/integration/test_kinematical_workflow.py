@@ -47,13 +47,14 @@ def small_recipe(tmp_path: Path) -> Path:
 @pytest.fixture(scope="module")
 def reproduced_runs(tmp_path_factory: pytest.TempPathFactory):
     root = tmp_path_factory.mktemp("kinematical-workflow")
-    recipe_path = small_recipe(root)
+    first_recipe = small_recipe(root / "first-input")
+    relocated_recipe = small_recipe(root / "relocated-input")
     existing_final = root / "existing-final-run"
     existing_final.mkdir()
     final_manifest = existing_final / "manifest.json"
     final_manifest.write_text('{"schema_version":2,"sentinel":"final"}', encoding="utf-8")
-    first = render_kinematical(recipe_path=recipe_path, output_root=root / "first-runs")
-    second = render_kinematical(recipe_path=recipe_path, output_root=root / "second-runs")
+    first = render_kinematical(recipe_path=first_recipe, output_root=root / "first-runs")
+    second = render_kinematical(recipe_path=relocated_recipe, output_root=root / "second-runs")
     return first, second, final_manifest
 
 
@@ -70,7 +71,7 @@ def test_render_kinematical_materializes_the_standalone_workflow_result(
     assert final_manifest.read_text(encoding="utf-8") == ('{"schema_version":2,"sentinel":"final"}')
 
 
-def test_render_kinematical_reproduces_identity_products_and_manifest(
+def test_relocated_recipe_and_source_reproduce_identity_products_and_manifest(
     reproduced_runs,
 ) -> None:
     first, second, _ = reproduced_runs

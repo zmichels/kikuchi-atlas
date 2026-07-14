@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
+from threading import Barrier, Event, Thread
 
 import imageio.v3 as iio
 import numpy as np
@@ -55,11 +58,16 @@ def test_kinematical_package_exports_the_bundle_interface() -> None:
     assert kinematical.write_kinematical_bundle is write_kinematical_bundle
 
 
-def _product(label: str, values: np.ndarray) -> KinematicalArrayProduct:
+def _product(
+    label: str, values: np.ndarray, *, hemisphere: str | None = None
+) -> KinematicalArrayProduct:
+    metadata = {"projection": label, "fixture": "real-owned-array"}
+    if hemisphere is not None:
+        metadata["hemisphere"] = hemisphere
     return KinematicalArrayProduct.from_array(
         label,
         values,
-        metadata={"projection": label, "fixture": "real-owned-array"},
+        metadata=metadata,
     )
 
 
@@ -71,6 +79,14 @@ def fixture_recipe():
         detector=replace(loaded.detector, shape=(3, 4)),
         figure_size_px=32,
     )
+
+
+def test_recipe_scientific_identity_excludes_the_source_record_locator() -> None:
+    first = replace(fixture_recipe(), source_record="../../phases/forsterite/source.yml")
+    second = replace(fixture_recipe(), source_record="../relocated/source.yml")
+
+    assert first.to_dict()["source_record"] != second.to_dict()["source_record"]
+    assert first.recipe_id == second.recipe_id
 
 
 def fixture_source():
@@ -87,9 +103,15 @@ def fixture_execution() -> KinematicalExecution:
     lower_lambert = upper_lambert + 100.0
     simulation = KinematicalSimulation(
         master_stereographic=_product(
-            "master-stereographic", np.stack((upper_stereo, lower_stereo))
+            "master-stereographic",
+            np.stack((upper_stereo, lower_stereo)),
+            hemisphere="both",
         ),
-        master_lambert=_product("master-lambert", np.stack((upper_lambert, lower_lambert))),
+        master_lambert=_product(
+            "master-lambert",
+            np.stack((upper_lambert, lower_lambert)),
+            hemisphere="both",
+        ),
         detector=_product("detector", np.arange(12, dtype=np.float32).reshape(3, 4)),
         reflector_catalog={
             "master": {"relative_factor": 0.03, "retained_count": 2},
@@ -118,6 +140,47 @@ def fixture_execution() -> KinematicalExecution:
     return KinematicalExecution(simulation=simulation, figures=figures)
 
 
+def single_hemisphere_execution(hemisphere: str) -> KinematicalExecution:
+    both = fixture_execution()
+    plane_index = {"upper": 0, "lower": 1}[hemisphere]
+    simulation = KinematicalSimulation(
+        master_stereographic=_product(
+            "master-stereographic",
+            both.simulation.master_stereographic.intensity[plane_index],
+            hemisphere=hemisphere,
+        ),
+        master_lambert=_product(
+            "master-lambert",
+            both.simulation.master_lambert.intensity[plane_index],
+            hemisphere=hemisphere,
+        ),
+        detector=both.simulation.detector,
+        reflector_catalog=both.simulation.reflector_catalog,
+        projection_ledger={
+            "schema_version": 1,
+            "projections": {
+                "stereographic": {
+                    "hemisphere": hemisphere,
+                    "hemisphere_order": [hemisphere],
+                },
+                "lambert": {
+                    "hemisphere": hemisphere,
+                    "hemisphere_order": [hemisphere],
+                },
+                "detector": {"projection": "gnomonic"},
+            },
+        },
+    )
+    return KinematicalExecution(simulation=simulation, figures=both.figures)
+
+
+def slow_fixture_execution() -> KinematicalExecution:
+    execution = fixture_execution()
+    figures = dict(execution.figures)
+    figures["kinematical-stereographic-bands.svg"] = b"<svg>" + b" " * (8 * 1024 * 1024)
+    return KinematicalExecution(simulation=execution.simulation, figures=figures)
+
+
 def test_kinematical_bundle_has_canonical_inventory_and_hashes(tmp_path: Path) -> None:
     execution = fixture_execution()
     recipe = fixture_recipe()
@@ -138,6 +201,10 @@ def test_kinematical_bundle_has_canonical_inventory_and_hashes(tmp_path: Path) -
             "bytes": (result.path / relative).stat().st_size,
         }
     assert result.manifest_sha256 == _sha256(manifest_path)
+    serialized_recipe = json.loads(
+        (result.path / "recipes/kinematical.json").read_text(encoding="utf-8")
+    )
+    assert serialized_recipe["source_record"] == recipe.source_record
 
     run_identity = {
         "schema_version": 1,
@@ -278,3 +345,151 @@ def test_kinematical_bundle_rejects_existing_partial_and_leaves_it_untouched(
     assert evidence.read_text(encoding="utf-8") == "incomplete evidence"
     assert not (destination / identity.run_id).exists()
     assert list(destination.iterdir()) == [partial]
+
+
+def test_two_simultaneous_writers_have_one_exclusive_owner_and_one_specific_collision(
+    tmp_path: Path,
+) -> None:
+    execution = slow_fixture_execution()
+    recipe = fixture_recipe()
+    source = fixture_source()
+    start = Barrier(2)
+    stop_monitor = Event()
+    ownership_observed = Event()
+
+    def monitor_ownership() -> None:
+        while not stop_monitor.wait(0.001):
+            if list(tmp_path.glob(".kinematical-run-*.publishing")):
+                ownership_observed.set()
+
+    def publish():
+        start.wait(timeout=5.0)
+        try:
+            return write_kinematical_bundle(tmp_path, execution, recipe, source)
+        except Exception as error:
+            return error
+
+    monitor = Thread(target=monitor_ownership)
+    monitor.start()
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        futures = [workers.submit(publish) for _ in range(2)]
+        outcomes = [future.result(timeout=15.0) for future in futures]
+    stop_monitor.set()
+    monitor.join(timeout=5.0)
+    assert not monitor.is_alive()
+
+    publications = [outcome for outcome in outcomes if not isinstance(outcome, Exception)]
+    collisions = [outcome for outcome in outcomes if isinstance(outcome, Exception)]
+    assert ownership_observed.is_set()
+    assert len(publications) == 1
+    assert len(collisions) == 1
+    assert type(collisions[0]) is PartialBundleError
+    assert "publication already in progress" in str(collisions[0])
+    winner = publications[0]
+    assert winner.path == tmp_path / winner.run_id
+    manifest = json.loads((winner.path / "manifest.json").read_text(encoding="utf-8"))
+    for relative, record in manifest["files"].items():
+        assert record["sha256"] == _sha256(winner.path / relative)
+    assert not list(tmp_path.glob(f".{winner.run_id}.partial-*"))
+    assert not list(tmp_path.glob(f".{winner.run_id}.publishing"))
+
+
+def test_mid_write_failure_keeps_partial_removes_owner_and_never_promotes(
+    tmp_path: Path,
+) -> None:
+    recipe = fixture_recipe()
+    source = fixture_source()
+    execution = slow_fixture_execution()
+    identity = write_kinematical_bundle(tmp_path / "identity", fixture_execution(), recipe, source)
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    sabotage_errors: list[BaseException] = []
+
+    def obstruct_manifest() -> None:
+        deadline = time.monotonic() + 5.0
+        ownership = runs / f".{identity.run_id}.publishing"
+        while time.monotonic() < deadline:
+            partials = list(runs.glob(f".{identity.run_id}.partial-*"))
+            if ownership.is_dir() and len(partials) == 1:
+                try:
+                    (partials[0] / "manifest.json").mkdir()
+                except BaseException as error:
+                    sabotage_errors.append(error)
+                return
+            time.sleep(0.001)
+        sabotage_errors.append(AssertionError("publication ownership was not observable"))
+
+    sabotage = Thread(target=obstruct_manifest)
+    sabotage.start()
+    with pytest.raises(IsADirectoryError):
+        write_kinematical_bundle(runs, execution, recipe, source)
+    sabotage.join(timeout=6.0)
+
+    assert not sabotage.is_alive()
+    assert sabotage_errors == []
+    assert not (runs / identity.run_id).exists()
+    partials = list(runs.glob(f".{identity.run_id}.partial-*"))
+    assert len(partials) == 1
+    assert (partials[0] / "manifest.json").is_dir()
+    assert not (runs / f".{identity.run_id}.publishing").exists()
+    with pytest.raises(PartialBundleError, match="partial.*already exists"):
+        write_kinematical_bundle(runs, fixture_execution(), recipe, source)
+
+
+@pytest.mark.parametrize("hemisphere", ["upper", "lower"])
+def test_rank_two_master_preview_records_its_single_hemisphere(
+    tmp_path: Path, hemisphere: str
+) -> None:
+    execution = single_hemisphere_execution(hemisphere)
+    recipe = replace(fixture_recipe(), hemisphere=hemisphere)
+
+    result = write_kinematical_bundle(tmp_path, execution, recipe, fixture_source())
+
+    manifest = json.loads((result.path / "manifest.json").read_text(encoding="utf-8"))
+    ledger = json.loads(
+        (result.path / "diagnostics/projection-ledger.json").read_text(encoding="utf-8")
+    )
+    for label, projection in (
+        ("master-stereographic", "stereographic"),
+        ("master-lambert", "lambert"),
+    ):
+        product = execution.simulation.products()[label]
+        np.testing.assert_array_equal(
+            np.load(result.path / f"products/kinematical-{label}.npy"),
+            product.intensity,
+        )
+        preview = iio.imread(result.path / f"products/kinematical-{label}.png")
+        assert preview.shape == product.intensity.shape
+        assert ledger["projections"][projection]["hemisphere_order"] == [hemisphere]
+        export = manifest["png_exports"][f"products/kinematical-{label}.png"]
+        assert export["hemisphere_order"] == [hemisphere]
+        assert [plane["hemisphere"] for plane in export["planes"]] == [hemisphere]
+
+
+def test_master_preview_rejects_metadata_and_ledger_hemisphere_disagreement(
+    tmp_path: Path,
+) -> None:
+    upper = single_hemisphere_execution("upper")
+    simulation = KinematicalSimulation(
+        master_stereographic=upper.simulation.master_stereographic,
+        master_lambert=upper.simulation.master_lambert,
+        detector=upper.simulation.detector,
+        reflector_catalog=upper.simulation.reflector_catalog,
+        projection_ledger={
+            "schema_version": 1,
+            "projections": {
+                "stereographic": {"hemisphere_order": ["lower"]},
+                "lambert": {"hemisphere_order": ["upper"]},
+                "detector": {"projection": "gnomonic"},
+            },
+        },
+    )
+    execution = KinematicalExecution(simulation=simulation, figures=upper.figures)
+
+    with pytest.raises(ValueError, match="metadata.*projection ledger"):
+        write_kinematical_bundle(
+            tmp_path,
+            execution,
+            replace(fixture_recipe(), hemisphere="upper"),
+            fixture_source(),
+        )

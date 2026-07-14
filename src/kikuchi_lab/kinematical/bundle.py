@@ -141,7 +141,9 @@ def _run_identity(
 def _hemisphere_order(
     execution: KinematicalExecution, label: str, product: KinematicalArrayProduct
 ) -> list[str]:
-    if product.intensity.ndim == 2:
+    if label == "detector":
+        if product.intensity.ndim != 2:
+            raise ValueError("detector product must be a two-dimensional array")
         return []
     projection_name = {
         "master-stereographic": "stereographic",
@@ -154,11 +156,21 @@ def _hemisphere_order(
     if not isinstance(projection, Mapping):
         raise ValueError(f"{label} lacks recorded hemisphere order")
     order = plain_data(projection.get("hemisphere_order"))
+    metadata_hemisphere = plain_data(product.metadata.get("hemisphere"))
+    expected_order = {
+        "upper": ["upper"],
+        "lower": ["lower"],
+        "both": ["upper", "lower"],
+    }.get(metadata_hemisphere)
+    ledger_hemisphere = projection.get("hemisphere")
     if (
-        not isinstance(order, list)
-        or order not in (["upper"], ["lower"], ["upper", "lower"])
-        or len(order) != product.intensity.shape[0]
+        expected_order is None
+        or order != expected_order
+        or (ledger_hemisphere is not None and ledger_hemisphere != metadata_hemisphere)
     ):
+        raise ValueError(f"{label} metadata disagrees with projection ledger hemisphere")
+    plane_count = 1 if product.intensity.ndim == 2 else product.intensity.shape[0]
+    if len(order) != plane_count:
         raise ValueError(f"{label} hemisphere array disagrees with projection ledger")
     return order
 
@@ -301,30 +313,51 @@ def write_kinematical_bundle(
     root = Path(output_root)
     root.mkdir(parents=True, exist_ok=True)
     completed = root / run_id
-    if completed.exists():
-        raise BundleExistsError(f"completed bundle already exists: {completed}")
-    existing_partials = sorted(root.glob(f".{run_id}.partial-*"))
-    if existing_partials:
-        raise PartialBundleError(f"partial bundle already exists: {existing_partials[0]}")
-
-    partial = root / f".{run_id}.partial-{uuid4().hex}"
+    ownership = root / f".{run_id}.publishing"
     try:
-        partial.mkdir()
+        ownership.mkdir()
     except FileExistsError:
-        raise PartialBundleError(f"partial bundle already exists: {partial}") from None
-
-    manifest = _write_contents(partial, execution, recipe, source, run_id, run_identity)
-    manifest_path = partial / "manifest.json"
-    _write_json(manifest_path, manifest)
-    manifest_sha256 = _sha256(manifest_path)
-    _fsync_directory_tree(partial)
-    partial.rename(completed)
+        if completed.exists():
+            raise BundleExistsError(f"completed bundle already exists: {completed}") from None
+        raise PartialBundleError(f"same-run publication already in progress: {ownership}") from None
     _fsync_directory(root)
-    return KinematicalBundleResult(
-        run_id=run_id,
-        path=completed,
-        manifest_sha256=manifest_sha256,
-    )
+
+    try:
+        if completed.exists():
+            raise BundleExistsError(f"completed bundle already exists: {completed}")
+        existing_partials = sorted(root.glob(f".{run_id}.partial-*"))
+        if existing_partials:
+            raise PartialBundleError(f"partial bundle already exists: {existing_partials[0]}")
+
+        partial = root / f".{run_id}.partial-{uuid4().hex}"
+        try:
+            partial.mkdir()
+        except FileExistsError:
+            raise PartialBundleError(f"partial bundle already exists: {partial}") from None
+
+        manifest = _write_contents(partial, execution, recipe, source, run_id, run_identity)
+        manifest_path = partial / "manifest.json"
+        _write_json(manifest_path, manifest)
+        manifest_sha256 = _sha256(manifest_path)
+        _fsync_directory_tree(partial)
+        if completed.exists():
+            raise BundleExistsError(f"completed bundle already exists: {completed}")
+        try:
+            partial.rename(completed)
+        except OSError:
+            if completed.exists():
+                raise BundleExistsError(f"completed bundle already exists: {completed}") from None
+            raise PartialBundleError(
+                f"partial bundle could not be promoted atomically: {partial}"
+            ) from None
+        return KinematicalBundleResult(
+            run_id=run_id,
+            path=completed,
+            manifest_sha256=manifest_sha256,
+        )
+    finally:
+        ownership.rmdir()
+        _fsync_directory(root)
 
 
 __all__ = ["KinematicalBundleResult", "write_kinematical_bundle"]
