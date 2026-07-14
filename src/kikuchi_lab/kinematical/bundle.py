@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import ctypes
+import errno
 import hashlib
 import os
+import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,6 +40,10 @@ _PRODUCT_STEMS = {
     "master-lambert": "products/kinematical-master-lambert",
     "detector": "products/kinematical-detector",
 }
+
+# macOS SDK sys/fcntl.h and sys/stdio.h definitions used by renameatx_np(2).
+_AT_FDCWD = -2
+_RENAME_EXCL = 0x00000004
 
 
 @dataclass(frozen=True)
@@ -293,6 +300,44 @@ def _fsync_directory_tree(root: Path) -> None:
     _fsync_directory(root)
 
 
+def _promote_directory_no_replace(source: Path, destination: Path) -> None:
+    if sys.platform != "darwin":
+        raise NotImplementedError(
+            "atomic no-replace directory promotion requires macOS renameatx_np"
+        )
+    libc = ctypes.CDLL(None, use_errno=True)
+    try:
+        renameatx_np = libc.renameatx_np
+    except AttributeError:
+        raise NotImplementedError(
+            "macOS libc does not export renameatx_np for atomic no-replace promotion"
+        ) from None
+    renameatx_np.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameatx_np.restype = ctypes.c_int
+    ctypes.set_errno(0)
+    result = renameatx_np(
+        _AT_FDCWD,
+        os.fsencode(source),
+        _AT_FDCWD,
+        os.fsencode(destination),
+        _RENAME_EXCL,
+    )
+    if result != 0:
+        error_number = ctypes.get_errno()
+        raise OSError(
+            error_number,
+            os.strerror(error_number),
+            str(source),
+            str(destination),
+        )
+
+
 def _validate_execution(execution: KinematicalExecution) -> None:
     if set(execution.figures) != _FIGURE_NAMES:
         raise ValueError("kinematical execution figure inventory is not canonical")
@@ -320,9 +365,9 @@ def write_kinematical_bundle(
         if completed.exists():
             raise BundleExistsError(f"completed bundle already exists: {completed}") from None
         raise PartialBundleError(f"same-run publication already in progress: {ownership}") from None
-    _fsync_directory(root)
 
     try:
+        _fsync_directory(root)
         if completed.exists():
             raise BundleExistsError(f"completed bundle already exists: {completed}")
         existing_partials = sorted(root.glob(f".{run_id}.partial-*"))
@@ -343,9 +388,9 @@ def write_kinematical_bundle(
         if completed.exists():
             raise BundleExistsError(f"completed bundle already exists: {completed}")
         try:
-            partial.rename(completed)
-        except OSError:
-            if completed.exists():
+            _promote_directory_no_replace(partial, completed)
+        except OSError as error:
+            if error.errno in {errno.EEXIST, errno.ENOTEMPTY} or completed.exists():
                 raise BundleExistsError(f"completed bundle already exists: {completed}") from None
             raise PartialBundleError(
                 f"partial bundle could not be promoted atomically: {partial}"

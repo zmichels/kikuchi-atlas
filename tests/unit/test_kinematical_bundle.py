@@ -12,6 +12,7 @@ import imageio.v3 as iio
 import numpy as np
 import pytest
 
+import kikuchi_lab.kinematical.bundle as bundle_module
 from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
 from kikuchi_lab.kinematical import (
     KinematicalArrayProduct,
@@ -434,6 +435,80 @@ def test_mid_write_failure_keeps_partial_removes_owner_and_never_promotes(
     assert not (runs / f".{identity.run_id}.publishing").exists()
     with pytest.raises(PartialBundleError, match="partial.*already exists"):
         write_kinematical_bundle(runs, fixture_execution(), recipe, source)
+
+
+def test_final_boundary_exclusive_promotion_preserves_injected_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    execution = fixture_execution()
+    recipe = fixture_recipe()
+    source = fixture_source()
+    identity = write_kinematical_bundle(tmp_path / "identity", execution, recipe, source)
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    destination = runs / identity.run_id
+    boundary_calls = 0
+    sentinel_inode: int | None = None
+    real_no_replace = getattr(bundle_module, "_promote_directory_no_replace", None)
+    real_rename = Path.rename
+
+    def inject_destination(source_path: Path, destination_path: Path) -> None:
+        nonlocal boundary_calls, sentinel_inode
+        boundary_calls += 1
+        destination_path.mkdir()
+        sentinel_inode = destination_path.stat().st_ino
+        if real_no_replace is None:
+            real_rename(source_path, destination_path)
+        else:
+            real_no_replace(source_path, destination_path)
+
+    if real_no_replace is None:
+        monkeypatch.setattr(Path, "rename", inject_destination)
+    else:
+        monkeypatch.setattr(bundle_module, "_promote_directory_no_replace", inject_destination)
+
+    with pytest.raises(BundleExistsError, match="completed.*already exists"):
+        write_kinematical_bundle(runs, execution, recipe, source)
+
+    assert boundary_calls == 1
+    assert sentinel_inode is not None
+    assert destination.is_dir()
+    assert destination.stat().st_ino == sentinel_inode
+    assert list(destination.iterdir()) == []
+    partials = list(runs.glob(f".{identity.run_id}.partial-*"))
+    assert len(partials) == 1
+    assert (partials[0] / "manifest.json").is_file()
+    assert not (runs / f".{identity.run_id}.publishing").exists()
+
+
+def test_initial_owner_fsync_failure_removes_ownership(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    execution = fixture_execution()
+    recipe = fixture_recipe()
+    source = fixture_source()
+    identity = write_kinematical_bundle(tmp_path / "identity", execution, recipe, source)
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    failed_once = False
+    real_fsync_directory = bundle_module._fsync_directory
+
+    def fail_initial_root_fsync(path: Path) -> None:
+        nonlocal failed_once
+        if path == runs and not failed_once:
+            failed_once = True
+            raise OSError("injected initial output-root fsync failure")
+        real_fsync_directory(path)
+
+    monkeypatch.setattr(bundle_module, "_fsync_directory", fail_initial_root_fsync)
+
+    with pytest.raises(OSError, match="injected initial output-root fsync failure"):
+        write_kinematical_bundle(runs, execution, recipe, source)
+
+    assert failed_once is True
+    assert not (runs / identity.run_id).exists()
+    assert not list(runs.glob(f".{identity.run_id}.partial-*"))
+    assert not (runs / f".{identity.run_id}.publishing").exists()
 
 
 @pytest.mark.parametrize("hemisphere", ["upper", "lower"])
