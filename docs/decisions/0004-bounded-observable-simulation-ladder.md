@@ -70,7 +70,7 @@ future work.
 | State | Experiment | Changed control | Promotion gate |
 | --- | --- | --- | --- |
 | accepted baseline | proof 257 | none | Existing proof and selected orientation |
-| active | resolution 501 | `halfw: 128 -> 250` | Runtime evidence and projected-pattern comparison |
+| completed; review pending | resolution 501 | `halfw: 128 -> 250` | Runtime evidence complete; user visual review pending |
 | proposed | reflection depth | `dmin: 0.08 -> 0.05 nm` | Resolution rung shows a supported visual/scientific need |
 | proposed | solver rank | `rank: 8 -> 20` | Reflection-depth comparison justifies added dynamical cost |
 | deferred | multi-energy integration | bin width and coverage | Public checkpoint/resume or explicit long-run approval |

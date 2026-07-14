@@ -49,3 +49,10 @@ operationally unreasonable.
   250, retains the proven one-bin physics controls, and records every chunk in
   a persistent journal. Its plan is 63,701 directions, 2,361 reflections, and
   7,963 chunks.
+- The rung completed in 2,104.13 s of dynamical work and published
+  `master-437f865cd0f68384`. The identical final rendering contract produced
+  `local/runs/run-4088ff482ebb77a2`; its matched 257-grid baseline is
+  `local/runs/run-ec3991afa700bc0c`.
+- Preliminary review records sharper fine structure but also greater granular
+  texture and persistent bright zone-axis clipping. The linked acceptance
+  ledger leaves user acceptance and any next-rung promotion explicitly open.
