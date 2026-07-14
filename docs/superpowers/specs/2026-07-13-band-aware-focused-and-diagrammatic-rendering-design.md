@@ -104,6 +104,13 @@ The first slice wraps kikuchipy's public kinematical APIs to emit:
 - detector-projected kinematical patterns for explicit orientations and
   detector geometry.
 
+It also emits an `etched-master` presentation product. This combines two
+deterministic views of the same reciprocal-lattice catalog: a dense
+structure-factor-weighted stereographic master supplies the grayscale field,
+while a stricter reflector subset supplies exact band traces and zone-node
+emphasis. The layers are geometrically co-registered, not blended from
+unrelated finished images.
+
 These products may expose structure-factor amplitude, structure-factor
 intensity, or uniform geometric weighting. Their reflection-selection policy
 is explicit and inspectable. They are crisp crystallographic references and
@@ -154,6 +161,9 @@ Canonical phase + energy + orientation + detector
           v           v          v           v
   stereographic   spherical    Lambert     detector
       master      lines/bands   master     projection
+          \\ exact strong traces /
+                   v
+              etched-master
                          |
                          | optional later hybrid
                          v
@@ -198,6 +208,20 @@ The project adapter converts upstream results to project-owned recipes,
 arrays, tables, and ledgers. It also provides parity checks against direct
 public-library calls. Upstream simulator objects do not become durable project
 contracts.
+
+### Etched-master renderer
+
+The etched-master renderer preserves the circular stereographic hemisphere and
+evaluates the master-pattern array directly. It may apply only a monotonic,
+pointwise tone curve such as linear, gamma, logarithmic, or inverse-hyperbolic-
+sine mapping to spread the grayscale range. It then overlays exact kikuchipy
+band traces from an explicitly stronger reflector-selection threshold.
+
+The recipe records master and overlay thresholds independently, line width and
+alpha, tone-curve parameters, hemisphere, circle mask, rim style, and output
+resolution. It never uses spatial smoothing, neighborhood denoising, generated
+texture, or a raster-derived edge detector. `quiet` is the promoted initial
+style by user decision; `balanced` remains a retained density diagnostic.
 
 ### Reflection catalog
 
@@ -350,10 +374,14 @@ products/
   kinematical-master-stereographic.png
   kinematical-master-lambert.npy
   kinematical-master-lambert.png
-  kinematical-spherical-bands.svg
-  kinematical-spherical-bands.png
   kinematical-detector.npy
   kinematical-detector.png
+figures/
+  kinematical-stereographic-bands.svg
+  kinematical-spherical-bands.png
+  kinematical-detector-overlay.png
+  etched-master-balanced.png
+  etched-master-quiet.png
   gallery-focused.npy
   gallery-focused.tif
   gallery-focused.png
@@ -426,6 +454,8 @@ Implementation remains test-driven.
 ### Unit tests
 
 - kinematical recipe, reflector-selection, and projection-ledger validation;
+- monotonic etched-master tone mapping and independent master/overlay cutoff
+  validation;
 - reflection-family collapse and stable identity;
 - orthorhombic metric and plane-normal calculations;
 - detector projection under known orientations and projection centers;
@@ -462,6 +492,12 @@ policies across stereographic or spherical lines, master intensity, and one
 detector projection. The selected kinematical products are inspected at native
 scale with known-axis overlays before any hybrid reconstruction begins.
 
+The same review validates `etched-master-quiet` at native scale and retains
+`etched-master-balanced` as its denser diagnostic. Acceptance favors a legible
+hierarchy of broad grayscale bands, exact strong traces, unsmeared nodes, a
+clean stereographic rim, and useful quiet regions without erasing real weaker
+master-pattern structure.
+
 The retained forsterite dynamical image is then reviewed at fit-to-window and
 100 percent. Hybrid acceptance requires continuous band hierarchy, quiet
 unsupported regions, sharp edges without halos, nodes with internal tonal
@@ -479,15 +515,17 @@ approves the comparison.
    crystallographic or projection mathematics.
 3. Compare reflector-selection policies with stereographic, spherical, master,
    and detector figures; retain the visual and numeric diagnostics.
-4. Emit a reproducible forsterite kinematical artifact bundle and review it at
+4. Render balanced and quiet etched-master candidates from co-registered
+   master and exact-trace layers.
+5. Emit a reproducible forsterite kinematical artifact bundle and review it at
    native scale with frame and known-axis checks.
-5. Decide from those figures whether custom evidence-guided reconstruction is
+6. Decide from those figures whether custom evidence-guided reconstruction is
    still needed for the desired dynamical light/dark aesthetic.
-6. If needed, implement detector-space `BandModel` geometry and inspect fitted
+7. If needed, implement detector-space `BandModel` geometry and inspect fitted
    evidence before rendering a replacement image.
-7. Render and compare `diagrammatic` and `gallery-focused` products with the
+8. Render and compare `diagrammatic` and `gallery-focused` products with the
    kinematical and original dynamical references.
-8. Only on user acceptance, remove `fine_detail_attenuate` from the promoted
+9. Only on user acceptance, remove `fine_detail_attenuate` from the promoted
    recipe and update the milestone ledger.
 
 This order captures kikuchipy's low-hanging fruit immediately and makes the
@@ -506,9 +544,15 @@ The first slice does not include:
 - phase-general acceptance beyond keeping the contracts phase-neutral;
 - a Leaflet, MapLibre, or other terrestrial web-map stack; or
 - generated imagery in scientific, schematic-source, or fabrication-source
-  products.
+  products; or
+- an interactive spherical viewer, GLB model, displaced sphere, or
+  fabrication-ready spherical mesh.
 
 After detector-space validation, the same angular `BandModel` can move to the
 Lambert master. That promotion would allow one focused phase model to generate
 many detector orientations, a spherical luminous-band map, and later tactile
 or 3D-print products without re-estimating each rectangular image.
+
+An interactive, freely rotatable sphere and openable GLB/VTK viewing model are
+parked separately from fabrication geometry. They supplement rather than
+replace the stereographic, Lambert, and detector projections.

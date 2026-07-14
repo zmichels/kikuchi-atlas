@@ -6,12 +6,15 @@ status: active
 parent:
 children:
   - KIKU-F001
+  - KIKU-F002
 created: 2026-07-12
 priority: P0
 tags: [forsterite, milestone]
 links:
   - ../superpowers/specs/2026-07-12-kikuchi-companion-design.md
   - ../superpowers/plans/2026-07-12-exceptional-forsterite-pattern.md
+  - ../superpowers/specs/2026-07-13-band-aware-focused-and-diagrammatic-rendering-design.md
+  - ../superpowers/plans/2026-07-13-kikuchipy-kinematical-reference-products.md
 evidence:
   - ../superpowers/specs/2026-07-12-kikuchi-companion-design.md
   - ../acceptance/forsterite-milestone.md

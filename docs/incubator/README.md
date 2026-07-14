@@ -30,6 +30,7 @@ Until then, incubator work must not change the scope or acceptance state of
 | [EBSD-map orientations](ebsd-map-orientations.md) | Rendering orientations imported from indexed maps |
 | [Detector and acquisition model](detector-acquisition-model.md) | Richer instrument-response and acquisition semantics |
 | [Print geometry](print-geometry.md) | Planar relief and spherical printable products |
+| [Interactive spherical view](interactive-spherical-view.md) | Rotatable master-pattern sphere and openable viewing model |
 | [Pattern-processing contracts](pattern-processing-contracts.md) | Reusable EBSD-pattern processing engine boundaries |
 | [ebsdx integration](ebsdx-integration.md) | Product or plugin integration with ebsdx and ebsdx-rs |
 | [SHT and spherical harmonics](sht-spherical-harmonic.md) | Compact master-pattern adapters and harmonic diagnostics |
@@ -40,7 +41,7 @@ Until then, incubator work must not change the scope or acceptance state of
 ## Present boundary
 
 These records do not authorize new datasets, forks, upstream modifications,
-ebsdx integration, print exports, additional phase deliverables, or an
-independent simulator. The active milestone remains one accepted, reproducible
-forsterite pattern through the workflow defined in the
+ebsdx integration, 3D viewing or print exports, additional phase deliverables,
+or an independent simulator. The active milestone remains one accepted,
+reproducible forsterite pattern through the workflow defined in the
 [approved design](../superpowers/specs/2026-07-12-kikuchi-companion-design.md).

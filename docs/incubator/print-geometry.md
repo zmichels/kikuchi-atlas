@@ -49,6 +49,8 @@ manufacturable geometry.
   reference STL observation and present planar scope.
 - [SHT and spherical harmonics](sht-spherical-harmonic.md) records a possible
   future route to continuous spherical source fields.
+- [Interactive spherical view](interactive-spherical-view.md) separates an
+  openable viewing model from topology- and unit-constrained print geometry.
 
 ## Promotion trigger
 
