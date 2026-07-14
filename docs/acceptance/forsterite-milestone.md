@@ -5,6 +5,18 @@
 - Orientation selection: `orientation-selection-0903bbee65fa3896`
 - Current user acceptance: Pending
 
+## Kinematical native-scale gate
+
+The half-size 1024 production bundle
+`kinematical-run-d1dab780ec480f72` is retained locally with its manifest and
+native-scale review inventory. The promoted style remains `quiet`, while
+`balanced` remains a density diagnostic. Machine evidence and the still-empty
+human review checklist are recorded in the
+[forsterite kinematical acceptance draft](kinematical-forsterite.md).
+
+Human visual decision: **pending**. The draft does not yet choose
+`pure-kinematical-refinement` or `plan-evidence-guided-hybrid`.
+
 ## Resolution-only source experiment
 
 The first bounded production-source rung changed only Lambert sampling from

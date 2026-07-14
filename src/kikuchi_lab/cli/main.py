@@ -40,6 +40,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     proof.add_argument("--master-product", required=True)
     proof.add_argument("--source", required=True)
     proof.add_argument("--output", required=True)
+    render_kinematical_parser = subparsers.add_parser(
+        "render-kinematical",
+        help="Render a standalone kinematical reference bundle.",
+    )
+    render_kinematical_parser.add_argument("--recipe", required=True)
+    render_kinematical_parser.add_argument("--output", required=True)
     select_orientation = subparsers.add_parser(
         "select-orientation",
         help="Record an immutable human orientation decision for a sealed proof.",
@@ -183,6 +189,33 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "contact_sheet": str(result.contact_sheet),
                     "candidate_count": len(result.candidate_ids),
                     "elapsed_seconds": result.elapsed_seconds,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "render-kinematical":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_kinematical
+
+        try:
+            result = render_kinematical(
+                recipe_path=args.recipe,
+                output_root=args.output,
+            )
+        except (BundleExistsError, PartialBundleError, OSError, ValueError) as error:
+            print(f"kinematical render failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "path": str(result.path),
+                    "recipe_id": result.recipe_id,
+                    "master_reflector_count": result.master_reflector_count,
+                    "figures": result.figure_names,
                 },
                 indent=2,
                 sort_keys=True,
