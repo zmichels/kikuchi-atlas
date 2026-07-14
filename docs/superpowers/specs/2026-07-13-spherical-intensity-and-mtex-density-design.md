@@ -1,7 +1,7 @@
 ---
 title: Spherical Intensity and MTEX Density Bridge Design
 date: 2026-07-13
-status: review
+status: approved
 project_prefix: KIKU
 depends_on: KIKU-F002
 milestone: Exceptional Forsterite Pattern
@@ -110,6 +110,10 @@ The axial table stores one deterministic representative per antipodal pair:
 retain `z > 0`; on the equator retain `x > 0`, plus the single half-axis where
 `x = 0` and `y >= 0`. Its intensity channels are the pairwise means. The table
 records this representative rule and the source indices of both members.
+Axial derivation occurs from the original two source arrays before lower-
+equator omission; an equatorial pair therefore retains the reversed lower
+source index even though that duplicate seam node is absent from the canonical
+directional table.
 
 ### Derived density cloud
 
@@ -311,12 +315,20 @@ git.
 
 ## MTEX Reference Workflow
 
-The generated script targets the local MTEX 6.1.1 installation and performs
-these steps:
+The generated script targets MTEX 6.1.1 and obtains its machine-local root from
+the `KIKUCHI_MTEX_ROOT` environment variable so script bytes and scientific
+identity never contain an absolute local path. It performs these steps:
 
 ```matlab
-addpath('/Users/Z/Documents/MATLAB/mtex-6.1.1');
+bundleRoot = fileparts(mfilename('fullpath'));
+mtexRoot = getenv('KIKUCHI_MTEX_ROOT');
+assert(isfolder(mtexRoot));
+originalFolder = pwd;
+restoreFolder = onCleanup(@() cd(originalFolder));
+cd(mtexRoot);
+addpath(mtexRoot);
 startup_mtex('noMenu');
+cd(bundleRoot);
 
 T = readtable('forsterite-s2-intensity.csv');
 xyz = [T.x, T.y, T.z];

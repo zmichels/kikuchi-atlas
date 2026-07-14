@@ -7,6 +7,7 @@ parent:
 children:
   - KIKU-F001
   - KIKU-F002
+  - KIKU-F003
 created: 2026-07-12
 priority: P0
 tags: [forsterite, milestone]
@@ -15,6 +16,8 @@ links:
   - ../superpowers/plans/2026-07-12-exceptional-forsterite-pattern.md
   - ../superpowers/specs/2026-07-13-band-aware-focused-and-diagrammatic-rendering-design.md
   - ../superpowers/plans/2026-07-13-kikuchipy-kinematical-reference-products.md
+  - ../superpowers/specs/2026-07-13-spherical-intensity-and-mtex-density-design.md
+  - ../superpowers/plans/2026-07-13-spherical-intensity-and-mtex-density-bridge.md
 evidence:
   - ../superpowers/specs/2026-07-12-kikuchi-companion-design.md
   - ../acceptance/forsterite-milestone.md

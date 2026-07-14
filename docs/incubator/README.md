@@ -34,6 +34,7 @@ Until then, incubator work must not change the scope or acceptance state of
 | [Pattern-processing contracts](pattern-processing-contracts.md) | Reusable EBSD-pattern processing engine boundaries |
 | [ebsdx integration](ebsdx-integration.md) | Product or plugin integration with ebsdx and ebsdx-rs |
 | [SHT and spherical harmonics](sht-spherical-harmonic.md) | Compact master-pattern adapters and harmonic diagnostics |
+| [Texture-weighted spherical intensity](texture-weighted-spherical-intensity.md) | Later ODF-weighted aggregate of a validated single-crystal S2 field |
 | [EMsoft cross-validation](emsoft-cross-validation.md) | Independent dynamical-source comparison |
 | [Independent engine](independent-engine.md) | A later engine informed by companion-project evidence |
 | [Decision-state diagnostics](decision-state-diagnostics.md) | Linked scientific decisions and state-transition diagnostics |

@@ -517,7 +517,16 @@ ledger = {
         "handedness": "right-handed",
     },
     "projections": {
-        "stereographic": {"hemisphere": "both", "hemisphere_order": ["upper", "lower"], "origin": "projection center", "wrap": "none"},
+        "stereographic": {
+            "hemisphere": "both",
+            "hemisphere_order": ["upper", "lower"],
+            "origin": "projection center",
+            "row_axis": "Y ascending -1 to +1",
+            "column_axis": "X ascending -1 to +1",
+            "grid_formula": "coordinate[k] = -1 + 2*k/(N-1)",
+            "valid_domain": "X^2 + Y^2 <= 1",
+            "wrap": "none",
+        },
         "lambert": {"hemisphere": "both", "hemisphere_order": ["upper", "lower"], "origin": "square center", "wrap": "none"},
         "detector": {"projection": "gnomonic", "pc_convention": recipe.detector.pc_convention},
     },
