@@ -305,10 +305,9 @@ mtexFig.nextAxis(startAxis);
 [~, axesHandles] = scatter(vectors, values, 'complete', ...
   'projection', 'earea', 'MarkerSize', 8);
 assertOwnedAxes(mtexFig, axesHandles);
-mtexFig.drawNow('figSize', 'large');
 applyFixedProjection(axesHandles, colorLimits);
 applyAxesTitle(axesHandles, label);
-set(mtexFig.parent, 'Visible', 'off');
+finalizeMtexLayout(mtexFig);
 end
 
 function axesHandles = plotCompletePoints(mtexFig, startAxis, vectors, ...
@@ -318,10 +317,9 @@ mtexFig.nextAxis(startAxis);
 [~, axesHandles] = scatter(vectors, 'complete', ...
   'projection', 'earea', 'MarkerSize', 2);
 assertOwnedAxes(mtexFig, axesHandles);
-mtexFig.drawNow('figSize', 'large');
 applyFixedProjection(axesHandles, colorLimits);
 applyAxesTitle(axesHandles, label);
-set(mtexFig.parent, 'Visible', 'off');
+finalizeMtexLayout(mtexFig);
 end
 
 function plotOwnedSphere(mtexFig, rawField, displayResolutionDeg, ...
@@ -331,9 +329,15 @@ sphereAxis = mtexFig.nextAxis(1);
 plot3d(rawField, 'resolution', displayResolutionDeg * degree, ...
   'parent', sphereAxis);
 assertOwnedAxes(mtexFig, sphereAxis);
-mtexFig.drawNow('figSize', 'large');
 applyFixedCamera3d(sphereAxis, colorLimits);
 title(sphereAxis, label);
+finalizeMtexLayout(mtexFig);
+end
+
+function finalizeMtexLayout(mtexFig)
+fixedPosition = [100 100 1600 900];
+mtexFig.drawNow('position', fixedPosition);
+assert(isequal(mtexFig.parent.Position, fixedPosition));
 set(mtexFig.parent, 'Visible', 'off');
 end
 

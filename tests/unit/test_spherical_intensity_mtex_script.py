@@ -320,6 +320,22 @@ def test_every_figure_installs_cleanup_immediately_and_stays_invisible() -> None
     )
 
 
+def test_mtex_layout_finalization_preserves_the_fixed_evidence_canvas() -> None:
+    script = generate_mtex_script(
+        spherical_recipe(), expected_node_count=97, axial_available=True
+    )
+
+    # MTEX's figSize branch derives dimensions from MonitorPositions.  Evidence
+    # export instead supplies the fixed position supported by drawNow.m.
+    assert "drawNow('figSize'" not in script
+    assert "MonitorPositions" not in script
+    assert "function finalizeMtexLayout(mtexFig)" in script
+    assert "fixedPosition = [100 100 1600 900];" in script
+    assert "mtexFig.drawNow('position', fixedPosition);" in script
+    assert "assert(isequal(mtexFig.parent.Position, fixedPosition));" in script
+    assert script.count("finalizeMtexLayout(mtexFig);") == 3
+
+
 def test_density_interpolant_has_its_own_exact_node_metric_and_policy_field() -> None:
     script = generate_mtex_script(
         spherical_recipe(), expected_node_count=97, axial_available=True
