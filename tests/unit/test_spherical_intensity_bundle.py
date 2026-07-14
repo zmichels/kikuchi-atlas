@@ -758,36 +758,86 @@ def test_failed_writer_leaves_diagnostic_partial_but_never_promotes(
     assert not [path for path in children if not path.name.startswith(".s2-partial-")]
 
 
-def test_partial_suffix_is_rejected_and_controlled_failure_status_is_preserved(
+@pytest.mark.parametrize(
+    "status", ["passed", "not-requested", "unavailable", "failed", "timed-out"]
+)
+def test_active_partial_is_rejected_for_every_mtex_status(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    status: str,
 ) -> None:
-    stage = _stage(tmp_path)
+    if status == "passed":
+        stage = _stage_with_registered_script(tmp_path, monkeypatch)
+        mtex_result = _passed_mtex_result(stage)
+    else:
+        stage = _stage(tmp_path)
+        mtex_result = (
+            None if status == "not-requested" else _nonpassed_mtex_result(status)
+        )
     (stage.staging_path / "future-output.partial").write_text("incomplete", encoding="utf-8")
 
     with pytest.raises(SphericalBundlePartialError, match=r"\.partial"):
-        finalize_spherical_bundle(stage, mtex_result=None)
+        finalize_spherical_bundle(stage, mtex_result=mtex_result)
     assert stage.staging_path.is_dir()
-    status = json.loads(
+    status_record = json.loads(
         (stage.staging_path / "diagnostics/mtex-status.json").read_text(encoding="utf-8")
     )
-    assert status["status"] == "finalization-failed"
-    assert status["failure_kind"] == "partial-artifact"
+    assert status_record["status"] == "finalization-failed"
+    assert status_record["failure_kind"] == "partial-artifact"
     assert not [path for path in tmp_path.iterdir() if path.name.startswith("s2-run-")]
 
 
-@pytest.mark.parametrize("status", ["failed", "timed-out"])
-def test_quarantined_partial_is_inert_manifested_failure_evidence(
-    tmp_path: Path, status: str
+@pytest.mark.parametrize(
+    ("status", "may_publish"),
+    [
+        ("passed", False),
+        ("not-requested", False),
+        ("unavailable", False),
+        ("failed", True),
+        ("timed-out", True),
+    ],
+)
+def test_quarantined_partial_requires_validated_failure_or_timeout_status(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    status: str,
+    may_publish: bool,
 ) -> None:
-    stage = _stage(tmp_path)
+    if status == "passed":
+        stage = _stage_with_registered_script(tmp_path, monkeypatch)
+        mtex_result = _passed_mtex_result(stage)
+    else:
+        stage = _stage(tmp_path)
+        mtex_result = (
+            None if status == "not-requested" else _nonpassed_mtex_result(status)
+        )
     quarantine = stage.staging_path / "diagnostics/quarantine/density.partial"
     quarantine.parent.mkdir(parents=True, exist_ok=True)
     quarantine.write_text("retained partial evidence\n", encoding="utf-8")
 
-    result = finalize_spherical_bundle(
-        stage,
-        mtex_result=_nonpassed_mtex_result(status),
-    )
+    if not may_publish:
+        (stage.staging_path / "diagnostics/mtex-status.json").write_text(
+            canonical_json(
+                {
+                    "schema_version": 1,
+                    "requested_profile": "smoke",
+                    "status": "failed",
+                }
+            ),
+            encoding="utf-8",
+        )
+        with pytest.raises(SphericalBundlePartialError, match="quarantined.*partial"):
+            finalize_spherical_bundle(stage, mtex_result=mtex_result)
+        assert stage.staging_path.is_dir()
+        assert not list(tmp_path.glob("s2-run-*"))
+        failure = json.loads(
+            (stage.staging_path / "diagnostics/mtex-status.json").read_text()
+        )
+        assert failure["status"] == "finalization-failed"
+        assert failure["failure_kind"] == "quarantined-partial-status"
+        return
+
+    result = finalize_spherical_bundle(stage, mtex_result=mtex_result)
     assert result.mtex_status == status
     assert (result.path / "diagnostics/quarantine/density.partial").read_text() == (
         "retained partial evidence\n"

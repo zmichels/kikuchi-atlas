@@ -881,18 +881,23 @@ def _validate_stage(stage: SphericalBundleStage) -> dict[str, Any]:
     return ledger
 
 
-def _partial_files(root: Path) -> list[Path]:
-    return sorted(
+def _partition_partial_files(root: Path) -> tuple[list[Path], list[Path]]:
+    active: list[Path] = []
+    quarantined: list[Path] = []
+    for path in sorted(
         (
-            path
-            for path in root.rglob("*")
-            if path.is_file()
-            and path.name.endswith(".partial")
-            and tuple(path.relative_to(root).parts[:2])
-            != ("diagnostics", "quarantine")
+            candidate
+            for candidate in root.rglob("*")
+            if candidate.is_file() and candidate.name.endswith(".partial")
         ),
-        key=lambda path: str(path.relative_to(root)),
-    )
+        key=lambda candidate: str(candidate.relative_to(root)),
+    ):
+        relative = path.relative_to(root)
+        if tuple(relative.parts[:2]) == ("diagnostics", "quarantine"):
+            quarantined.append(path)
+        else:
+            active.append(path)
+    return active, quarantined
 
 
 def _structural_mtex_result(result: object) -> dict[str, object]:
@@ -1264,10 +1269,12 @@ def finalize_spherical_bundle(
 ) -> SphericalIntensityBundleResult:
     """Inventory, fsync, and atomically promote a validated S2 exchange stage."""
     ledger = _validate_stage(stage)
-    partials = _partial_files(stage.staging_path)
-    if partials:
+    active_partials, quarantined_partials = _partition_partial_files(
+        stage.staging_path
+    )
+    if active_partials:
         _write_failure_status(stage, "partial-artifact")
-        relative = partials[0].relative_to(stage.staging_path)
+        relative = active_partials[0].relative_to(stage.staging_path)
         raise SphericalBundlePartialError(f"staged file still ends in .partial: {relative}")
 
     try:
@@ -1278,6 +1285,13 @@ def finalize_spherical_bundle(
     except (TypeError, ValueError):
         _write_failure_status(stage, "invalid-mtex-result")
         raise
+    if quarantined_partials and diagnostic["status"] not in {"failed", "timed-out"}:
+        _write_failure_status(stage, "quarantined-partial-status")
+        relative = quarantined_partials[0].relative_to(stage.staging_path)
+        raise SphericalBundlePartialError(
+            "quarantined .partial evidence requires validated failed or timed-out "
+            f"MTEX status: {relative}"
+        )
     run_identity: dict[str, object] = {
         "schema_version": 1,
         "field_id": stage.field_id,
