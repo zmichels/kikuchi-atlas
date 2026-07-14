@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from types import MappingProxyType
 
@@ -13,12 +13,23 @@ from kikuchi_lab.model.identity import plain_data, stable_id
 from kikuchi_lab.model.recipes import DetectorRecipe, Orientation
 
 
+class _FrozenList(tuple):
+    """Immutable plain-data sequence that compares by value with JSON lists."""
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Sequence) or isinstance(other, (str, bytes, bytearray)):
+            return False
+        return tuple(self) == tuple(other)
+
+    __hash__ = tuple.__hash__
+
+
 def _freeze(value: object) -> object:
     plain = plain_data(value)
     if isinstance(plain, dict):
         return MappingProxyType({key: _freeze(item) for key, item in plain.items()})
     if isinstance(plain, list):
-        return tuple(_freeze(item) for item in plain)
+        return _FrozenList(_freeze(item) for item in plain)
     return plain
 
 
@@ -125,7 +136,7 @@ class KinematicalSimulation:
     master_stereographic: KinematicalArrayProduct
     master_lambert: KinematicalArrayProduct
     detector: KinematicalArrayProduct
-    reflector_catalog: tuple[Mapping[str, object], ...]
+    reflector_catalog: Mapping[str, object] | tuple[Mapping[str, object], ...]
     projection_ledger: Mapping[str, object]
 
     def __post_init__(self) -> None:
