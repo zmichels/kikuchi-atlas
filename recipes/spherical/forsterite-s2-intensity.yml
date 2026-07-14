@@ -1,0 +1,33 @@
+schema_version: 1
+name: forsterite-s2-intensity
+source_kinematical_recipe: ../kinematical/forsterite-etched-master.yml
+profiles:
+  smoke:
+    half_size: 32
+    point_count: 10000
+    sampling_resolution_deg: 1.0
+    timeout_seconds: 300
+  acceptance:
+    half_size: 128
+    point_count: 100000
+    sampling_resolution_deg: 0.25
+    timeout_seconds: 900
+density:
+  name: quiet-density-v1
+  low_percentile: 5.0
+  high_percentile: 99.85
+  exponent: 1.5
+tolerances:
+  disk_epsilon_multiplier: 32
+  unit_norm_max: 5.0e-13
+  stereo_round_trip_rad_max: 1.0e-10
+  equator_normalized_max: 1.0e-6
+  axial_normalized_rms_max: 1.0e-6
+  axial_normalized_max: 1.0e-5
+  mtex_node_normalized_max: 1.0e-8
+rng_seed: 20260713
+rng_generator: twister
+csv_float_format: "%.17g"
+display_resolution_deg: 1.0
+emit_axial: true
+expected_mtex_version: mtex-6.1.1
