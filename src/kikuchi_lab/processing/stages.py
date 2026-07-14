@@ -325,6 +325,30 @@ def multiscale_detail(
     )
 
 
+def fine_detail_attenuate(
+    image: Any, *, sigma_px: float, residual_retention: float
+) -> StageResult:
+    """Retain broad intensity structure while attenuating fine residual texture."""
+    sigma = _finite("sigma_px", sigma_px)
+    retention = _finite("residual_retention", residual_retention)
+    if sigma <= 0:
+        raise ValueError("sigma_px must be positive")
+    if not 0 <= retention <= 1:
+        raise ValueError("residual_retention must be in [0, 1]")
+
+    def operation(source: np.ndarray) -> np.ndarray:
+        broad = filters.gaussian(source, sigma=sigma, preserve_range=True)
+        return broad + retention * (source - broad)
+
+    return _execute(
+        "fine_detail_attenuate",
+        image,
+        {"sigma_px": sigma, "residual_retention": retention},
+        operation,
+        analyzer=_high_frequency_analyzer(stage="fine_detail_attenuate"),
+    )
+
+
 def unsharp(
     image: Any, *, radius_px: float, amount: float, threshold: float
 ) -> StageResult:
@@ -507,6 +531,7 @@ STAGE_FUNCTIONS: Mapping[str, Callable[..., StageResult]] = MappingProxyType(
         "robust_normalize": robust_normalize,
         "local_contrast": local_contrast,
         "multiscale_detail": multiscale_detail,
+        "fine_detail_attenuate": fine_detail_attenuate,
         "unsharp": unsharp,
         "tone_map": tone_map,
         "downsample": downsample,

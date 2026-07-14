@@ -16,6 +16,7 @@ _PARAMETERS = {
     "robust_normalize": {"low_percentile", "high_percentile"},
     "local_contrast": {"clip_limit", "kernel_size", "input_domain"},
     "multiscale_detail": {"scales_px", "gains"},
+    "fine_detail_attenuate": {"sigma_px", "residual_retention"},
     "unsharp": {"radius_px", "amount", "threshold"},
     "tone_map": {"black", "white", "gamma"},
     "downsample": {"shape"},
@@ -51,7 +52,13 @@ def _validate_stage_parameters(
         raise ValueError(f"unknown processing stage: {name}")
     if set(parameters) != expected:
         raise ValueError(f"{name} parameters must be exactly {sorted(expected)}")
-    if name in {"background_divide", "robust_normalize", "unsharp", "tone_map"}:
+    if name in {
+        "background_divide",
+        "robust_normalize",
+        "fine_detail_attenuate",
+        "unsharp",
+        "tone_map",
+    }:
         for key, value in parameters.items():
             _numeric(key, value)
     elif name == "local_contrast":

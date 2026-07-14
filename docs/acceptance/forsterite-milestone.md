@@ -46,7 +46,7 @@ within-band structure.
 - Final rendering completed in 18.47 s at a 3072 x 4096 supersampled detector
   projection and 1536 x 2048 final product size.
 
-## Preliminary visual review
+## Resolution-rung visual review
 
 Resolution alone clearly removes some coarse source sampling and makes narrow
 bands and fine crossings more continuous. It also exposes substantially more
@@ -59,10 +59,31 @@ not by itself close the aesthetic acceptance gate.
 
 ![501-grid gallery rung](../../local/runs/run-4088ff482ebb77a2/products/gallery-crisp.png)
 
+## Deliberately idealized gallery treatment
+
+The retained 501 master now feeds two explicit processing lineages. The
+`scientific-clean` product remains a restrained scientific rendering. The
+separately labeled `gallery-crisp` product adds a bounded fine-detail
+attenuation stage before contrast and thresholded sharpening. This calms
+pixel-scale simulated texture without drawing bands or changing the simulated
+orientation.
+
+The first cleanup candidate (`run-aec1bcc29b178f05`) reduced the gallery
+95th-percentile gradient from 0.03361 to 0.01724 and was judged too soft. The
+balanced candidate, promoted as final run `run-5d91b13abae36c22`, retains half
+of the fine residual, restores more mid-frequency energy than the soft
+candidate (0.002629 versus 0.002075), and reserves highlight headroom: its
+floating-point gallery maximum is 0.9603 rather than a clipped 1.0. It is
+therefore the promoted default gallery recipe.
+
+![Original 501 gallery treatment](../../local/runs/run-4088ff482ebb77a2/products/gallery-crisp.png)
+
+![Balanced idealized gallery treatment](../../local/runs/run-5d91b13abae36c22/products/gallery-crisp.png)
+
 ## Pending decision
 
-User review should decide whether the 501 source becomes the retained spatial
-baseline. No `dmin`, rank, or multi-energy promotion is approved yet. The
-coordinator recommendation is to retain the 501 result as useful resolution
-evidence while holding further solver cost until the source-detail versus
-processing-scale tradeoff is reviewed.
+User review should decide whether the balanced idealized treatment closes the
+first-pattern aesthetic gate. The 501 source is retained as the spatial
+baseline for that review. No `dmin`, rank, or multi-energy promotion is
+approved yet; further solver cost remains parked until the source-detail versus
+processing-scale tradeoff warrants another rung.

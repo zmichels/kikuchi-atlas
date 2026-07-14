@@ -1,6 +1,6 @@
 schema_version: 1
 name: forsterite-selected-final
-intent: Reproduce the selected forsterite geometry with restrained acquisition clarity and a deliberately crisp gallery branch.
+intent: Reproduce the selected forsterite geometry with a scientific branch and a separately labeled, clarity-forward gallery branch.
 quality_contract:
   final_minimum_long_edge_px: 2048
   final_profile: production-target
@@ -59,29 +59,33 @@ processing:
     - name: downsample
       parameters:
         shape: detector_native
+    - name: fine_detail_attenuate
+      parameters:
+        sigma_px: 0.6
+        residual_retention: 0.5
     - name: robust_normalize
       parameters:
         low_percentile: 0.0
         high_percentile: 100.0
     - name: local_contrast
       parameters:
-        clip_limit: 0.006
-        kernel_size: [28, 28]
+        clip_limit: 0.0045
+        kernel_size: [32, 32]
         input_domain: clip_0_1
     - name: unsharp
       parameters:
-        radius_px: 1.2
-        amount: 0.06
-        threshold: 0.025
+        radius_px: 1.6
+        amount: 0.14
+        threshold: 0.035
     - name: tone_map
       parameters:
-        black: 0.0
-        white: 1.0
-        gamma: 0.98
+        black: -0.02
+        white: 1.06
+        gamma: 1.0
 clarity:
   reference_role: descriptive-only-not-calibrated-truth
   line_overlays: false
   suppress_proof_speckle: true
   smooth_band_interiors: true
-  coherent_detail: restrained
-  node_emphasis: restrained
+  coherent_detail: broad-band-thresholded
+  node_emphasis: highlight-headroom

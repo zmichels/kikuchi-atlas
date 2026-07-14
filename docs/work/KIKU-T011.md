@@ -28,8 +28,8 @@ operationally unreasonable.
 
 ## Acceptance Criteria
 
-- [ ] GPU evidence proves the requested authoritative backend ran without substitution.
-- [ ] Scientific diagnostics and native-scale visual review are recorded.
+- [x] GPU evidence proves the requested authoritative backend ran without substitution.
+- [x] Scientific diagnostics and native-scale visual review are recorded.
 - [ ] The user-accepted final bundle, recipe, and rendered image are linked here.
 - [x] CPU-only preflight, explicit multi-bin opt-in, and durable progress journaling prevent another opaque production launch.
 
@@ -54,5 +54,12 @@ operationally unreasonable.
   `local/runs/run-4088ff482ebb77a2`; its matched 257-grid baseline is
   `local/runs/run-ec3991afa700bc0c`.
 - Preliminary review records sharper fine structure but also greater granular
-  texture and persistent bright zone-axis clipping. The linked acceptance
-  ledger leaves user acceptance and any next-rung promotion explicitly open.
+  texture and persistent bright zone-axis clipping. A project-owned gallery
+  cleanup stage now attenuates only fine residual detail before bounded local
+  contrast and thresholded sharpening. The balanced result is
+  `local/runs/run-5d91b13abae36c22`; the scientific branch remains separate.
+- The linked acceptance ledger leaves user acceptance and any physics-cost
+  next-rung promotion explicitly open.
+- Cleanup verification: 45 focused processing/final/reproduction tests and the
+  complete fast gate of 384 tests passed; Ruff, the 14-item work tracker, and
+  whitespace validation also passed.

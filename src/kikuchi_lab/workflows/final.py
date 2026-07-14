@@ -522,6 +522,8 @@ def _scaled_parameters(
         ]
     if name == "multiscale_detail":
         parameters["scales_px"] = [float(value) * scale for value in parameters["scales_px"]]
+    if name == "fine_detail_attenuate":
+        parameters["sigma_px"] = float(parameters["sigma_px"]) * scale
     if name == "unsharp":
         parameters["radius_px"] = float(parameters["radius_px"]) * scale
     return parameters

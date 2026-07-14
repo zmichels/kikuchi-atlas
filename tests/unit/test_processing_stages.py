@@ -3,6 +3,8 @@ import json
 import numpy as np
 import pytest
 
+from kikuchi_lab.processing import stages as stage_module
+
 from kikuchi_lab.processing import (
     HIGH_FREQUENCY_GAIN_CEILING,
     background_divide,
@@ -81,6 +83,37 @@ def test_multiscale_detail_has_zero_response_on_constant_image():
     result = multiscale_detail(source, scales_px=(1.0, 3.0), gains=(0.7, 0.3))
 
     np.testing.assert_allclose(result.intensity, source, atol=1e-6)
+
+
+def test_fine_detail_attenuate_preserves_constant_fields():
+    source = np.full((40, 48), 0.37, dtype=np.float32)
+
+    result = stage_module.fine_detail_attenuate(
+        source, sigma_px=1.5, residual_retention=0.25
+    )
+
+    np.testing.assert_allclose(result.intensity, source, atol=1e-6)
+    assert result.record.parameters == {
+        "sigma_px": 1.5,
+        "residual_retention": 0.25,
+    }
+
+
+def test_fine_detail_attenuate_reduces_pixel_texture_without_moving_broad_band():
+    source = band_image()
+    checker = (np.indices(source.shape).sum(axis=0) % 2).astype(np.float32) - 0.5
+    textured = source + 0.12 * checker
+    result = stage_module.fine_detail_attenuate(
+        textured, sigma_px=1.5, residual_retention=0.25
+    )
+
+    source_peak = np.unravel_index(np.argmax(source), source.shape)
+    result_peak = np.unravel_index(np.argmax(result.intensity), result.intensity.shape)
+    input_texture = float(np.std(textured - source))
+    output_texture = float(np.std(result.intensity - source))
+
+    assert result_peak == source_peak
+    assert output_texture < input_texture * 0.5
 
 
 def test_multiscale_detail_records_measured_transfer_and_warns_without_adjusting():
