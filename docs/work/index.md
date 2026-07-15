@@ -17,5 +17,7 @@ the twelve review-sized implementation tasks for the dynamical exceptional-
 forsterite pattern. `KIKU-F002` adds six tasks for a deliberately separate,
 kikuchipy-native kinematical reference bundle and its visual decision gate.
 `KIKU-F003` adds six dependent tasks for an exact spherical scalar field,
-validated axial derivative, and bounded MTEX density/3D bridge. Parent/child
-links remain symmetric, and only accepted work is marked `done`.
+validated axial derivative, and bounded MTEX density/3D bridge. `KIKU-F004`
+promotes the phase-general incubator into deliberately bounded additional-phase
+proofs, beginning with an Ice Ih oxygen-sublattice review candidate.
+Parent/child links remain symmetric, and only accepted work is marked `done`.

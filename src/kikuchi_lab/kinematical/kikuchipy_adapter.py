@@ -37,6 +37,51 @@ _SPHERICAL_CAMERA_DEG = {
     "roll": 0.0,
 }
 
+_DIRECT_AXIS_INDEX = {"a": 0, "b": 1, "c": 2}
+_FRACTIONAL_AXIS_INDEX = {"x": 0, "y": 1, "z": 2}
+
+
+def _axis_permutation(
+    values: object,
+    *,
+    indices: Mapping[str, int],
+    field_name: str,
+) -> tuple[int, int, int]:
+    """Validate one explicit, unsigned crystallographic axis permutation."""
+    if not isinstance(values, list) or len(values) != 3:
+        raise ValueError(f"{field_name} must contain exactly three axes")
+    try:
+        permutation = tuple(indices[str(value)] for value in values)
+    except KeyError as exc:
+        raise ValueError(f"unsupported axis in {field_name}: {exc.args[0]}") from exc
+    if sorted(permutation) != [0, 1, 2]:
+        raise ValueError(f"{field_name} must be an axis permutation")
+    return permutation  # type: ignore[return-value]
+
+
+def _permuted_lattice(
+    record: StructureRecord, permutation: tuple[int, int, int]
+) -> Lattice:
+    a, b, c, alpha, beta, gamma = record.lattice_angstrom
+    lengths = (a, b, c)
+    source_angle = {
+        frozenset((1, 2)): alpha,
+        frozenset((0, 2)): beta,
+        frozenset((0, 1)): gamma,
+    }
+    target_a, target_b, target_c = (lengths[index] for index in permutation)
+    target_alpha = source_angle[frozenset((permutation[1], permutation[2]))]
+    target_beta = source_angle[frozenset((permutation[0], permutation[2]))]
+    target_gamma = source_angle[frozenset((permutation[0], permutation[1]))]
+    return Lattice(
+        target_a,
+        target_b,
+        target_c,
+        target_alpha,
+        target_beta,
+        target_gamma,
+    )
+
 
 def _calculate_master_pattern_single_worker(
     simulator: KikuchiPatternSimulator,
@@ -77,16 +122,26 @@ class _KikuchipyContext:
 
 def _phase_from_record(record: StructureRecord) -> Phase:
     verify_structure(record)
-    if record.simulation_setting["target_lattice_from_source"] != ["b", "c", "a"]:
-        raise ValueError("unsupported kinematical lattice transform")
-    if record.simulation_setting["target_fractional_from_source"] != ["y", "z", "x"]:
-        raise ValueError("unsupported kinematical coordinate transform")
-    a, b, c, alpha, beta, gamma = record.lattice_angstrom
-    lattice = Lattice(b, c, a, beta, gamma, alpha)
+    lattice_permutation = _axis_permutation(
+        record.simulation_setting["target_lattice_from_source"],
+        indices=_DIRECT_AXIS_INDEX,
+        field_name="target_lattice_from_source",
+    )
+    coordinate_permutation = _axis_permutation(
+        record.simulation_setting["target_fractional_from_source"],
+        indices=_FRACTIONAL_AXIS_INDEX,
+        field_name="target_fractional_from_source",
+    )
+    if coordinate_permutation != lattice_permutation:
+        raise ValueError(
+            "fractional-coordinate permutation must match the direct-lattice "
+            "permutation"
+        )
+    lattice = _permuted_lattice(record, lattice_permutation)
     atoms = [
         Atom(
             site.element,
-            xyz=(site.fract[1], site.fract[2], site.fract[0]),
+            xyz=tuple(site.fract[index] for index in coordinate_permutation),
             label=site.label,
             occupancy=site.occupancy,
             Uisoequiv=site.u_iso_angstrom_sq,
@@ -100,13 +155,31 @@ def _phase_from_record(record: StructureRecord) -> Phase:
     )
 
 
+def _allowed_mask(reflectors: ReciprocalLatticeVector) -> np.ndarray:
+    """Return centering-allowed vectors, including primitive hexagonal cells.
+
+    diffsims currently raises for primitive hexagonal lattices because its
+    ``allowed`` shortcut does not encode their non-centering systematic
+    absences. A primitive lattice has no centering extinctions, so all vectors
+    can safely proceed here; the expanded unit-cell structure-factor
+    calculation below removes screw/glide extinctions through vanishing F_hkl.
+    """
+    try:
+        return reflectors.allowed
+    except NotImplementedError:
+        centering = reflectors.phase.space_group.short_name[0]
+        if centering == "P" and reflectors.has_hexagonal_lattice:
+            return np.ones(reflectors.shape, dtype=bool)
+        raise
+
+
 def _enumerate_reflectors(
     phase: Phase, recipe: KinematicalRecipe
 ) -> ReciprocalLatticeVector:
     reflectors = ReciprocalLatticeVector.from_min_dspacing(
         phase, min_dspacing=recipe.min_dspacing_angstrom
     )
-    reflectors = reflectors[reflectors.allowed]
+    reflectors = reflectors[_allowed_mask(reflectors)]
     reflectors = reflectors.unique(use_symmetry=True).symmetrise()
     reflectors.sanitise_phase()
     reflectors.calculate_structure_factor(scattering_params=recipe.scattering_params)
@@ -132,7 +205,7 @@ def _reflection_catalog(
     enumerated = ReciprocalLatticeVector.from_min_dspacing(
         reflectors.phase, min_dspacing=recipe.min_dspacing_angstrom
     )
-    allowed = enumerated[enumerated.allowed]
+    allowed = enumerated[_allowed_mask(enumerated)]
     symmetrised = allowed.unique(use_symmetry=True).symmetrise()
     reflections = [
         {
@@ -175,9 +248,11 @@ def _reflection_catalog(
 def _known_axis_check(
     record: StructureRecord, recipe: KinematicalRecipe
 ) -> dict[str, object]:
-    source_a, source_b, source_c = record.lattice_angstrom[:3]
-    lattice_abc = np.asarray((source_b, source_c, source_a), dtype=float)
-    crystal_direction = np.asarray(recipe.zone_axis_uvw, dtype=float) * lattice_abc
+    lattice = _phase_from_record(record).structure.lattice
+    lattice_abc = np.asarray(lattice.cell_parms()[:3], dtype=float)
+    crystal_direction = np.asarray(
+        lattice.cartesian(recipe.zone_axis_uvw), dtype=float
+    )
     crystal_direction /= np.linalg.norm(crystal_direction)
     sample_direction = transform_crystal_direction_to_sample(
         crystal_direction, recipe.orientation
@@ -188,7 +263,9 @@ def _known_axis_check(
     return {
         "zone_axis_uvw": list(recipe.zone_axis_uvw),
         "lattice_abc_angstrom": lattice_abc.tolist(),
-        "metric_conversion": "normalize([u*a, v*b, w*c])",
+        "metric_conversion": (
+            "diffpy.structure.Lattice.cartesian([u, v, w]) then normalize"
+        ),
         "crystal_direction_unit": crystal_direction.tolist(),
         "active_crystal_to_sample_direction": sample_direction.tolist(),
         "expected_sample_direction": expected.tolist(),
@@ -205,6 +282,14 @@ def _projection_ledger(
         if recipe.hemisphere == "both"
         else [recipe.hemisphere]
     )
+    lattice_axes = record.simulation_setting["target_lattice_from_source"]
+    fractional_axes = record.simulation_setting["target_fractional_from_source"]
+    target_setting = record.simulation_setting["target_setting"]
+    crystal_frame = (
+        "standard-Pnma direct and reciprocal Cartesian frames"
+        if target_setting == "P n m a"
+        else f"{target_setting} direct and reciprocal Cartesian frames"
+    )
     return {
         "schema_version": 1,
         "source_method": {
@@ -216,7 +301,7 @@ def _projection_ledger(
             },
         },
         "frames": {
-            "crystal": "standard-Pnma direct and reciprocal Cartesian frames",
+            "crystal": crystal_frame,
             "orientation": recipe.orientation.to_dict(),
             "sample": "EDAX-TSL [RD, TD, ND]",
             "detector": "kikuchipy EBSDDetector with explicit PC convention",
@@ -227,18 +312,18 @@ def _projection_ledger(
             },
             "source_to_crystal": {
                 "source_setting": record.setting,
-                "target_setting": record.simulation_setting["target_setting"],
+                "target_setting": target_setting,
                 "lattice_transform": {
-                    "target_from_source": record.simulation_setting[
-                        "target_lattice_from_source"
-                    ],
-                    "equation": "(a', b', c') = (b, c, a)",
+                    "target_from_source": lattice_axes,
+                    "equation": (
+                        "(a', b', c') = (" + ", ".join(lattice_axes) + ")"
+                    ),
                 },
                 "fractional_coordinate_transform": {
-                    "target_from_source": record.simulation_setting[
-                        "target_fractional_from_source"
-                    ],
-                    "equation": "(x', y', z') = (y, z, x)",
+                    "target_from_source": fractional_axes,
+                    "equation": (
+                        "(x', y', z') = (" + ", ".join(fractional_axes) + ")"
+                    ),
                 },
             },
             "transform_owners": {

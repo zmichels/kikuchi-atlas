@@ -1,0 +1,43 @@
+schema_version: 1
+identifier: COD-1572233-O-sublattice
+cif: COD-1572233-oxygen-sublattice.cif
+sha256: 4327a279e414a62f861d143e18570e9d741bbbb7d04dd2fb471c930988f95b81
+retrieved: 2026-07-14
+uri: https://www.crystallography.net/cod/1572233.cif
+page_uri: https://www.crystallography.net/cod/1572233.html
+license: CC0-1.0
+license_uri: https://creativecommons.org/publicdomain/zero/1.0/
+copying_policy: Public-domain COD data; acknowledge the original structural-data authors.
+citation: >-
+  Chodkiewicz, M. L., Olech, B., Jha, K. K., Dominiak, P. M., and Wozniak,
+  K. (2024). Hirshfeld atom refinement and dynamical refinement of hexagonal
+  ice structure from electron diffraction data. IUCrJ 11, 1015-1025.
+phase:
+  name: ice-Ih-oxygen-sublattice
+  formula: O
+  space_group_number: 194
+  setting: P 63/m m c
+  lattice_angstrom: [4.3815, 4.3815, 7.183, 90.0, 90.0, 120.0]
+sites:
+  - {label: O1, element: O, fract: [0.3333333333333333, 0.6666666666666666, 0.4378], occupancy: 1.0, u_iso_angstrom_sq: 0.0116}
+thermal_factor_policy:
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
+  simulation_units: angstrom^2
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
+simulation_setting:
+  reason: >-
+    COD 1572233 is already in standard P 63/m m c. This bounded derivative
+    retains only the fully occupied oxygen site and intentionally omits the
+    half-occupied hydrogen sites H1a and H1b.
+  source_setting: P 63/m m c
+  target_setting: P 63/m m c
+  target_lattice_from_source: [a, b, c]
+  target_fractional_from_source: [x, y, z]
+  target_site_multiplicities: [4]
+  model_scope: average oxygen sublattice only
+  omitted_source_sites: [H1a, H1b]
+  original_cod_sha256: a267e2ef3c45aedf1cfd2deb09592908fdfd7ab0b771cab08ec9e70b287b5aa4
