@@ -1,7 +1,7 @@
 ---
 title: Ice Ih Near-Depth Stepped Rendering Design
 date: 2026-07-14
-status: review
+status: approved
 project_prefix: KIKU
 depends_on: KIKU-T025
 ---
