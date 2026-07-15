@@ -1,0 +1,129 @@
+# Ice Ih Near-Depth Stepped Presentation Proof
+
+Date: 2026-07-14  
+Status: implemented and verified; visual promotion pending user review
+
+## Scope
+
+This proof adds a presentation-only derivative of the accepted Ice Ih oxygen-
+sublattice quiet kinematical master. It does not modify the source structure,
+the base kinematical recipe, the accepted quiet bundle, or any scientific
+intensity array. The derivative combines an exact additional-overlap channel
+with coincident vector boundary and center strokes.
+
+No blur, glow kernel, morphology, raster edge detection, spatial denoising,
+intermediate resize, displaced shadow, bilinear interpolation, or bicubic
+interpolation is present. The only raster interpolation is `nearest`; vector
+coverage antialiasing occurs once at final output resolution.
+
+## Runs
+
+Bounded smoke candidate:
+
+- run: `near-depth-run-dfaf4b9dc462e186`
+- output root: `local/runs/kinematical-depth-ice-smoke/`
+- final canvas: `480 x 480 px`
+- elapsed wall time: approximately `14.8 s`
+
+Full review candidate:
+
+- run: `near-depth-run-7744aaa7dcdd20b8`
+- output root: `local/runs/kinematical-depth-ice/`
+- depth figure: `2400 x 2400 px`
+- comparison figure: `4800 x 2400 px`
+- overlap diagnostic: `2400 x 2400 px`
+- elapsed wall time: approximately `17.0 s`
+- manifest SHA-256: `19ecfaeffbdb927d74f4ae470f497e3b7d57f8bd7745791a106a214c5be6713d`
+
+The native-scale review crop is outside the immutable bundle at
+`local/review/ice-near-depth/near-depth-edge-intersections-1000.png`.
+
+## Provenance Identities
+
+- source: `source-f306aaa577129b9e`
+- source SHA-256: `4327a279e414a62f861d143e18570e9d741bbbb7d04dd2fb471c930988f95b81`
+- base recipe: `recipe-8aa79ffa759eb05b`
+- treatment recipe: `recipe-2ef49ca267f26821`
+- base stereographic product: `kinematical-e3f91fd7633d3632`
+- base stereographic array SHA-256: `d1b6e2763ba77485e2bbf0eace3557ee490bd49c6c8a96b67627badb024610d5`
+- depth ledger: `depth-ledger-ed861034cdee288e`
+
+The quiet control hash recorded by the depth ledger is
+`28d6f340755f6c6a7c4517b76ae78f79684e9810473080daef69af9512123fc5`.
+It exactly matches the pre-treatment accepted
+`kinematical-run-8e0fa453f0869a21/figures/etched-master-quiet.png` hash.
+
+## Exact Additional Overlap
+
+The workflow selected 70 signed entries at relative `abs(F)` threshold `0.22`.
+Hexagonal symmetrization includes ten duplicate signed entries, so those 70
+entries resolve to 60 unique signed Miller indices and 30 unique axial bands.
+Distinct harmonic orders such as 002 and 006 remain distinct; only duplicate
+entries and exact `hkl`/`-h-k-l` partners collapse.
+
+For every valid upper-stereographic direction `d` and unit reciprocal normal
+`n`, band membership is:
+
+```text
+abs(dot(d, n)) <= sin(theta_B)
+```
+
+Each axial band has weight:
+
+```text
+(abs(F_hkl) / max(abs(F))) ^ 2
+```
+
+Additional overlap is accumulated without a pixel-by-reflector cube:
+
+```text
+overlap_raw = max(sum_weight - max_weight, 0)
+```
+
+The realized `99.5` percentile normalization value is
+`0.43836911023780567`. The raw overlap `.npy` SHA-256 is
+`21b86dab694ce9d80fa1385cc4a2f443935cf0644066dec1922f2e7859a5a466`.
+
+## Pointwise Near-Light and Vector Relief
+
+The pointwise optical-depth treatment uses gain `0.28` and ceiling `0.985`:
+
+```text
+tau_base = -log(1 - B / L_max)
+tau_final = tau_base + gain * overlap_normalized
+L_final = L_max * (1 - exp(-tau_final))
+```
+
+Pixels with zero additional overlap are assigned the base luminance exactly.
+
+The boundary threshold `0.34` retains 24 signed reflectors and emits 27 exact
+kikuchipy boundary paths. The center threshold `0.22` retains 70 signed
+reflectors and emits 55 exact center paths. Every layer draws all coincident
+dark casings first and all main strokes second. Consequently, later casings do
+not cover earlier luminous intersections, and no directional shadow offset is
+introduced.
+
+The depth figure SHA-256 is
+`245ab0be7811b9d4f2f234bf7c7f9a1809250ed734a7a24f9d7d51e59655590d`.
+
+## Verification
+
+- Recipe parsing: strict field inventory and range validation.
+- Scientific tests: antipodal collapse, duplicate handling, harmonic-order
+  preservation, exact kikuchipy Bragg-boundary parity, bounded field values,
+  intersection weighting, and optical-depth identity/monotonicity.
+- Rendering tests: deterministic bytes, unchanged inputs, exact stroke
+  propagation, quiet-control byte identity, identical quiet/depth disk inset,
+  and casing-before-main draw order.
+- Bundle tests: stable content identity, complete six-file inventory, SHA-256
+  records, base/source/product links, and atomic no-replace publication.
+- Workflow/CLI tests: base recipe ID gate, bounded size override, normalized
+  errors, and inventory output.
+- Full suite: `784 passed, 1 skipped` in `106.96 s`.
+- Work tracker validation: all 31 work items valid with symmetric links.
+
+## Review Gate
+
+The candidate is technically complete and remains `presentation_only`. Visual
+promotion is intentionally open until the user evaluates the full frame and
+native-scale edge/intersection crop.
