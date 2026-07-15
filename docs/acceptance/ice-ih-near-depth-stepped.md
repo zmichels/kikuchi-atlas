@@ -69,6 +69,21 @@ Its native-scale review crop is outside the immutable bundle at
 `local/review/ice-near-depth-band-led/near-depth-band-led-edge-intersections-1000.png`
 (SHA-256 `0798cf0cd0fcacc4aa39e81f14a48708d2f70a34266bf9e9fed38e6e58472ae5`).
 
+Field-led candidate (all earlier candidates remain unchanged):
+
+- recipe: `recipes/presentation/ice-ih-near-depth-stepped-field-led.yml`
+- smoke run: `near-depth-run-707a079eb9acede3` at `480 x 480 px`
+- full run: `near-depth-run-79067fead632c2fa`
+- output root: `local/runs/kinematical-depth-ice-field-led/`
+- treatment recipe: `recipe-528b9da00f39b332`
+- depth ledger: `depth-ledger-30cb366d0aa85069`
+- manifest SHA-256: `a45806c0c8b188ccf4e6f9da274affce966827efefc04ea81b9489a2a02578d1`
+- depth figure SHA-256: `18607d8ad39dc5e04d878019f267b10880d9c398babe1b036265d9031de88089`
+
+Its native-scale review crop is outside the immutable bundle at
+`local/review/ice-near-depth-field-led/near-depth-field-led-edge-intersections-1000.png`
+(SHA-256 `b33a926f2cd28d67ad8eaaee20d65d19b21815bfcd22a58fd135505479eb0513`).
+
 ## Provenance Identities
 
 - source: `source-f306aaa577129b9e`
@@ -167,6 +182,19 @@ unchanged. The renderer still records `spatial_filter: none` and
 `interpolation: nearest`; no center paths are rendered invisibly or at reduced
 opacity.
 
+## Field-Led Treatment
+
+The field-led recipe keeps the band-led candidate's source master, exact
+30-band overlap field, `0.38` optical-depth gain, final resolution, and tone
+mapping while disabling both vector layers. Its ledger records zero selected
+reflectors and zero paths for both `bands` and `lines` modes.
+
+This removes the thin boundary outlines and their dark casings from the bright
+band shoulders. Remaining finite-width structures come from the kinematical
+master and pointwise overlap channel themselves. They are not overlay paths;
+the treatment continues to record `spatial_filter: none` and
+`interpolation: nearest`.
+
 ## Verification
 
 - Recipe parsing: strict field inventory and range validation.
@@ -183,6 +211,7 @@ opacity.
 - Full suite: `784 passed, 1 skipped` in `106.96 s`.
 - Enhanced-recipe focused verification: `39 passed` in `8.36 s`.
 - Band-led focused verification: `42 passed` in `8.52 s`.
+- Field-led focused verification: `43 passed` in `9.00 s`.
 - Work tracker validation: all 31 work items valid with symmetric links.
 
 ## Review Gate

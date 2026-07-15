@@ -19,6 +19,9 @@ EMPHASIS_RECIPE = (
 BAND_LED_RECIPE = (
     ROOT / "recipes" / "presentation" / "ice-ih-near-depth-stepped-band-led.yml"
 )
+FIELD_LED_RECIPE = (
+    ROOT / "recipes" / "presentation" / "ice-ih-near-depth-stepped-field-led.yml"
+)
 
 
 def test_ice_treatment_recipe_loads_exact_approved_parameters() -> None:
@@ -68,6 +71,19 @@ def test_ice_band_led_recipe_removes_center_layer_and_advances_band_depth() -> N
     assert band_led.normalization_percentile == emphasis.normalization_percentile
     assert band_led.figure_size_px == emphasis.figure_size_px
     assert band_led.recipe_id != emphasis.recipe_id
+
+
+def test_ice_field_led_recipe_removes_all_vector_linework() -> None:
+    band_led = load_near_depth_recipe(BAND_LED_RECIPE)
+    field_led = load_near_depth_recipe(FIELD_LED_RECIPE)
+
+    assert field_led.optical_depth_gain == band_led.optical_depth_gain
+    assert field_led.center.to_dict() == {"enabled": False}
+    assert field_led.boundary.to_dict() == {"enabled": False}
+    assert field_led.overlap_relative_factor == band_led.overlap_relative_factor
+    assert field_led.normalization_percentile == band_led.normalization_percentile
+    assert field_led.figure_size_px == band_led.figure_size_px
+    assert field_led.recipe_id != band_led.recipe_id
 
 
 def test_treatment_recipe_supports_explicit_disabled_stroke_layer(
