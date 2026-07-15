@@ -76,7 +76,7 @@ def _sha256_array(array: np.ndarray) -> str:
 
 def _prepare_axis(*, size_px: int, background: str) -> tuple[Figure, Axes]:
     figure, axis = plt.subplots()
-    figure.set_size_inches(size_px / _DPI, size_px / _DPI, forward=True)
+    figure.set_layout_engine("tight")
     figure.patch.set_facecolor(background)
     axis.set_position((0.0, 0.0, 1.0, 1.0))
     axis.set_xlim(-1.025, 1.025)

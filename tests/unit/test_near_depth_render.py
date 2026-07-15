@@ -88,6 +88,24 @@ def test_quiet_control_reuses_the_existing_renderer_byte_for_byte(
     assert control == quiet
 
 
+def test_depth_disk_uses_the_same_inset_as_the_quiet_control(
+    small_ice_render_inputs,
+) -> None:
+    result = render_near_depth(*small_ice_render_inputs)
+    quiet = small_ice_render_inputs[-1]
+
+    def non_background_bounds(payload: bytes) -> tuple[int, int, int, int]:
+        with Image.open(BytesIO(payload)) as image:
+            rgb = np.asarray(image.convert("RGB"))
+        mask = np.any(rgb != np.array([16, 21, 25], dtype=np.uint8), axis=-1)
+        rows, columns = np.nonzero(mask)
+        return columns.min(), rows.min(), columns.max(), rows.max()
+
+    assert non_background_bounds(
+        result.figures["etched-master-near-depth-stepped.png"]
+    ) == non_background_bounds(quiet)
+
+
 def test_renderer_propagates_exact_boundary_then_center_styles(
     small_ice_render_inputs,
     monkeypatch: pytest.MonkeyPatch,
