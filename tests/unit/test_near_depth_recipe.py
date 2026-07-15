@@ -13,6 +13,9 @@ from kikuchi_lab.near_depth import (
 
 ROOT = Path(__file__).parents[2]
 RECIPE = ROOT / "recipes" / "presentation" / "ice-ih-near-depth-stepped.yml"
+EMPHASIS_RECIPE = (
+    ROOT / "recipes" / "presentation" / "ice-ih-near-depth-stepped-emphasis.yml"
+)
 
 
 def test_ice_treatment_recipe_loads_exact_approved_parameters() -> None:
@@ -35,6 +38,19 @@ def test_ice_treatment_recipe_loads_exact_approved_parameters() -> None:
     assert recipe.to_dict()["source_kinematical_recipe"] == (
         "../kinematical/ice-ih-oxygen-quiet-proof.yml"
     )
+
+
+def test_ice_emphasis_recipe_strengthens_depth_without_changing_geometry() -> None:
+    control = load_near_depth_recipe(RECIPE)
+    emphasis = load_near_depth_recipe(EMPHASIS_RECIPE)
+
+    assert emphasis.optical_depth_gain == 0.34
+    assert emphasis.center == StrokeStyle(0.22, 0.42, 0.65, 0.96, 0.44)
+    assert emphasis.boundary == StrokeStyle(0.34, 0.38, 0.50, 0.98, 0.36)
+    assert emphasis.overlap_relative_factor == control.overlap_relative_factor
+    assert emphasis.normalization_percentile == control.normalization_percentile
+    assert emphasis.figure_size_px == control.figure_size_px
+    assert emphasis.recipe_id != control.recipe_id
 
 
 def test_treatment_recipe_rejects_unknown_fields(tmp_path: Path) -> None:

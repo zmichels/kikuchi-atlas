@@ -38,6 +38,22 @@ Full review candidate:
 The native-scale review crop is outside the immutable bundle at
 `local/review/ice-near-depth/near-depth-edge-intersections-1000.png`.
 
+Enhanced emphasis candidate (the quieter candidate above remains unchanged):
+
+- recipe: `recipes/presentation/ice-ih-near-depth-stepped-emphasis.yml`
+- run: `near-depth-run-4625b83f045dc1df`
+- output root: `local/runs/kinematical-depth-ice-emphasis/`
+- depth figure: `2400 x 2400 px`
+- comparison figure: `4800 x 2400 px`
+- treatment recipe: `recipe-1c769311997af1fb`
+- depth ledger: `depth-ledger-0f23c2caa6f4b2a2`
+- manifest SHA-256: `34354c5f81eb16a0643c4b67b9cace4dc07e316e5cda4ada9237a832ff7908bf`
+- depth figure SHA-256: `535b7e67dce9b105426f83b838603ed048e653a4984da86225d708a2331d4e32`
+
+Its native-scale review crop is outside the immutable bundle at
+`local/review/ice-near-depth-emphasis/near-depth-emphasis-edge-intersections-1000.png`
+(SHA-256 `dab0cbf39501bd4a21d28c27dbdaca1261715aef1af105870bfbe72bb37d106c`).
+
 ## Provenance Identities
 
 - source: `source-f306aaa577129b9e`
@@ -106,6 +122,21 @@ introduced.
 The depth figure SHA-256 is
 `245ab0be7811b9d4f2f234bf7c7f9a1809250ed734a7a24f9d7d51e59655590d`.
 
+## Enhanced Stepped Emphasis
+
+The enhanced recipe advances only the presentation treatment. It keeps the
+same source, projection, exact overlap field, reflector thresholds, line
+widths, final resolution, and no-blur rendering path. Optical-depth gain moves
+from `0.28` to `0.34`; center alpha/casing move from `0.62 / 0.82 pt / 0.38`
+to `0.65 / 0.96 pt / 0.44`; boundary alpha/casing move from
+`0.48 / 0.82 pt / 0.30` to `0.50 / 0.98 pt / 0.36`.
+
+The emphasis ledger independently confirms `spatial_filter: none`,
+`interpolation: nearest`, unchanged 30 axial bands, unchanged 27 boundary
+paths, and unchanged 55 center paths. This keeps the aesthetic comparison
+diagnostic: any visible difference comes from stronger pointwise overlap and
+vector relief, not changed crystallography or geometry.
+
 ## Verification
 
 - Recipe parsing: strict field inventory and range validation.
@@ -120,6 +151,7 @@ The depth figure SHA-256 is
 - Workflow/CLI tests: base recipe ID gate, bounded size override, normalized
   errors, and inventory output.
 - Full suite: `784 passed, 1 skipped` in `106.96 s`.
+- Enhanced-recipe focused verification: `39 passed` in `8.36 s`.
 - Work tracker validation: all 31 work items valid with symmetric links.
 
 ## Review Gate
