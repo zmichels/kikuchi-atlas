@@ -9,7 +9,6 @@ from importlib.metadata import version
 from io import BytesIO
 from types import MappingProxyType
 
-import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
 import numpy as np
 from kikuchipy.simulations import KikuchiPatternSimulator
@@ -157,28 +156,35 @@ def _draw_paths(
         color=(*color, style.alpha),
         linewidth=style.width_pt,
     )
-    source_lines = tuple(source_figure.axes[0].lines)
-    for source in source_lines:
-        (line,) = axis.plot(
+    paths = tuple(
+        (
             np.asarray(source.get_xdata(), dtype=np.float64),
             np.asarray(source.get_ydata(), dtype=np.float64),
-            color=(*color, style.alpha),
-            linewidth=style.width_pt,
+        )
+        for source in source_figure.axes[0].lines
+    )
+    for x, y in paths:
+        axis.plot(
+            x,
+            y,
+            color=(*casing_color, style.casing_alpha),
+            linewidth=style.casing_width_pt,
             antialiased=True,
             solid_capstyle="round",
             zorder=zorder,
         )
-        line.set_path_effects(
-            [
-                path_effects.Stroke(
-                    linewidth=style.casing_width_pt,
-                    foreground=(*casing_color, style.casing_alpha),
-                ),
-                path_effects.Normal(),
-            ]
+    for x, y in paths:
+        axis.plot(
+            x,
+            y,
+            color=(*color, style.alpha),
+            linewidth=style.width_pt,
+            antialiased=True,
+            solid_capstyle="round",
+            zorder=zorder + 1,
         )
     plt.close(source_figure)
-    return len(source_lines)
+    return len(paths)
 
 
 def _comparison_png(
@@ -353,6 +359,7 @@ def render_near_depth(
                 "path_count": boundary_path_count,
                 "geometry_owner": "kikuchipy.KikuchiPatternSimulator.plot",
                 "path_displacement": "none",
+                "draw_order": "all casings, then all main strokes",
             },
             "center": {
                 "mode": "lines",
@@ -361,6 +368,7 @@ def render_near_depth(
                 "path_count": center_path_count,
                 "geometry_owner": "kikuchipy.KikuchiPatternSimulator.plot",
                 "path_displacement": "none",
+                "draw_order": "all casings, then all main strokes",
             },
         },
         "figure_size_px": effective_size,

@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from PIL import Image
+import matplotlib.pyplot as plt
 
 from kikuchi_lab.kinematical import load_kinematical_recipe
 from kikuchi_lab.kinematical.kikuchipy_adapter import simulate_kinematical_arrays
@@ -104,6 +105,30 @@ def test_depth_disk_uses_the_same_inset_as_the_quiet_control(
     assert non_background_bounds(
         result.figures["etched-master-near-depth-stepped.png"]
     ) == non_background_bounds(quiet)
+
+
+def test_vector_paths_draw_all_casings_before_all_main_strokes(
+    small_ice_render_inputs,
+) -> None:
+    import kikuchi_lab.near_depth.render as module
+
+    context, _, _, treatment, _, _ = small_ice_render_inputs
+    figure, axis = plt.subplots()
+    count = module._draw_paths(
+        axis,
+        context.overlay_simulators["quiet"],
+        mode="lines",
+        style=treatment.center,
+        color=(0.94, 0.97, 1.0),
+        casing_color=(0.035, 0.047, 0.054),
+        zorder=10,
+    )
+    widths = [line.get_linewidth() for line in axis.lines]
+    plt.close(figure)
+
+    assert len(widths) == 2 * count
+    assert widths[:count] == [treatment.center.casing_width_pt] * count
+    assert widths[count:] == [treatment.center.width_pt] * count
 
 
 def test_renderer_propagates_exact_boundary_then_center_styles(
