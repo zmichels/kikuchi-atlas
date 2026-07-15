@@ -16,9 +16,14 @@ class StrokeStyle:
     alpha: float
     casing_width_pt: float
     casing_alpha: float
+    enabled: bool = True
 
     def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+        if not self.enabled:
+            return {"enabled": False}
+        payload = asdict(self)
+        del payload["enabled"]
+        return payload
 
 
 @dataclass(frozen=True)

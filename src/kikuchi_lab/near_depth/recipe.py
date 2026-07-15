@@ -37,6 +37,7 @@ _STROKE_FIELDS = {
     "casing_width_pt",
     "casing_alpha",
 }
+_DISABLED_STROKE_FIELDS = {"enabled"}
 _HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 
@@ -90,6 +91,19 @@ def _relative_factor(value: Any, field: str) -> float:
 
 
 def _stroke(value: Any, field: str) -> StrokeStyle:
+    if isinstance(value, dict) and set(value) == _DISABLED_STROKE_FIELDS:
+        if value["enabled"] is not False:
+            raise ValueError(
+                f"near-depth recipe {field}.enabled must be false when specified"
+            )
+        return StrokeStyle(
+            relative_factor=1.0,
+            width_pt=1.0,
+            alpha=0.0,
+            casing_width_pt=1.0,
+            casing_alpha=0.0,
+            enabled=False,
+        )
     raw = _mapping(value, field, _STROKE_FIELDS)
     width = _positive(raw["width_pt"], f"{field}.width_pt")
     casing_width = _positive(raw["casing_width_pt"], f"{field}.casing_width_pt")

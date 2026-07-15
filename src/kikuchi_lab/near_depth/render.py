@@ -243,16 +243,6 @@ def render_near_depth(
     )
 
     all_reflectors = context.master_simulator.reflectors
-    boundary_reflectors = _select_reflectors(
-        all_reflectors,
-        treatment.boundary.relative_factor,
-        base_recipe.energy_kev,
-    )
-    center_reflectors = _select_reflectors(
-        all_reflectors,
-        treatment.center.relative_factor,
-        base_recipe.energy_kev,
-    )
     figure, axis = _prepare_axis(
         size_px=effective_size,
         background=treatment.background_color,
@@ -263,24 +253,42 @@ def render_near_depth(
         background=treatment.background_color,
         rim=False,
     )
-    boundary_path_count = _draw_paths(
-        axis,
-        KikuchiPatternSimulator(boundary_reflectors),
-        mode="bands",
-        style=treatment.boundary,
-        color=_BOUNDARY_COLOR,
-        casing_color=_BOUNDARY_CASING,
-        zorder=5,
-    )
-    center_path_count = _draw_paths(
-        axis,
-        KikuchiPatternSimulator(center_reflectors),
-        mode="lines",
-        style=treatment.center,
-        color=_CENTER_COLOR,
-        casing_color=_CENTER_CASING,
-        zorder=10,
-    )
+    boundary_reflector_count = 0
+    boundary_path_count = 0
+    if treatment.boundary.enabled:
+        boundary_reflectors = _select_reflectors(
+            all_reflectors,
+            treatment.boundary.relative_factor,
+            base_recipe.energy_kev,
+        )
+        boundary_reflector_count = int(boundary_reflectors.size)
+        boundary_path_count = _draw_paths(
+            axis,
+            KikuchiPatternSimulator(boundary_reflectors),
+            mode="bands",
+            style=treatment.boundary,
+            color=_BOUNDARY_COLOR,
+            casing_color=_BOUNDARY_CASING,
+            zorder=5,
+        )
+    center_reflector_count = 0
+    center_path_count = 0
+    if treatment.center.enabled:
+        center_reflectors = _select_reflectors(
+            all_reflectors,
+            treatment.center.relative_factor,
+            base_recipe.energy_kev,
+        )
+        center_reflector_count = int(center_reflectors.size)
+        center_path_count = _draw_paths(
+            axis,
+            KikuchiPatternSimulator(center_reflectors),
+            mode="lines",
+            style=treatment.center,
+            color=_CENTER_COLOR,
+            casing_color=_CENTER_CASING,
+            zorder=10,
+        )
     axis.add_patch(
         Circle(
             (0.0, 0.0),
@@ -355,20 +363,36 @@ def render_near_depth(
             "boundary": {
                 "mode": "bands",
                 **treatment.boundary.to_dict(),
-                "signed_reflector_count": int(boundary_reflectors.size),
+                "signed_reflector_count": boundary_reflector_count,
                 "path_count": boundary_path_count,
-                "geometry_owner": "kikuchipy.KikuchiPatternSimulator.plot",
+                "geometry_owner": (
+                    "kikuchipy.KikuchiPatternSimulator.plot"
+                    if treatment.boundary.enabled
+                    else "none"
+                ),
                 "path_displacement": "none",
-                "draw_order": "all casings, then all main strokes",
+                "draw_order": (
+                    "all casings, then all main strokes"
+                    if treatment.boundary.enabled
+                    else "disabled"
+                ),
             },
             "center": {
                 "mode": "lines",
                 **treatment.center.to_dict(),
-                "signed_reflector_count": int(center_reflectors.size),
+                "signed_reflector_count": center_reflector_count,
                 "path_count": center_path_count,
-                "geometry_owner": "kikuchipy.KikuchiPatternSimulator.plot",
+                "geometry_owner": (
+                    "kikuchipy.KikuchiPatternSimulator.plot"
+                    if treatment.center.enabled
+                    else "none"
+                ),
                 "path_displacement": "none",
-                "draw_order": "all casings, then all main strokes",
+                "draw_order": (
+                    "all casings, then all main strokes"
+                    if treatment.center.enabled
+                    else "disabled"
+                ),
             },
         },
         "figure_size_px": effective_size,

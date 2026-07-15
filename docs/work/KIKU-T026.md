@@ -12,6 +12,7 @@ evidence:
   - ../acceptance/ice-ih-near-depth-stepped.md
   - ../../recipes/presentation/ice-ih-near-depth-stepped.yml
   - ../../recipes/presentation/ice-ih-near-depth-stepped-emphasis.yml
+  - ../../recipes/presentation/ice-ih-near-depth-stepped-band-led.yml
   - ../../tests/unit/test_near_depth_recipe.py
   - ../../tests/scientific/test_near_depth_overlap.py
   - ../../tests/unit/test_near_depth_render.py
@@ -19,6 +20,7 @@ evidence:
   - ../../tests/integration/test_ice_near_depth.py
   - ../../local/runs/kinematical-depth-ice/near-depth-run-7744aaa7dcdd20b8/manifest.json
   - ../../local/runs/kinematical-depth-ice-emphasis/near-depth-run-4625b83f045dc1df/manifest.json
+  - ../../local/runs/kinematical-depth-ice-band-led/near-depth-run-90186c9901710abe/manifest.json
 ---
 
 # KIKU-T026: Render Ice Ih near-depth stepped presentation proof
@@ -38,4 +40,5 @@ blur, resampling, or a directional shadow.
 - [x] A content-addressed bundle links the treatment to the unchanged Ice source, base recipe, and base product.
 - [x] A bounded smoke render passes before one 2400 px review candidate is produced.
 - [x] A separately named emphasis recipe strengthens the stepped relief while preserving geometry and the quiet candidate.
+- [x] A band-led recipe explicitly disables the center layer and leaves band geometry independently inspectable.
 - [ ] The user reviews the new candidate before it is promoted beyond presentation-proof status.

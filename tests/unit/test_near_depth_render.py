@@ -171,6 +171,42 @@ def test_renderer_propagates_exact_boundary_then_center_styles(
     ]
 
 
+def test_renderer_skips_explicitly_disabled_center_layer(
+    small_ice_render_inputs,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import kikuchi_lab.near_depth.render as module
+
+    context, simulation, base, treatment, overlap, quiet = small_ice_render_inputs
+    band_led = replace(
+        treatment,
+        center=replace(treatment.center, enabled=False),
+    )
+    observed_modes: list[str] = []
+    real_draw = module._draw_paths
+
+    def spy_draw(*args, mode, **kwargs):
+        observed_modes.append(mode)
+        return real_draw(*args, mode=mode, **kwargs)
+
+    monkeypatch.setattr(module, "_draw_paths", spy_draw)
+    result = render_near_depth(
+        context,
+        simulation,
+        base,
+        band_led,
+        overlap,
+        quiet,
+    )
+
+    assert observed_modes == ["bands"]
+    center = result.ledger["vector_layers"]["center"]
+    assert center["enabled"] is False
+    assert center["signed_reflector_count"] == 0
+    assert center["path_count"] == 0
+    assert center["draw_order"] == "disabled"
+
+
 def test_renderer_is_deterministic_and_does_not_mutate_inputs(
     small_ice_render_inputs,
 ) -> None:

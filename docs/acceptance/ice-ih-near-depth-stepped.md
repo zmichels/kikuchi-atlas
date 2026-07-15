@@ -9,7 +9,7 @@ This proof adds a presentation-only derivative of the accepted Ice Ih oxygen-
 sublattice quiet kinematical master. It does not modify the source structure,
 the base kinematical recipe, the accepted quiet bundle, or any scientific
 intensity array. The derivative combines an exact additional-overlap channel
-with coincident vector boundary and center strokes.
+with coincident vector boundary strokes and an optional center-stroke layer.
 
 No blur, glow kernel, morphology, raster edge detection, spatial denoising,
 intermediate resize, displaced shadow, bilinear interpolation, or bicubic
@@ -53,6 +53,21 @@ Enhanced emphasis candidate (the quieter candidate above remains unchanged):
 Its native-scale review crop is outside the immutable bundle at
 `local/review/ice-near-depth-emphasis/near-depth-emphasis-edge-intersections-1000.png`
 (SHA-256 `dab0cbf39501bd4a21d28c27dbdaca1261715aef1af105870bfbe72bb37d106c`).
+
+Band-led candidate (both earlier candidates remain unchanged):
+
+- recipe: `recipes/presentation/ice-ih-near-depth-stepped-band-led.yml`
+- smoke run: `near-depth-run-e51543f9374fbb48` at `480 x 480 px`
+- full run: `near-depth-run-90186c9901710abe`
+- output root: `local/runs/kinematical-depth-ice-band-led/`
+- treatment recipe: `recipe-87b20ffcc1c965d9`
+- depth ledger: `depth-ledger-407c6efe0451709c`
+- manifest SHA-256: `3000b975d01bd78b033b0b7b8058d88ef08cba0e283656f48200e259f9cf5046`
+- depth figure SHA-256: `4f26c50b32fb4abab01462c0eecc673f786e9576d066a7afa344e3d95da3a882`
+
+Its native-scale review crop is outside the immutable bundle at
+`local/review/ice-near-depth-band-led/near-depth-band-led-edge-intersections-1000.png`
+(SHA-256 `0798cf0cd0fcacc4aa39e81f14a48708d2f70a34266bf9e9fed38e6e58472ae5`).
 
 ## Provenance Identities
 
@@ -137,6 +152,21 @@ paths, and unchanged 55 center paths. This keeps the aesthetic comparison
 diagnostic: any visible difference comes from stronger pointwise overlap and
 vector relief, not changed crystallography or geometry.
 
+## Band-Led Treatment
+
+The band-led recipe keeps the exact 30-band overlap field and all 27 selected
+kikuchipy boundary paths from the emphasis candidate while explicitly
+disabling the fine center-stroke layer. The treatment selects zero center
+reflectors and draws zero center paths; its ledger records `enabled: false`,
+`geometry_owner: none`, and `draw_order: disabled` for that layer.
+
+Optical-depth gain advances from `0.34` to `0.38`, so broad band luminance and
+multi-band intersections carry more of the hierarchy formerly supplied by the
+bright center strokes. The boundary style and reflector threshold remain
+unchanged. The renderer still records `spatial_filter: none` and
+`interpolation: nearest`; no center paths are rendered invisibly or at reduced
+opacity.
+
 ## Verification
 
 - Recipe parsing: strict field inventory and range validation.
@@ -152,6 +182,7 @@ vector relief, not changed crystallography or geometry.
   errors, and inventory output.
 - Full suite: `784 passed, 1 skipped` in `106.96 s`.
 - Enhanced-recipe focused verification: `39 passed` in `8.36 s`.
+- Band-led focused verification: `42 passed` in `8.52 s`.
 - Work tracker validation: all 31 work items valid with symmetric links.
 
 ## Review Gate

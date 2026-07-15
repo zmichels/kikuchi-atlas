@@ -16,6 +16,9 @@ RECIPE = ROOT / "recipes" / "presentation" / "ice-ih-near-depth-stepped.yml"
 EMPHASIS_RECIPE = (
     ROOT / "recipes" / "presentation" / "ice-ih-near-depth-stepped-emphasis.yml"
 )
+BAND_LED_RECIPE = (
+    ROOT / "recipes" / "presentation" / "ice-ih-near-depth-stepped-band-led.yml"
+)
 
 
 def test_ice_treatment_recipe_loads_exact_approved_parameters() -> None:
@@ -51,6 +54,35 @@ def test_ice_emphasis_recipe_strengthens_depth_without_changing_geometry() -> No
     assert emphasis.normalization_percentile == control.normalization_percentile
     assert emphasis.figure_size_px == control.figure_size_px
     assert emphasis.recipe_id != control.recipe_id
+
+
+def test_ice_band_led_recipe_removes_center_layer_and_advances_band_depth() -> None:
+    emphasis = load_near_depth_recipe(EMPHASIS_RECIPE)
+    band_led = load_near_depth_recipe(BAND_LED_RECIPE)
+
+    assert band_led.optical_depth_gain == 0.38
+    assert band_led.center.enabled is False
+    assert band_led.center.to_dict() == {"enabled": False}
+    assert band_led.boundary == emphasis.boundary
+    assert band_led.overlap_relative_factor == emphasis.overlap_relative_factor
+    assert band_led.normalization_percentile == emphasis.normalization_percentile
+    assert band_led.figure_size_px == emphasis.figure_size_px
+    assert band_led.recipe_id != emphasis.recipe_id
+
+
+def test_treatment_recipe_supports_explicit_disabled_stroke_layer(
+    tmp_path: Path,
+) -> None:
+    payload = yaml.safe_load(EMPHASIS_RECIPE.read_text(encoding="utf-8"))
+    payload["center"] = {"enabled": False}
+    target = tmp_path / "band-led.yml"
+    target.write_text(yaml.safe_dump(payload), encoding="utf-8")
+
+    recipe = load_near_depth_recipe(target)
+
+    assert recipe.center.enabled is False
+    assert recipe.center.to_dict() == {"enabled": False}
+    assert recipe.boundary.enabled is True
 
 
 def test_treatment_recipe_rejects_unknown_fields(tmp_path: Path) -> None:
