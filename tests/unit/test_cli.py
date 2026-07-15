@@ -127,6 +127,93 @@ def test_render_kinematical_cli_normalizes_errors_without_traceback(
     assert "Traceback" not in captured.err
 
 
+def test_render_kinematical_depth_cli_forwards_paths_and_prints_inventory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    observed = {}
+
+    def fake_render_kinematical_depth(**kwargs):
+        observed.update(kwargs)
+        return SimpleNamespace(
+            run_id="near-depth-run-0123456789abcdef",
+            path=tmp_path / "near-depth-run-0123456789abcdef",
+            treatment_recipe_id="recipe-0123456789abcdef",
+            base_recipe_id="recipe-fedcba9876543210",
+            figure_names=(
+                "etched-master-near-depth-stepped.png",
+                "quiet-vs-near-depth-stepped.png",
+            ),
+        )
+
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.render_kinematical_depth",
+        fake_render_kinematical_depth,
+        raising=False,
+    )
+
+    status = main(
+        [
+            "render-kinematical-depth",
+            "--recipe",
+            "recipes/presentation/ice-ih-near-depth-stepped.yml",
+            "--output",
+            str(tmp_path / "runs"),
+            "--figure-size-px",
+            "480",
+        ]
+    )
+
+    assert status == 0
+    assert observed == {
+        "recipe_path": "recipes/presentation/ice-ih-near-depth-stepped.yml",
+        "output_root": str(tmp_path / "runs"),
+        "figure_size_px": 480,
+    }
+    assert json.loads(capsys.readouterr().out) == {
+        "base_recipe_id": "recipe-fedcba9876543210",
+        "figures": [
+            "etched-master-near-depth-stepped.png",
+            "quiet-vs-near-depth-stepped.png",
+        ],
+        "path": str(tmp_path / "near-depth-run-0123456789abcdef"),
+        "run_id": "near-depth-run-0123456789abcdef",
+        "treatment_recipe_id": "recipe-0123456789abcdef",
+    }
+
+
+def test_render_kinematical_depth_cli_normalizes_errors_without_traceback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def fail_render_kinematical_depth(**_kwargs):
+        raise ValueError("bad depth recipe")
+
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.render_kinematical_depth",
+        fail_render_kinematical_depth,
+        raising=False,
+    )
+
+    status = main(
+        [
+            "render-kinematical-depth",
+            "--recipe",
+            "depth.yml",
+            "--output",
+            str(tmp_path / "runs"),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 1
+    assert captured.out == ""
+    assert captured.err == "kinematical depth render failed: bad depth recipe\n"
+    assert "Traceback" not in captured.err
+
+
 def test_proof_command_reports_invalid_master_without_traceback(tmp_path, capsys):
     status = main(
         [

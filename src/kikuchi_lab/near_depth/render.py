@@ -214,8 +214,13 @@ def render_near_depth(
     treatment: NearDepthTreatmentRecipe,
     overlap: OverlapField,
     quiet_payload: bytes,
+    *,
+    figure_size_px: int | None = None,
 ) -> NearDepthRender:
     """Render one exact, presentation-only near-depth derivative."""
+    effective_size = treatment.figure_size_px if figure_size_px is None else figure_size_px
+    if type(effective_size) is not int or effective_size <= 0:
+        raise ValueError("near-depth figure size must be a positive integer")
     master = np.asarray(simulation.master_stereographic.intensity)
     if master.ndim != 3 or master.shape[0] < 1 or master.shape[-2:] != overlap.raw.shape:
         raise ValueError("near-depth overlap grid must match the stereographic master")
@@ -243,7 +248,7 @@ def render_near_depth(
         base_recipe.energy_kev,
     )
     figure, axis = _prepare_axis(
-        size_px=treatment.figure_size_px,
+        size_px=effective_size,
         background=treatment.background_color,
     )
     _insert_field(
@@ -282,12 +287,12 @@ def render_near_depth(
     )
     depth_payload = _save_png(
         figure,
-        size_px=treatment.figure_size_px,
+        size_px=effective_size,
         background=treatment.background_color,
     )
 
     diagnostic_figure, diagnostic_axis = _prepare_axis(
-        size_px=treatment.figure_size_px,
+        size_px=effective_size,
         background=treatment.background_color,
     )
     _insert_field(
@@ -298,7 +303,7 @@ def render_near_depth(
     )
     diagnostic_payload = _save_png(
         diagnostic_figure,
-        size_px=treatment.figure_size_px,
+        size_px=effective_size,
         background=treatment.background_color,
     )
     figures = {
@@ -306,7 +311,7 @@ def render_near_depth(
         "quiet-vs-near-depth-stepped.png": _comparison_png(
             quiet_payload,
             depth_payload,
-            size_px=treatment.figure_size_px,
+            size_px=effective_size,
             background=treatment.background_color,
         ),
     }
@@ -358,7 +363,7 @@ def render_near_depth(
                 "path_displacement": "none",
             },
         },
-        "figure_size_px": treatment.figure_size_px,
+        "figure_size_px": effective_size,
         "renderer_versions": {
             package: version(package)
             for package in ("kikuchipy", "matplotlib", "numpy", "pillow")
@@ -375,4 +380,37 @@ def render_near_depth(
     )
 
 
-__all__ = ["NearDepthRender", "render_near_depth"]
+def render_quiet_control(
+    context: _KikuchipyContext,
+    simulation: KinematicalSimulation,
+    base_recipe: KinematicalRecipe,
+    *,
+    figure_size_px: int,
+) -> bytes:
+    """Render only the existing promoted quiet control with its original code path."""
+    from kikuchi_lab.kinematical.render import (
+        _etched_figure,
+        _save_png as _save_kinematical_png,
+        circular_stereographic_field,
+    )
+
+    if type(figure_size_px) is not int or figure_size_px <= 0:
+        raise ValueError("quiet control figure size must be a positive integer")
+    try:
+        style = next(item for item in base_recipe.styles if item.name == "quiet")
+    except StopIteration:
+        raise ValueError("base kinematical recipe does not define the quiet style") from None
+    upper = simulation.master_stereographic.intensity[0]
+    toned = asinh_tone_map(
+        upper,
+        percentiles=base_recipe.tone_percentiles,
+        scale=base_recipe.tone_asinh_scale,
+    )
+    field = circular_stereographic_field(toned)
+    return _save_kinematical_png(
+        _etched_figure(context, style, field),
+        size_px=figure_size_px,
+    )
+
+
+__all__ = ["NearDepthRender", "render_near_depth", "render_quiet_control"]

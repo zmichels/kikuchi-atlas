@@ -23,6 +23,7 @@ from .proof import (
     render_proof,
 )
 from .kinematical import KinematicalRunResult, render_kinematical
+from .near_depth import NearDepthRunResult, render_kinematical_depth
 
 __all__ = [
     "FinalRecipe",
@@ -31,6 +32,7 @@ __all__ = [
     "FinalRunResult",
     "FinalSelectionError",
     "KinematicalRunResult",
+    "NearDepthRunResult",
     "ReproductionComparison",
     "ReproductionMismatch",
     "ProofMasterError",
@@ -43,6 +45,7 @@ __all__ = [
     "render_proof",
     "render_final",
     "render_kinematical",
+    "render_kinematical_depth",
     "validate_final_selection",
     "reproduce_final",
 ]

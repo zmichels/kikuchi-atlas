@@ -46,6 +46,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     render_kinematical_parser.add_argument("--recipe", required=True)
     render_kinematical_parser.add_argument("--output", required=True)
+    render_depth_parser = subparsers.add_parser(
+        "render-kinematical-depth",
+        help="Render a crisp presentation-only near-depth derivative.",
+    )
+    render_depth_parser.add_argument("--recipe", required=True)
+    render_depth_parser.add_argument("--output", required=True)
+    render_depth_parser.add_argument("--figure-size-px", type=int)
     select_orientation = subparsers.add_parser(
         "select-orientation",
         help="Record an immutable human orientation decision for a sealed proof.",
@@ -215,6 +222,34 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "path": str(result.path),
                     "recipe_id": result.recipe_id,
                     "master_reflector_count": result.master_reflector_count,
+                    "figures": result.figure_names,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "render-kinematical-depth":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_kinematical_depth
+
+        try:
+            result = render_kinematical_depth(
+                recipe_path=args.recipe,
+                output_root=args.output,
+                figure_size_px=args.figure_size_px,
+            )
+        except (BundleExistsError, PartialBundleError, OSError, ValueError) as error:
+            print(f"kinematical depth render failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "path": str(result.path),
+                    "treatment_recipe_id": result.treatment_recipe_id,
+                    "base_recipe_id": result.base_recipe_id,
                     "figures": result.figure_names,
                 },
                 indent=2,

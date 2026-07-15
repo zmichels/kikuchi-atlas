@@ -14,7 +14,7 @@ from kikuchi_lab.kinematical.kikuchipy_adapter import simulate_kinematical_array
 from kikuchi_lab.kinematical.render import render_kinematical_figures
 from kikuchi_lab.near_depth import load_near_depth_recipe
 from kikuchi_lab.near_depth.overlap import compute_overlap_field
-from kikuchi_lab.near_depth.render import render_near_depth
+from kikuchi_lab.near_depth.render import render_near_depth, render_quiet_control
 from kikuchi_lab.sources.structure import load_structure_record
 
 
@@ -71,6 +71,21 @@ def test_renderer_emits_approved_png_inventory_and_sizes(
             assert image.convert("L").getextrema()[0] < image.convert("L").getextrema()[1]
     with Image.open(BytesIO(result.diagnostic_png)) as image:
         assert image.size == (320, 320)
+
+
+def test_quiet_control_reuses_the_existing_renderer_byte_for_byte(
+    small_ice_render_inputs,
+) -> None:
+    context, simulation, base, _, _, quiet = small_ice_render_inputs
+
+    control = render_quiet_control(
+        context,
+        simulation,
+        base,
+        figure_size_px=320,
+    )
+
+    assert control == quiet
 
 
 def test_renderer_propagates_exact_boundary_then_center_styles(
