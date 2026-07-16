@@ -77,9 +77,9 @@ class IceArtCatalogRecipe:
             isinstance(self.eligibility_min_weight, bool)
             or not isinstance(self.eligibility_min_weight, (int, float))
             or not math.isfinite(self.eligibility_min_weight)
-            or float(self.eligibility_min_weight) != 0.10
+            or float(self.eligibility_min_weight) != 0.08
         ):
-            raise ValueError("catalog recipe eligibility_min_weight must be exactly 0.10")
+            raise ValueError("catalog recipe eligibility_min_weight must be exactly 0.08")
         if type(self.globe_cohort_count) is not int or self.globe_cohort_count != 4:
             raise ValueError("catalog recipe globe_cohort_count must be integer 4")
         expected = {
@@ -91,7 +91,7 @@ class IceArtCatalogRecipe:
         for field, value in expected.items():
             if getattr(self, field) != value:
                 raise ValueError(f"catalog recipe {field} must be {value}")
-        object.__setattr__(self, "eligibility_min_weight", 0.10)
+        object.__setattr__(self, "eligibility_min_weight", 0.08)
 
     def to_dict(self) -> dict[str, object]:
         return {

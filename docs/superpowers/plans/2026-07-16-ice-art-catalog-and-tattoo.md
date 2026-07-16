@@ -20,6 +20,7 @@
 - Default artboard is 145 mm. Rounded dominant widths are `[4.8, 4.2, 3.6, 3.1]` mm; secondary `[2.5, 2.2, 1.9, 1.6]` mm; fine `[1.2, 1.0, 0.8]` mm.
 - Noncrossing edge clearance is at least 1.5 mm. Open endpoints are at least 2.0 mm from unrelated noncrossing paths. True crystallographic crossings are exempt.
 - The canonical SVG has black strokes and transparent paper representing untouched skin. Preview skin color is explicitly presentation-only.
+- The tracked catalog's `0.08` eligibility floor is an explicit science-art selection policy recorded in the recipe, catalog, and ledger. It changes no structure factor, band normal, Bragg width, or other crystallographic evidence.
 - Do not start gray-wash/dotwork until the user accepts the primary geometry. Secondary structural path records and bytes must match the primary exactly.
 - Reuse the bounded Ice workflow deadlines. Long source/catalog stages log their finite work summary, stage start/finish, and elapsed time to stderr; progress observations never enter content identity.
 - Finish all validation before output-root mutation. Publish via a unique partial directory, fsync, manifest last, and atomic no-replace promotion.
@@ -99,7 +100,7 @@ git commit -m "feat: define Ice art product contracts"
 
 - [ ] **Step 1: Write RED tests**
 
-Use a synthetic `PresentationSource` with 12 axial bands and repeated weights at two cohort boundaries. Assert four nonempty cohorts; equal weights never split; output ordering is normalized weight descending, HKL ascending, member ID ascending; eligibility is inclusive at `0.10`; and forge/missing/additional-key snapshot cases fail. Reject fewer than four unique eligible weight blocks, duplicate HKLs, nonpositive thresholds, and source/weight length mismatch.
+Use a synthetic `PresentationSource` with 12 axial bands and repeated weights at two cohort boundaries. Assert four nonempty cohorts; equal weights never split; output ordering is normalized weight descending, HKL ascending, member ID ascending; eligibility is inclusive at an arbitrary valid threshold; and forge/missing/additional-key snapshot cases fail. Reject fewer than four unique eligible weight blocks, duplicate HKLs, nonpositive thresholds, and source/weight length mismatch.
 
 - [ ] **Step 2: Run RED**
 
@@ -117,7 +118,7 @@ Public interfaces:
 
 Partition equal-weight blocks, not members. Choose the three block boundaries minimizing squared distance of cumulative member counts to 25%, 50%, and 75%, with all cohorts nonempty. Cohort 4 is strongest and 1 weakest. Canonical JSON uses sorted keys, two-space indent, trailing newline, top-level `catalog_id` and `content`. Loading reconstructs and revalidates all IDs.
 
-The strict tracked YAML has schema 1, the oriented Ice recipe link, threshold `0.10`, cohort count 4, `keep_equal_weights_together`, ranking `normalized_structure_factor_weight`, `presentation_only`, and `science_art`.
+The strict tracked YAML has schema 1, the oriented Ice recipe link, science-art selection threshold `0.08`, cohort count 4, `keep_equal_weights_together`, ranking `normalized_structure_factor_weight`, `presentation_only`, and `science_art`. Generic catalog APIs continue to accept arbitrary valid thresholds.
 
 - [ ] **Step 4: Verify and commit**
 

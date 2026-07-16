@@ -276,7 +276,10 @@ def _zone_relationship(
     qualifying = 0
     for prior in selected:
         crossing = np.cross(normal, prior.normal_sample)
-        crossing /= np.linalg.norm(crossing)
+        crossing_norm = float(np.linalg.norm(crossing))
+        if crossing_norm <= 5e-14:
+            continue
+        crossing /= crossing_norm
         if crossing[2] < 0.0:
             crossing *= -1.0
         elif abs(float(crossing[2])) <= 5e-14:

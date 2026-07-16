@@ -22,10 +22,16 @@ def test_real_ice_catalog_uses_smoke_bounds_and_publishes_claims(
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
 ) -> None:
+    from kikuchi_lab.art_products.catalog import load_art_band_catalog
+    from kikuchi_lab.art_products.tattoo_recipe import load_tattoo_recipe
+    from kikuchi_lab.art_products.tattoo_selection import select_tattoo_paths
     from kikuchi_lab.workflows.ice_art_catalog import build_ice_art_catalog
 
     result = build_ice_art_catalog(recipe_path=RECIPE, output_root=tmp_path)
     ledger = json.loads((result.path / "catalog-ledger.json").read_text(encoding="utf-8"))
+    catalog = load_art_band_catalog(result.path / "art-band-catalog.json")
+    tattoo_recipe = load_tattoo_recipe(ROOT / "recipes/art/ice-ih-tattoo.yml")
+    selection = select_tattoo_paths(catalog, tattoo_recipe)
 
     assert result.path.is_dir()
     assert result.member_count > 0
@@ -39,6 +45,10 @@ def test_real_ice_catalog_uses_smoke_bounds_and_publishes_claims(
     assert all(ledger["catalog"]["globe_cohort_member_counts"].values())
     assert ledger["claim_boundaries"]["product_class"] == "science_art"
     assert ledger["claim_boundaries"]["scientific_claim"] == "presentation_only"
+    assert catalog.eligibility_min_weight == 0.08
+    assert sum(member.tattoo_eligible for member in catalog.members) == 15
+    assert tattoo_recipe.redundancy_threshold_deg == 4.0
+    assert len(selection.selected_paths) == 11
 
     stderr = capsys.readouterr().err
     assert "ice-art-catalog finite-work profile=smoke source_half_size=32" in stderr

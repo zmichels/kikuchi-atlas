@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import math
+import warnings
 from collections import Counter
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import numpy as np
 import pytest
@@ -214,3 +215,33 @@ def test_candidate_selection_arrays_and_ledgers_are_deeply_immutable() -> None:
         selection.ledger["candidate_scores"][candidate.member_id][0][
             "score_components"
         ]["strength"] = 0.0  # type: ignore[index]
+
+
+def test_exact_axial_harmonics_are_rejected_without_numeric_warnings() -> None:
+    catalog, _ = _catalog()
+    harmonic = ArtBandMember(
+        hkl=(200, 0, 2),
+        normal_crystal=catalog.members[0].normal_crystal,
+        bragg_half_width_rad=0.009,
+        structure_factor_magnitude=98.0,
+        normalized_weight=0.98,
+        globe_cohort=4,
+        globe_eligible=True,
+        tattoo_eligible=True,
+        acceptance_state="unreviewed",
+        acceptance_reason="synthetic exact axial harmonic",
+    )
+    catalog_with_harmonic = replace(
+        catalog,
+        members=(*catalog.members, harmonic),
+    )
+
+    with warnings.catch_warnings(), np.errstate(all="raise"):
+        warnings.simplefilter("error", RuntimeWarning)
+        selection = select_tattoo_paths(
+            catalog_with_harmonic,
+            load_tattoo_recipe(RECIPE),
+        )
+
+    assert len(selection.selected_paths) == 11
+    assert selection.ledger["rejections"][harmonic.member_id] == "angular_redundancy"

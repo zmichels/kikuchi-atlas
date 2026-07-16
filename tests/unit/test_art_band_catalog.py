@@ -208,7 +208,7 @@ def test_ice_catalog_recipe_tracks_the_approved_policy() -> None:
         "schema_version": 1,
         "name": "ice-ih-band-catalog",
         "source_oriented_recipe": "../spherical/ice-ih-oriented-s2-proof.yml",
-        "eligibility_min_weight": 0.10,
+        "eligibility_min_weight": 0.08,
         "globe_cohort_count": 4,
         "tie_policy": "keep_equal_weights_together",
         "ranking": "normalized_structure_factor_weight",

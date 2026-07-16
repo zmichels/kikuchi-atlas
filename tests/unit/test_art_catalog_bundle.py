@@ -67,9 +67,22 @@ def _catalog(
         source_structure_sha256=structure_sha256,
         source_recipe_id=source_recipe_id,
         presentation_recipe_id=presentation_recipe_id,
-        eligibility_min_weight=0.10,
+        eligibility_min_weight=0.08,
         members=members,
     )
+
+
+def test_tracked_catalog_recipe_uses_exact_art_selection_threshold() -> None:
+    from kikuchi_lab.workflows.ice_art_catalog import load_ice_art_catalog_recipe
+
+    recipe = load_ice_art_catalog_recipe(CATALOG_RECIPE)
+
+    assert recipe.eligibility_min_weight == 0.08
+    with pytest.raises(
+        ValueError,
+        match="catalog recipe eligibility_min_weight must be exactly 0.08",
+    ):
+        replace(recipe, eligibility_min_weight=0.10)
 
 
 @pytest.fixture
@@ -219,7 +232,7 @@ def test_bundle_has_exact_inventory_manifest_and_auditable_ledger(
             "globe_cohort_member_counts": {"1": 2, "2": 2, "3": 2, "4": 2},
         },
         "policies": {
-            "eligibility_min_weight": 0.10,
+            "eligibility_min_weight": 0.08,
             "globe_cohort_count": 4,
             "tie_policy": "keep_equal_weights_together",
             "ranking": "normalized_structure_factor_weight",
