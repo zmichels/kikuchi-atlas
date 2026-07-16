@@ -1,0 +1,23 @@
+schema_version: 1
+name: ice-ih-oriented-s2-proof
+source_spherical_recipe: ice-ih-s2-intensity.yml
+presentation_recipe: ../presentation/ice-ih-near-depth-stepped-field-led.yml
+orientation: {euler_bunge_deg: [17.0, 31.0, 43.0], frame: crystal_to_sample}
+profiles:
+  smoke:
+    source_half_size: 32
+    figure_size_px: 480
+    sphere_longitude_count: 181
+    sphere_latitude_count: 91
+    tile_rows: 32
+    timeout_seconds: 180
+  review:
+    source_half_size: 512
+    figure_size_px: 2400
+    sphere_longitude_count: 721
+    sphere_latitude_count: 361
+    tile_rows: 48
+    timeout_seconds: 600
+interpolation: bilinear
+spatial_filter: none
+background_color: "#101519"
