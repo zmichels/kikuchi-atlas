@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import FrozenInstanceError
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 import yaml
@@ -40,7 +41,14 @@ def _payload() -> dict[str, object]:
         },
         "coverage_sectors": 6,
         "zone_interior_margin_deg": 6.0,
-        "include_rim": False,
+        "projection_boundary": {
+            "enabled": True,
+            "role": "stereographic_hemisphere_boundary",
+            "scientific_claim": "noncrystallographic_projection_primitive",
+            "outer_diameter_mm": 132.0,
+            "stroke_width_mm": 2.2,
+            "ink": "#000000",
+        },
         "include_nodes": False,
         "spatial_filter": "none",
         "primary_palette": {"ink": "#000000", "substrate": "skin"},
@@ -51,6 +59,11 @@ def _write_recipe(tmp_path: Path, payload: dict[str, object]) -> Path:
     path = tmp_path / "tattoo.yml"
     path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     return path
+
+
+def _load(payload: dict[str, object]) -> TattooRecipe:
+    with TemporaryDirectory() as directory:
+        return load_tattoo_recipe(_write_recipe(Path(directory), payload))
 
 
 def _set_path(payload: dict[str, object], path: tuple[str, ...], value: object) -> None:
@@ -89,11 +102,41 @@ def test_tracked_tattoo_recipe_loads_the_approved_primary_contract() -> None:
     }
     assert recipe.coverage_sectors == 6
     assert recipe.zone_interior_margin_deg == 6.0
-    assert recipe.include_rim is False
     assert recipe.include_nodes is False
     assert recipe.spatial_filter == "none"
     assert recipe.primary_palette == {"ink": "#000000", "substrate": "skin"}
     assert recipe.recipe_id.startswith("tattoo-recipe-")
+
+
+def test_tracked_recipe_has_exact_complete_hemisphere_boundary() -> None:
+    recipe = load_tattoo_recipe(RECIPE)
+    assert dict(recipe.projection_boundary) == {
+        "enabled": True,
+        "role": "stereographic_hemisphere_boundary",
+        "scientific_claim": "noncrystallographic_projection_primitive",
+        "outer_diameter_mm": 132.0,
+        "stroke_width_mm": 2.2,
+        "ink": "#000000",
+    }
+    assert "include_rim" not in recipe.to_dict()
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("enabled", False),
+        ("outer_diameter_mm", 131.9),
+        ("stroke_width_mm", 2.1),
+        ("role", "reflector"),
+        ("scientific_claim", "crystallographic_reflector"),
+        ("ink", "#111111"),
+    ),
+)
+def test_recipe_rejects_nonapproved_boundary(field: str, value: object) -> None:
+    payload = _payload()
+    payload["projection_boundary"][field] = value
+    with pytest.raises(ValueError, match="projection_boundary"):
+        _load(payload)
 
 
 def test_tattoo_recipe_collections_are_deeply_immutable() -> None:
@@ -132,8 +175,6 @@ def test_tattoo_recipe_collections_are_deeply_immutable() -> None:
         (("score_weights", "strength"), 0.39, "score_weights"),
         (("coverage_sectors",), 5, "coverage_sectors"),
         (("zone_interior_margin_deg",), 5.0, "zone_interior_margin_deg"),
-        (("include_rim",), True, "include_rim"),
-        (("include_rim",), 0, "include_rim"),
         (("include_nodes",), True, "include_nodes"),
         (("spatial_filter",), "gaussian", "spatial_filter"),
         (("primary_palette", "ink"), "black", "primary_palette"),

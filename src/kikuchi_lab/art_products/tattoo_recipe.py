@@ -34,7 +34,7 @@ _TOP_LEVEL_FIELDS = {
     "score_weights",
     "coverage_sectors",
     "zone_interior_margin_deg",
-    "include_rim",
+    "projection_boundary",
     "include_nodes",
     "spatial_filter",
     "primary_palette",
@@ -54,6 +54,14 @@ _SCORE_WEIGHTS = {
     "zone_relationship": 0.10,
 }
 _PALETTE = {"ink": "#000000", "substrate": "skin"}
+_BOUNDARY_POLICY = {
+    "enabled": True,
+    "role": "stereographic_hemisphere_boundary",
+    "scientific_claim": "noncrystallographic_projection_primitive",
+    "outer_diameter_mm": 132.0,
+    "stroke_width_mm": 2.2,
+    "ink": "#000000",
+}
 
 
 def _mapping(value: object, expected: set[str], field: str) -> Mapping[str, object]:
@@ -124,6 +132,13 @@ def _exact_palette(value: object) -> MappingProxyType[str, str]:
     return MappingProxyType(dict(_PALETTE))
 
 
+def _exact_boundary_policy(value: object) -> MappingProxyType[str, object]:
+    source = _mapping(value, set(_BOUNDARY_POLICY), "projection_boundary")
+    if dict(source) != _BOUNDARY_POLICY:
+        raise ValueError("tattoo recipe projection_boundary must match approved policy")
+    return MappingProxyType(dict(_BOUNDARY_POLICY))
+
+
 @dataclass(frozen=True)
 class TattooRecipe:
     """Exact version-1 selection and art policy for the primary composition."""
@@ -140,7 +155,7 @@ class TattooRecipe:
     score_weights: Mapping[str, float]
     coverage_sectors: int
     zone_interior_margin_deg: float
-    include_rim: bool
+    projection_boundary: Mapping[str, object]
     include_nodes: bool
     spatial_filter: str
     primary_palette: Mapping[str, str]
@@ -169,6 +184,7 @@ class TattooRecipe:
             "score_weights",
         )
         palette = _exact_palette(self.primary_palette)
+        projection_boundary = _exact_boundary_policy(self.projection_boundary)
 
         object.__setattr__(self, "schema_version", schema_version)
         object.__setattr__(
@@ -212,11 +228,7 @@ class TattooRecipe:
                 "zone_interior_margin_deg",
             ),
         )
-        object.__setattr__(
-            self,
-            "include_rim",
-            _exact_boolean(self.include_rim, False, "include_rim"),
-        )
+        object.__setattr__(self, "projection_boundary", projection_boundary)
         object.__setattr__(
             self,
             "include_nodes",
@@ -242,7 +254,7 @@ class TattooRecipe:
             "score_weights": dict(self.score_weights),
             "coverage_sectors": self.coverage_sectors,
             "zone_interior_margin_deg": self.zone_interior_margin_deg,
-            "include_rim": self.include_rim,
+            "projection_boundary": dict(self.projection_boundary),
             "include_nodes": self.include_nodes,
             "spatial_filter": self.spatial_filter,
             "primary_palette": dict(self.primary_palette),
@@ -282,7 +294,7 @@ def load_tattoo_recipe(path: str | Path) -> TattooRecipe:
         score_weights=root["score_weights"],
         coverage_sectors=root["coverage_sectors"],
         zone_interior_margin_deg=root["zone_interior_margin_deg"],
-        include_rim=root["include_rim"],
+        projection_boundary=root["projection_boundary"],
         include_nodes=root["include_nodes"],
         spatial_filter=root["spatial_filter"],
         primary_palette=root["primary_palette"],

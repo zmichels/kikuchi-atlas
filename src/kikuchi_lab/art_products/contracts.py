@@ -251,6 +251,59 @@ class ArtBandCatalog:
 
 
 @dataclass(frozen=True, eq=False)
+class TattooBoundary:
+    schema_version: int
+    role: str
+    scientific_claim: str
+    center_mm: tuple[float, float]
+    outer_diameter_mm: float
+    width_mm: float
+    ink: str
+    boundary_id: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        _require_schema_1(self.schema_version)
+        if self.role != "stereographic_hemisphere_boundary":
+            raise ValueError("boundary role must be stereographic_hemisphere_boundary")
+        if self.scientific_claim != "noncrystallographic_projection_primitive":
+            raise ValueError(
+                "boundary scientific_claim must be "
+                "noncrystallographic_projection_primitive"
+            )
+        center = tuple(float(value) for value in self.center_mm)
+        if center != (72.5, 72.5):
+            raise ValueError("boundary center_mm must be exactly (72.5, 72.5)")
+        outer = _require_positive_finite(
+            self.outer_diameter_mm, "outer_diameter_mm"
+        )
+        width = _require_positive_finite(self.width_mm, "width_mm")
+        if outer != 132.0 or width != 2.2:
+            raise ValueError("boundary dimensions must be exactly 132.0 and 2.2 mm")
+        if self.ink != "#000000":
+            raise ValueError("boundary ink must be #000000")
+        object.__setattr__(self, "center_mm", center)
+        object.__setattr__(self, "outer_diameter_mm", outer)
+        object.__setattr__(self, "width_mm", width)
+        object.__setattr__(
+            self, "boundary_id", stable_id("tattoo-boundary", self.identity_dict())
+        )
+
+    def identity_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "role": self.role,
+            "scientific_claim": self.scientific_claim,
+            "center_mm": list(self.center_mm),
+            "outer_diameter_mm": self.outer_diameter_mm,
+            "width_mm": self.width_mm,
+            "ink": self.ink,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {"boundary_id": self.boundary_id, **self.identity_dict()}
+
+
+@dataclass(frozen=True, eq=False)
 class TattooPath:
     """One selected physical center-trace path in the tattoo composition."""
 
@@ -354,6 +407,7 @@ __all__ = [
     "AcceptanceState",
     "ArtBandCatalog",
     "ArtBandMember",
+    "TattooBoundary",
     "TattooGeometry",
     "TattooPath",
     "TattooTier",

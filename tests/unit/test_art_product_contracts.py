@@ -6,9 +6,11 @@ import pytest
 from kikuchi_lab.art_products import (
     ArtBandCatalog,
     ArtBandMember,
+    TattooBoundary,
     TattooGeometry,
     TattooPath,
 )
+from kikuchi_lab.model.identity import stable_id
 
 
 def _member(**overrides: object) -> ArtBandMember:
@@ -68,6 +70,20 @@ def _geometry(*paths: TattooPath) -> TattooGeometry:
         paths=paths or (_path(),),
         projection="upper_specimen_stereographic_center_trace",
     )
+
+
+def _boundary(**changes: object) -> TattooBoundary:
+    values = {
+        "schema_version": 1,
+        "role": "stereographic_hemisphere_boundary",
+        "scientific_claim": "noncrystallographic_projection_primitive",
+        "center_mm": (72.5, 72.5),
+        "outer_diameter_mm": 132.0,
+        "width_mm": 2.2,
+        "ink": "#000000",
+    }
+    values.update(changes)
+    return TattooBoundary(**values)
 
 
 def test_art_band_member_is_frozen_owned_and_intrinsically_identified() -> None:
@@ -217,6 +233,30 @@ def test_tattoo_path_rejects_invalid_values(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         _path(**{field: value})
+
+
+def test_projection_boundary_is_frozen_separate_evidence() -> None:
+    boundary = _boundary()
+    assert boundary.to_dict()["scientific_claim"] == (
+        "noncrystallographic_projection_primitive"
+    )
+    assert boundary.to_dict()["center_mm"] == [72.5, 72.5]
+    assert boundary.boundary_id.startswith("tattoo-boundary-")
+    with pytest.raises(FrozenInstanceError):
+        boundary.width_mm = 3.0
+
+
+def test_projection_boundary_identity_includes_every_physical_field() -> None:
+    original = _boundary()
+    for field, value in (
+        ("center_mm", [72.4, 72.5]),
+        ("outer_diameter_mm", 131.9),
+        ("width_mm", 2.1),
+        ("scientific_claim", "forged-reflector"),
+    ):
+        changed = original.identity_dict()
+        changed[field] = value
+        assert stable_id("tattoo-boundary", changed) != original.boundary_id
 
 
 def test_tattoo_geometry_identity_includes_coordinate_hashes_and_widths() -> None:

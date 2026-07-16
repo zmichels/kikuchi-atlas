@@ -23,7 +23,13 @@ score_weights:
   zone_relationship: 0.10
 coverage_sectors: 6
 zone_interior_margin_deg: 6.0
-include_rim: false
+projection_boundary:
+  enabled: true
+  role: stereographic_hemisphere_boundary
+  scientific_claim: noncrystallographic_projection_primitive
+  outer_diameter_mm: 132.0
+  stroke_width_mm: 2.2
+  ink: "#000000"
 include_nodes: false
 spatial_filter: none
 primary_palette:

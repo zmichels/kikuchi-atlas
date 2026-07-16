@@ -3,6 +3,7 @@
 from kikuchi_lab.art_products.contracts import (
     ArtBandCatalog,
     ArtBandMember,
+    TattooBoundary,
     TattooGeometry,
     TattooPath,
 )
@@ -11,6 +12,7 @@ from kikuchi_lab.art_products.contracts import (
 __all__ = [
     "ArtBandCatalog",
     "ArtBandMember",
+    "TattooBoundary",
     "TattooGeometry",
     "TattooPath",
 ]
