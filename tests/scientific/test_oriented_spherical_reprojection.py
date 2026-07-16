@@ -76,7 +76,9 @@ def test_bilinear_sampler_matches_linear_source_plane_between_nodes() -> None:
     size = 9
     coordinate = np.linspace(-1.0, 1.0, size, dtype=np.float64)
     x, y = np.meshgrid(coordinate, coordinate)
-    master = np.stack([10.0 + 2.0 * x - 3.0 * y, -4.0 + 0.5 * x + 2.0 * y])
+    master = np.stack(
+        [10.0 + 2.0 * x - 3.0 * y, -4.0 + 0.5 * x + 2.0 * y]
+    ).astype(np.float32)
     source_xy = np.array([[0.13, -0.21], [-0.33, 0.27], [0.6, 0.8]])
     directions = np.concatenate(
         [
@@ -104,7 +106,7 @@ def test_bilinear_sampler_matches_linear_source_plane_between_nodes() -> None:
             -4.0 + 0.5 * -0.33 + 2.0 * 0.27,
         ]
     )
-    np.testing.assert_allclose(sampled, expected, rtol=0.0, atol=2e-15)
+    np.testing.assert_allclose(sampled, expected, rtol=0.0, atol=1e-6)
     np.testing.assert_array_equal(owner, [0, 0, 1])
 
 
@@ -112,7 +114,7 @@ def test_sampler_reproduces_linear_xyz_values_at_exact_source_nodes() -> None:
     size = 9
     upper = stereographic_grid(size, "upper")
     lower = stereographic_grid(size, "lower")
-    master = np.zeros((2, size, size), dtype=np.float64)
+    master = np.zeros((2, size, size), dtype=np.float32)
     master[0, upper.valid] = (
         7.0
         + 2.0 * upper.directions[upper.valid, 0]
@@ -130,7 +132,7 @@ def test_sampler_reproduces_linear_xyz_values_at_exact_source_nodes() -> None:
     sampled, owner = sample_stereographic_channel(master, nodes)
 
     expected = 7.0 + 2.0 * nodes[:, 0] - 3.0 * nodes[:, 1] + 5.0 * nodes[:, 2]
-    np.testing.assert_allclose(sampled, expected, rtol=0.0, atol=2e-15)
+    np.testing.assert_allclose(sampled, expected, rtol=0.0, atol=1e-6)
     np.testing.assert_array_equal(owner, [0, 1])
 
 
@@ -251,6 +253,24 @@ def test_stereographic_row_tile_matches_the_complete_grid() -> None:
 def test_sampler_rejects_invalid_source_shapes(source: np.ndarray) -> None:
     with pytest.raises(ValueError, match=r"shape \(2, N, N\)"):
         sample_stereographic_channel(source, np.array([[0.0, 0.0, 1.0]]))
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        np.zeros((2, 9, 9), dtype=np.float64),
+        np.zeros((2, 9, 9), dtype=np.int32),
+    ],
+)
+def test_reprojection_rejects_non_float32_source_channels(source: np.ndarray) -> None:
+    with pytest.raises(ValueError, match="float32"):
+        reproject_hemisphere(
+            source,
+            Orientation((0.0, 0.0, 0.0)),
+            hemisphere="upper",
+            size=9,
+            tile_rows=3,
+        )
 
 
 def test_sampler_rejects_nonfinite_source_or_directions() -> None:

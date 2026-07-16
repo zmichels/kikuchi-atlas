@@ -58,6 +58,8 @@ def _validated_source(source: np.ndarray) -> np.ndarray:
         or master.shape[1] < 2
     ):
         raise ValueError("source channel must have shape (2, N, N) with N at least 2")
+    if master.dtype != np.dtype(np.float32):
+        raise ValueError("source channel must use float32")
     if not np.issubdtype(master.dtype, np.number) or not np.isfinite(master).all():
         raise ValueError("source channel must contain finite numeric values")
     return master
