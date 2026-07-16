@@ -66,6 +66,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     build_art_catalog.add_argument("--recipe", required=True)
     build_art_catalog.add_argument("--output", required=True)
+    render_ice_tattoo_parser = subparsers.add_parser(
+        "render-ice-tattoo",
+        help="Publish the primary Ice tattoo from a retained strict catalog.",
+    )
+    render_ice_tattoo_parser.add_argument("--catalog", required=True)
+    render_ice_tattoo_parser.add_argument("--recipe", required=True)
+    render_ice_tattoo_parser.add_argument("--output", required=True)
+    render_ice_tattoo_parser.add_argument(
+        "--treatment",
+        choices=("primary", "graywash"),
+        required=True,
+    )
     select_orientation = subparsers.add_parser(
         "select-orientation",
         help="Record an immutable human orientation decision for a sealed proof.",
@@ -334,6 +346,43 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "path": str(result.path),
                     "catalog_id": result.catalog_id,
                     "member_count": result.member_count,
+                    "manifest_sha256": result.manifest_sha256,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "render-ice-tattoo":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_ice_tattoo
+
+        try:
+            result = render_ice_tattoo(
+                catalog_path=args.catalog,
+                recipe_path=args.recipe,
+                output_root=args.output,
+                treatment=args.treatment,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(f"ice tattoo render failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "path": str(result.path),
+                    "catalog_id": result.catalog_id,
+                    "selection_id": result.selection_id,
+                    "geometry_id": result.geometry_id,
+                    "treatment": result.treatment,
                     "manifest_sha256": result.manifest_sha256,
                 },
                 indent=2,

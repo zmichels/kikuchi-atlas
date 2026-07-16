@@ -35,6 +35,7 @@ from .ice_art_catalog import (
     build_ice_art_catalog,
     load_ice_art_catalog_recipe,
 )
+from .ice_tattoo import IceTattooResult, render_ice_tattoo
 
 __all__ = [
     "FinalRecipe",
@@ -45,6 +46,7 @@ __all__ = [
     "IceArtCatalogRecipe",
     "IceArtCatalogResult",
     "IceArtCatalogTimeoutError",
+    "IceTattooResult",
     "KinematicalRunResult",
     "NearDepthRunResult",
     "OrientedSphericalRunResult",
@@ -64,6 +66,7 @@ __all__ = [
     "render_kinematical",
     "render_kinematical_depth",
     "render_oriented_spherical_master",
+    "render_ice_tattoo",
     "validate_final_selection",
     "reproduce_final",
 ]

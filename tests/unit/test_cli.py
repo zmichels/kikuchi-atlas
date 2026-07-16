@@ -381,6 +381,92 @@ def test_build_ice_art_catalog_cli_forwards_paths_and_emits_sorted_json(
     assert capsys.readouterr().out == json.dumps(expected, indent=2, sort_keys=True) + "\n"
 
 
+def test_render_ice_tattoo_cli_forwards_strict_inputs_and_emits_exact_json(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    observed = {}
+    result = SimpleNamespace(
+        run_id="ice-tattoo-run-0123456789abcdef",
+        path=tmp_path / "ice-tattoo-run-0123456789abcdef",
+        catalog_id="art-band-catalog-fedcba9876543210",
+        selection_id="tattoo-selection-0123456789abcdef",
+        geometry_id="tattoo-geometry-fedcba9876543210",
+        treatment="primary",
+        manifest_sha256="b" * 64,
+    )
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.render_ice_tattoo",
+        lambda **kwargs: observed.update(kwargs) or result,
+        raising=False,
+    )
+
+    status = main(
+        [
+            "render-ice-tattoo",
+            "--catalog",
+            "/tmp/ice-art-catalog/art-band-catalog.json",
+            "--recipe",
+            "recipes/art/ice-ih-tattoo.yml",
+            "--output",
+            "/tmp/ice-tattoo",
+            "--treatment",
+            "primary",
+        ]
+    )
+
+    assert status == 0
+    assert observed == {
+        "catalog_path": "/tmp/ice-art-catalog/art-band-catalog.json",
+        "recipe_path": "recipes/art/ice-ih-tattoo.yml",
+        "output_root": "/tmp/ice-tattoo",
+        "treatment": "primary",
+    }
+    assert json.loads(capsys.readouterr().out) == {
+        "catalog_id": result.catalog_id,
+        "geometry_id": result.geometry_id,
+        "manifest_sha256": result.manifest_sha256,
+        "path": str(result.path),
+        "run_id": result.run_id,
+        "selection_id": result.selection_id,
+        "treatment": "primary",
+    }
+
+
+def test_render_ice_tattoo_cli_normalizes_graywash_gate_without_traceback(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.render_ice_tattoo",
+        Mock(side_effect=ValueError("graywash requires accepted primary geometry")),
+        raising=False,
+    )
+
+    status = main(
+        [
+            "render-ice-tattoo",
+            "--catalog",
+            "catalog.json",
+            "--recipe",
+            "recipe.yml",
+            "--output",
+            "out",
+            "--treatment",
+            "graywash",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 1
+    assert captured.out == ""
+    assert captured.err == (
+        "ice tattoo render failed: graywash requires accepted primary geometry\n"
+    )
+    assert "Traceback" not in captured.err
+
+
 def test_proof_command_reports_invalid_master_without_traceback(tmp_path, capsys):
     status = main(
         [
