@@ -65,7 +65,11 @@ def _text(value: object, field: str) -> str:
 
 def _relative_path(value: object, field: str) -> str:
     result = _text(value, field)
-    if Path(result).is_absolute() or re.match(r"^[A-Za-z]:[\\/]", result):
+    if (
+        Path(result).is_absolute()
+        or re.match(r"^[A-Za-z]:[\\/]", result)
+        or result.startswith("\\\\")
+    ):
         raise ValueError(f"oriented recipe {field} must be a relative path")
     return result
 

@@ -165,6 +165,14 @@ def test_oriented_recipe_rejects_absolute_referenced_paths(
         load_oriented_spherical_recipe(_write_recipe(tmp_path, payload), profile="smoke")
 
 
+def test_oriented_recipe_rejects_unc_referenced_path(tmp_path: Path) -> None:
+    payload = _recipe_payload()
+    payload["source_spherical_recipe"] = r"\\server\share\ice.yml"
+
+    with pytest.raises(ValueError, match="relative path"):
+        load_oriented_spherical_recipe(_write_recipe(tmp_path, payload), profile="smoke")
+
+
 @pytest.mark.parametrize(
     "field",
     [
