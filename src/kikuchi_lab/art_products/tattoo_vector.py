@@ -1,11 +1,19 @@
-"""Physical clipping, clearance validation, and canonical primary SVG output."""
+"""Physical tattoo geometry plus deterministic primary art renderers."""
 
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
+from io import BytesIO
+from types import MappingProxyType
 from typing import Literal
 
+import matplotlib
 import numpy as np
+from matplotlib.backends.backend_pdf import FigureCanvasPdf
+from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
+from PIL import Image, ImageDraw
 
 from kikuchi_lab.art_products.contracts import TattooGeometry, TattooPath
 from kikuchi_lab.art_products.tattoo_recipe import TattooRecipe
@@ -18,6 +26,12 @@ _MIN_EDGE_GAP_MM = 1.5
 _MIN_ENDPOINT_CLEARANCE_MM = 2.0
 _NUMERIC_TOLERANCE = 1e-12
 _ARRAY_DTYPE = np.dtype("<f8")
+_POINTS_PER_INCH = 72.0
+_MILLIMETERS_PER_INCH = 25.4
+_PNG_DPI = 300
+_PNG_SIZE_PX = 1713
+_MOCKUP_BACKGROUND = "#d8b59a"
+_STENCIL_BACKGROUND = "#ffffff"
 
 IntersectionKind = Literal["none", "crossing", "endpoint", "tangent"]
 
@@ -504,8 +518,87 @@ def primary_svg_bytes(geometry: TattooGeometry) -> bytes:
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
+def _primary_pdf_bytes(geometry: TattooGeometry) -> bytes:
+    size_inches = geometry.artboard_size_mm / _MILLIMETERS_PER_INCH
+    figure = Figure(figsize=(size_inches, size_inches), frameon=False)
+    canvas = FigureCanvasPdf(figure)
+    axis = figure.add_axes((0.0, 0.0, 1.0, 1.0), frameon=False)
+    axis.set_xlim(0.0, geometry.artboard_size_mm)
+    axis.set_ylim(geometry.artboard_size_mm, 0.0)
+    axis.set_aspect("equal", adjustable="box")
+    axis.set_axis_off()
+    for path in geometry.paths:
+        axis.add_line(
+            Line2D(
+                path.points_mm[:, 0],
+                path.points_mm[:, 1],
+                color="#000000",
+                linewidth=path.width_mm * _POINTS_PER_INCH / _MILLIMETERS_PER_INCH,
+                solid_capstyle="round",
+                solid_joinstyle="round",
+            )
+        )
+
+    payload = BytesIO()
+    with matplotlib.rc_context({"pdf.compression": 0}):
+        canvas.print_pdf(
+            payload,
+            metadata={
+                "Creator": "kikuchi-lab",
+                "CreationDate": None,
+                "ModDate": None,
+            },
+        )
+    figure.clear()
+    return payload.getvalue()
+
+
+def _primary_png_bytes(geometry: TattooGeometry, *, background: str) -> bytes:
+    image = Image.new("RGB", (_PNG_SIZE_PX, _PNG_SIZE_PX), background)
+    draw = ImageDraw.Draw(image)
+    scale = _PNG_SIZE_PX / geometry.artboard_size_mm
+    for path in geometry.paths:
+        points = [tuple(float(value) * scale for value in point) for point in path.points_mm]
+        width_px = max(1, round(path.width_mm * scale))
+        draw.line(points, fill="#000000", width=width_px, joint="curve")
+        radius = width_px / 2.0
+        for point in points:
+            draw.ellipse(
+                (
+                    point[0] - radius,
+                    point[1] - radius,
+                    point[0] + radius,
+                    point[1] + radius,
+                ),
+                fill="#000000",
+            )
+
+    payload = BytesIO()
+    image.save(
+        payload,
+        format="PNG",
+        compress_level=9,
+        optimize=False,
+        dpi=(_PNG_DPI, _PNG_DPI),
+    )
+    return payload.getvalue()
+
+
+def render_primary_tattoo(geometry: TattooGeometry) -> Mapping[str, bytes]:
+    """Render the canonical primary SVG plus deterministic PDF and PNG derivatives."""
+    validate_tattoo_geometry(geometry)
+    rendered = {
+        "primary.svg": primary_svg_bytes(geometry),
+        "primary.pdf": _primary_pdf_bytes(geometry),
+        "mockup.png": _primary_png_bytes(geometry, background=_MOCKUP_BACKGROUND),
+        "stencil.png": _primary_png_bytes(geometry, background=_STENCIL_BACKGROUND),
+    }
+    return MappingProxyType(rendered)
+
+
 __all__ = [
     "build_tattoo_geometry",
     "primary_svg_bytes",
+    "render_primary_tattoo",
     "validate_tattoo_geometry",
 ]
