@@ -337,6 +337,50 @@ def test_workflows_exports_oriented_spherical_contract() -> None:
     assert workflows.render_oriented_spherical_master is render_oriented_spherical_master
 
 
+def test_build_ice_art_catalog_cli_forwards_paths_and_emits_sorted_json(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    observed = {}
+    result = SimpleNamespace(
+        run_id="ice-art-catalog-run-0123456789abcdef",
+        path=tmp_path / "ice-art-catalog-run-0123456789abcdef",
+        catalog_id="art-band-catalog-fedcba9876543210",
+        member_count=147,
+        manifest_sha256="a" * 64,
+    )
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.build_ice_art_catalog",
+        lambda **kwargs: observed.update(kwargs) or result,
+        raising=False,
+    )
+
+    status = main(
+        [
+            "build-ice-art-catalog",
+            "--recipe",
+            "recipes/art/ice-ih-band-catalog.yml",
+            "--output",
+            "local/ice-art-catalog",
+        ]
+    )
+
+    assert status == 0
+    assert observed == {
+        "recipe_path": "recipes/art/ice-ih-band-catalog.yml",
+        "output_root": "local/ice-art-catalog",
+    }
+    expected = {
+        "catalog_id": "art-band-catalog-fedcba9876543210",
+        "manifest_sha256": "a" * 64,
+        "member_count": 147,
+        "path": str(result.path),
+        "run_id": "ice-art-catalog-run-0123456789abcdef",
+    }
+    assert capsys.readouterr().out == json.dumps(expected, indent=2, sort_keys=True) + "\n"
+
+
 def test_proof_command_reports_invalid_master_without_traceback(tmp_path, capsys):
     status = main(
         [

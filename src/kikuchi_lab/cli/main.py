@@ -60,6 +60,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     render_oriented.add_argument("--recipe", required=True)
     render_oriented.add_argument("--output", required=True)
     render_oriented.add_argument("--profile", choices=("smoke", "review"), default="smoke")
+    build_art_catalog = subparsers.add_parser(
+        "build-ice-art-catalog",
+        help="Build and publish the bounded shared Ice science-art band catalog.",
+    )
+    build_art_catalog.add_argument("--recipe", required=True)
+    build_art_catalog.add_argument("--output", required=True)
     select_orientation = subparsers.add_parser(
         "select-orientation",
         help="Record an immutable human orientation decision for a sealed proof.",
@@ -297,6 +303,39 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             json.dumps(
                 {"smoke": payload(result.smoke), "review": payload(result.review)},
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "build-ice-art-catalog":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import build_ice_art_catalog
+
+        try:
+            result = build_ice_art_catalog(
+                recipe_path=args.recipe,
+                output_root=args.output,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(f"ice art catalog build failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "path": str(result.path),
+                    "catalog_id": result.catalog_id,
+                    "member_count": result.member_count,
+                    "manifest_sha256": result.manifest_sha256,
+                },
                 indent=2,
                 sort_keys=True,
             )

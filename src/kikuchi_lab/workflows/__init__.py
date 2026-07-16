@@ -28,6 +28,13 @@ from .oriented_spherical import (
     OrientedSphericalRunResult,
     render_oriented_spherical_master,
 )
+from .ice_art_catalog import (
+    IceArtCatalogRecipe,
+    IceArtCatalogResult,
+    IceArtCatalogTimeoutError,
+    build_ice_art_catalog,
+    load_ice_art_catalog_recipe,
+)
 
 __all__ = [
     "FinalRecipe",
@@ -35,6 +42,9 @@ __all__ = [
     "FinalReproductionResult",
     "FinalRunResult",
     "FinalSelectionError",
+    "IceArtCatalogRecipe",
+    "IceArtCatalogResult",
+    "IceArtCatalogTimeoutError",
     "KinematicalRunResult",
     "NearDepthRunResult",
     "OrientedSphericalRunResult",
@@ -45,7 +55,9 @@ __all__ = [
     "ProofRunResult",
     "ValidatedFinalSelection",
     "compare_final_bundles",
+    "build_ice_art_catalog",
     "load_final_recipe",
+    "load_ice_art_catalog_recipe",
     "load_proof_recipe",
     "render_proof",
     "render_final",
