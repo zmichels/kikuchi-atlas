@@ -95,7 +95,7 @@ git commit -m "feat: define Ice art product contracts"
 - Create: `src/kikuchi_lab/art_products/catalog.py`
 - Create: `recipes/art/ice-ih-band-catalog.yml`
 - Test: `tests/unit/test_art_band_catalog.py`
-- Test: `tests/scientific/test_art_band_catalog.py`
+- Test: `tests/scientific/test_art_band_catalog_scientific.py`
 
 - [ ] **Step 1: Write RED tests**
 
@@ -104,7 +104,7 @@ Use a synthetic `PresentationSource` with 12 axial bands and repeated weights at
 - [ ] **Step 2: Run RED**
 
 ```bash
-uv run pytest tests/unit/test_art_band_catalog.py tests/scientific/test_art_band_catalog.py -q
+uv run pytest tests/unit/test_art_band_catalog.py tests/scientific/test_art_band_catalog_scientific.py -q
 ```
 
 - [ ] **Step 3: Implement catalog builder and strict JSON I/O**
@@ -122,9 +122,9 @@ The strict tracked YAML has schema 1, the oriented Ice recipe link, threshold `0
 - [ ] **Step 4: Verify and commit**
 
 ```bash
-uv run pytest tests/unit/test_art_band_catalog.py tests/scientific/test_art_band_catalog.py -q
-uv run ruff check src/kikuchi_lab/art_products tests/unit/test_art_band_catalog.py tests/scientific/test_art_band_catalog.py
-git add src/kikuchi_lab/art_products/catalog.py recipes/art/ice-ih-band-catalog.yml tests/unit/test_art_band_catalog.py tests/scientific/test_art_band_catalog.py
+uv run pytest tests/unit/test_art_band_catalog.py tests/scientific/test_art_band_catalog_scientific.py -q
+uv run ruff check src/kikuchi_lab/art_products tests/unit/test_art_band_catalog.py tests/scientific/test_art_band_catalog_scientific.py
+git add src/kikuchi_lab/art_products/catalog.py recipes/art/ice-ih-band-catalog.yml tests/unit/test_art_band_catalog.py tests/scientific/test_art_band_catalog_scientific.py docs/superpowers/plans/2026-07-16-ice-art-catalog-and-tattoo.md
 git commit -m "feat: rank shared Ice art bands"
 ```
 
