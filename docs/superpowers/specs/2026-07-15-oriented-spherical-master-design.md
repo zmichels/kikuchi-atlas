@@ -1,7 +1,7 @@
 ---
 title: Oriented Spherical Master and Hemisphere Reprojection Design
 date: 2026-07-15
-status: awaiting-written-review
+status: approved
 project_prefix: KIKU
 task: KIKU-T027
 depends_on: [KIKU-F002, KIKU-T026]

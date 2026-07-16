@@ -2,13 +2,14 @@
 id: KIKU-T027
 type: task
 title: Rotate Ice master on S2 and reproject specimen hemispheres
-status: proposed
+status: ready
 parent: KIKU-F003
 created: 2026-07-15
 priority: P1
 tags: [ice-ih, spherical-intensity, orientation, reprojection, visualization]
 links:
   - ../superpowers/specs/2026-07-15-oriented-spherical-master-design.md
+  - ../superpowers/plans/2026-07-16-oriented-spherical-master.md
 ---
 
 # KIKU-T027: Rotate Ice master on S2 and reproject specimen hemispheres
