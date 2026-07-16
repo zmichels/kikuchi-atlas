@@ -4,6 +4,7 @@ import importlib
 import math
 import re
 import xml.etree.ElementTree as ET
+from dataclasses import replace
 from types import ModuleType
 
 import numpy as np
@@ -93,6 +94,31 @@ def test_build_preserves_order_widths_and_centered_crop_without_mutation() -> No
     for selected, before in zip(selection.selected_paths, source_points, strict=True):
         assert np.array_equal(selected.center_trace, before)
         assert not selected.center_trace.flags.writeable
+
+
+def test_build_rejects_coherently_forged_tier_and_width_order() -> None:
+    vector = _vector()
+    recipe = load_tattoo_recipe(RECIPE)
+    selection = _selection()
+    forged_paths = list(selection.selected_paths)
+    first = forged_paths[0]
+    last = forged_paths[-1]
+    forged_paths[0] = replace(first, tier=last.tier, width_mm=last.width_mm)
+    forged_paths[-1] = replace(last, tier=first.tier, width_mm=first.width_mm)
+    forged = TattooSelection(
+        catalog_id=selection.catalog_id,
+        recipe_id=selection.recipe_id,
+        orientation_id=selection.orientation_id,
+        candidates=selection.candidates,
+        selected_paths=tuple(forged_paths),
+        ledger=selection.ledger,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="ordered tier/width assignments must match the tattoo recipe",
+    ):
+        vector.build_tattoo_geometry(forged, recipe)
 
 
 def test_circle_clipping_handles_endpoint_tangent_and_crossing_segments() -> None:

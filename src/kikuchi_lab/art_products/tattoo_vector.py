@@ -420,6 +420,18 @@ def build_tattoo_geometry(
         raise ValueError("selection orientation_id does not match the tattoo recipe")
     if len(selection.selected_paths) != _PATH_COUNT:
         raise ValueError("tattoo selection must contain exactly 11 paths")
+    expected_assignments = tuple(
+        assignment
+        for tier, count in recipe.path_allocation.items()
+        for assignment in zip(
+            (tier,) * count,
+            recipe.stroke_widths_mm[tier],
+            strict=True,
+        )
+    )
+    actual_assignments = tuple((path.tier, path.width_mm) for path in selection.selected_paths)
+    if actual_assignments != expected_assignments:
+        raise ValueError("ordered tier/width assignments must match the tattoo recipe")
 
     scale = recipe.artboard_size_mm / (2.0 * recipe.crop_radius)
     center = np.array(

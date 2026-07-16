@@ -79,6 +79,14 @@ def test_endpoint_and_tangent_contacts_are_not_crossing_exempt(
         _vector().validate_tattoo_geometry(geometry)
 
 
+def test_collinear_contact_is_not_crossing_exempt() -> None:
+    first = _path(0, [[10.0, 20.0], [30.0, 20.0]])
+    second = _path(1, [[20.0, 20.0], [40.0, 20.0]])
+
+    with pytest.raises(ValueError, match="noncrossing edge gap"):
+        _vector().validate_tattoo_geometry(_geometry(first, second))
+
+
 def test_noncrossing_edge_gap_of_1_49_mm_fails() -> None:
     first = _path(0, [[10.0, 40.0], [135.0, 40.0]])
     second = _path(1, [[10.0, 42.29], [135.0, 42.29]])
