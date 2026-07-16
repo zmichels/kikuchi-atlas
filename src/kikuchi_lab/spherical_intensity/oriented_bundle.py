@@ -36,7 +36,7 @@ from .contracts import (
 from .orientation import OrientedSphericalRecipe, orientation_ledger
 from .oriented_render import OrientedSphericalRender
 from .presentation import PresentationSource
-from .rotation import OrientedSphericalIntensityField
+from .rotation import OrientedSphericalIntensityField, rotate_spherical_field
 
 
 _FIGURE_NAMES = {
@@ -219,6 +219,14 @@ def _validate_oriented_wrapper(
         "source_xyz_sha256": source_field.channel_sha256["xyz"],
     }:
         raise ValueError(f"{name} field source metadata is inconsistent")
+    authoritative = rotate_spherical_field(source_field, orientation)
+    if (
+        hashes != dict(authoritative.field.channel_sha256)
+        or value.field.field_id != authoritative.field.field_id
+        or ledger != plain_data(authoritative.ledger)
+        or value.product_id != authoritative.product_id
+    ):
+        raise ValueError(f"{name} does not match the authoritative rotation")
     return hashes, ledger
 
 

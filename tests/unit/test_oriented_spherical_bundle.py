@@ -22,6 +22,8 @@ from kikuchi_lab.spherical_intensity.contracts import SphericalIntensityField
 from kikuchi_lab.spherical_intensity.mapping import build_spherical_intensity
 from kikuchi_lab.spherical_intensity.orientation import (
     load_oriented_spherical_recipe,
+    orientation_ledger,
+    orientation_matrix,
 )
 from kikuchi_lab.spherical_intensity.oriented_bundle import (
     write_oriented_spherical_bundle,
@@ -32,7 +34,10 @@ from kikuchi_lab.spherical_intensity.oriented_render import (
 )
 from kikuchi_lab.spherical_intensity.presentation import build_presentation_source
 from kikuchi_lab.spherical_intensity.recipe import load_spherical_intensity_recipe
-from kikuchi_lab.spherical_intensity.rotation import rotate_spherical_field
+from kikuchi_lab.spherical_intensity.rotation import (
+    OrientedSphericalIntensityField,
+    rotate_spherical_field,
+)
 
 
 ROOT = Path(__file__).parents[2]
@@ -113,6 +118,52 @@ def _rebuild_field(
         intensity_normalized=field.intensity_normalized,
         density_weight=field.density_weight,
         metadata=field.metadata_dict(),
+    )
+
+
+def _self_consistent_wrong_rotation(
+    source: SphericalIntensityField,
+    claimed_orientation: Orientation,
+) -> OrientedSphericalIntensityField:
+    wrong_orientation = Orientation((18.0, 31.0, 43.0))
+    wrongly_rotated = rotate_spherical_field(source, wrong_orientation)
+    claimed_orientation_ledger = orientation_ledger(claimed_orientation)
+    metadata = source.metadata_dict()
+    metadata["frame"] = {
+        "name": "EDAX-TSL:RD-TD-ND",
+        "handedness": "right-handed",
+        "vector_units": "dimensionless",
+    }
+    metadata["orientation"] = claimed_orientation_ledger
+    metadata["oriented_from"] = {
+        "source_field_id": source.field_id,
+        "source_xyz_sha256": source.channel_sha256["xyz"],
+    }
+    field = SphericalIntensityField.from_columns(
+        xyz=wrongly_rotated.field.xyz,
+        hemisphere=source.hemisphere,
+        source_row=source.source_row,
+        source_column=source.source_column,
+        intensity_raw=source.intensity_raw,
+        intensity_normalized=source.intensity_normalized,
+        density_weight=source.density_weight,
+        metadata=metadata,
+    )
+    wrong_round_trip = field.xyz @ orientation_matrix(claimed_orientation)
+    ledger = {
+        **claimed_orientation_ledger,
+        "source_field_id": source.field_id,
+        "oriented_field_id": field.field_id,
+        "channel_sha256_before": dict(source.channel_sha256),
+        "channel_sha256_after": dict(field.channel_sha256),
+        "maximum_inverse_error": float(np.max(np.abs(wrong_round_trip - source.xyz))),
+    }
+    return OrientedSphericalIntensityField(
+        source_field_id=source.field_id,
+        field=field,
+        orientation_id=claimed_orientation.orientation_id,
+        ledger=ledger,
+        product_id=stable_id("oriented-s2", ledger),
     )
 
 
@@ -471,6 +522,23 @@ def test_figure_ledger_recipe_corruption_is_rejected_before_filesystem_mutation(
     root = tmp_path / "invalid-figure-ledger" / "runs"
 
     with pytest.raises(ValueError, match="render does not match the supplied"):
+        write_oriented_spherical_bundle(root, **inputs)
+
+    assert not root.exists()
+
+
+def test_self_consistent_wrong_rotation_is_rejected_before_filesystem_mutation(
+    oriented_bundle_inputs,
+    tmp_path: Path,
+) -> None:
+    inputs = dict(oriented_bundle_inputs)
+    inputs["oriented_field"] = _self_consistent_wrong_rotation(
+        oriented_bundle_inputs["source_build"].field,
+        oriented_bundle_inputs["oriented_recipe"].orientation,
+    )
+    root = tmp_path / "wrong-rotation" / "runs"
+
+    with pytest.raises(ValueError, match="authoritative rotation"):
         write_oriented_spherical_bundle(root, **inputs)
 
     assert not root.exists()
