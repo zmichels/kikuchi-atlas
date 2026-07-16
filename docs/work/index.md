@@ -20,4 +20,8 @@ kikuchipy-native kinematical reference bundle and its visual decision gate.
 validated axial derivative, and bounded MTEX density/3D bridge. `KIKU-F004`
 promotes the phase-general incubator into deliberately bounded additional-phase
 proofs, beginning with an Ice Ih oxygen-sublattice review candidate.
+`KIKU-F005` adds a shared Ice Ih art-band catalog and two independently
+validated science-art products: an open-silhouette tattoo and a canonical-frame
+relief globe. Its secondary gray-wash/dotwork task depends explicitly on user
+acceptance of the primary tattoo geometry.
 Parent/child links remain symmetric, and only accepted work is marked `done`.

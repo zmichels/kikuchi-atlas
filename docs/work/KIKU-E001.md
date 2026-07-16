@@ -9,6 +9,7 @@ children:
   - KIKU-F002
   - KIKU-F003
   - KIKU-F004
+  - KIKU-F005
 created: 2026-07-12
 priority: P0
 tags: [forsterite, milestone]
@@ -19,6 +20,9 @@ links:
   - ../superpowers/plans/2026-07-13-kikuchipy-kinematical-reference-products.md
   - ../superpowers/specs/2026-07-13-spherical-intensity-and-mtex-density-design.md
   - ../superpowers/plans/2026-07-13-spherical-intensity-and-mtex-density-bridge.md
+  - ../superpowers/specs/2026-07-16-ice-art-globe-and-tattoo-design.md
+  - ../superpowers/plans/2026-07-16-ice-art-catalog-and-tattoo.md
+  - ../superpowers/plans/2026-07-16-ice-relief-globe.md
 evidence:
   - ../superpowers/specs/2026-07-12-kikuchi-companion-design.md
   - ../acceptance/forsterite-milestone.md
