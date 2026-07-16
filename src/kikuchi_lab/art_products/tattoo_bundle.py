@@ -131,7 +131,7 @@ def _geometry_identity(geometry: TattooGeometry) -> str:
     return stable_id("tattoo-geometry", geometry.to_dict())
 
 
-def _validate_svg(payload: bytes) -> None:
+def _validate_svg(payload: bytes, *, boundary_id: str) -> None:
     try:
         root = ET.fromstring(payload)
     except ET.ParseError:
@@ -154,6 +154,8 @@ def _validate_svg(payload: bytes) -> None:
         for element in children
     ):
         raise ValueError("primary SVG must use only black ink")
+    if children[-1].attrib.get("id") != boundary_id:
+        raise ValueError("primary SVG boundary ID does not match geometry")
     if any(
         path.attrib.get("stroke-linecap") != "round"
         or path.attrib.get("stroke-linejoin") != "round"
@@ -205,6 +207,8 @@ def _validate_png(
 def _validate_rendered(
     rendered: Mapping[str, bytes],
     expected: Mapping[str, bytes],
+    *,
+    boundary_id: str,
 ) -> dict[str, bytes]:
     if not isinstance(rendered, Mapping) or set(rendered) != set(_PRIMARY_RENDER_NAMES):
         raise ValueError("primary rendered artifacts differ from the exact inventory")
@@ -214,7 +218,7 @@ def _validate_rendered(
         if not isinstance(payload, bytes) or not payload:
             raise ValueError(f"{name} must contain non-empty bytes")
         copied[name] = payload
-    _validate_svg(copied["primary.svg"])
+    _validate_svg(copied["primary.svg"], boundary_id=boundary_id)
     _validate_pdf(copied["primary.pdf"])
     _validate_png(
         copied["mockup.png"],
@@ -261,10 +265,14 @@ def _gap_diagnostic(geometry: TattooGeometry) -> dict[str, object]:
     content: dict[str, object] = {
         "schema_version": 1,
         "geometry_id": geometry.geometry_id,
+        "boundary_id": geometry.boundary.boundary_id,
+        "boundary": geometry.boundary.to_dict(),
         "validation": {
             "status": "passed",
             "minimum_noncrossing_edge_gap_mm": _MIN_EDGE_GAP_MM,
             "minimum_endpoint_clearance_mm": _MIN_ENDPOINT_CLEARANCE_MM,
+            "complete_hemisphere_boundary": "passed",
+            "boundary_endpoint_contact": "passed",
         },
         "observed": {
             "noncrossing_pair_count": len(noncrossing),
@@ -341,6 +349,10 @@ def _validated_payload(
     if len(selection.selected_paths) != 11:
         raise ValueError("tattoo selection must contain exactly 11 paths")
 
+    if geometry.boundary.boundary_id != stable_id(
+        "tattoo-boundary", geometry.boundary.identity_dict()
+    ):
+        raise ValueError("boundary_id does not match boundary content")
     if geometry.geometry_id != _geometry_identity(geometry):
         raise ValueError("geometry_id does not match geometry content")
     if geometry.catalog_id != catalog.catalog_id:
@@ -353,6 +365,8 @@ def _validated_payload(
     if _selection_snapshot(selection) != _selection_snapshot(expected_selection):
         raise ValueError("selection content does not match strict catalog selection")
     expected_geometry = build_tattoo_geometry(expected_selection, recipe)
+    if geometry.boundary.to_dict() != expected_geometry.boundary.to_dict():
+        raise ValueError("projection boundary does not match rebuilt geometry")
     if [path.width_mm for path in geometry.paths] != [
         path.width_mm for path in expected_geometry.paths
     ]:
@@ -367,6 +381,7 @@ def _validated_payload(
     rendered_payloads = _validate_rendered(
         rendered,
         render_primary_tattoo(expected_geometry),
+        boundary_id=expected_geometry.boundary.boundary_id,
     )
     recipe_snapshot = {"recipe_id": recipe.recipe_id, "content": recipe.to_dict()}
     catalog_snapshot = {"catalog_id": catalog.catalog_id, "content": catalog.to_dict()}
@@ -387,6 +402,7 @@ def _validated_payload(
         "recipe_id": recipe.recipe_id,
         "selection_id": selection.selection_id,
         "geometry_id": geometry.geometry_id,
+        "boundary_id": geometry.boundary.boundary_id,
         "treatment": treatment,
         "diagnostic_id": diagnostic["diagnostic_id"],
         "rendered_sha256": {

@@ -13,6 +13,7 @@ import numpy as np
 from matplotlib.backends.backend_pdf import FigureCanvasPdf
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+from matplotlib.patches import Circle
 from PIL import Image, ImageDraw
 
 from kikuchi_lab.art_products.contracts import (
@@ -574,6 +575,22 @@ def _primary_pdf_bytes(geometry: TattooGeometry) -> bytes:
                 solid_joinstyle="round",
             )
         )
+    axis.add_patch(
+        Circle(
+            geometry.boundary.center_mm,
+            radius=(
+                geometry.boundary.outer_diameter_mm - geometry.boundary.width_mm
+            )
+            / 2.0,
+            fill=False,
+            edgecolor=geometry.boundary.ink,
+            linewidth=(
+                geometry.boundary.width_mm
+                * _POINTS_PER_INCH
+                / _MILLIMETERS_PER_INCH
+            ),
+        )
+    )
 
     payload = BytesIO()
     with matplotlib.rc_context({"pdf.compression": 0}):
@@ -608,6 +625,18 @@ def _primary_png_bytes(geometry: TattooGeometry, *, background: str) -> bytes:
                 ),
                 fill="#000000",
             )
+    center_x, center_y = geometry.boundary.center_mm
+    outer_radius_mm = geometry.boundary.outer_diameter_mm / 2.0
+    draw.ellipse(
+        (
+            (center_x - outer_radius_mm) * scale,
+            (center_y - outer_radius_mm) * scale,
+            (center_x + outer_radius_mm) * scale,
+            (center_y + outer_radius_mm) * scale,
+        ),
+        outline="#000000",
+        width=round(geometry.boundary.width_mm * scale),
+    )
 
     payload = BytesIO()
     image.save(

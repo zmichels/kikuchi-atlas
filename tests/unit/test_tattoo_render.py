@@ -72,6 +72,10 @@ def _media_box_points(payload: bytes) -> tuple[float, float]:
     return float(match.group(1)), float(match.group(2))
 
 
+def _px(mm: float) -> int:
+    return round(mm * 1713 / 145.0)
+
+
 def test_primary_svg_has_11_paths_then_one_complete_projection_boundary() -> None:
     geometry = _geometry()
     root = ElementTree.fromstring(primary_svg_bytes(geometry))
@@ -169,3 +173,22 @@ def test_primary_pngs_are_exact_300_dpi_palettes_without_timestamps(
     assert b"tIME" not in payload
     assert b"tEXt" not in payload
     assert b"iTXt" not in payload
+
+
+@pytest.mark.parametrize(
+    ("name", "background"),
+    (("mockup.png", (216, 181, 154)), ("stencil.png", (255, 255, 255))),
+)
+def test_primary_png_shows_complete_132_mm_boundary_with_clear_margin(
+    name: str,
+    background: tuple[int, int, int],
+) -> None:
+    payload = render_primary_tattoo(_geometry())[name]
+    with Image.open(BytesIO(payload)) as source:
+        image = source.convert("RGB")
+        center = _px(72.5)
+        assert image.getpixel((center, _px(6.5))) == (0, 0, 0)
+        assert image.getpixel((center, _px(5.0))) == background
+        assert image.getpixel((center, _px(138.5))) == (0, 0, 0)
+        assert image.getpixel((_px(5.0), center)) == background
+        assert image.getpixel((_px(140.0), center)) == background

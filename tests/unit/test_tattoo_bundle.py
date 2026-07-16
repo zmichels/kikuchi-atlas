@@ -115,12 +115,52 @@ def test_bundle_svg_validator_accepts_canonical_paths_then_boundary(
     from kikuchi_lab.art_products.tattoo_bundle import _validate_svg
 
     payload = bundle_inputs["rendered"]["primary.svg"]
+    boundary_id = bundle_inputs["geometry"].boundary.boundary_id
     root = ET.fromstring(payload)
     assert [child.tag.rsplit("}", 1)[-1] for child in root] == [
         *("path" for _ in range(11)),
         "circle",
     ]
-    assert _validate_svg(payload) is None
+    assert _validate_svg(payload, boundary_id=boundary_id) is None
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("boundary-first", "exactly 11 paths followed by one boundary circle"),
+        ("second-boundary", "exactly 11 paths followed by one boundary circle"),
+        ("nonblack-boundary", "only black ink"),
+        ("missing-boundary", "exactly 11 paths followed by one boundary circle"),
+        ("wrong-boundary-id", "boundary ID"),
+    ),
+)
+def test_bundle_svg_validator_rejects_noncanonical_boundary(
+    bundle_inputs: dict[str, object],
+    mutation: str,
+    message: str,
+) -> None:
+    from kikuchi_lab.art_products.tattoo_bundle import _validate_svg
+
+    geometry = bundle_inputs["geometry"]
+    root = ET.fromstring(bundle_inputs["rendered"]["primary.svg"])
+    boundary = list(root)[-1]
+    if mutation == "boundary-first":
+        root.remove(boundary)
+        root.insert(0, boundary)
+    elif mutation == "second-boundary":
+        root.append(ET.fromstring(ET.tostring(boundary)))
+    elif mutation == "nonblack-boundary":
+        boundary.set("stroke", "#123456")
+    elif mutation == "missing-boundary":
+        root.remove(boundary)
+    else:
+        boundary.set("id", "tattoo-boundary-forged")
+
+    with pytest.raises(ValueError, match=message):
+        _validate_svg(
+            ET.tostring(root),
+            boundary_id=geometry.boundary.boundary_id,
+        )
 
 
 def test_primary_bundle_has_exact_inventory_manifest_last_and_auditable_content(
@@ -185,6 +225,8 @@ def test_primary_bundle_has_exact_inventory_manifest_last_and_auditable_content(
         WIDTHS
     )
     assert diagnostic["validation"] == {
+        "boundary_endpoint_contact": "passed",
+        "complete_hemisphere_boundary": "passed",
         "minimum_endpoint_clearance_mm": 2.0,
         "minimum_noncrossing_edge_gap_mm": 1.5,
         "status": "passed",
@@ -206,6 +248,53 @@ def test_primary_bundle_has_exact_inventory_manifest_last_and_auditable_content(
             assert image.format == "PNG"
             assert image.size == size
             assert image.convert("RGB").getpixel((0, 0)) == corner
+
+
+def test_bundle_ledgers_projection_boundary_separately(
+    bundle_inputs: dict[str, object],
+    tmp_path: Path,
+) -> None:
+    from kikuchi_lab.art_products.tattoo_bundle import write_tattoo_bundle
+
+    result = write_tattoo_bundle(tmp_path, **bundle_inputs)
+    selection = json.loads(
+        (result.path / "band-selection-ledger.json").read_text()
+    )
+    geometry = json.loads((result.path / "path-geometry.json").read_text())
+    diagnostic = json.loads(
+        (result.path / "stroke-gap-diagnostic.json").read_text()
+    )
+    manifest = json.loads((result.path / "manifest.json").read_text())
+    boundary = geometry["content"]["boundary"]
+    assert boundary["scientific_claim"] == (
+        "noncrystallographic_projection_primitive"
+    )
+    assert len(geometry["content"]["paths"]) == 11
+    assert len(selection["selected_paths"]) == 11
+    assert diagnostic["boundary_id"] == boundary["boundary_id"]
+    assert diagnostic["validation"]["complete_hemisphere_boundary"] == "passed"
+    assert manifest["run_identity"]["boundary_id"] == boundary["boundary_id"]
+
+
+def test_forged_boundary_fails_before_output_mutation(
+    bundle_inputs: dict[str, object],
+    tmp_path: Path,
+) -> None:
+    from kikuchi_lab.art_products.tattoo_bundle import write_tattoo_bundle
+
+    geometry = bundle_inputs["geometry"]
+    object.__setattr__(geometry.boundary, "boundary_id", "tattoo-boundary-forged")
+    output = tmp_path / "forged-boundary"
+    try:
+        with pytest.raises(ValueError, match="boundary_id"):
+            write_tattoo_bundle(output, **bundle_inputs)
+    finally:
+        object.__setattr__(
+            geometry.boundary,
+            "boundary_id",
+            stable_id("tattoo-boundary", geometry.boundary.identity_dict()),
+        )
+    assert not output.exists()
 
 
 def test_bundle_run_identity_is_path_neutral(
