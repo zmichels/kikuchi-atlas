@@ -1,0 +1,31 @@
+schema_version: 1
+name: ice-ih-tattoo
+orientation:
+  euler_bunge_deg: [17.0, 31.0, 43.0]
+  frame: crystal_to_sample
+artboard_size_mm: 145.0
+path_allocation:
+  dominant: 4
+  secondary: 4
+  fine: 3
+stroke_widths_mm:
+  dominant: [4.8, 4.2, 3.6, 3.1]
+  secondary: [2.5, 2.2, 1.9, 1.6]
+  fine: [1.2, 1.0, 0.8]
+great_circle_samples: 721
+crop_radius: 0.90
+redundancy_threshold_deg: 4.0
+score_weights:
+  strength: 0.40
+  angular_width: 0.15
+  nonredundancy: 0.20
+  coverage: 0.15
+  zone_relationship: 0.10
+coverage_sectors: 6
+zone_interior_margin_deg: 6.0
+include_rim: false
+include_nodes: false
+spatial_filter: none
+primary_palette:
+  ink: "#000000"
+  substrate: skin
