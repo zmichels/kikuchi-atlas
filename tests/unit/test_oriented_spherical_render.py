@@ -11,6 +11,7 @@ import pytest
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 from PIL import Image
 
+from kikuchi_lab.model.identity import canonical_json
 from kikuchi_lab.model.recipes import Orientation
 from kikuchi_lab.near_depth.overlap import AxialBandSet
 from kikuchi_lab.projection.kikuchipy_adapter import (
@@ -437,3 +438,26 @@ def test_render_payload_validates_inventory_and_owns_immutable_mappings() -> Non
     invalid["oriented-upper.png"] = bytearray(b"payload")
     with pytest.raises(TypeError, match="figure payloads must be bytes"):
         OrientedSphericalRender(figures=invalid, ledger={})
+
+
+def test_render_payload_deeply_freezes_nested_camera_mappings() -> None:
+    figures = {name: b"payload" for name in EXPECTED}
+    ledger = {"sphere_cameras": [{"elevation_deg": 20.0, "azimuth_deg": -65.0}]}
+    render = OrientedSphericalRender(figures=figures, ledger=ledger)
+    ledger["sphere_cameras"][0]["elevation_deg"] = -90.0
+
+    assert render.ledger["sphere_cameras"][0]["elevation_deg"] == 20.0
+    with pytest.raises(TypeError):
+        render.ledger["sphere_cameras"][0]["elevation_deg"] = -90.0
+
+
+def test_render_payload_deeply_freezes_annotated_figure_lists() -> None:
+    figures = {name: b"payload" for name in EXPECTED}
+    ledger = {"annotated_figures": ["orientation-axes.png"]}
+    render = OrientedSphericalRender(figures=figures, ledger=ledger)
+    ledger["annotated_figures"].append("oriented-upper.png")
+
+    assert render.ledger["annotated_figures"] == ["orientation-axes.png"]
+    assert canonical_json(render.ledger) == ('{"annotated_figures":["orientation-axes.png"]}')
+    with pytest.raises(AttributeError):
+        render.ledger["annotated_figures"].append("oriented-upper.png")

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from io import BytesIO
 from types import MappingProxyType
@@ -14,6 +14,7 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Circle
 from PIL import Image
 
+from kikuchi_lab.model.identity import plain_data
 from kikuchi_lab.model.recipes import Orientation
 from kikuchi_lab.projection.kikuchipy_adapter import (
     transform_crystal_direction_to_sample,
@@ -55,6 +56,26 @@ _AXIS_LABELS = (
 )
 
 
+class _FrozenList(tuple):
+    """Immutable plain-data sequence that compares by value with JSON lists."""
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Sequence) or isinstance(other, (str, bytes, bytearray)):
+            return False
+        return tuple(self) == tuple(other)
+
+    __hash__ = tuple.__hash__
+
+
+def _freeze(value: object) -> object:
+    plain = plain_data(value)
+    if isinstance(plain, dict):
+        return MappingProxyType({key: _freeze(item) for key, item in plain.items()})
+    if isinstance(plain, list):
+        return _FrozenList(_freeze(item) for item in plain)
+    return plain
+
+
 @dataclass(frozen=True)
 class OrientedSphericalRender:
     """Project-owned canonical PNG payloads and their render ledger."""
@@ -73,7 +94,7 @@ class OrientedSphericalRender:
         if not isinstance(self.ledger, Mapping):
             raise TypeError("oriented render ledger must be a mapping")
         object.__setattr__(self, "figures", MappingProxyType(figures))
-        object.__setattr__(self, "ledger", MappingProxyType(dict(self.ledger)))
+        object.__setattr__(self, "ledger", _freeze(self.ledger))
 
 
 def _presentation_hemisphere(
