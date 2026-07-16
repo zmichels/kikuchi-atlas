@@ -139,6 +139,14 @@ def test_recipe_rejects_nonapproved_boundary(field: str, value: object) -> None:
         _load(payload)
 
 
+@pytest.mark.parametrize("value", (1, 1.0))
+def test_recipe_rejects_nonboolean_boundary_enabled(value: object) -> None:
+    payload = _payload()
+    payload["projection_boundary"]["enabled"] = value
+    with pytest.raises(ValueError, match="projection_boundary.enabled"):
+        _load(payload)
+
+
 def test_tattoo_recipe_collections_are_deeply_immutable() -> None:
     recipe = load_tattoo_recipe(RECIPE)
 

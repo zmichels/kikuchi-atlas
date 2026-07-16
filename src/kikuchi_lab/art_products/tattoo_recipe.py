@@ -134,6 +134,7 @@ def _exact_palette(value: object) -> MappingProxyType[str, str]:
 
 def _exact_boundary_policy(value: object) -> MappingProxyType[str, object]:
     source = _mapping(value, set(_BOUNDARY_POLICY), "projection_boundary")
+    _exact_boolean(source["enabled"], True, "projection_boundary.enabled")
     if dict(source) != _BOUNDARY_POLICY:
         raise ValueError("tattoo recipe projection_boundary must match approved policy")
     return MappingProxyType(dict(_BOUNDARY_POLICY))
