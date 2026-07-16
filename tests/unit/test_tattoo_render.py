@@ -150,6 +150,38 @@ def test_primary_pdf_has_exact_physical_page_and_stable_metadata() -> None:
     assert b"/FlateDecode" not in payload
 
 
+def test_primary_pdf_boundary_effective_zorder_is_above_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from matplotlib.axes import Axes
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Circle, Patch
+
+    path_zorders: list[float] = []
+    boundary_zorders: list[float] = []
+    real_add_line = Axes.add_line
+    real_add_patch = Axes.add_patch
+
+    def capture_line(axis: Axes, line: Line2D) -> Line2D:
+        path_zorders.append(line.get_zorder())
+        return real_add_line(axis, line)
+
+    def capture_patch(axis: Axes, patch: Patch) -> Patch:
+        if isinstance(patch, Circle):
+            boundary_zorders.append(patch.get_zorder())
+        return real_add_patch(axis, patch)
+
+    monkeypatch.setattr(Axes, "add_line", capture_line)
+    monkeypatch.setattr(Axes, "add_patch", capture_patch)
+
+    payload = render_primary_tattoo(_geometry())["primary.pdf"]
+
+    assert payload.startswith(b"%PDF-")
+    assert len(path_zorders) == 11
+    assert len(boundary_zorders) == 1
+    assert boundary_zorders[0] > max(path_zorders)
+
+
 @pytest.mark.parametrize(
     ("name", "background"),
     (("mockup.png", (216, 181, 154)), ("stencil.png", (255, 255, 255))),

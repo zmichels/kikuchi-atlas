@@ -589,6 +589,7 @@ def _primary_pdf_bytes(geometry: TattooGeometry) -> bytes:
                 * _POINTS_PER_INCH
                 / _MILLIMETERS_PER_INCH
             ),
+            zorder=3,
         )
     )
 
