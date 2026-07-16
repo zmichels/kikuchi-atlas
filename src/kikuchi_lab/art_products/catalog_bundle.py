@@ -26,6 +26,7 @@ from kikuchi_lab.sources.structure import StructureRecord, verify_structure
 from kikuchi_lab.spherical_intensity.contracts import SphericalIntensityRecipe
 from kikuchi_lab.spherical_intensity.orientation import OrientedSphericalRecipe
 
+from .catalog import _assign_cohorts
 from .contracts import ArtBandCatalog
 
 
@@ -145,7 +146,7 @@ def _validate_catalog_members(catalog: ArtBandCatalog) -> dict[str, int]:
     if ordering != sorted(ordering):
         raise ValueError("catalog member ordering is not canonical")
     threshold = catalog.eligibility_min_weight
-    weight_cohorts: dict[float, set[int | None]] = {}
+    eligible_members = []
     cohort_counts = {cohort: 0 for cohort in (1, 2, 3, 4)}
     for index, member in enumerate(catalog.members):
         expected_member_id = stable_id("art-band-member", member.intrinsic_dict())
@@ -158,15 +159,19 @@ def _validate_catalog_members(catalog: ArtBandCatalog) -> dict[str, int]:
             if member.globe_cohort not in cohort_counts:
                 raise ValueError("eligible catalog member lacks a globe cohort")
             cohort_counts[member.globe_cohort] += 1
-            weight_cohorts.setdefault(member.normalized_weight, set()).add(
-                member.globe_cohort
-            )
+            eligible_members.append(member)
         elif member.globe_cohort is not None:
             raise ValueError("ineligible catalog member must not have a globe cohort")
     if any(count == 0 for count in cohort_counts.values()):
         raise ValueError("catalog requires four nonempty globe cohorts")
-    if any(len(cohorts) != 1 for cohorts in weight_cohorts.values()):
-        raise ValueError("catalog equal-weight members must remain in one cohort")
+    expected_cohorts = _assign_cohorts(eligible_members)
+    if any(
+        member.globe_cohort != expected_cohorts[member.member_id]
+        for member in eligible_members
+    ):
+        raise ValueError(
+            "catalog globe cohort assignment does not match deterministic catalog policy"
+        )
     return {str(cohort): count for cohort, count in cohort_counts.items()}
 
 

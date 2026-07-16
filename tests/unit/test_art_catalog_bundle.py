@@ -132,6 +132,36 @@ def test_bundle_rejects_forged_identities_before_output_mutation(
     assert not output_root.exists()
 
 
+def test_bundle_rejects_reidentified_scrambled_cohorts_before_output_mutation(
+    bundle_inputs: dict[str, object],
+    tmp_path: Path,
+) -> None:
+    from kikuchi_lab.art_products.catalog_bundle import write_art_catalog_bundle
+    from kikuchi_lab.model.identity import stable_id
+
+    catalog = bundle_inputs["catalog"]
+    assert isinstance(catalog, ArtBandCatalog)
+    reversed_cohorts = {4: 1, 3: 2, 2: 3, 1: 4}
+    forged = replace(
+        catalog,
+        members=tuple(
+            replace(member, globe_cohort=reversed_cohorts[member.globe_cohort])
+            for member in catalog.members
+        ),
+    )
+    assert forged.catalog_id == stable_id("art-band-catalog", forged.to_dict())
+    assert forged.catalog_id != catalog.catalog_id
+    output_root = tmp_path / "scrambled-cohorts" / "runs"
+
+    with pytest.raises(ValueError, match="cohort assignment"):
+        write_art_catalog_bundle(
+            output_root,
+            **{**bundle_inputs, "catalog": forged},
+        )
+
+    assert not output_root.exists()
+
+
 def test_bundle_has_exact_inventory_manifest_and_auditable_ledger(
     bundle_inputs: dict[str, object],
     tmp_path: Path,
