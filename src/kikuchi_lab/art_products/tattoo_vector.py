@@ -1,0 +1,499 @@
+"""Physical clipping, clearance validation, and canonical primary SVG output."""
+
+from __future__ import annotations
+
+import math
+from typing import Literal
+
+import numpy as np
+
+from kikuchi_lab.art_products.contracts import TattooGeometry, TattooPath
+from kikuchi_lab.art_products.tattoo_recipe import TattooRecipe
+from kikuchi_lab.art_products.tattoo_selection import TattooSelection
+
+
+_PATH_COUNT = 11
+_PROJECTION = "upper_specimen_stereographic_center_trace"
+_MIN_EDGE_GAP_MM = 1.5
+_MIN_ENDPOINT_CLEARANCE_MM = 2.0
+_NUMERIC_TOLERANCE = 1e-12
+_ARRAY_DTYPE = np.dtype("<f8")
+
+IntersectionKind = Literal["none", "crossing", "endpoint", "tangent"]
+
+
+def _cross_2d(first: np.ndarray, second: np.ndarray) -> float:
+    return float(first[0] * second[1] - first[1] * second[0])
+
+
+def _append_unique(points: list[np.ndarray], point: np.ndarray) -> None:
+    if not points or float(np.linalg.norm(point - points[-1])) > _NUMERIC_TOLERANCE:
+        points.append(np.array(point, dtype=_ARRAY_DTYPE, copy=True))
+
+
+def _finish_fragment(
+    fragments: list[np.ndarray],
+    points: list[np.ndarray],
+) -> None:
+    if len(points) >= 2:
+        fragment = np.asarray(points, dtype=_ARRAY_DTYPE)
+        if np.any(np.linalg.norm(np.diff(fragment, axis=0), axis=1) > 0.0):
+            fragments.append(fragment)
+    points.clear()
+
+
+def _clip_polyline_to_circle(
+    points: np.ndarray,
+    radius: float,
+) -> tuple[np.ndarray, ...]:
+    """Clip sampled segments analytically and return interior fragments."""
+    source = np.asarray(points, dtype=_ARRAY_DTYPE)
+    if source.ndim != 2 or source.shape[1:] != (2,) or source.shape[0] < 2:
+        raise ValueError("points must have shape (N, 2) with N >= 2")
+    if not np.isfinite(source).all():
+        raise ValueError("points must contain finite numbers")
+    if not math.isfinite(radius) or radius <= 0.0:
+        raise ValueError("radius must be positive and finite")
+
+    radius_squared = np.float64(radius * radius)
+    fragments: list[np.ndarray] = []
+    current: list[np.ndarray] = []
+    for start, stop in zip(source[:-1], source[1:], strict=True):
+        direction = stop - start
+        quadratic = float(np.dot(direction, direction))
+        if quadratic <= _NUMERIC_TOLERANCE**2:
+            continue
+        linear = 2.0 * float(np.dot(start, direction))
+        constant = float(np.dot(start, start) - radius_squared)
+        discriminant = linear * linear - 4.0 * quadratic * constant
+        discriminant_tolerance = (
+            64.0
+            * np.finfo(np.float64).eps
+            * max(
+                linear * linear,
+                abs(4.0 * quadratic * constant),
+                1.0,
+            )
+        )
+        if discriminant <= discriminant_tolerance:
+            _finish_fragment(fragments, current)
+            continue
+
+        root = math.sqrt(discriminant)
+        first_root = (-linear - root) / (2.0 * quadratic)
+        second_root = (-linear + root) / (2.0 * quadratic)
+        lower = max(0.0, min(first_root, second_root))
+        upper = min(1.0, max(first_root, second_root))
+        if upper - lower <= _NUMERIC_TOLERANCE:
+            _finish_fragment(fragments, current)
+            continue
+
+        clipped_start = start + lower * direction
+        clipped_stop = start + upper * direction
+        if current and float(np.linalg.norm(clipped_start - current[-1])) > (_NUMERIC_TOLERANCE):
+            _finish_fragment(fragments, current)
+        _append_unique(current, clipped_start)
+        _append_unique(current, clipped_stop)
+
+    _finish_fragment(fragments, current)
+    return tuple(fragments)
+
+
+def _segment_intersection_details(
+    first_start: np.ndarray,
+    first_stop: np.ndarray,
+    second_start: np.ndarray,
+    second_stop: np.ndarray,
+) -> tuple[IntersectionKind, np.ndarray | None]:
+    first_direction = first_stop - first_start
+    second_direction = second_stop - second_start
+    offset = second_start - first_start
+    denominator = _cross_2d(first_direction, second_direction)
+    scale = max(
+        float(np.linalg.norm(first_direction) * np.linalg.norm(second_direction)),
+        1.0,
+    )
+    tolerance = 64.0 * np.finfo(np.float64).eps * scale
+    if abs(denominator) <= tolerance:
+        if abs(_cross_2d(offset, first_direction)) > tolerance:
+            return "none", None
+        axis = int(np.argmax(np.abs(first_direction)))
+        if abs(float(first_direction[axis])) <= _NUMERIC_TOLERANCE:
+            return "endpoint", np.array(first_start, dtype=_ARRAY_DTYPE, copy=True)
+        first_values = sorted((float(first_start[axis]), float(first_stop[axis])))
+        second_values = sorted((float(second_start[axis]), float(second_stop[axis])))
+        if min(first_values[1], second_values[1]) + _NUMERIC_TOLERANCE < max(
+            first_values[0], second_values[0]
+        ):
+            return "none", None
+        return "tangent", None
+
+    first_parameter = _cross_2d(offset, second_direction) / denominator
+    second_parameter = _cross_2d(offset, first_direction) / denominator
+    if not (
+        -_NUMERIC_TOLERANCE <= first_parameter <= 1.0 + _NUMERIC_TOLERANCE
+        and -_NUMERIC_TOLERANCE <= second_parameter <= 1.0 + _NUMERIC_TOLERANCE
+    ):
+        return "none", None
+    intersection = first_start + first_parameter * first_direction
+    if (
+        _NUMERIC_TOLERANCE < first_parameter < 1.0 - _NUMERIC_TOLERANCE
+        and _NUMERIC_TOLERANCE < second_parameter < 1.0 - _NUMERIC_TOLERANCE
+    ):
+        return "crossing", intersection
+    return "endpoint", intersection
+
+
+def _segment_intersection_kind(
+    first_start: np.ndarray,
+    first_stop: np.ndarray,
+    second_start: np.ndarray,
+    second_stop: np.ndarray,
+) -> IntersectionKind:
+    """Classify a float64 segment contact for validation diagnostics."""
+    kind, _ = _segment_intersection_details(
+        np.asarray(first_start, dtype=_ARRAY_DTYPE),
+        np.asarray(first_stop, dtype=_ARRAY_DTYPE),
+        np.asarray(second_start, dtype=_ARRAY_DTYPE),
+        np.asarray(second_stop, dtype=_ARRAY_DTYPE),
+    )
+    return kind
+
+
+def _incident_directions(points: np.ndarray, intersection: np.ndarray) -> list[np.ndarray]:
+    directions: list[np.ndarray] = []
+    for start, stop in zip(points[:-1], points[1:], strict=True):
+        if _point_segment_distance(intersection, start, stop) > _NUMERIC_TOLERANCE:
+            continue
+        for point in (start, stop):
+            direction = point - intersection
+            length = float(np.linalg.norm(direction))
+            if length <= _NUMERIC_TOLERANCE:
+                continue
+            unit = direction / length
+            if not any(
+                abs(_cross_2d(unit, prior)) <= _NUMERIC_TOLERANCE
+                and float(np.dot(unit, prior)) > 0.0
+                for prior in directions
+            ):
+                directions.append(unit)
+    return directions
+
+
+def _directions_alternate(
+    first: list[np.ndarray],
+    second: list[np.ndarray],
+) -> bool:
+    if len(first) < 2 or len(second) < 2:
+        return False
+    for first_pair in (
+        (first[i], first[j]) for i in range(len(first)) for j in range(i + 1, len(first))
+    ):
+        for second_pair in (
+            (second[i], second[j]) for i in range(len(second)) for j in range(i + 1, len(second))
+        ):
+            labeled = [
+                (math.atan2(float(vector[1]), float(vector[0])) % (2.0 * math.pi), label)
+                for label, pair in (("first", first_pair), ("second", second_pair))
+                for vector in pair
+            ]
+            labeled.sort()
+            labels = [label for _, label in labeled]
+            if all(labels[index] != labels[(index + 1) % 4] for index in range(4)):
+                return True
+    return False
+
+
+def _paths_cross(first: np.ndarray, second: np.ndarray) -> bool:
+    first_starts = first[:-1]
+    first_directions = np.diff(first, axis=0)
+    second_starts = second[:-1]
+    second_directions = np.diff(second, axis=0)
+    denominator = (
+        first_directions[:, None, 0] * second_directions[None, :, 1]
+        - first_directions[:, None, 1] * second_directions[None, :, 0]
+    )
+    scale = np.maximum(
+        np.linalg.norm(first_directions, axis=1)[:, None]
+        * np.linalg.norm(second_directions, axis=1)[None, :],
+        1.0,
+    )
+    nonparallel = np.abs(denominator) > 64.0 * np.finfo(np.float64).eps * scale
+    safe_denominator = np.where(nonparallel, denominator, 1.0)
+    offset = second_starts[None, :, :] - first_starts[:, None, :]
+    first_parameter = (
+        offset[:, :, 0] * second_directions[None, :, 1]
+        - offset[:, :, 1] * second_directions[None, :, 0]
+    ) / safe_denominator
+    second_parameter = (
+        offset[:, :, 0] * first_directions[:, None, 1]
+        - offset[:, :, 1] * first_directions[:, None, 0]
+    ) / safe_denominator
+    proper_crossing = (
+        nonparallel
+        & (first_parameter > _NUMERIC_TOLERANCE)
+        & (first_parameter < 1.0 - _NUMERIC_TOLERANCE)
+        & (second_parameter > _NUMERIC_TOLERANCE)
+        & (second_parameter < 1.0 - _NUMERIC_TOLERANCE)
+    )
+    if bool(np.any(proper_crossing)):
+        return True
+
+    endpoint_contact = (
+        nonparallel
+        & (first_parameter >= -_NUMERIC_TOLERANCE)
+        & (first_parameter <= 1.0 + _NUMERIC_TOLERANCE)
+        & (second_parameter >= -_NUMERIC_TOLERANCE)
+        & (second_parameter <= 1.0 + _NUMERIC_TOLERANCE)
+    )
+    if not bool(np.any(endpoint_contact)):
+        return False
+
+    endpoint_intersections: list[np.ndarray] = []
+    for first_index, second_index in np.argwhere(endpoint_contact):
+        kind, point = _segment_intersection_details(
+            first[first_index],
+            first[first_index + 1],
+            second[second_index],
+            second[second_index + 1],
+        )
+        if kind == "crossing":
+            return True
+        if (
+            kind == "endpoint"
+            and point is not None
+            and not any(
+                float(np.linalg.norm(point - prior)) <= _NUMERIC_TOLERANCE
+                for prior in endpoint_intersections
+            )
+        ):
+            endpoint_intersections.append(point)
+    return any(
+        _directions_alternate(
+            _incident_directions(first, intersection),
+            _incident_directions(second, intersection),
+        )
+        for intersection in endpoint_intersections
+    )
+
+
+def _point_segment_distance(
+    point: np.ndarray,
+    start: np.ndarray,
+    stop: np.ndarray,
+) -> float:
+    direction = stop - start
+    length_squared = float(np.dot(direction, direction))
+    if length_squared <= _NUMERIC_TOLERANCE**2:
+        return float(np.linalg.norm(point - start))
+    parameter = float(np.dot(point - start, direction) / length_squared)
+    parameter = min(max(parameter, 0.0), 1.0)
+    return float(np.linalg.norm(point - (start + parameter * direction)))
+
+
+def _segment_distance(
+    first_start: np.ndarray,
+    first_stop: np.ndarray,
+    second_start: np.ndarray,
+    second_stop: np.ndarray,
+) -> float:
+    kind, _ = _segment_intersection_details(
+        first_start,
+        first_stop,
+        second_start,
+        second_stop,
+    )
+    if kind != "none":
+        return 0.0
+    return min(
+        _point_segment_distance(first_start, second_start, second_stop),
+        _point_segment_distance(first_stop, second_start, second_stop),
+        _point_segment_distance(second_start, first_start, first_stop),
+        _point_segment_distance(second_stop, first_start, first_stop),
+    )
+
+
+def _polyline_distance(first: np.ndarray, second: np.ndarray) -> float:
+    def point_distances(points: np.ndarray, polyline: np.ndarray) -> float:
+        starts = polyline[:-1]
+        directions = np.diff(polyline, axis=0)
+        length_squared = np.sum(directions * directions, axis=1)
+        offsets = points[:, None, :] - starts[None, :, :]
+        parameters = np.sum(offsets * directions[None, :, :], axis=2) / (length_squared[None, :])
+        parameters = np.clip(parameters, 0.0, 1.0)
+        closest = starts[None, :, :] + parameters[:, :, None] * directions[None, :, :]
+        squared = np.sum((points[:, None, :] - closest) ** 2, axis=2)
+        return math.sqrt(float(np.min(squared)))
+
+    return min(point_distances(first, second), point_distances(second, first))
+
+
+def _endpoint_to_polyline_distance(endpoint: np.ndarray, points: np.ndarray) -> float:
+    return min(
+        _point_segment_distance(endpoint, start, stop)
+        for start, stop in zip(points[:-1], points[1:], strict=True)
+    )
+
+
+def validate_tattoo_geometry(geometry: TattooGeometry) -> None:
+    """Validate the primary open-path and physical-clearance contract."""
+    if not isinstance(geometry, TattooGeometry):
+        raise TypeError("geometry must be a TattooGeometry")
+    if geometry.artboard_size_mm != 145.0:
+        raise ValueError("primary tattoo artboard must be exactly 145 mm")
+    if len(geometry.paths) != _PATH_COUNT:
+        raise ValueError("primary tattoo geometry must contain exactly 11 open polylines")
+
+    for path in geometry.paths:
+        points = np.asarray(path.points_mm, dtype=_ARRAY_DTYPE)
+        if float(np.linalg.norm(points[0] - points[-1])) <= _NUMERIC_TOLERANCE:
+            raise ValueError(f"{path.member_id} path must be open")
+        if np.any(np.linalg.norm(np.diff(points, axis=0), axis=1) <= _NUMERIC_TOLERANCE):
+            raise ValueError(f"{path.member_id} has duplicate consecutive points")
+
+    for first_index, first in enumerate(geometry.paths):
+        for second in geometry.paths[first_index + 1 :]:
+            if _paths_cross(first.points_mm, second.points_mm):
+                continue
+            centerline_distance = _polyline_distance(first.points_mm, second.points_mm)
+            edge_gap = centerline_distance - 0.5 * first.width_mm - 0.5 * second.width_mm
+            if edge_gap + _NUMERIC_TOLERANCE < _MIN_EDGE_GAP_MM:
+                raise ValueError(
+                    f"noncrossing edge gap {edge_gap:.6f} mm is below "
+                    f"{_MIN_EDGE_GAP_MM:.6f} mm between {first.member_id} and "
+                    f"{second.member_id}"
+                )
+            endpoint_checks = (
+                (
+                    first.points_mm[0],
+                    second.points_mm,
+                    second.width_mm,
+                    first.member_id,
+                    second.member_id,
+                ),
+                (
+                    first.points_mm[-1],
+                    second.points_mm,
+                    second.width_mm,
+                    first.member_id,
+                    second.member_id,
+                ),
+                (
+                    second.points_mm[0],
+                    first.points_mm,
+                    first.width_mm,
+                    second.member_id,
+                    first.member_id,
+                ),
+                (
+                    second.points_mm[-1],
+                    first.points_mm,
+                    first.width_mm,
+                    second.member_id,
+                    first.member_id,
+                ),
+            )
+            for endpoint, unrelated, unrelated_width, owner_id, unrelated_id in endpoint_checks:
+                clearance = (
+                    _endpoint_to_polyline_distance(endpoint, unrelated) - 0.5 * unrelated_width
+                )
+                if clearance + _NUMERIC_TOLERANCE < _MIN_ENDPOINT_CLEARANCE_MM:
+                    raise ValueError(
+                        f"endpoint clearance {clearance:.6f} mm is below "
+                        f"{_MIN_ENDPOINT_CLEARANCE_MM:.6f} mm from {owner_id} to "
+                        f"unrelated path {unrelated_id}"
+                    )
+
+
+def build_tattoo_geometry(
+    selection: TattooSelection,
+    recipe: TattooRecipe,
+) -> TattooGeometry:
+    """Clip selected traces, transform them to millimeters, and validate them."""
+    if not isinstance(selection, TattooSelection):
+        raise TypeError("selection must be a TattooSelection")
+    if not isinstance(recipe, TattooRecipe):
+        raise TypeError("recipe must be a TattooRecipe")
+    if selection.recipe_id != recipe.recipe_id:
+        raise ValueError("selection recipe_id does not match the tattoo recipe")
+    if selection.orientation_id != recipe.orientation.orientation_id:
+        raise ValueError("selection orientation_id does not match the tattoo recipe")
+    if len(selection.selected_paths) != _PATH_COUNT:
+        raise ValueError("tattoo selection must contain exactly 11 paths")
+
+    scale = recipe.artboard_size_mm / (2.0 * recipe.crop_radius)
+    center = np.array(
+        [recipe.artboard_size_mm / 2.0, recipe.artboard_size_mm / 2.0],
+        dtype=_ARRAY_DTYPE,
+    )
+    paths: list[TattooPath] = []
+    for selected in selection.selected_paths:
+        fragments = _clip_polyline_to_circle(
+            selected.center_trace,
+            recipe.crop_radius,
+        )
+        if len(fragments) != 1:
+            raise ValueError(
+                f"selected path {selected.member_id} has {len(fragments)} interior "
+                "crop fragments; exactly one is required"
+            )
+        points_mm = center + scale * fragments[0]
+        points_mm[np.isclose(points_mm, 0.0, rtol=0.0, atol=_NUMERIC_TOLERANCE)] = 0.0
+        points_mm[
+            np.isclose(
+                points_mm,
+                recipe.artboard_size_mm,
+                rtol=0.0,
+                atol=_NUMERIC_TOLERANCE,
+            )
+        ] = recipe.artboard_size_mm
+        paths.append(
+            TattooPath(
+                member_id=selected.member_id,
+                tier=selected.tier,
+                width_mm=selected.width_mm,
+                points_mm=points_mm,
+                score_components=selected.score_components,
+                selection_reason=selected.selection_reason,
+            )
+        )
+
+    geometry = TattooGeometry(
+        schema_version=1,
+        catalog_id=selection.catalog_id,
+        orientation_id=selection.orientation_id,
+        artboard_size_mm=recipe.artboard_size_mm,
+        paths=tuple(paths),
+        projection=_PROJECTION,
+    )
+    validate_tattoo_geometry(geometry)
+    return geometry
+
+
+def primary_svg_bytes(geometry: TattooGeometry) -> bytes:
+    """Serialize the validated primary line network as deterministic SVG bytes."""
+    validate_tattoo_geometry(geometry)
+    size = f"{geometry.artboard_size_mm:.6f}"
+    lines = [
+        f'<svg height="{size}mm" version="1.1" viewBox="0 0 {size} {size}" '
+        f'width="{size}mm" xmlns="http://www.w3.org/2000/svg">'
+    ]
+    for path in geometry.paths:
+        coordinates = [f"{point[0]:.6f} {point[1]:.6f}" for point in path.points_mm]
+        path_data = "M " + coordinates[0]
+        if len(coordinates) > 1:
+            path_data += " " + " ".join(f"L {value}" for value in coordinates[1:])
+        lines.append(
+            f'  <path d="{path_data}" fill="none" id="{path.path_id}" '
+            f'stroke="#000000" stroke-linecap="round" stroke-linejoin="round" '
+            f'stroke-width="{path.width_mm:.6f}"/>'
+        )
+    lines.append("</svg>")
+    return ("\n".join(lines) + "\n").encode("utf-8")
+
+
+__all__ = [
+    "build_tattoo_geometry",
+    "primary_svg_bytes",
+    "validate_tattoo_geometry",
+]
