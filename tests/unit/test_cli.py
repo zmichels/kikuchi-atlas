@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
+from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
 from kikuchi_lab.cli.main import main
 
 
@@ -212,6 +214,127 @@ def test_render_kinematical_depth_cli_normalizes_errors_without_traceback(
     assert captured.out == ""
     assert captured.err == "kinematical depth render failed: bad depth recipe\n"
     assert "Traceback" not in captured.err
+
+
+def test_render_oriented_spherical_dispatches_review(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    called = {}
+    smoke = SimpleNamespace(
+        profile="smoke",
+        run_id="smoke-run",
+        path=tmp_path / "smoke",
+        source_half_size=32,
+        figure_names=("a.png",),
+        manifest_sha256="a" * 64,
+        elapsed_seconds=1.0,
+    )
+    review = SimpleNamespace(
+        profile="review",
+        run_id="review-run",
+        path=tmp_path / "review",
+        source_half_size=512,
+        figure_names=("b.png",),
+        manifest_sha256="b" * 64,
+        elapsed_seconds=2.0,
+    )
+    fake_result = SimpleNamespace(smoke=smoke, review=review)
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.render_oriented_spherical_master",
+        lambda **kwargs: called.update(kwargs) or fake_result,
+    )
+
+    status = main(
+        [
+            "render-oriented-spherical",
+            "--recipe",
+            "recipes/spherical/ice-ih-oriented-s2-proof.yml",
+            "--output",
+            str(tmp_path),
+            "--profile",
+            "review",
+        ]
+    )
+
+    assert status == 0
+    assert called == {
+        "recipe_path": "recipes/spherical/ice-ih-oriented-s2-proof.yml",
+        "output_root": str(tmp_path),
+        "profile": "review",
+    }
+    expected = {
+        "review": {
+            "elapsed_seconds": 2.0,
+            "figures": ["b.png"],
+            "manifest_sha256": "b" * 64,
+            "path": str(tmp_path / "review"),
+            "profile": "review",
+            "run_id": "review-run",
+            "source_half_size": 512,
+        },
+        "smoke": {
+            "elapsed_seconds": 1.0,
+            "figures": ["a.png"],
+            "manifest_sha256": "a" * 64,
+            "path": str(tmp_path / "smoke"),
+            "profile": "smoke",
+            "run_id": "smoke-run",
+            "source_half_size": 32,
+        },
+    }
+    assert capsys.readouterr().out == json.dumps(expected, indent=2, sort_keys=True) + "\n"
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        BundleExistsError("completed bundle exists"),
+        PartialBundleError("partial bundle exists"),
+        OSError("disk full"),
+        ValueError("bad recipe"),
+        RuntimeError("bounded failure"),
+    ],
+)
+def test_render_oriented_spherical_normalizes_known_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    error: Exception,
+) -> None:
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.render_oriented_spherical_master",
+        Mock(side_effect=error),
+    )
+
+    status = main(
+        [
+            "render-oriented-spherical",
+            "--recipe",
+            "x.yml",
+            "--output",
+            "out",
+            "--profile",
+            "smoke",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 1
+    assert captured.out == ""
+    assert captured.err == f"oriented spherical render failed: {error}\n"
+    assert "Traceback" not in captured.err
+
+
+def test_workflows_exports_oriented_spherical_contract() -> None:
+    import kikuchi_lab.workflows as workflows
+    from kikuchi_lab.workflows.oriented_spherical import (
+        OrientedSphericalRunResult,
+        render_oriented_spherical_master,
+    )
+
+    assert workflows.OrientedSphericalRunResult is OrientedSphericalRunResult
+    assert workflows.render_oriented_spherical_master is render_oriented_spherical_master
 
 
 def test_proof_command_reports_invalid_master_without_traceback(tmp_path, capsys):

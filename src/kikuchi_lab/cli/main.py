@@ -53,6 +53,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     render_depth_parser.add_argument("--recipe", required=True)
     render_depth_parser.add_argument("--output", required=True)
     render_depth_parser.add_argument("--figure-size-px", type=int)
+    render_oriented = subparsers.add_parser(
+        "render-oriented-spherical",
+        help="Rotate an exact spherical master and render fixed specimen views.",
+    )
+    render_oriented.add_argument("--recipe", required=True)
+    render_oriented.add_argument("--output", required=True)
+    render_oriented.add_argument("--profile", choices=("smoke", "review"), default="smoke")
     select_orientation = subparsers.add_parser(
         "select-orientation",
         help="Record an immutable human orientation decision for a sealed proof.",
@@ -74,9 +81,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     render_final_parser.add_argument("--proof-root", required=True)
     render_final_parser.add_argument("--master-product", required=True)
     render_final_parser.add_argument("--output", required=True)
-    render_final_parser.add_argument(
-        "--profile", choices=("final", "development"), default="final"
-    )
+    render_final_parser.add_argument("--profile", choices=("final", "development"), default="final")
     reproduce_final_parser = subparsers.add_parser(
         "reproduce-final",
         help="Rebuild a final run from its manifest recipe snapshot.",
@@ -121,9 +126,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             source = load_structure_record(args.source)
             requested_structure = Path(args.structure).resolve()
             if requested_structure != source.cif_path:
-                raise ValueError(
-                    "--structure must resolve to the tracked CIF named by --source"
-                )
+                raise ValueError("--structure must resolve to the tracked CIF named by --source")
             recipe = load_simulation_recipe(args.recipe)
             output_root = Path(args.output).resolve()
             with TemporaryDirectory(prefix="kikuchi-plan-") as temporary:
@@ -252,6 +255,48 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "base_recipe_id": result.base_recipe_id,
                     "figures": result.figure_names,
                 },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "render-oriented-spherical":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_oriented_spherical_master
+
+        try:
+            result = render_oriented_spherical_master(
+                recipe_path=args.recipe,
+                output_root=args.output,
+                profile=args.profile,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(f"oriented spherical render failed: {error}", file=sys.stderr)
+            return 1
+
+        def payload(item):
+            if item is None:
+                return None
+            return {
+                "profile": item.profile,
+                "run_id": item.run_id,
+                "path": str(item.path),
+                "source_half_size": item.source_half_size,
+                "figures": list(item.figure_names),
+                "manifest_sha256": item.manifest_sha256,
+                "elapsed_seconds": item.elapsed_seconds,
+            }
+
+        print(
+            json.dumps(
+                {"smoke": payload(result.smoke), "review": payload(result.review)},
                 indent=2,
                 sort_keys=True,
             )

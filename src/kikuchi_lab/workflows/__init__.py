@@ -24,6 +24,10 @@ from .proof import (
 )
 from .kinematical import KinematicalRunResult, render_kinematical
 from .near_depth import NearDepthRunResult, render_kinematical_depth
+from .oriented_spherical import (
+    OrientedSphericalRunResult,
+    render_oriented_spherical_master,
+)
 
 __all__ = [
     "FinalRecipe",
@@ -33,6 +37,7 @@ __all__ = [
     "FinalSelectionError",
     "KinematicalRunResult",
     "NearDepthRunResult",
+    "OrientedSphericalRunResult",
     "ReproductionComparison",
     "ReproductionMismatch",
     "ProofMasterError",
@@ -46,6 +51,7 @@ __all__ = [
     "render_final",
     "render_kinematical",
     "render_kinematical_depth",
+    "render_oriented_spherical_master",
     "validate_final_selection",
     "reproduce_final",
 ]
