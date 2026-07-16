@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import re
+import xml.etree.ElementTree as ET
 from dataclasses import replace
 from pathlib import Path
 
@@ -108,6 +109,20 @@ def bundle_inputs() -> dict[str, object]:
     }
 
 
+def test_bundle_svg_validator_accepts_canonical_paths_then_boundary(
+    bundle_inputs: dict[str, object],
+) -> None:
+    from kikuchi_lab.art_products.tattoo_bundle import _validate_svg
+
+    payload = bundle_inputs["rendered"]["primary.svg"]
+    root = ET.fromstring(payload)
+    assert [child.tag.rsplit("}", 1)[-1] for child in root] == [
+        *("path" for _ in range(11)),
+        "circle",
+    ]
+    assert _validate_svg(payload) is None
+
+
 def test_primary_bundle_has_exact_inventory_manifest_last_and_auditable_content(
     bundle_inputs: dict[str, object],
     monkeypatch: pytest.MonkeyPatch,
@@ -180,7 +195,7 @@ def test_primary_bundle_has_exact_inventory_manifest_last_and_auditable_content(
     ]
 
     svg = (result.path / "ice-ih-tattoo-primary.svg").read_text()
-    assert svg.count('stroke="#000000"') == 11
+    assert svg.count('stroke="#000000"') == 12
     assert re.search(r'stroke="(?!#000000)', svg) is None
     assert (result.path / "ice-ih-tattoo-primary.pdf").read_bytes().startswith(b"%PDF-")
     for name, size, corner in (
@@ -294,6 +309,7 @@ def test_coherent_wrong_orientation_and_path_count_fail_before_output_mutation(
         catalog_id=geometry.catalog_id,
         orientation_id="orientation-coherent-forgery",
         artboard_size_mm=geometry.artboard_size_mm,
+        boundary=geometry.boundary,
         paths=geometry.paths,
         projection=geometry.projection,
     )
@@ -362,11 +378,20 @@ def test_coherent_gap_violation_fails_before_output_mutation(
     geometry = bundle_inputs["geometry"]
 
     def horizontal(path, y: float) -> TattooPath:
+        center_x, center_y = geometry.boundary.center_mm
+        inner_radius = (
+            geometry.boundary.outer_diameter_mm / 2.0
+            - geometry.boundary.width_mm
+        )
+        half_chord = math.sqrt(inner_radius**2 - (y - center_y) ** 2)
         return TattooPath(
             member_id=path.member_id,
             tier=path.tier,
             width_mm=path.width_mm,
-            points_mm=[[10.0, y], [135.0, y]],
+            points_mm=[
+                [center_x - half_chord, y],
+                [center_x + half_chord, y],
+            ],
             score_components=path.score_components,
             selection_reason=path.selection_reason,
         )

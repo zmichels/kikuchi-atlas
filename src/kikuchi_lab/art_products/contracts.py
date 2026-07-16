@@ -362,6 +362,7 @@ class TattooGeometry:
     catalog_id: str
     orientation_id: str
     artboard_size_mm: float
+    boundary: TattooBoundary
     paths: tuple[TattooPath, ...]
     projection: str
     geometry_id: str = field(init=False)
@@ -371,6 +372,8 @@ class TattooGeometry:
         _require_text(self.catalog_id, "catalog_id")
         _require_text(self.orientation_id, "orientation_id")
         artboard = _require_positive_finite(self.artboard_size_mm, "artboard_size_mm")
+        if not isinstance(self.boundary, TattooBoundary):
+            raise ValueError("boundary must be a TattooBoundary")
         paths = tuple(self.paths)
         if not paths:
             raise ValueError("paths must be non-empty")
@@ -399,6 +402,7 @@ class TattooGeometry:
             "orientation_id": self.orientation_id,
             "artboard_size_mm": self.artboard_size_mm,
             "projection": self.projection,
+            "boundary": self.boundary.to_dict(),
             "paths": [path.to_dict() for path in self.paths],
         }
 

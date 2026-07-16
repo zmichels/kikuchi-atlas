@@ -61,15 +61,20 @@ def _path(**overrides: object) -> TattooPath:
     return TattooPath(**values)
 
 
-def _geometry(*paths: TattooPath) -> TattooGeometry:
-    return TattooGeometry(
-        schema_version=1,
-        catalog_id="art-band-catalog-0123456789abcdef",
-        orientation_id="orientation-0123456789abcdef",
-        artboard_size_mm=145.0,
-        paths=paths or (_path(),),
-        projection="upper_specimen_stereographic_center_trace",
-    )
+def _geometry(
+    *paths: TattooPath,
+    boundary: TattooBoundary | None = None,
+) -> TattooGeometry:
+    values: dict[str, object] = {
+        "schema_version": 1,
+        "catalog_id": "art-band-catalog-0123456789abcdef",
+        "orientation_id": "orientation-0123456789abcdef",
+        "artboard_size_mm": 145.0,
+        "boundary": boundary or _boundary(),
+        "paths": paths or (_path(),),
+        "projection": "upper_specimen_stereographic_center_trace",
+    }
+    return TattooGeometry(**values)
 
 
 def _boundary(**changes: object) -> TattooBoundary:
@@ -272,6 +277,19 @@ def test_tattoo_geometry_identity_includes_coordinate_hashes_and_widths() -> Non
     assert original.to_dict()["paths"][0]["points_sha256"] == path.points_sha256
 
 
+def test_geometry_identity_includes_separate_projection_boundary() -> None:
+    boundary = _boundary()
+    original = _geometry(_path(), boundary=boundary)
+    original_id = boundary.boundary_id
+    object.__setattr__(boundary, "boundary_id", "tattoo-boundary-forged")
+    try:
+        changed = replace(original, boundary=boundary)
+        assert changed.geometry_id != original.geometry_id
+        assert len(changed.paths) == 1
+    finally:
+        object.__setattr__(boundary, "boundary_id", original_id)
+
+
 def test_tattoo_geometry_requires_fixed_projection_and_unique_ids() -> None:
     path = _path()
     with pytest.raises(ValueError, match="projection"):
@@ -302,6 +320,7 @@ def test_tattoo_geometry_rejects_invalid_values(
         "catalog_id": "art-band-catalog-0123456789abcdef",
         "orientation_id": "orientation-0123456789abcdef",
         "artboard_size_mm": 145.0,
+        "boundary": _boundary(),
         "paths": (_path(),),
         "projection": "upper_specimen_stereographic_center_trace",
     }

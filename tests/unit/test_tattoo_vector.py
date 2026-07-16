@@ -10,7 +10,11 @@ from types import ModuleType
 import numpy as np
 import pytest
 
-from kikuchi_lab.art_products.contracts import TattooGeometry, TattooPath
+from kikuchi_lab.art_products.contracts import (
+    TattooBoundary,
+    TattooGeometry,
+    TattooPath,
+)
 from kikuchi_lab.art_products.tattoo_recipe import load_tattoo_recipe
 from kikuchi_lab.art_products.tattoo_selection import (
     SelectedTattooPath,
@@ -61,6 +65,18 @@ def _selection() -> TattooSelection:
     )
 
 
+def _boundary() -> TattooBoundary:
+    return TattooBoundary(
+        schema_version=1,
+        role="stereographic_hemisphere_boundary",
+        scientific_claim="noncrystallographic_projection_primitive",
+        center_mm=(72.5, 72.5),
+        outer_diameter_mm=132.0,
+        width_mm=2.2,
+        ink="#000000",
+    )
+
+
 def test_build_preserves_order_widths_and_centered_crop_without_mutation() -> None:
     vector = _vector()
     recipe = load_tattoo_recipe(RECIPE)
@@ -83,7 +99,7 @@ def test_build_preserves_order_widths_and_centered_crop_without_mutation() -> No
     assert [path.path_id for path in geometry.paths] == [path.path_id for path in repeated.paths]
     np.testing.assert_allclose(
         geometry.paths[0].points_mm,
-        [[0.0, 72.5], [145.0, 72.5]],
+        [[8.7, 72.5], [136.3, 72.5]],
         rtol=0.0,
         atol=1e-12,
     )
@@ -94,6 +110,52 @@ def test_build_preserves_order_widths_and_centered_crop_without_mutation() -> No
     for selected, before in zip(selection.selected_paths, source_points, strict=True):
         assert np.array_equal(selected.center_trace, before)
         assert not selected.center_trace.flags.writeable
+
+
+def test_geometry_contains_complete_boundary_and_unchanged_path_hierarchy() -> None:
+    selection = _selection()
+    geometry = _vector().build_tattoo_geometry(selection, load_tattoo_recipe(RECIPE))
+
+    assert geometry.boundary.to_dict() == {
+        "boundary_id": geometry.boundary.boundary_id,
+        "schema_version": 1,
+        "role": "stereographic_hemisphere_boundary",
+        "scientific_claim": "noncrystallographic_projection_primitive",
+        "center_mm": [72.5, 72.5],
+        "outer_diameter_mm": 132.0,
+        "width_mm": 2.2,
+        "ink": "#000000",
+    }
+    assert len(geometry.paths) == 11
+    assert [path.member_id for path in geometry.paths] == [
+        path.member_id for path in selection.selected_paths
+    ]
+    assert [path.tier for path in geometry.paths] == [
+        "dominant",
+        "dominant",
+        "dominant",
+        "dominant",
+        "secondary",
+        "secondary",
+        "secondary",
+        "secondary",
+        "fine",
+        "fine",
+        "fine",
+    ]
+
+
+def test_every_trace_is_contained_and_terminates_on_inner_limb() -> None:
+    geometry = _vector().build_tattoo_geometry(_selection(), load_tattoo_recipe(RECIPE))
+    center = np.asarray(geometry.boundary.center_mm)
+    inner_radius = (
+        geometry.boundary.outer_diameter_mm / 2.0 - geometry.boundary.width_mm
+    )
+    for path in geometry.paths:
+        radii = np.linalg.norm(path.points_mm - center, axis=1)
+        assert radii[0] == pytest.approx(inner_radius, abs=1e-8)
+        assert radii[-1] == pytest.approx(inner_radius, abs=1e-8)
+        assert np.all(radii <= inner_radius + 1e-8)
 
 
 def test_build_rejects_coherently_forged_tier_and_width_order() -> None:
@@ -150,6 +212,7 @@ def test_validate_requires_exactly_eleven_open_nonduplicated_polylines() -> None
         catalog_id="catalog-test",
         orientation_id="orientation-test",
         artboard_size_mm=145.0,
+        boundary=_boundary(),
         paths=(path,),
         projection="upper_specimen_stereographic_center_trace",
     )
@@ -178,14 +241,14 @@ def test_primary_svg_is_canonical_black_transparent_and_deterministic() -> None:
     )
     assert svg.endswith("</svg>\n")
     assert svg.count("<path ") == 11
-    assert "<circle" not in svg
+    assert svg.count("<circle ") == 1
     assert "<rect" not in svg
     assert "background" not in svg
     assert "rim" not in svg
     assert "node" not in svg
 
     root = ET.fromstring(first)
-    paths = list(root)
+    paths = list(root)[:-1]
     assert len(paths) == 11
     for element, path in zip(paths, geometry.paths, strict=True):
         assert element.tag == "{http://www.w3.org/2000/svg}path"

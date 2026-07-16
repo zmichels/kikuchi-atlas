@@ -4,13 +4,18 @@ import hashlib
 import math
 import re
 from io import BytesIO
+from xml.etree import ElementTree
 
 import matplotlib
 import numpy as np
 import pytest
 from PIL import Image
 
-from kikuchi_lab.art_products.contracts import TattooGeometry, TattooPath
+from kikuchi_lab.art_products.contracts import (
+    TattooBoundary,
+    TattooGeometry,
+    TattooPath,
+)
 from kikuchi_lab.art_products.tattoo_vector import (
     primary_svg_bytes,
     render_primary_tattoo,
@@ -27,7 +32,7 @@ def _geometry() -> TattooGeometry:
     paths = []
     for index, (tier, width) in enumerate(zip(TIERS, WIDTHS, strict=True)):
         angle = index * math.pi / 11.0
-        direction = 50.0 * np.array([math.cos(angle), math.sin(angle)], dtype="<f8")
+        direction = 63.8 * np.array([math.cos(angle), math.sin(angle)], dtype="<f8")
         paths.append(
             TattooPath(
                 member_id=f"member-{index:02d}",
@@ -43,6 +48,15 @@ def _geometry() -> TattooGeometry:
         catalog_id="catalog-render-test",
         orientation_id="orientation-render-test",
         artboard_size_mm=145.0,
+        boundary=TattooBoundary(
+            schema_version=1,
+            role="stereographic_hemisphere_boundary",
+            scientific_claim="noncrystallographic_projection_primitive",
+            center_mm=(72.5, 72.5),
+            outer_diameter_mm=132.0,
+            width_mm=2.2,
+            ink="#000000",
+        ),
         paths=tuple(paths),
         projection="upper_specimen_stereographic_center_trace",
     )
@@ -56,6 +70,26 @@ def _media_box_points(payload: bytes) -> tuple[float, float]:
     )
     assert match is not None
     return float(match.group(1)), float(match.group(2))
+
+
+def test_primary_svg_has_11_paths_then_one_complete_projection_boundary() -> None:
+    geometry = _geometry()
+    root = ElementTree.fromstring(primary_svg_bytes(geometry))
+    children = list(root)
+    assert [child.tag.rsplit("}", 1)[-1] for child in children] == [
+        *("path" for _ in range(11)),
+        "circle",
+    ]
+    circle = children[-1]
+    assert circle.attrib == {
+        "cx": "72.500000",
+        "cy": "72.500000",
+        "fill": "none",
+        "id": geometry.boundary.boundary_id,
+        "r": "64.900000",
+        "stroke": "#000000",
+        "stroke-width": "2.200000",
+    }
 
 
 def test_primary_render_is_byte_repeatable_and_preserves_geometry_and_globals() -> None:

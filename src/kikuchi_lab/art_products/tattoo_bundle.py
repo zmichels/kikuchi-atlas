@@ -138,14 +138,20 @@ def _validate_svg(payload: bytes) -> None:
         raise ValueError("primary SVG is not valid XML") from None
     if root.tag != "{http://www.w3.org/2000/svg}svg":
         raise ValueError("primary SVG root must be svg")
-    paths = list(root)
-    if len(paths) != 11 or any(
-        path.tag != "{http://www.w3.org/2000/svg}path" for path in paths
+    children = list(root)
+    paths = children[:11]
+    if (
+        len(children) != 12
+        or any(path.tag != "{http://www.w3.org/2000/svg}path" for path in paths)
+        or children[-1].tag != "{http://www.w3.org/2000/svg}circle"
     ):
-        raise ValueError("primary SVG must contain exactly 11 paths")
+        raise ValueError(
+            "primary SVG must contain exactly 11 paths followed by one boundary circle"
+        )
     if any(
-        path.attrib.get("stroke") != "#000000" or path.attrib.get("fill") != "none"
-        for path in paths
+        element.attrib.get("stroke") != "#000000"
+        or element.attrib.get("fill") != "none"
+        for element in children
     ):
         raise ValueError("primary SVG must use only black ink")
     if any(

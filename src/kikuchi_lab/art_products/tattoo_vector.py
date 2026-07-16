@@ -15,7 +15,11 @@ from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from PIL import Image, ImageDraw
 
-from kikuchi_lab.art_products.contracts import TattooGeometry, TattooPath
+from kikuchi_lab.art_products.contracts import (
+    TattooBoundary,
+    TattooGeometry,
+    TattooPath,
+)
 from kikuchi_lab.art_products.tattoo_recipe import TattooRecipe
 from kikuchi_lab.art_products.tattoo_selection import TattooSelection
 
@@ -357,6 +361,19 @@ def validate_tattoo_geometry(geometry: TattooGeometry) -> None:
         raise ValueError("primary tattoo artboard must be exactly 145 mm")
     if len(geometry.paths) != _PATH_COUNT:
         raise ValueError("primary tattoo geometry must contain exactly 11 open polylines")
+    if not isinstance(geometry.boundary, TattooBoundary):
+        raise ValueError("primary tattoo geometry requires one projection boundary")
+    outer_radius = geometry.boundary.outer_diameter_mm / 2.0
+    inner_radius = outer_radius - geometry.boundary.width_mm
+    center = np.asarray(geometry.boundary.center_mm, dtype=_ARRAY_DTYPE)
+    if outer_radius + center[0] != 138.5 or center[0] - outer_radius != 6.5:
+        raise ValueError("projection boundary must retain an exact 6.5 mm page margin")
+    for path in geometry.paths:
+        radii = np.linalg.norm(path.points_mm - center, axis=1)
+        if not np.all(radii <= inner_radius + 1e-8):
+            raise ValueError("crystallographic path escapes the boundary inner edge")
+        if not np.allclose(radii[[0, -1]], inner_radius, rtol=0.0, atol=1e-8):
+            raise ValueError("crystallographic path endpoints must meet the inner limb")
 
     for path in geometry.paths:
         points = np.asarray(path.points_mm, dtype=_ARRAY_DTYPE)
@@ -447,11 +464,19 @@ def build_tattoo_geometry(
     if actual_assignments != expected_assignments:
         raise ValueError("ordered tier/width assignments must match the tattoo recipe")
 
-    scale = recipe.artboard_size_mm / (2.0 * recipe.crop_radius)
-    center = np.array(
-        [recipe.artboard_size_mm / 2.0, recipe.artboard_size_mm / 2.0],
-        dtype=_ARRAY_DTYPE,
+    policy = recipe.projection_boundary
+    boundary = TattooBoundary(
+        schema_version=1,
+        role=str(policy["role"]),
+        scientific_claim=str(policy["scientific_claim"]),
+        center_mm=(recipe.artboard_size_mm / 2.0,) * 2,
+        outer_diameter_mm=float(policy["outer_diameter_mm"]),
+        width_mm=float(policy["stroke_width_mm"]),
+        ink=str(policy["ink"]),
     )
+    inner_radius_mm = boundary.outer_diameter_mm / 2.0 - boundary.width_mm
+    scale = inner_radius_mm / recipe.crop_radius
+    center = np.asarray(boundary.center_mm, dtype=_ARRAY_DTYPE)
     paths: list[TattooPath] = []
     for selected in selection.selected_paths:
         fragments = _clip_polyline_to_circle(
@@ -489,6 +514,7 @@ def build_tattoo_geometry(
         catalog_id=selection.catalog_id,
         orientation_id=selection.orientation_id,
         artboard_size_mm=recipe.artboard_size_mm,
+        boundary=boundary,
         paths=tuple(paths),
         projection=_PROJECTION,
     )
@@ -514,6 +540,16 @@ def primary_svg_bytes(geometry: TattooGeometry) -> bytes:
             f'stroke="#000000" stroke-linecap="round" stroke-linejoin="round" '
             f'stroke-width="{path.width_mm:.6f}"/>'
         )
+    center_x, center_y = geometry.boundary.center_mm
+    centerline_radius = (
+        geometry.boundary.outer_diameter_mm - geometry.boundary.width_mm
+    ) / 2.0
+    lines.append(
+        f'  <circle cx="{center_x:.6f}" cy="{center_y:.6f}" fill="none" '
+        f'id="{geometry.boundary.boundary_id}" r="{centerline_radius:.6f}" '
+        f'stroke="{geometry.boundary.ink}" '
+        f'stroke-width="{geometry.boundary.width_mm:.6f}"/>'
+    )
     lines.append("</svg>")
     return ("\n".join(lines) + "\n").encode("utf-8")
 
