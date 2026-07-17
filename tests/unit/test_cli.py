@@ -381,6 +381,94 @@ def test_build_ice_art_catalog_cli_forwards_paths_and_emits_sorted_json(
     assert capsys.readouterr().out == json.dumps(expected, indent=2, sort_keys=True) + "\n"
 
 
+def test_build_direct_art_catalog_cli_returns_content_ids(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    observed = {}
+    result = SimpleNamespace(
+        run_id="direct-art-catalog-run-0123456789abcdef",
+        path=tmp_path / "direct-art-catalog-run-0123456789abcdef",
+        catalog_id="art-band-catalog-fedcba9876543210",
+        evidence_id="reflector-evidence-0123456789abcdef",
+        member_count=147,
+        eligible_member_count=23,
+        simulation_count=0,
+        manifest_sha256="c" * 64,
+    )
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.build_direct_art_catalog",
+        lambda **kwargs: observed.update(kwargs) or result,
+        raising=False,
+    )
+
+    status = main(
+        [
+            "build-direct-art-catalog",
+            "--recipe",
+            "recipes/reflectors/forsterite-art-bands.yml",
+            "--output",
+            str(tmp_path),
+        ]
+    )
+
+    assert status == 0
+    assert observed == {
+        "recipe_path": "recipes/reflectors/forsterite-art-bands.yml",
+        "output_root": str(tmp_path),
+    }
+    expected = {
+        "catalog_id": result.catalog_id,
+        "eligible_member_count": 23,
+        "evidence_id": result.evidence_id,
+        "manifest_sha256": "c" * 64,
+        "member_count": 147,
+        "path": str(result.path),
+        "run_id": result.run_id,
+        "simulation_count": 0,
+    }
+    assert capsys.readouterr().out == json.dumps(expected, indent=2, sort_keys=True) + "\n"
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        BundleExistsError("completed bundle exists"),
+        PartialBundleError("partial bundle exists"),
+        OSError("disk full"),
+        ValueError("bad recipe"),
+        RuntimeError("bounded failure"),
+    ],
+)
+def test_build_direct_art_catalog_cli_normalizes_known_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    error: Exception,
+) -> None:
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.build_direct_art_catalog",
+        Mock(side_effect=error),
+        raising=False,
+    )
+
+    status = main(
+        [
+            "build-direct-art-catalog",
+            "--recipe",
+            "recipe.yml",
+            "--output",
+            "out",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 1
+    assert captured.out == ""
+    assert captured.err == f"direct art catalog build failed: {error}\n"
+    assert "Traceback" not in captured.err
+
+
 def test_render_ice_tattoo_cli_forwards_strict_inputs_and_emits_exact_json(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

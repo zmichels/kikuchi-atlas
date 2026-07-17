@@ -36,6 +36,7 @@ from .ice_art_catalog import (
     load_ice_art_catalog_recipe,
 )
 from .ice_tattoo import IceTattooResult, render_ice_tattoo
+from .direct_art_catalog import DirectArtCatalogResult, build_direct_art_catalog
 
 __all__ = [
     "FinalRecipe",
@@ -43,6 +44,7 @@ __all__ = [
     "FinalReproductionResult",
     "FinalRunResult",
     "FinalSelectionError",
+    "DirectArtCatalogResult",
     "IceArtCatalogRecipe",
     "IceArtCatalogResult",
     "IceArtCatalogTimeoutError",
@@ -57,6 +59,7 @@ __all__ = [
     "ProofRunResult",
     "ValidatedFinalSelection",
     "compare_final_bundles",
+    "build_direct_art_catalog",
     "build_ice_art_catalog",
     "load_final_recipe",
     "load_ice_art_catalog_recipe",

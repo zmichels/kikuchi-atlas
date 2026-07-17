@@ -66,6 +66,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     build_art_catalog.add_argument("--recipe", required=True)
     build_art_catalog.add_argument("--output", required=True)
+    build_direct_art_catalog_parser = subparsers.add_parser(
+        "build-direct-art-catalog",
+        help="Build and atomically publish a zero-master direct reflector catalog.",
+    )
+    build_direct_art_catalog_parser.add_argument("--recipe", required=True)
+    build_direct_art_catalog_parser.add_argument("--output", required=True)
     render_ice_tattoo_parser = subparsers.add_parser(
         "render-ice-tattoo",
         help="Publish the primary Ice tattoo from a retained strict catalog.",
@@ -346,6 +352,42 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "path": str(result.path),
                     "catalog_id": result.catalog_id,
                     "member_count": result.member_count,
+                    "manifest_sha256": result.manifest_sha256,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "build-direct-art-catalog":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import build_direct_art_catalog
+
+        try:
+            result = build_direct_art_catalog(
+                recipe_path=args.recipe,
+                output_root=args.output,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(f"direct art catalog build failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "path": str(result.path),
+                    "catalog_id": result.catalog_id,
+                    "evidence_id": result.evidence_id,
+                    "member_count": result.member_count,
+                    "eligible_member_count": result.eligible_member_count,
+                    "simulation_count": result.simulation_count,
                     "manifest_sha256": result.manifest_sha256,
                 },
                 indent=2,
