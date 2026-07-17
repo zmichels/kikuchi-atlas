@@ -14,6 +14,12 @@ from kikuchi_lab.art_products.frozen_selection import (
     bind_frozen_tattoo_selection,
     load_frozen_tattoo_selection,
 )
+from kikuchi_lab.art_products.hemisphere_recipe import (
+    HemisphereCompositionRecipe,
+    HemisphereSeriesRecipe,
+    HemisphereTreatment,
+    load_hemisphere_series_recipe,
+)
 
 
 __all__ = [
@@ -21,10 +27,14 @@ __all__ = [
     "ArtBandMember",
     "FrozenTattooPath",
     "FrozenTattooSelection",
+    "HemisphereCompositionRecipe",
+    "HemisphereSeriesRecipe",
+    "HemisphereTreatment",
     "TattooBoundary",
     "TattooGeometry",
     "TattooPath",
     "bind_frozen_tattoo_selection",
     "build_art_band_catalog_from_evidence",
     "load_frozen_tattoo_selection",
+    "load_hemisphere_series_recipe",
 ]
