@@ -15,14 +15,15 @@ from kikuchi_lab.art_products.frozen_selection import (
     bind_frozen_tattoo_selection,
     load_frozen_tattoo_selection,
 )
-from kikuchi_lab.art_products.hemisphere_bundle import (
-    _validated_phase_payload,
-    write_phase_hemisphere_bundle,
-)
 from kikuchi_lab.art_products.hemisphere_recipe import (
     load_hemisphere_series_recipe,
 )
-from kikuchi_lab.art_products.tattoo_bundle import DISCLAIMER_TEXT
+from kikuchi_lab.art_products.tattoo_bundle import (
+    DISCLAIMER_TEXT,
+    _validated_payload,
+    write_tattoo_bundle,
+)
+from kikuchi_lab.art_products.tattoo_recipe import load_tattoo_recipe
 from kikuchi_lab.art_products.tattoo_vector import (
     build_tattoo_geometry,
     render_primary_tattoo,
@@ -113,42 +114,40 @@ def series_inputs(tmp_path_factory: pytest.TempPathFactory) -> SeriesInputs:
             ice_catalog = build_art_band_catalog_from_evidence(evidence)
 
     assert ice_catalog is not None and ice_evidence is not None
-    composition = series.composition_for("ice-ih")
+    recipe = load_tattoo_recipe(ROOT / "recipes/art/ice-ih-tattoo.yml")
     frozen_manifest = load_frozen_tattoo_selection(REVIEWED_ICE_SELECTION)
     selection = bind_frozen_tattoo_selection(
         ice_catalog,
-        composition,
+        recipe,
         frozen_manifest,
     )
-    standard = build_tattoo_geometry(selection, composition, width_scale=1.0)
+    standard = build_tattoo_geometry(selection, recipe)
     standard_rendered = render_primary_tattoo(standard)
     reference_kwargs = {
-        "expected_payload": _validated_phase_payload(
-            phase_slug="ice-ih",
-            treatment=series.treatments["standard"],
+        "expected_payload": _validated_payload(
             catalog=ice_catalog,
-            recipe=composition,
+            recipe=recipe,
             selection=selection,
             geometry=standard,
             rendered=standard_rendered,
+            treatment="primary",
             disclaimer=DISCLAIMER_TEXT,
             frozen_manifest=frozen_manifest,
         ),
         "catalog": ice_catalog,
-        "composition": composition,
-        "selection": selection,
+        "reference_recipe": recipe,
+        "reference_selection": selection,
         "standard_geometry": standard,
         "frozen_manifest": frozen_manifest,
     }
-    reference = write_phase_hemisphere_bundle(
+    reference = write_tattoo_bundle(
         temporary_root / "corrected-ice-reference",
-        phase_slug="ice-ih",
-        treatment=series.treatments["standard"],
         catalog=ice_catalog,
-        recipe=composition,
+        recipe=recipe,
         selection=selection,
         geometry=standard,
         rendered=standard_rendered,
+        treatment="primary",
         disclaimer=DISCLAIMER_TEXT,
         frozen_manifest=frozen_manifest,
     )
@@ -224,6 +223,24 @@ def test_series_publishes_nine_new_bundles_and_ten_direct_review_cells(
         }
 
 
+def test_series_accepts_retained_primary_ice_reference_bundle(
+    series_inputs: SeriesInputs,
+) -> None:
+    manifest = json.loads(
+        (series_inputs.ice_standard_reference / "manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert manifest["run_identity"]["treatment"] == "primary"
+
+    run_id = assert_reviewed_ice_reference(
+        reference_path=series_inputs.ice_standard_reference,
+        **series_inputs.ice_reference_kwargs,
+    )
+
+    assert run_id == series_inputs.ice_standard_reference.name
+
+
 def test_ice_reference_checksum_or_selection_mismatch_is_fatal_before_output(
     tmp_path: Path,
     series_inputs: SeriesInputs,
@@ -260,7 +277,7 @@ def test_ice_reference_rejects_self_consistent_render_tampering(
 ) -> None:
     damaged_reference = tmp_path / series_inputs.ice_standard_reference.name
     shutil.copytree(series_inputs.ice_standard_reference, damaged_reference)
-    render_name = "ice-ih-hemisphere-standard.svg"
+    render_name = "ice-ih-tattoo-primary.svg"
     render_path = damaged_reference / render_name
     render_path.write_bytes(b"<svg>tampered reviewed render</svg>\n")
     manifest_path = damaged_reference / "manifest.json"

@@ -41,7 +41,9 @@ from kikuchi_lab.art_products.tattoo_bundle import (
     _ValidatedPayload,
     _publish_validated_payload,
     _selection_snapshot,
+    _validated_payload as _validated_tattoo_payload,
 )
+from kikuchi_lab.art_products.tattoo_recipe import TattooRecipe, load_tattoo_recipe
 from kikuchi_lab.art_products.tattoo_selection import TattooSelection
 from kikuchi_lab.art_products.tattoo_vector import (
     build_tattoo_geometry,
@@ -61,6 +63,7 @@ from kikuchi_lab.sources.structure import load_structure_record, verify_structur
 
 
 _ICE_SELECTION_MANIFEST = "ice-ih-reviewed-selection-v2.yml"
+_ICE_TATTOO_RECIPE = "ice-ih-tattoo.yml"
 _ResultT = TypeVar("_ResultT")
 
 
@@ -311,10 +314,7 @@ def _validate_reference_inventory(
                 raise ValueError(f"reference {name} bytes differ from corrected content")
         elif _read_json(path) != plain_data(expected_content):
             raise ValueError(f"reference {name} differs from corrected content")
-    expected_run_id = stable_id(
-        "ice-ih-hemisphere-standard-run",
-        expected_identity,
-    )
+    expected_run_id = stable_id("ice-tattoo-run", expected_identity)
     if manifest["run_id"] != expected_run_id or reference.name != expected_run_id:
         raise ValueError("reference run identity differs from its manifest or path")
     return manifest
@@ -325,12 +325,12 @@ def assert_reviewed_ice_reference(
     reference_path: str | Path,
     expected_payload: _ValidatedPayload,
     catalog: ArtBandCatalog,
-    composition: HemisphereCompositionRecipe,
-    selection: TattooSelection,
+    reference_recipe: TattooRecipe,
+    reference_selection: TattooSelection,
     standard_geometry: TattooGeometry,
     frozen_manifest: FrozenTattooSelection,
 ) -> str:
-    """Lock the supplied standard to corrected evidence and the tracked review."""
+    """Lock the retained primary bundle to corrected standard geometry."""
     reference = Path(reference_path)
     try:
         manifest = _validate_reference_inventory(
@@ -342,18 +342,17 @@ def assert_reviewed_ice_reference(
                 "catalog_id": catalog.catalog_id,
                 "content": catalog.to_dict(),
             },
-            "hemisphere-composition-recipe.json": {
-                "recipe_id": composition.recipe_id,
-                "content": composition.to_dict(),
+            "tattoo-recipe.json": {
+                "recipe_id": reference_recipe.recipe_id,
+                "content": reference_recipe.to_dict(),
             },
-            "hemisphere-treatment-recipe.json": expected_payload.files[
-                "hemisphere-treatment-recipe.json"
-            ],
             "frozen-selection-manifest.json": {
                 "manifest_id": frozen_manifest.manifest_id,
                 "content": frozen_manifest.to_dict(),
             },
-            "band-selection-ledger.json": _selection_snapshot(selection),
+            "band-selection-ledger.json": _selection_snapshot(
+                reference_selection
+            ),
             "path-geometry.json": {
                 "geometry_id": standard_geometry.geometry_id,
                 "content": standard_geometry.to_dict(),
@@ -365,9 +364,10 @@ def assert_reviewed_ice_reference(
         selected = _read_json(reference / "band-selection-ledger.json")
         selected_paths = selected["selected_paths"]
         if [path["member_id"] for path in selected_paths] != [
-            path.member_id for path in selection.selected_paths
+            path.member_id for path in reference_selection.selected_paths
         ] or [path["center_trace_sha256"] for path in selected_paths] != [
-            path.center_trace_sha256 for path in selection.selected_paths
+            path.center_trace_sha256
+            for path in reference_selection.selected_paths
         ]:
             raise ValueError("reference member order or center-trace hashes differ")
     except (KeyError, OSError, TypeError, ValueError) as error:
@@ -417,6 +417,9 @@ def render_phase_art_series(
     )
     frozen_manifest = load_frozen_tattoo_selection(
         recipe_file.parent / _ICE_SELECTION_MANIFEST
+    )
+    ice_reference_recipe = load_tattoo_recipe(
+        recipe_file.parent / _ICE_TATTOO_RECIPE
     )
 
     prepared_bundles: list[_PreparedBundle] = []
@@ -483,15 +486,33 @@ def render_phase_art_series(
         prepared_cells[f"{phase_slug}:wide"] = (selection, wide)
 
         if phase_slug == "ice-ih":
-            standard_payload = _run_phase_step(
-                lambda: _validated_phase_payload(
-                    phase_slug=phase_slug,
-                    treatment=series.treatments["standard"],
+            reference_selection = _run_phase_step(
+                lambda: bind_frozen_tattoo_selection(
+                    direct.catalog,
+                    ice_reference_recipe,
+                    phase_manifest,
+                ),
+                phase_diagnostics,
+            )
+            reference_geometry = _run_phase_step(
+                lambda: build_tattoo_geometry(
+                    reference_selection,
+                    ice_reference_recipe,
+                ),
+                phase_diagnostics,
+            )
+            if reference_geometry.to_dict() != standard.to_dict():
+                raise IceStandardReferenceMismatch(
+                    "reviewed Ice standard geometry differs from the series standard"
+                )
+            reference_payload = _run_phase_step(
+                lambda: _validated_tattoo_payload(
                     catalog=direct.catalog,
-                    recipe=composition,
-                    selection=selection,
-                    geometry=standard,
+                    recipe=ice_reference_recipe,
+                    selection=reference_selection,
+                    geometry=reference_geometry,
                     rendered=standard_rendered,
+                    treatment="primary",
                     disclaimer=DISCLAIMER_TEXT,
                     frozen_manifest=phase_manifest,
                 ),
@@ -500,14 +521,18 @@ def render_phase_art_series(
             reference_run_id = _run_phase_step(
                 lambda: assert_reviewed_ice_reference(
                     reference_path=ice_standard_reference,
-                    expected_payload=standard_payload,
+                    expected_payload=reference_payload,
                     catalog=direct.catalog,
-                    composition=composition,
-                    selection=selection,
-                    standard_geometry=standard,
+                    reference_recipe=ice_reference_recipe,
+                    reference_selection=reference_selection,
+                    standard_geometry=reference_geometry,
                     frozen_manifest=phase_manifest,
                 ),
                 phase_diagnostics,
+            )
+            prepared_cells[f"{phase_slug}:standard"] = (
+                reference_selection,
+                reference_geometry,
             )
             prepared_bundles.append(
                 _run_phase_step(
