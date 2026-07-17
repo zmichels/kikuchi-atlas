@@ -54,69 +54,85 @@ class OrientationGalleryCell:
     frozen_reference_id: str | None = None
 
     def __post_init__(self) -> None:
-        if self.frozen_reference_id is not None:
-            raise ValueError(
-                "orientation gallery cells cannot substitute a frozen Ice reference"
-            )
-        if self.phase_slug not in _PHASE_ORDER:
-            raise ValueError("orientation gallery phase_slug is not in the approved order")
-        for value, expected, name in (
-            (self.variant, OrientationGalleryVariant, "variant"),
-            (self.treatment, HemisphereTreatment, "treatment"),
-            (self.catalog, ArtBandCatalog, "catalog"),
-            (self.composition, HemisphereCompositionRecipe, "composition"),
-            (self.selection, TattooSelection, "selection"),
-            (self.geometry, TattooGeometry, "geometry"),
-            (self.parity_report, ReflectorParityReport, "parity_report"),
-        ):
-            if not isinstance(value, expected):
-                raise TypeError(f"{name} must be a {expected.__name__}")
-        if self.phase_slug != self.composition.phase_slug:
-            raise ValueError("gallery phase_slug does not match the composition")
-        if self.variant.orientation != self.composition.orientation:
-            raise ValueError("gallery variant orientation does not match the composition")
-        if self.variant.orientation.frame != "crystal_to_sample":
-            raise ValueError("gallery variant orientation must be crystal_to_sample")
-        if self.treatment.name != "standard" or self.treatment.arc_width_scale != 1.0:
-            raise ValueError("orientation gallery cells must use the standard treatment")
-
-        if self.catalog.catalog_id != stable_id("art-band-catalog", self.catalog.to_dict()):
-            raise ValueError("gallery catalog_id does not match catalog content")
-        _validate_catalog_members(self.catalog)
-        if self.selection.selection_id != _selection_identity(self.selection):
-            raise ValueError("gallery selection_id does not match selection content")
-        if self.selection.catalog_id != self.catalog.catalog_id:
-            raise ValueError("gallery selection catalog_id does not match the catalog")
-        if self.selection.recipe_id != self.composition.recipe_id:
-            raise ValueError("gallery selection recipe_id does not match the composition")
-        if self.selection.orientation_id != self.variant.orientation.orientation_id:
-            raise ValueError("gallery selection orientation does not match the variant")
-        if len(self.selection.selected_paths) != 11:
-            raise ValueError("gallery selection must contain exactly 11 paths")
-        if self.geometry.geometry_id != _geometry_identity(self.geometry):
-            raise ValueError("gallery geometry_id does not match geometry content")
-        if self.geometry.catalog_id != self.catalog.catalog_id:
-            raise ValueError("gallery geometry catalog_id does not match the catalog")
-        if self.geometry.orientation_id != self.variant.orientation.orientation_id:
-            raise ValueError("gallery geometry orientation does not match the variant")
-        validate_tattoo_geometry(self.geometry)
-        expected_geometry = build_tattoo_geometry(
-            self.selection,
-            self.composition,
-            width_scale=1.0,
-        )
-        if self.geometry.to_dict() != expected_geometry.to_dict():
-            raise ValueError("gallery geometry does not match rebuilt standard geometry")
-
-        self.parity_report.validate_for_publication()
-        if self.parity_report.source_structure_id != self.catalog.source_structure_id:
-            raise ValueError("gallery parity source does not match the catalog")
-        if self.parity_report.source_structure_sha256 != self.catalog.source_structure_sha256:
-            raise ValueError("gallery parity source SHA does not match the catalog")
+        _validate_orientation_gallery_cell(self)
 
     @property
     def cell_id(self) -> str:
         return f"{self.variant.slug}:{self.phase_slug}"
+
+
+def _validate_orientation_gallery_cell(cell: OrientationGalleryCell) -> None:
+    """Revalidate a gallery cell before any downstream rendering or publication."""
+    if not isinstance(cell, OrientationGalleryCell):
+        raise TypeError("cell must be an OrientationGalleryCell")
+    phase_slug = cell.phase_slug
+    variant = cell.variant
+    treatment = cell.treatment
+    catalog = cell.catalog
+    composition = cell.composition
+    selection = cell.selection
+    geometry = cell.geometry
+    parity_report = cell.parity_report
+    frozen_reference_id = cell.frozen_reference_id
+    if frozen_reference_id is not None:
+        raise ValueError(
+            "orientation gallery cells cannot substitute a frozen Ice reference"
+        )
+    if phase_slug not in _PHASE_ORDER:
+        raise ValueError("orientation gallery phase_slug is not in the approved order")
+    for value, expected, name in (
+        (variant, OrientationGalleryVariant, "variant"),
+        (treatment, HemisphereTreatment, "treatment"),
+        (catalog, ArtBandCatalog, "catalog"),
+        (composition, HemisphereCompositionRecipe, "composition"),
+        (selection, TattooSelection, "selection"),
+        (geometry, TattooGeometry, "geometry"),
+        (parity_report, ReflectorParityReport, "parity_report"),
+    ):
+        if not isinstance(value, expected):
+            raise TypeError(f"{name} must be a {expected.__name__}")
+    if phase_slug != composition.phase_slug:
+        raise ValueError("gallery phase_slug does not match the composition")
+    if variant.orientation != composition.orientation:
+        raise ValueError("gallery variant orientation does not match the composition")
+    if variant.orientation.frame != "crystal_to_sample":
+        raise ValueError("gallery variant orientation must be crystal_to_sample")
+    if treatment.name != "standard" or treatment.arc_width_scale != 1.0:
+        raise ValueError("orientation gallery cells must use the standard treatment")
+
+    if catalog.catalog_id != stable_id("art-band-catalog", catalog.to_dict()):
+        raise ValueError("gallery catalog_id does not match catalog content")
+    _validate_catalog_members(catalog)
+    if selection.selection_id != _selection_identity(selection):
+        raise ValueError("gallery selection_id does not match selection content")
+    if selection.catalog_id != catalog.catalog_id:
+        raise ValueError("gallery selection catalog_id does not match the catalog")
+    if selection.recipe_id != composition.recipe_id:
+        raise ValueError("gallery selection recipe_id does not match the composition")
+    if selection.orientation_id != variant.orientation.orientation_id:
+        raise ValueError("gallery selection orientation does not match the variant")
+    if len(selection.selected_paths) != 11:
+        raise ValueError("gallery selection must contain exactly 11 paths")
+    if geometry.geometry_id != _geometry_identity(geometry):
+        raise ValueError("gallery geometry_id does not match geometry content")
+    if geometry.catalog_id != catalog.catalog_id:
+        raise ValueError("gallery geometry catalog_id does not match the catalog")
+    if geometry.orientation_id != variant.orientation.orientation_id:
+        raise ValueError("gallery geometry orientation does not match the variant")
+    validate_tattoo_geometry(geometry)
+    expected_geometry = build_tattoo_geometry(
+        selection,
+        composition,
+        width_scale=1.0,
+    )
+    if geometry.to_dict() != expected_geometry.to_dict():
+        raise ValueError("gallery geometry does not match rebuilt standard geometry")
+
+    parity_report.validate_for_publication()
+    if parity_report.source_structure_id != catalog.source_structure_id:
+        raise ValueError("gallery parity source does not match the catalog")
+    if parity_report.source_structure_sha256 != catalog.source_structure_sha256:
+        raise ValueError("gallery parity source SHA does not match the catalog")
 
 
 @dataclass(frozen=True)
@@ -136,8 +152,7 @@ def _render_names(cell: OrientationGalleryCell) -> tuple[str, str]:
 
 
 def _validated_cell_payload(cell: OrientationGalleryCell) -> _ValidatedPayload:
-    if not isinstance(cell, OrientationGalleryCell):
-        raise TypeError("cell must be an OrientationGalleryCell")
+    _validate_orientation_gallery_cell(cell)
     svg_name, stencil_name = _render_names(cell)
     rendered = render_primary_tattoo(cell.geometry)
     svg = rendered["primary.svg"]

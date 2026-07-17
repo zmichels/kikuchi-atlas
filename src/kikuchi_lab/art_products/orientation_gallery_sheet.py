@@ -12,10 +12,12 @@ from PIL import Image, ImageChops, ImageDraw, ImageFont
 from kikuchi_lab.model.identity import plain_data, stable_id
 
 from .contracts import TattooGeometry
-from .orientation_gallery_bundle import _publish_idempotent_payload
-from .orientation_gallery_recipe import OrientationGalleryVariant
+from .orientation_gallery_bundle import (
+    OrientationGalleryCell,
+    _publish_idempotent_payload,
+    _validate_orientation_gallery_cell,
+)
 from .tattoo_bundle import _ValidatedPayload, _sha256_bytes
-from .tattoo_vector import validate_tattoo_geometry
 
 
 ORIENTATION_GALLERY_PANEL_SIZE_PX = 900
@@ -27,41 +29,6 @@ ORIENTATION_GALLERY_CELL_ORDER = tuple(
     for variant in _VARIANT_ORDER
     for phase in _PHASE_ORDER
 )
-
-
-@dataclass(frozen=True)
-class OrientationGallerySheetCell:
-    """One evidence-linked geometry cell in the fixed row-major gallery order."""
-
-    phase_slug: str
-    variant: OrientationGalleryVariant
-    geometry: TattooGeometry
-    source_catalog_id: str
-    parity_report_id: str
-    selection_id: str
-
-    def __post_init__(self) -> None:
-        if self.phase_slug not in _PHASE_ORDER:
-            raise ValueError("orientation gallery sheet phase_slug is not approved")
-        if not isinstance(self.variant, OrientationGalleryVariant):
-            raise TypeError("orientation gallery sheet variant must be an OrientationGalleryVariant")
-        if self.variant.slug not in _VARIANT_ORDER:
-            raise ValueError("orientation gallery sheet variant is not approved")
-        if not isinstance(self.geometry, TattooGeometry):
-            raise TypeError("orientation gallery sheet geometry must be a TattooGeometry")
-        for field in ("source_catalog_id", "parity_report_id", "selection_id"):
-            value = getattr(self, field)
-            if not isinstance(value, str) or not value:
-                raise ValueError(f"orientation gallery sheet {field} must be non-empty text")
-        if self.geometry.catalog_id != self.source_catalog_id:
-            raise ValueError("orientation gallery sheet geometry catalog does not match source")
-        if self.geometry.orientation_id != self.variant.orientation.orientation_id:
-            raise ValueError("orientation gallery sheet geometry does not match variant")
-        validate_tattoo_geometry(self.geometry)
-
-    @property
-    def cell_id(self) -> str:
-        return f"{self.variant.slug}:{self.phase_slug}"
 
 
 @dataclass(frozen=True)
@@ -137,7 +104,7 @@ def _draw_geometry(panel: Image.Image, geometry: TattooGeometry) -> None:
 
 def _draw_labels(
     panel: Image.Image,
-    cell: OrientationGallerySheetCell,
+    cell: OrientationGalleryCell,
     *,
     column: int,
 ) -> None:
@@ -152,7 +119,7 @@ def _draw_labels(
     draw.text((phase_x, 3), cell.phase_slug, fill=(0, 0, 0), font=font)
 
 
-def _cell_record(cell: OrientationGallerySheetCell, index: int) -> dict[str, object]:
+def _cell_record(cell: OrientationGalleryCell, index: int) -> dict[str, object]:
     return {
         "cell_id": cell.cell_id,
         "cell_index": index,
@@ -164,10 +131,13 @@ def _cell_record(cell: OrientationGallerySheetCell, index: int) -> dict[str, obj
         "orientation_id": cell.variant.orientation.orientation_id,
         "euler_bunge_deg": list(cell.variant.orientation.euler_bunge_deg),
         "orientation_frame": cell.variant.orientation.frame,
-        "selection_id": cell.selection_id,
+        "treatment_id": cell.treatment.treatment_id,
+        "treatment": cell.treatment.name,
+        "arc_width_scale": cell.treatment.arc_width_scale,
+        "selection_id": cell.selection.selection_id,
         "geometry_id": cell.geometry.geometry_id,
-        "source_catalog_id": cell.source_catalog_id,
-        "parity_report_id": cell.parity_report_id,
+        "source_catalog_id": cell.catalog.catalog_id,
+        "parity_report_id": cell.parity_report.report_id,
         "simulation_count": 0,
         "renderer_version": ORIENTATION_GALLERY_RENDERER_VERSION,
         "panel_size_px": ORIENTATION_GALLERY_PANEL_SIZE_PX,
@@ -175,14 +145,16 @@ def _cell_record(cell: OrientationGallerySheetCell, index: int) -> dict[str, obj
 
 
 def render_orientation_gallery_sheet(
-    cells: Sequence[OrientationGallerySheetCell],
+    cells: Sequence[OrientationGalleryCell],
 ) -> RenderedOrientationGallerySheet:
     """Render the fixed 3-by-5 gallery directly from geometry path vectors."""
     ordered = tuple(cells)
-    if len(ordered) != len(ORIENTATION_GALLERY_CELL_ORDER) or any(
-        not isinstance(cell, OrientationGallerySheetCell) for cell in ordered
-    ):
+    if len(ordered) != len(ORIENTATION_GALLERY_CELL_ORDER):
         raise ValueError("orientation gallery sheet requires exactly fifteen cells")
+    if any(not isinstance(cell, OrientationGalleryCell) for cell in ordered):
+        raise TypeError("orientation gallery sheet cells must be OrientationGalleryCell values")
+    for cell in ordered:
+        _validate_orientation_gallery_cell(cell)
     cell_order = tuple(cell.cell_id for cell in ordered)
     if cell_order != ORIENTATION_GALLERY_CELL_ORDER:
         raise ValueError("orientation gallery sheet cells differ from the approved order")
@@ -246,12 +218,12 @@ def render_orientation_gallery_sheet(
 def _validated_sheet_payload(
     *,
     recipe_id: str,
-    rendered: RenderedOrientationGallerySheet,
+    cells: Sequence[OrientationGalleryCell],
 ) -> tuple[str, _ValidatedPayload]:
     if not isinstance(recipe_id, str) or not recipe_id:
         raise ValueError("orientation gallery recipe_id must be non-empty text")
-    if not isinstance(rendered, RenderedOrientationGallerySheet):
-        raise TypeError("rendered must be a RenderedOrientationGallerySheet")
+    source_cells = tuple(cells)
+    rendered = render_orientation_gallery_sheet(source_cells)
     if rendered.cell_order != ORIENTATION_GALLERY_CELL_ORDER:
         raise ValueError("orientation gallery rendered cell order differs from the contract")
     with Image.open(BytesIO(rendered.comparison_png)) as image:
@@ -267,9 +239,22 @@ def _validated_sheet_payload(
         raise ValueError("orientation gallery comparison ledger ID differs from content")
     if ledger.get("cell_order") != list(ORIENTATION_GALLERY_CELL_ORDER):
         raise ValueError("orientation gallery comparison ledger cell order differs")
-    cells = ledger.get("cells")
-    if not isinstance(cells, list) or len(cells) != 15:
+    ledger_cells = ledger.get("cells")
+    if not isinstance(ledger_cells, list) or len(ledger_cells) != 15:
         raise ValueError("orientation gallery comparison ledger must contain fifteen cells")
+    expected_records = [
+        _cell_record(cell, index) for index, cell in enumerate(source_cells)
+    ]
+    if ledger_cells != expected_records:
+        raise ValueError("orientation gallery comparison ledger provenance differs")
+    if any(
+        record.get("treatment") != "standard"
+        or record.get("arc_width_scale") != 1.0
+        or record.get("simulation_count") != 0
+        for record in ledger_cells
+        if isinstance(record, Mapping)
+    ) or any(not isinstance(record, Mapping) for record in ledger_cells):
+        raise ValueError("orientation gallery comparison ledger provenance is invalid")
     run_identity = {
         "schema_version": 1,
         "recipe_id": recipe_id,
@@ -298,10 +283,13 @@ def write_orientation_gallery_sheet_bundle(
     output_root: str | Path,
     *,
     recipe_id: str,
-    rendered: RenderedOrientationGallerySheet,
+    cells: Sequence[OrientationGalleryCell],
+    rendered: RenderedOrientationGallerySheet | None = None,
 ) -> OrientationGallerySheetBundleResult:
-    """Atomically publish one content-addressed native comparison sheet."""
-    run_id, payload = _validated_sheet_payload(recipe_id=recipe_id, rendered=rendered)
+    """Derive and atomically publish one native comparison from validated cells."""
+    if rendered is not None:
+        raise ValueError("caller-provided rendered sheets are forbidden")
+    run_id, payload = _validated_sheet_payload(recipe_id=recipe_id, cells=cells)
     path, manifest_sha256 = _publish_idempotent_payload(
         output_root,
         run_id=run_id,
@@ -321,7 +309,6 @@ __all__ = [
     "ORIENTATION_GALLERY_PANEL_SIZE_PX",
     "ORIENTATION_GALLERY_RENDERER_VERSION",
     "OrientationGallerySheetBundleResult",
-    "OrientationGallerySheetCell",
     "RenderedOrientationGallerySheet",
     "render_orientation_gallery_sheet",
     "write_orientation_gallery_sheet_bundle",

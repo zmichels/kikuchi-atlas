@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from copy import copy
 from dataclasses import replace
 from io import BytesIO
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 import pytest
 
@@ -14,6 +16,7 @@ from kikuchi_lab.art_products.clearance_selection import (
 from kikuchi_lab.art_products.hemisphere_recipe import (
     HemisphereCompositionRecipe,
 )
+from kikuchi_lab.art_products.orientation_gallery_bundle import OrientationGalleryCell
 from kikuchi_lab.art_products.orientation_gallery_recipe import (
     OrientationGalleryRecipe,
     load_orientation_gallery_recipe,
@@ -21,12 +24,14 @@ from kikuchi_lab.art_products.orientation_gallery_recipe import (
 from kikuchi_lab.art_products.orientation_gallery_sheet import (
     ORIENTATION_GALLERY_CELL_ORDER,
     ORIENTATION_GALLERY_PANEL_SIZE_PX,
-    OrientationGallerySheetCell,
+    RenderedOrientationGallerySheet,
     render_orientation_gallery_sheet,
+    write_orientation_gallery_sheet_bundle,
 )
 from kikuchi_lab.art_products.tattoo_vector import build_tattoo_geometry
 from kikuchi_lab.kinematical.kikuchipy_adapter import build_direct_reflector_evidence
 from kikuchi_lab.kinematical.reflector_evidence import load_direct_reflector_recipe
+from kikuchi_lab.kinematical.reflector_parity import compare_reflector_evidence
 from kikuchi_lab.sources.structure import load_structure_record
 
 
@@ -42,47 +47,82 @@ pytestmark = [
 
 
 @pytest.fixture(scope="module")
-def sheet_cells() -> tuple[OrientationGallerySheetCell, ...]:
-    gallery: OrientationGalleryRecipe = load_orientation_gallery_recipe(GALLERY_RECIPE)
-    reflector_path = ROOT / "recipes/reflectors/quartz-art-bands.yml"
-    reflector_recipe = load_direct_reflector_recipe(reflector_path)
-    source = load_structure_record(
-        (reflector_path.parent / reflector_recipe.source_record).resolve()
-    )
-    evidence = build_direct_reflector_evidence(source, reflector_recipe)
-    catalog = build_art_band_catalog_from_evidence(evidence)
-    geometries = {}
-    selections = {}
-    for variant in gallery.variants:
-        composition: HemisphereCompositionRecipe = replace(
-            gallery.source_series.composition_for("quartz"),
-            orientation=variant.orientation,
-        )
-        selection = select_standard_clearance_valid_tattoo_paths(catalog, composition)
-        geometries[variant.slug] = build_tattoo_geometry(
-            selection, composition, width_scale=1.0
-        )
-        selections[variant.slug] = selection
+def gallery_recipe() -> OrientationGalleryRecipe:
+    return load_orientation_gallery_recipe(GALLERY_RECIPE)
 
-    return tuple(
-        OrientationGallerySheetCell(
-            phase_slug=phase_slug,
-            variant=variant,
-            geometry=replace(
-                geometries[variant.slug],
-                orientation_id=variant.orientation.orientation_id,
-            ),
-            source_catalog_id=catalog.catalog_id,
-            parity_report_id="reflector-parity-report-sheet-fixture",
-            selection_id=selections[variant.slug].selection_id,
+
+@pytest.fixture(scope="module")
+def gallery_cells(
+    gallery_recipe: OrientationGalleryRecipe,
+) -> tuple[OrientationGalleryCell, ...]:
+    cells: list[OrientationGalleryCell] = []
+    for phase_slug in gallery_recipe.phase_order:
+        reflector_path = (
+            GALLERY_RECIPE.parent
+            / gallery_recipe.source_series.reflector_recipes[phase_slug]
+        ).resolve()
+        reflector_recipe = load_direct_reflector_recipe(reflector_path)
+        source = load_structure_record(
+            (reflector_path.parent / reflector_recipe.source_record).resolve()
         )
-        for variant in gallery.variants
-        for phase_slug in gallery.phase_order
+        evidence = build_direct_reflector_evidence(source, reflector_recipe)
+        catalog = build_art_band_catalog_from_evidence(evidence)
+        parity = compare_reflector_evidence(evidence, evidence).with_master(
+            np.arange(2 * 65 * 65, dtype=np.float64).reshape(2, 65, 65)
+        )
+        parity.validate_for_publication()
+        for variant in gallery_recipe.variants:
+            composition: HemisphereCompositionRecipe = replace(
+                gallery_recipe.source_series.composition_for(phase_slug),
+                orientation=variant.orientation,
+            )
+            selection = select_standard_clearance_valid_tattoo_paths(
+                catalog, composition
+            )
+            geometry = build_tattoo_geometry(selection, composition, width_scale=1.0)
+            cells.append(
+                OrientationGalleryCell(
+                    phase_slug=phase_slug,
+                    variant=variant,
+                    treatment=gallery_recipe.treatment,
+                    catalog=catalog,
+                    composition=composition,
+                    selection=selection,
+                    geometry=geometry,
+                    parity_report=parity,
+                )
+            )
+    return tuple(
+        next(
+            cell
+            for cell in cells
+            if cell.cell_id == f"{variant}:{phase_slug}"
+        )
+        for variant, phase_slug in (
+            cell_id.split(":") for cell_id in ORIENTATION_GALLERY_CELL_ORDER
+        )
     )
+
+
+def _forged(
+    cell: OrientationGalleryCell,
+    **changes: object,
+) -> OrientationGalleryCell:
+    forged = copy(cell)
+    for field, value in changes.items():
+        object.__setattr__(forged, field, value)
+    return forged
+
+
+def _with_first(
+    cells: tuple[OrientationGalleryCell, ...],
+    first: OrientationGalleryCell,
+) -> tuple[OrientationGalleryCell, ...]:
+    return (first, *cells[1:])
 
 
 def test_native_sheet_is_a_direct_labeled_three_by_five_vector_render(
-    sheet_cells: tuple[OrientationGallerySheetCell, ...],
+    gallery_cells: tuple[OrientationGalleryCell, ...],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -91,7 +131,7 @@ def test_native_sheet_is_a_direct_labeled_three_by_five_vector_render(
         lambda *_args, **_kwargs: pytest.fail("sheet resized imported raster content"),
     )
 
-    rendered = render_orientation_gallery_sheet(sheet_cells)
+    rendered = render_orientation_gallery_sheet(gallery_cells)
 
     with Image.open(BytesIO(rendered.comparison_png)) as image:
         assert image.size == (4500, 2700)
@@ -122,3 +162,83 @@ def test_native_sheet_is_a_direct_labeled_three_by_five_vector_render(
         assert record["column"] == index % 5
         assert record["panel_size_px"] == 900
         assert record["simulation_count"] == 0
+        assert record["treatment"] == "standard"
+        assert record["arc_width_scale"] == 1.0
+
+
+def test_sheet_revalidates_a_false_phase_label_before_rendering(
+    gallery_cells: tuple[OrientationGalleryCell, ...],
+) -> None:
+    forged = _forged(gallery_cells[0], phase_slug="quartz")
+
+    with pytest.raises(ValueError, match="phase_slug"):
+        render_orientation_gallery_sheet(_with_first(gallery_cells, forged))
+
+
+def test_sheet_revalidates_a_false_variant_orientation_before_rendering(
+    gallery_cells: tuple[OrientationGalleryCell, ...],
+    gallery_recipe: OrientationGalleryRecipe,
+) -> None:
+    forged = _forged(gallery_cells[0], variant=gallery_recipe.variants[1])
+
+    with pytest.raises(ValueError, match="variant orientation"):
+        render_orientation_gallery_sheet(_with_first(gallery_cells, forged))
+
+
+def test_sheet_rejects_another_phases_geometry_before_rendering(
+    gallery_cells: tuple[OrientationGalleryCell, ...],
+) -> None:
+    forged = _forged(gallery_cells[0], geometry=gallery_cells[1].geometry)
+
+    with pytest.raises(ValueError, match="geometry catalog"):
+        render_orientation_gallery_sheet(_with_first(gallery_cells, forged))
+
+
+def test_sheet_rejects_wide_geometry_and_nonstandard_treatment_before_rendering(
+    gallery_cells: tuple[OrientationGalleryCell, ...],
+    gallery_recipe: OrientationGalleryRecipe,
+) -> None:
+    wide_geometry = build_tattoo_geometry(
+        gallery_cells[0].selection,
+        gallery_cells[0].composition,
+        width_scale=1.15,
+    )
+    wide_geometry_cell = _forged(gallery_cells[0], geometry=wide_geometry)
+    wide_treatment_cell = _forged(
+        gallery_cells[0],
+        treatment=gallery_recipe.source_series.treatments["wide"],
+    )
+
+    with pytest.raises(ValueError, match="standard geometry"):
+        render_orientation_gallery_sheet(_with_first(gallery_cells, wide_geometry_cell))
+    with pytest.raises(ValueError, match="standard treatment"):
+        render_orientation_gallery_sheet(_with_first(gallery_cells, wide_treatment_cell))
+
+
+def test_sheet_bundle_derives_from_cells_and_rejects_caller_rendered_bytes(
+    tmp_path: Path,
+    gallery_cells: tuple[OrientationGalleryCell, ...],
+) -> None:
+    result = write_orientation_gallery_sheet_bundle(
+        tmp_path,
+        recipe_id="orientation-gallery-recipe-test",
+        cells=gallery_cells,
+    )
+    assert result.comparison_sheet.is_file()
+    assert result.ledger_path.is_file()
+    forged = RenderedOrientationGallerySheet(
+        comparison_png=b"forged imported raster",
+        ledger={
+            "ledger_id": "orientation-gallery-comparison-ledger-forged",
+            "cells": [{"simulation_count": 1}],
+        },
+        cell_order=ORIENTATION_GALLERY_CELL_ORDER,
+    )
+
+    with pytest.raises(ValueError, match="caller-provided rendered"):
+        write_orientation_gallery_sheet_bundle(
+            tmp_path,
+            recipe_id="orientation-gallery-recipe-test",
+            cells=gallery_cells,
+            rendered=forged,
+        )
