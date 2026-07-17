@@ -1,6 +1,14 @@
 """Crystal habit recipe and crystallographic expansion contracts."""
 
 from .crystallography import CrystalPhase, ExpandedPlane, expand_habit_planes
+from .geometry import (
+    LabeledPolygonMesh,
+    PolygonFace,
+    TriangleMesh,
+    orient_and_scale_habit,
+    solve_convex_habit,
+    triangulate_habit,
+)
 from .recipes import FDMContext, HabitFace, HabitRecipe, PhaseSource, load_habit_recipe
 
 __all__ = [
@@ -9,7 +17,13 @@ __all__ = [
     "FDMContext",
     "HabitFace",
     "HabitRecipe",
+    "LabeledPolygonMesh",
     "PhaseSource",
+    "PolygonFace",
+    "TriangleMesh",
     "expand_habit_planes",
     "load_habit_recipe",
+    "orient_and_scale_habit",
+    "solve_convex_habit",
+    "triangulate_habit",
 ]
