@@ -55,7 +55,8 @@ def test_phase_adapter_applies_verified_pbnm_to_pnma_basis() -> None:
         phase.structure.lattice.cell_parms(),
         [10.207, 5.980, 4.756, 90.0, 90.0, 90.0],
     )
-    np.testing.assert_allclose(phase.structure[1].xyz, [0.27740, 0.25000, 0.99150])
+    mg2 = next(atom for atom in phase.structure if atom.label == "Mg2")
+    np.testing.assert_allclose(mg2.xyz, [0.27740, 0.25000, 0.99150])
 
 
 def test_reflection_catalog_records_selection_physics() -> None:

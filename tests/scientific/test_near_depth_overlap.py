@@ -78,9 +78,9 @@ def test_ice_antipodal_collapse_is_deterministic_and_preserves_orders(
     forward = collapse_antipodal_reflectors(ice_quiet_reflectors)
     reverse = collapse_antipodal_reflectors(ice_quiet_reflectors[::-1])
 
-    assert ice_quiet_reflectors.size == 70
-    assert len({tuple(np.rint(hkl).astype(int)) for hkl in ice_quiet_reflectors.hkl}) == 60
-    assert forward.hkl.shape == (30, 3)
+    assert ice_quiet_reflectors.size == 524
+    assert len({tuple(np.rint(hkl).astype(int)) for hkl in ice_quiet_reflectors.hkl}) == 426
+    assert forward.hkl.shape == (213, 3)
     np.testing.assert_array_equal(forward.hkl, reverse.hkl)
     np.testing.assert_allclose(forward.normals, reverse.normals, rtol=0, atol=1e-14)
     np.testing.assert_allclose(forward.theta_radian, reverse.theta_radian)
@@ -137,7 +137,7 @@ def test_real_ice_overlap_field_is_finite_bounded_and_positive(
     assert field.raw.dtype == np.float32
     assert field.normalized.dtype == np.float32
     assert field.valid_disk.dtype == np.bool_
-    assert field.axial_band_count == 30
+    assert field.axial_band_count == 213
     assert np.isfinite(field.raw).all()
     assert np.isfinite(field.normalized).all()
     assert field.normalization_value > 0

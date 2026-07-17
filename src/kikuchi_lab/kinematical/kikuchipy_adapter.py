@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib.metadata import version
@@ -12,6 +13,7 @@ from typing import Any, Protocol
 import numpy as np
 from diffpy.structure import Atom, Lattice, Structure
 from diffsims.crystallography import ReciprocalLatticeVector
+from diffsims.utils.sim_utils import _get_kinematical_structure_factor
 from kikuchipy.simulations import KikuchiPatternSimulator
 from numba import get_num_threads, set_num_threads
 from orix.crystal_map import Phase
@@ -160,11 +162,37 @@ def _phase_from_record(record: StructureRecord) -> Phase:
         )
         for site in record.sites
     ]
-    return Phase(
+    phase = Phase(
         name=record.name,
         space_group=record.space_group_number,
         structure=Structure(atoms=atoms, lattice=lattice, title=record.name),
     )
+    raw_multiplicities = record.simulation_setting.get("target_site_multiplicities")
+    if (
+        not isinstance(raw_multiplicities, list)
+        or len(raw_multiplicities) != len(record.sites)
+        or any(type(value) is not int or value <= 0 for value in raw_multiplicities)
+    ):
+        raise ValueError(
+            "simulation setting must define one positive integer target site "
+            "multiplicity per source site"
+        )
+    expected = Counter(
+        {
+            site.label: multiplicity
+            for site, multiplicity in zip(
+                record.sites, raw_multiplicities, strict=True
+            )
+        }
+    )
+    expanded = phase.expand_asymmetric_unit()
+    observed = Counter(atom.label for atom in expanded.structure)
+    if observed != expected:
+        raise ValueError(
+            "alignment-aware phase expansion produced site multiplicities "
+            f"{dict(observed)!r}; expected {dict(expected)!r}"
+        )
+    return expanded
 
 
 def _allowed_mask(reflectors: ReciprocalLatticeVector) -> np.ndarray:
@@ -193,9 +221,9 @@ def _enumerate_reflectors(
     )
     reflectors = reflectors[_allowed_mask(reflectors)]
     reflectors = reflectors.unique(use_symmetry=True).symmetrise()
-    reflectors.sanitise_phase()
-    reflectors.calculate_structure_factor(scattering_params=recipe.scattering_params)
-    return reflectors
+    return _calculate_axial_structure_factors(
+        reflectors, recipe.scattering_params
+    )
 
 
 def _select_reflectors(
@@ -207,6 +235,63 @@ def _select_reflectors(
     selected = reflectors[amplitudes >= relative_factor * float(amplitudes.max())]
     selected.calculate_theta(energy_kev * 1_000.0)
     return selected
+
+
+def _calculate_axial_structure_factors(
+    reflectors: ReciprocalLatticeVector, scattering_params: str
+) -> ReciprocalLatticeVector:
+    """Calculate pair-safe factors with exact point-symmetry magnitude ties."""
+    hkl_float = np.asarray(reflectors.hkl, dtype=np.float64)
+    hkl = np.rint(hkl_float).astype(np.int64)
+    if not np.allclose(hkl_float, hkl, rtol=0.0, atol=1e-8):
+        raise ValueError("direct reflector HKLs must be integer-valued")
+
+    keys: list[tuple[int, int, int]] = []
+    signs: list[int] = []
+    for indices in hkl:
+        nonzero = np.flatnonzero(indices)
+        if not nonzero.size:
+            raise ValueError("direct reflector HKLs must be nonzero")
+        sign = 1 if int(indices[int(nonzero[0])]) > 0 else -1
+        keys.append(tuple(int(value) for value in sign * indices))
+        signs.append(sign)
+
+    canonical = np.asarray(sorted(set(keys)), dtype=np.int64)
+    factors = _get_kinematical_structure_factor(
+        structure=reflectors.phase.structure,
+        g_indices=canonical,
+        g_hkls_array=reflectors.phase.structure.lattice.rnorm(canonical),
+        scattering_params=scattering_params,
+    )
+    factor_by_key = dict(zip(map(tuple, canonical), factors, strict=True))
+    representative_by_key: dict[tuple[int, int, int], tuple[int, int, int]] = {}
+    for family_indices in reflectors.get_hkl_sets().values():
+        family_keys = sorted({keys[int(index)] for index in family_indices[0]})
+        representative = family_keys[0]
+        for key in family_keys:
+            previous = representative_by_key.setdefault(key, representative)
+            if previous != representative:
+                raise ValueError(
+                    "direct reflector point-symmetry families overlap "
+                    "inconsistently after axial canonicalization"
+                )
+    # Kikuchi intensity uses |F|. Reuse one actually calculated family
+    # representative so symmetry-equivalent magnitudes remain exact ties;
+    # the opposite axial direction receives its exact conjugate below.
+    symmetry_tied_factor = {
+        key: factor_by_key[representative_by_key[key]] for key in factor_by_key
+    }
+    paired = np.asarray(
+        [
+            symmetry_tied_factor[key]
+            if sign == 1
+            else np.conjugate(symmetry_tied_factor[key])
+            for key, sign in zip(keys, signs, strict=True)
+        ],
+        dtype=np.complex128,
+    )
+    reflectors._structure_factor = paired
+    return reflectors
 
 
 def build_direct_reflector_evidence(
