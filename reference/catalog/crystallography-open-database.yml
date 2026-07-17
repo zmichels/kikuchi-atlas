@@ -21,3 +21,21 @@ entries:
       volume: 58
       pages: 588-593
       article_uri: https://rruff.info/uploads/AM58_588.pdf
+  COD-9012600:
+    record: ../../phases/quartz/source.yml
+    page_uri: https://www.crystallography.net/cod/9012600.html
+    cif_uri: https://www.crystallography.net/cod/9012600.cif
+    retrieved: 2026-07-16
+    sha256: 29176db9b50e42972646a43bd171e4cff1d6bc47cc2f93e265ff809ecadd85ef
+    license: CC0-1.0
+    setting: P 31 2 1
+    handedness: right-handed
+    ambient_pressure: 1 bar
+    original_publication:
+      authors: [R. M. Hazen, L. W. Finger, R. J. Hemley, H. K. Mao]
+      title: High-pressure crystal chemistry and amorphization of alpha-quartz
+      journal: Solid State Communications
+      year: 1989
+      volume: 72
+      pages: 507-511
+      article_uri: https://doi.org/10.1016/0038-1098(89)90607-8
