@@ -1,4 +1,6 @@
+import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -53,6 +55,39 @@ def _run_proof_cli(recipe: Path, tmp_path: Path) -> int:
 def test_version_command_reports_package_version(capsys):
     assert main(["version"]) == 0
     assert capsys.readouterr().out.strip() == "kikuchi-lab 0.1.0"
+
+
+def test_habit_build_cli_routes_arguments_and_prints_json(monkeypatch, capsys):
+    expected = SimpleNamespace(
+        build_id="habit-build-abc123",
+        path=Path("/tmp/habit-build-abc123"),
+        stl=Path("/tmp/habit-build-abc123/quartz-habit.stl"),
+        preview=Path("/tmp/habit-build-abc123/quartz-habit-preview.png"),
+        validation=Path("/tmp/habit-build-abc123/mesh-validation.json"),
+    )
+    calls = []
+    monkeypatch.setattr(
+        "kikuchi_lab.habit.build_habit",
+        lambda recipe, output: calls.append((recipe, output)) or expected,
+    )
+
+    assert main(["habit", "build", "--recipe", "r.yml", "--output", "out"]) == 0
+    assert calls == [("r.yml", "out")]
+    assert json.loads(capsys.readouterr().out)["build_id"] == expected.build_id
+
+
+def test_habit_build_cli_reports_domain_error_without_traceback(monkeypatch, capsys):
+    def fail(*_args):
+        raise ValueError("maximum_dimension_mm must be positive")
+
+    monkeypatch.setattr("kikuchi_lab.habit.build_habit", fail)
+    assert main(["habit", "build", "--recipe", "bad.yml", "--output", "out"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == (
+        "kikuchi-lab: habit build failed: maximum_dimension_mm must be positive\n"
+    )
+    assert "Traceback" not in captured.err
 
 
 def test_proof_command_reports_invalid_master_without_traceback(tmp_path, capsys):

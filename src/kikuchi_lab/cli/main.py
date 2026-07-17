@@ -78,10 +78,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     reproduce_final_parser.add_argument("--source-atol", type=float, default=0.0)
     reproduce_final_parser.add_argument("--source-rtol", type=float, default=0.0)
+    habit = subparsers.add_parser("habit", help="Build and inspect printable crystal habits.")
+    habit_commands = habit.add_subparsers(dest="habit_command", required=True)
+    habit_build = habit_commands.add_parser("build", help="Build one validated habit bundle.")
+    habit_build.add_argument("--recipe", required=True)
+    habit_build.add_argument("--output", required=True)
     args = parser.parse_args(arguments)
 
     if args.command == "version":
         print(f"kikuchi-lab {__version__}")
+        return 0
+
+    if args.command == "habit" and args.habit_command == "build":
+        from kikuchi_lab.habit import build_habit
+
+        try:
+            result = build_habit(args.recipe, args.output)
+        except (OSError, ValueError, RuntimeError) as error:
+            print(f"kikuchi-lab: habit build failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "build_id": result.build_id,
+                    "path": str(result.path),
+                    "stl": str(result.stl),
+                    "preview": str(result.preview),
+                    "validation": str(result.validation),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
 
     if args.command == "doctor":
