@@ -19,9 +19,11 @@ from .recipes import (
     SphericalFilterSpec,
     load_relief_globe_recipe,
 )
+from .topology import IcosphereTopology, build_icosphere
 
 __all__ = [
     "DirectionalSamples",
+    "IcosphereTopology",
     "ReliefFDMContext",
     "ReliefGeometrySpec",
     "ReliefGlobeRecipe",
@@ -31,6 +33,7 @@ __all__ = [
     "SphericalScalarField",
     "SphericalFilterSpec",
     "build_spherical_scalar_field",
+    "build_icosphere",
     "directions_to_lambert_square",
     "interpolate_sample_ledger",
     "lambert_square_to_directions",
