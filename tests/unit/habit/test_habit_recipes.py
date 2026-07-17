@@ -98,3 +98,37 @@ def test_recipe_rejects_explicit_null_orientation_matrix(tmp_path: Path):
 
     with pytest.raises(ValueError, match="finite 3 by 3 matrix"):
         load_habit_recipe(candidate)
+
+
+def test_recipe_rejects_near_scaling_orientation_matrix(tmp_path: Path):
+    cif = ROOT / "phases/quartz/COD-9000775.cif"
+    text = (
+        RECIPE.read_text(encoding="utf-8")
+        .replace("../../phases/quartz/COD-9000775.cif", str(cif))
+        .replace(
+            "maximum_dimension_mm: 60.0",
+            "maximum_dimension_mm: 60.0\n  orientation_matrix: [[1.000004,0,0],[0,1,0],[0,0,1]]",
+        )
+    )
+    candidate = tmp_path / "near-scaling.yml"
+    candidate.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="proper orthogonal rotation"):
+        load_habit_recipe(candidate)
+
+
+@pytest.mark.parametrize("convention", ["hkl", "hkil"])
+def test_recipe_rejects_all_zero_family(tmp_path: Path, convention: str):
+    cif = ROOT / "phases/quartz/COD-9000775.cif"
+    zero_family = "[0, 0, 0]" if convention == "hkl" else "[0, 0, 0, 0]"
+    text = (
+        RECIPE.read_text(encoding="utf-8")
+        .replace("../../phases/quartz/COD-9000775.cif", str(cif))
+        .replace("index_convention: hkil", f"index_convention: {convention}")
+        .replace("family: [1, 0, -1, 0]", f"family: {zero_family}")
+    )
+    candidate = tmp_path / f"zero-{convention}.yml"
+    candidate.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="family must not be all zero"):
+        load_habit_recipe(candidate)

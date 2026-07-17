@@ -114,6 +114,8 @@ def _parse_face(value: Any, convention: str) -> HabitFace:
         raise ValueError(f"{convention} family must contain {expected_length} indices")
     if any(isinstance(index, bool) or not isinstance(index, int) for index in family):
         raise ValueError("family indices must be integers")
+    if not any(family):
+        raise ValueError("family must not be all zero")
     if convention == "hkil" and sum(family[:3]) != 0:
         raise ValueError("h  k  i closure requires h + k + i = 0")
     label = _required_text(value, "label")
@@ -178,9 +180,9 @@ def _parse_orientation(value: Any) -> tuple[tuple[float, float, float], ...]:
     orientation = np.asarray(value, dtype=float)
     if not np.isfinite(orientation).all():
         raise ValueError("orientation_matrix must be a finite 3 by 3 matrix")
-    if not np.allclose(orientation.T @ orientation, np.eye(3), atol=1e-12) or not np.isclose(
-        np.linalg.det(orientation), 1.0, atol=1e-12
-    ):
+    if not np.allclose(
+        orientation.T @ orientation, np.eye(3), atol=1e-12, rtol=0.0
+    ) or not np.isclose(np.linalg.det(orientation), 1.0, atol=1e-12, rtol=0.0):
         raise ValueError("orientation_matrix must be a proper orthogonal rotation")
     return tuple(tuple(float(item) for item in row) for row in orientation)
 
