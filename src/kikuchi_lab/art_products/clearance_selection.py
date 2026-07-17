@@ -22,6 +22,7 @@ MAX_CLEARANCE_SEARCH_STATES = 256
 _ALGORITHM_VERSION = "bounded-bfs-wide-clearance-v1"
 _WIDE_WIDTH_SCALE = 1.15
 _STANDARD_WIDTH_SCALE = 1.0
+_STANDARD_ALGORITHM_VERSION = "bounded-bfs-standard-clearance-v1"
 
 
 class ClearanceSelectionFeasibilityError(ValueError):
@@ -76,11 +77,14 @@ def _with_search_ledger(
     exclusions: frozenset[str],
     evaluated_state_count: int,
     conflict_history: list[dict[str, object]],
+    ledger_key: str,
+    algorithm_version: str,
+    width_scales: tuple[float, ...],
 ) -> TattooSelection:
     ledger = plain_data(selection.ledger)
-    ledger["wide_clearance_search"] = {
-        "algorithm_version": _ALGORITHM_VERSION,
-        "width_scale": _WIDE_WIDTH_SCALE,
+    ledger[ledger_key] = {
+        "algorithm_version": algorithm_version,
+        "width_scale": width_scales[0],
         "state_limit": MAX_CLEARANCE_SEARCH_STATES,
         "chosen_exclusions": sorted(exclusions),
         "evaluated_state_count": evaluated_state_count,
@@ -99,7 +103,7 @@ def _with_search_ledger(
 def _branch_member_ids(
     selection: TattooSelection,
     error: TattooClearanceError,
-) -> tuple[str, str]:
+) -> tuple[str, ...]:
     priority = {
         path.member_id: index for index, path in enumerate(selection.selected_paths)
     }
@@ -107,14 +111,18 @@ def _branch_member_ids(
         error.member_ids,
         key=lambda member_id: (-priority[member_id], member_id),
     )
-    return ordered[0], ordered[1]
+    return tuple(ordered)
 
 
-def select_clearance_valid_tattoo_paths(
+def _select_clearance_valid_tattoo_paths(
     catalog: ArtBandCatalog,
     recipe: HemisphereSelectionRecipe,
+    *,
+    width_scales: tuple[float, ...],
+    ledger_key: str,
+    algorithm_version: str,
 ) -> TattooSelection:
-    """Select paths by bounded BFS and validate wide before standard geometry."""
+    """Select paths by bounded BFS across the requested clearance treatments."""
     queue = deque([frozenset[str]()])
     queued = {frozenset[str]()}
     conflict_history: list[dict[str, object]] = []
@@ -135,11 +143,12 @@ def select_clearance_valid_tattoo_paths(
             continue
 
         try:
-            build_tattoo_geometry(
-                selection,
-                recipe,
-                width_scale=_WIDE_WIDTH_SCALE,
-            )
+            for width_scale in width_scales:
+                build_tattoo_geometry(
+                    selection,
+                    recipe,
+                    width_scale=width_scale,
+                )
         except TattooClearanceError as error:
             record = _conflict_record(
                 error,
@@ -154,11 +163,6 @@ def select_clearance_valid_tattoo_paths(
                     queue.append(branch)
             continue
 
-        build_tattoo_geometry(
-            selection,
-            recipe,
-            width_scale=_STANDARD_WIDTH_SCALE,
-        )
         if not exclusions:
             return selection
         return _with_search_ledger(
@@ -166,6 +170,9 @@ def select_clearance_valid_tattoo_paths(
             exclusions=exclusions,
             evaluated_state_count=evaluated_state_count,
             conflict_history=conflict_history,
+            ledger_key=ledger_key,
+            algorithm_version=algorithm_version,
+            width_scales=width_scales,
         )
 
     if not conflict_history:
@@ -179,8 +186,37 @@ def select_clearance_valid_tattoo_paths(
     )
 
 
+def select_clearance_valid_tattoo_paths(
+    catalog: ArtBandCatalog,
+    recipe: HemisphereSelectionRecipe,
+) -> TattooSelection:
+    """Select paths by bounded BFS and validate wide before standard geometry."""
+    return _select_clearance_valid_tattoo_paths(
+        catalog,
+        recipe,
+        width_scales=(_WIDE_WIDTH_SCALE, _STANDARD_WIDTH_SCALE),
+        ledger_key="wide_clearance_search",
+        algorithm_version=_ALGORITHM_VERSION,
+    )
+
+
+def select_standard_clearance_valid_tattoo_paths(
+    catalog: ArtBandCatalog,
+    recipe: HemisphereSelectionRecipe,
+) -> TattooSelection:
+    """Select paths by bounded BFS and validate standard geometry only."""
+    return _select_clearance_valid_tattoo_paths(
+        catalog,
+        recipe,
+        width_scales=(_STANDARD_WIDTH_SCALE,),
+        ledger_key="standard_clearance_search",
+        algorithm_version=_STANDARD_ALGORITHM_VERSION,
+    )
+
+
 __all__ = [
     "ClearanceSelectionFeasibilityError",
     "MAX_CLEARANCE_SEARCH_STATES",
     "select_clearance_valid_tattoo_paths",
+    "select_standard_clearance_valid_tattoo_paths",
 ]

@@ -131,6 +131,9 @@ def test_clearance_selector_returns_unchanged_greedy_selection_when_wide_passes(
 
     selected = module.select_clearance_valid_tattoo_paths(catalog, recipe)
 
+    assert tuple(path.member_id for path in selected.selected_paths) == tuple(
+        path.member_id for path in greedy.selected_paths
+    )
     assert selected.selection_id == greedy.selection_id
     assert plain_data(selected.ledger) == plain_data(greedy.ledger)
     assert scales == [1.15, 1.0]
@@ -181,6 +184,50 @@ def test_clearance_selector_branches_lower_priority_first_and_records_search(
                 "clearance_kind": "noncrossing_edge_gap",
                 "member_ids": [higher_priority_id, lower_priority_id],
                 "message": "synthetic clearance conflict",
+            }
+        ],
+    }
+
+
+def test_standard_clearance_selector_branches_crop_fragments_and_records_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _clearance_selection()
+    recipe = load_hemisphere_series_recipe(SERIES_RECIPE).composition_for("quartz")
+    catalog = _catalog()
+    greedy = tattoo_selection.select_tattoo_paths(catalog, recipe)
+    excluded_id = greedy.selected_paths[-1].member_id
+    scales: list[float] = []
+
+    def crop_conflict_then_accept(selection, _recipe, *, width_scale: float):
+        scales.append(width_scale)
+        if excluded_id in {path.member_id for path in selection.selected_paths}:
+            raise module.TattooClearanceError(
+                "synthetic crop fragment conflict",
+                clearance_kind="crop_fragment",
+                member_ids=(excluded_id,),
+            )
+        return object()
+
+    monkeypatch.setattr(module, "build_tattoo_geometry", crop_conflict_then_accept)
+
+    selected = module.select_standard_clearance_valid_tattoo_paths(catalog, recipe)
+
+    assert excluded_id not in {path.member_id for path in selected.selected_paths}
+    assert scales == [1.0, 1.0]
+    assert plain_data(selected.ledger["standard_clearance_search"]) == {
+        "algorithm_version": "bounded-bfs-standard-clearance-v1",
+        "width_scale": 1.0,
+        "state_limit": 256,
+        "chosen_exclusions": [excluded_id],
+        "evaluated_state_count": 2,
+        "conflict_history": [
+            {
+                "evaluated_state": 1,
+                "excluded_member_ids": [],
+                "clearance_kind": "crop_fragment",
+                "member_ids": [excluded_id],
+                "message": "synthetic crop fragment conflict",
             }
         ],
     }

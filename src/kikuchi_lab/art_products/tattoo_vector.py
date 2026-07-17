@@ -42,18 +42,18 @@ _STENCIL_BACKGROUND = "#ffffff"
 _STROKE_CLIP_ID = "tattoo-band-layer-clip"
 
 IntersectionKind = Literal["none", "crossing", "endpoint", "tangent"]
-ClearanceKind = Literal["noncrossing_edge_gap", "unrelated_endpoint"]
+ClearanceKind = Literal["noncrossing_edge_gap", "unrelated_endpoint", "crop_fragment"]
 
 
 class TattooClearanceError(ValueError):
-    """Physical-clearance failure carrying the exact conflicting path pair."""
+    """Physical-clearance failure carrying the exact affected path member or pair."""
 
     def __init__(
         self,
         message: str,
         *,
         clearance_kind: ClearanceKind,
-        member_ids: tuple[str, str],
+        member_ids: tuple[str] | tuple[str, str],
     ) -> None:
         super().__init__(message)
         self.clearance_kind = clearance_kind
@@ -549,9 +549,11 @@ def build_tattoo_geometry(
             recipe.crop_radius,
         )
         if len(fragments) != 1:
-            raise ValueError(
+            raise TattooClearanceError(
                 f"selected path {selected.member_id} has {len(fragments)} interior "
-                "crop fragments; exactly one is required"
+                "crop fragments; exactly one is required",
+                clearance_kind="crop_fragment",
+                member_ids=(selected.member_id,),
             )
         points_mm = center + scale * fragments[0]
         points_mm[np.isclose(points_mm, 0.0, rtol=0.0, atol=_NUMERIC_TOLERANCE)] = 0.0

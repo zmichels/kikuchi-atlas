@@ -210,6 +210,41 @@ def test_circle_clipping_handles_endpoint_tangent_and_crossing_segments() -> Non
     np.testing.assert_allclose(crossing[0], [[-0.9, 0.0], [0.9, 0.0]], atol=1e-15)
 
 
+def test_build_branches_multiple_crop_fragments_to_the_selected_member() -> None:
+    vector = _vector()
+    recipe = load_tattoo_recipe(RECIPE)
+    selection = _selection()
+    forged_paths = list(selection.selected_paths)
+    selected = forged_paths[0]
+    forged_paths[0] = replace(
+        selected,
+        center_trace=np.array(
+            [
+                [-1.2, 0.0],
+                [0.0, 0.0],
+                [1.2, 1.2],
+                [1.2, -1.2],
+                [0.0, 0.0],
+                [-1.2, 0.0],
+            ]
+        ),
+    )
+    forged = TattooSelection(
+        catalog_id=selection.catalog_id,
+        recipe_id=selection.recipe_id,
+        orientation_id=selection.orientation_id,
+        candidates=selection.candidates,
+        selected_paths=tuple(forged_paths),
+        ledger=selection.ledger,
+    )
+
+    with pytest.raises(vector.TattooClearanceError) as raised:
+        vector.build_tattoo_geometry(forged, recipe)
+
+    assert raised.value.clearance_kind == "crop_fragment"
+    assert raised.value.member_ids == (selected.member_id,)
+
+
 def test_validate_requires_exactly_eleven_open_nonduplicated_polylines() -> None:
     vector = _vector()
     path = TattooPath(
