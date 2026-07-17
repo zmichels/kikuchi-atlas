@@ -73,6 +73,26 @@ def _axis_permutation(
     return permutation  # type: ignore[return-value]
 
 
+def _fractional_origin_shift(value: object) -> tuple[float, float, float]:
+    """Validate a target-frame origin-choice shift in fractional coordinates."""
+    if value is None:
+        return (0.0, 0.0, 0.0)
+    if (
+        not isinstance(value, list)
+        or len(value) != 3
+        or any(
+            isinstance(component, bool)
+            or not isinstance(component, (int, float))
+            or not math.isfinite(float(component))
+            for component in value
+        )
+    ):
+        raise ValueError(
+            "target_fractional_origin_shift must contain three finite numbers"
+        )
+    return tuple(float(component) for component in value)  # type: ignore[return-value]
+
+
 def _permuted_lattice(
     record: StructureRecord, permutation: tuple[int, int, int]
 ) -> Lattice:
@@ -151,11 +171,17 @@ def _phase_from_record(record: StructureRecord) -> Phase:
             "fractional-coordinate permutation must match the direct-lattice "
             "permutation"
         )
+    origin_shift = _fractional_origin_shift(
+        record.simulation_setting.get("target_fractional_origin_shift")
+    )
     lattice = _permuted_lattice(record, lattice_permutation)
     atoms = [
         Atom(
             site.element,
-            xyz=tuple(site.fract[index] for index in coordinate_permutation),
+            xyz=tuple(
+                (site.fract[source_index] + origin_shift[target_index]) % 1.0
+                for target_index, source_index in enumerate(coordinate_permutation)
+            ),
             label=site.label,
             occupancy=site.occupancy,
             Uisoequiv=site.u_iso_angstrom_sq,

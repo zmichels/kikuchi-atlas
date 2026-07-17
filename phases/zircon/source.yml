@@ -1,0 +1,51 @@
+schema_version: 1
+identifier: COD-9000684-isotropic-U
+cif: COD-9000684-isotropic-u.cif
+sha256: ff30c03e88588a8d1a54a9a2a22b3b4e73a0230bf444120dc6eb236d4391739d
+retrieved: 2026-07-16
+uri: https://www.crystallography.net/cod/9000684.cif
+page_uri: https://www.crystallography.net/cod/9000684.html
+license: CC0-1.0
+license_uri: https://creativecommons.org/publicdomain/zero/1.0/
+copying_policy: Public-domain COD data; acknowledge the original structural-data authors and this deterministic derivative.
+citation: >-
+  Hazen, R. M. and Finger, L. W. (1979). Crystal structure and
+  compressibility of zircon at high pressure. American Mineralogist 64,
+  196-201. Crystal No. 1 at 1 atm before pressure.
+phase:
+  name: zircon
+  formula: ZrSiO4
+  space_group_number: 141
+  setting: "I 41/a m d :2"
+  lattice_angstrom: [6.6042, 6.6042, 5.9796, 90.0, 90.0, 90.0]
+sites:
+  - {label: Zr, element: Zr, fract: [0.00000, 0.75000, 0.12500], occupancy: 1.0, u_iso_angstrom_sq: 0.003493333333333333}
+  - {label: Si, element: Si, fract: [0.00000, 0.25000, 0.37500], occupancy: 1.0, u_iso_angstrom_sq: 0.003933333333333333}
+  - {label: O, element: O, fract: [0.00000, 0.06600, 0.19510], occupancy: 1.0, u_iso_angstrom_sq: 0.006363333333333333}
+thermal_factor_policy:
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
+  simulation_units: angstrom^2
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
+simulation_setting:
+  reason: >-
+    diffsims requires isotropic displacement values; derive each site value
+    explicitly from the COD anisotropic tensor. COD coordinates use origin
+    choice 2, while diffpy space-group 141 uses choice 1; add the International
+    Tables choice-1 offset [0, 1/4, -1/8] after the identity axis mapping.
+  source_setting: "I 41/a m d :2"
+  target_setting: "I 41/a m d origin choice 1"
+  target_lattice_from_source: [a, b, c]
+  target_fractional_from_source: [x, y, z]
+  target_fractional_origin_shift: [0.0, 0.25, -0.125]
+  target_site_multiplicities: [4, 4, 16]
+  source_origin_choice: 2
+  target_origin_choice: 1
+  origin_choice_reference_uri: https://onlinelibrary.wiley.com/iucr/itc/Ac/ch2o3v0001/sgtable2o3o141/
+  derived_from_identifier: COD-9000684
+  derived_from_sha256: e461a480345cbb60af43cff99a8f6783cf8a3c41530fcb686c506de97b79c44f
+  u_iso_derivation: U_iso = (U_11 + U_22 + U_33) / 3 for orthogonal tetragonal axes
+  derivative_unchanged_from_original: [coordinates, occupancies, cell_values, symmetry_operations]

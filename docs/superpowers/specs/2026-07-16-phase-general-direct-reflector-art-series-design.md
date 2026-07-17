@@ -98,6 +98,14 @@ license to choose an undocumented convenient CIF. A phase cannot proceed to art
 generation until its source record passes the same structural validation used
 by the existing phases.
 
+For zircon, the retained COD 9000684 derivative changes only anisotropic
+displacement tensors into explicitly documented isotropic values. Its atomic
+coordinates remain in the COD-declared `I 41/a m d :2` origin choice. The
+simulation record must then apply the International Tables choice-2 to
+choice-1 fractional offset `[0, 1/4, -1/8]` because diffpy's numbered space
+group 141 operators use choice 1. Expansion must prove the exact
+`4 Zr + 4 Si + 16 O` conventional cell before reflector calculation.
+
 ### 2. Direct reflector evidence
 
 The existing adapter already enumerates reciprocal-lattice vectors and

@@ -1,0 +1,11 @@
+schema_version: 1
+name: zircon-direct-art-reflectors
+source_record: ../../phases/zircon/source.yml
+energy_kev: 20.0
+reflections:
+  min_dspacing_angstrom: 0.7
+  scattering_params: xtables
+  candidate_relative_factor: 0.03
+art_weight:
+  exponent: 2.0
+  eligibility_min_weight: 0.08

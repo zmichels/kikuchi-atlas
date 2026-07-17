@@ -731,6 +731,12 @@ git commit -m "feat: onboard alpha quartz reflectors"
 - Produces: verified derivative identifier `COD-9000684-isotropic-U` and a shared-policy direct recipe.
 - Source: `https://www.crystallography.net/cod/9000684.cif`; raw SHA-256 `e461a480345cbb60af43cff99a8f6783cf8a3c41530fcb686c506de97b79c44f`.
 
+**Implementation amendment (2026-07-17):** The COD derivative deliberately
+retains origin-choice-2 coordinates. diffpy's numbered group-141 operators use
+origin choice 1, so the source record applies the International Tables
+fractional offset `[0, 1/4, -1/8]` after the identity axis mapping and validates
+site multiplicities `[4, 4, 16]`. This is not an identity-origin handoff.
+
 - [ ] **Step 1: Write failing derivative-provenance and structure tests**
 
 ```python
