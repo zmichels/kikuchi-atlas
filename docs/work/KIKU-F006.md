@@ -9,6 +9,7 @@ children:
   - KIKU-T035
   - KIKU-T033
   - KIKU-T034
+  - KIKU-T036
 created: 2026-07-16
 priority: P1
 tags: [phase-general, reflectors, science-art, tattoo, vector]
