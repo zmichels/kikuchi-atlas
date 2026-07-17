@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable
 from pathlib import Path
@@ -104,6 +105,9 @@ def test_catalog_snapshot_is_canonical_and_round_trips(tmp_path: Path) -> None:
     assert set(payload) == {"catalog_id", "content"}
     assert payload == {"catalog_id": catalog.catalog_id, "content": catalog.to_dict()}
     assert raw == json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    assert hashlib.sha256(raw.encode("utf-8")).hexdigest() == (
+        "571702ba869de8f26135689c244e091fd38631e7c86e6372465ae3420d436105"
+    )
     assert loaded.catalog_id == catalog.catalog_id
     assert loaded.to_dict() == catalog.to_dict()
 

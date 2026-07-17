@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 
 from kikuchi_lab.art_products.contracts import ArtBandCatalog, ArtBandMember
+from kikuchi_lab.kinematical import DirectReflectorEvidence
 from kikuchi_lab.spherical_intensity.presentation import PresentationSource
 
 
@@ -88,15 +89,19 @@ def _assign_cohorts(eligible: list[ArtBandMember]) -> dict[str, int]:
     return result
 
 
-def build_art_band_catalog(
-    source: PresentationSource,
+def _build_art_band_catalog_arrays(
+    *,
+    hkls: np.ndarray,
+    normals: np.ndarray,
+    half_widths: np.ndarray,
+    strengths: np.ndarray,
+    weights: np.ndarray,
     source_structure_id: str,
     source_structure_sha256: str,
     source_recipe_id: str,
     presentation_recipe_id: str,
     eligibility_min_weight: float,
 ) -> ArtBandCatalog:
-    """Rank every presentation band and assign four tie-preserving cohorts."""
     if (
         isinstance(eligibility_min_weight, bool)
         or not isinstance(eligibility_min_weight, (int, float))
@@ -106,12 +111,11 @@ def build_art_band_catalog(
         raise ValueError("eligibility_min_weight must be positive, finite, and at most 1")
     threshold = float(eligibility_min_weight)
 
-    axial = source.axial_bands
-    hkls = np.asarray(axial.hkl)
-    normals = np.asarray(axial.normals)
-    half_widths = np.asarray(axial.theta_radian)
-    strengths = np.asarray(axial.structure_factor_abs)
-    weights = np.asarray(source.band_weights)
+    hkls = np.asarray(hkls)
+    normals = np.asarray(normals)
+    half_widths = np.asarray(half_widths)
+    strengths = np.asarray(strengths)
+    weights = np.asarray(weights)
     count = hkls.shape[0] if hkls.ndim else 0
     if (
         hkls.shape != (count, 3)
@@ -180,6 +184,48 @@ def build_art_band_catalog(
     )
 
 
+def build_art_band_catalog(
+    source: PresentationSource,
+    source_structure_id: str,
+    source_structure_sha256: str,
+    source_recipe_id: str,
+    presentation_recipe_id: str,
+    eligibility_min_weight: float,
+) -> ArtBandCatalog:
+    """Rank every presentation band and assign four tie-preserving cohorts."""
+    axial = source.axial_bands
+    return _build_art_band_catalog_arrays(
+        hkls=axial.hkl,
+        normals=axial.normals,
+        half_widths=axial.theta_radian,
+        strengths=axial.structure_factor_abs,
+        weights=source.band_weights,
+        source_structure_id=source_structure_id,
+        source_structure_sha256=source_structure_sha256,
+        source_recipe_id=source_recipe_id,
+        presentation_recipe_id=presentation_recipe_id,
+        eligibility_min_weight=eligibility_min_weight,
+    )
+
+
+def build_art_band_catalog_from_evidence(
+    evidence: DirectReflectorEvidence,
+) -> ArtBandCatalog:
+    """Build a science-art catalog directly from owned reflector evidence."""
+    return _build_art_band_catalog_arrays(
+        hkls=evidence.hkl,
+        normals=evidence.normal_crystal,
+        half_widths=evidence.bragg_half_width_rad,
+        strengths=evidence.structure_factor_magnitude,
+        weights=evidence.normalized_weight,
+        source_structure_id=evidence.source_structure_id,
+        source_structure_sha256=evidence.source_structure_sha256,
+        source_recipe_id=evidence.calculation_id,
+        presentation_recipe_id=evidence.weighting_id,
+        eligibility_min_weight=float(evidence.ledger["eligibility_min_weight"]),
+    )
+
+
 def write_art_band_catalog(path: str | Path, catalog: ArtBandCatalog) -> None:
     """Write one canonical, identity-bearing catalog snapshot."""
     payload = {"catalog_id": catalog.catalog_id, "content": catalog.to_dict()}
@@ -240,6 +286,7 @@ def load_art_band_catalog(path: str | Path) -> ArtBandCatalog:
 
 __all__ = [
     "build_art_band_catalog",
+    "build_art_band_catalog_from_evidence",
     "load_art_band_catalog",
     "write_art_band_catalog",
 ]
