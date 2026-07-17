@@ -40,6 +40,7 @@ from .mesh import (
     validate_relief_mesh,
     write_relief_preview,
 )
+from .workflow import ReliefGlobeBuildResult, build_relief_globe
 
 __all__ = [
     "DirectionalSamples",
@@ -50,6 +51,7 @@ __all__ = [
     "ReliefFieldArtifact",
     "ReliefGeometrySpec",
     "ReliefGlobeRecipe",
+    "ReliefGlobeBuildResult",
     "ReliefMappingSpec",
     "ReliefGeometry",
     "ReliefMeshValidation",
@@ -60,6 +62,7 @@ __all__ = [
     "SphericalFilterDiagnostics",
     "FIELD_ARRAY_ORDER",
     "build_relief_geometry",
+    "build_relief_globe",
     "build_spherical_scalar_field",
     "build_icosphere",
     "directions_to_lambert_square",

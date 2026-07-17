@@ -320,14 +320,14 @@ def test_canonical_gate_accepts_only_approved_topology_and_dimensions(canonical_
 
 
 def test_binary_stl_uses_canonical_gate(canonical_fixture, relief_fixture):
-    topology, geometry, _ = canonical_fixture
-    payload = relief_stl_bytes(geometry, topology)
-    assert payload == relief_stl_bytes(geometry, topology)
+    topology, geometry, validation = canonical_fixture
+    payload = relief_stl_bytes(geometry, topology, validation)
+    assert payload == relief_stl_bytes(geometry, topology, validation)
     loaded = trimesh.load_mesh(io.BytesIO(payload), file_type="stl", process=True)
     assert loaded.is_volume and loaded.body_count == 1
     small_topology, small_geometry = relief_fixture
     with pytest.raises(ValueError, match="approved subdivision-7"):
-        relief_stl_bytes(small_geometry, small_topology)
+        relief_stl_bytes(small_geometry, small_topology, validation)
 
 
 def test_field_npz_is_bound_and_byte_deterministic(canonical_fixture, field_artifact):
@@ -371,11 +371,13 @@ def replace_value(array, index, value):
     return changed
 
 
-def test_npz_and_preview_reject_stale_validation_report(canonical_fixture, field_artifact, tmp_path):
+def test_exports_reject_stale_validation_report(canonical_fixture, field_artifact, tmp_path):
     topology, geometry, validation = canonical_fixture
     filtered = geometry.filtered_values.copy()
     filtered[[10, 11]] = filtered[[11, 10]]
     altered = _geometry(topology, filtered)
+    with pytest.raises(ValueError, match="validation fingerprint"):
+        relief_stl_bytes(altered, topology, validation)
     with pytest.raises(ValueError, match="validation fingerprint"):
         relief_field_npz_bytes(
             replace(

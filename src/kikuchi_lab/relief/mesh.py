@@ -442,9 +442,13 @@ def _verify_accepted_validation(
     return current
 
 
-def relief_stl_bytes(geometry: ReliefGeometry, topology: IcosphereTopology) -> bytes:
+def relief_stl_bytes(
+    geometry: ReliefGeometry,
+    topology: IcosphereTopology,
+    validation: ReliefMeshValidation,
+) -> bytes:
     """Return deterministic binary STL bytes for a validated relief mesh."""
-    validate_canonical_relief_mesh(geometry, topology, fdm_context=None)
+    _verify_accepted_validation(geometry, topology, validation)
     payload = _trimesh(geometry).export(file_type="stl")
     if not isinstance(payload, bytes):
         raise TypeError("Trimesh STL export did not return bytes")

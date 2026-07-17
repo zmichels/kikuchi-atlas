@@ -84,6 +84,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     habit_build.add_argument("--recipe", required=True)
     habit_build.add_argument("--mtex-reference")
     habit_build.add_argument("--output", required=True)
+    relief = subparsers.add_parser("relief", help="Build printable Kikuchi relief geometry.")
+    relief_commands = relief.add_subparsers(dest="relief_command", required=True)
+    globe = relief_commands.add_parser("globe", help="Build spherical relief products.")
+    globe_commands = globe.add_subparsers(dest="globe_command", required=True)
+    globe_build = globe_commands.add_parser(
+        "build", help="Build one validated relief globe bundle."
+    )
+    globe_build.add_argument("--master-pattern", required=True)
+    globe_build.add_argument("--recipe", required=True)
+    globe_build.add_argument("--output", required=True)
     args = parser.parse_args(arguments)
 
     if args.command == "version":
@@ -109,6 +119,37 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "preview": str(result.preview),
                     "validation": str(result.validation),
                     "parity": str(result.parity) if result.parity is not None else None,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if (
+        args.command == "relief"
+        and args.relief_command == "globe"
+        and args.globe_command == "build"
+    ):
+        from kikuchi_lab.relief import build_relief_globe
+
+        try:
+            result = build_relief_globe(
+                args.master_pattern, args.recipe, args.output
+            )
+        except (OSError, ValueError, RuntimeError) as error:
+            print(f"kikuchi-lab: relief globe build failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "build_id": result.build_id,
+                    "field": str(result.field),
+                    "manifest": str(result.manifest),
+                    "path": str(result.path),
+                    "preview": str(result.preview),
+                    "stl": str(result.stl),
+                    "validation": str(result.validation),
                 },
                 indent=2,
                 sort_keys=True,

@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from kikuchi_lab.cli.main import main
+from kikuchi_lab.relief import ReliefGlobeBuildResult
 
 
 ROOT = Path(__file__).parents[2]
@@ -107,6 +108,49 @@ def test_habit_build_cli_reports_domain_error_without_traceback(monkeypatch, cap
     assert captured.err == (
         "kikuchi-lab: habit build failed: maximum_dimension_mm must be positive\n"
     )
+    assert "Traceback" not in captured.err
+
+
+def test_relief_globe_build_cli_routes_paths_and_prints_json(monkeypatch, capsys, tmp_path):
+    bundle = tmp_path / "relief-globe-build-abc"
+    result = ReliefGlobeBuildResult(
+        build_id=bundle.name,
+        path=bundle,
+        manifest=bundle / "relief-manifest.json",
+        stl=bundle / "phase-intensity-relief-globe.stl",
+        preview=bundle / "phase-intensity-relief-preview.png",
+        field=bundle / "relief-field.npz",
+        validation=bundle / "mesh-validation.json",
+    )
+    calls = []
+    monkeypatch.setattr(
+        "kikuchi_lab.relief.build_relief_globe",
+        lambda master, recipe, output: calls.append((master, recipe, output)) or result,
+    )
+    assert main(["relief", "globe", "build", "--master-pattern", "master.npz",
+                 "--recipe", "recipe.yml", "--output", "out"]) == 0
+    assert calls == [("master.npz", "recipe.yml", "out")]
+    assert json.loads(capsys.readouterr().out) == {
+        "build_id": result.build_id,
+        "field": str(result.field),
+        "manifest": str(result.manifest),
+        "path": str(result.path),
+        "preview": str(result.preview),
+        "stl": str(result.stl),
+        "validation": str(result.validation),
+    }
+
+
+def test_relief_globe_build_cli_reports_domain_failure(monkeypatch, capsys):
+    def fail(*_args):
+        raise ValueError("source mismatch")
+
+    monkeypatch.setattr("kikuchi_lab.relief.build_relief_globe", fail)
+    assert main(["relief", "globe", "build", "--master-pattern", "master.npz",
+                 "--recipe", "recipe.yml", "--output", "out"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "kikuchi-lab: relief globe build failed: source mismatch\n"
     assert "Traceback" not in captured.err
 
 

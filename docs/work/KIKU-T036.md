@@ -12,6 +12,8 @@ tags:
 - acceptance
 evidence:
 - ../superpowers/plans/2026-07-17-spherical-intensity-relief-globe.md
+- ../../tests/integration/test_relief_globe_workflow.py
+- ../acceptance/spherical-intensity-relief-globe.md
 ---
 
 # KIKU-T036: Build and accept atomic relief globe bundles
@@ -24,6 +26,10 @@ record real forsterite acceptance without claiming an unperformed print.
 
 ## Acceptance Criteria
 
-- [ ] The nested CLI produces exactly one five-file atomic bundle or removes partial output and returns a concise failure without traceback.
-- [ ] Build identity and manifest inventory include recipe, source, mapping, topology, filter, validation, runtime versions, file hashes, byte sizes, and millimetre units.
+- [x] The nested CLI produces exactly one five-file atomic bundle or removes partial output and returns a concise failure without traceback.
+- [x] Build identity and manifest inventory include recipe, source, mapping, topology, filter, validation, runtime versions, file hashes, byte sizes, and millimetre units.
 - [ ] Two independent full-resolution builds are identical, the retained `501 x 501` forsterite source passes mesh and slicer inspection, and all repository gates remain green.
+
+The reproducibility, retained-source mesh inspection, and repository gates passed. Flash Studio
+1.7.11 exposes no discovered safe noninteractive slicer seam, so slicer-native inspection remains
+unobserved and is recorded as a concern in the acceptance report.
