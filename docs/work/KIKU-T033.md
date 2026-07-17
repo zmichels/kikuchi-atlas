@@ -15,6 +15,7 @@ links:
   - ../superpowers/plans/2026-07-16-phase-general-direct-reflector-art-series.md
 evidence:
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
+  - ../acceptance/quartz-zircon-titanite-direct-catalogs.md
 ---
 
 # KIKU-T033: Onboard quartz zircon and titanite reflector catalogs
@@ -35,4 +36,4 @@ axis/coordinate mapping and the non-integer-orbit fallback boundary.
 - [x] Each source record identifies license, checksum, cell setting, sites, occupancies, thermal treatment, transformations, and limitations.
 - [x] Structural validation and reflection/systematic-absence checks pass for all three phases.
 - [ ] Each phase retains one bounded onboarding parity diagnostic without automatic retry or resolution growth.
-- [ ] Every phase publishes an orientation-independent, provenance-bearing art-band catalog with at least 11 defensible axial candidates.
+- [x] Every phase publishes an orientation-independent, provenance-bearing art-band catalog with at least 11 defensible axial candidates.
