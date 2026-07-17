@@ -88,19 +88,30 @@ match the passed parity report copied into that cell bundle.
 
 ## Read-only verification
 
-A `uv run python -c` reader loaded the recipe, source-series policy, sheet
-ledger, all 15 cell manifests, the 5 passed parity reports, and every retained
-artifact. It recomputed the content-addressed cell/sheet IDs and SHA-256
-entries, rebuilt each geometry from its JSON, ran geometry and SVG boundary
-validation, and checked catalog/parity source-structure identity.
+The committed, read-only verifier rechecks the retained publication without
+rendering or changing it. It accepts the published gallery and parity roots
+explicitly:
+
+```text
+uv run python scripts/verify_orientation_gallery.py \
+  --gallery-root local/phase-general-direct-reflector-art/orientation-gallery \
+  --parity-root local/phase-general-direct-reflector-art/parity
+```
+
+Observed output:
 
 ```text
 orientation-gallery-probe PASS root=local/phase-general-direct-reflector-art/orientation-gallery cells=15 artifacts_checked=137 parity_reports=5
 ```
 
-The probe also asserted the approved orientation table, 15 unique
-`(phase_slug, variant_slug)` pairs, the exact 3-by-5 order, standard treatment
-and `arc_width_scale == 1.0`, one 11-path selection and one geometry per cell,
+The verifier loads the recipe and source-series policy, sheet ledger, all 15
+cell manifests, the 5 passed parity reports, and every retained artifact. It
+recomputes content-addressed cell/sheet IDs and manifest-listed SHA-256
+entries, rebuilds each geometry from JSON, runs geometry and SVG boundary
+validation, and checks catalog/parity source-structure identity. It also
+asserts the approved orientation table, 15 unique `(phase_slug, variant_slug)`
+pairs, the exact 3-by-5 order, standard treatment and
+`arc_width_scale == 1.0`, one 11-path selection and one geometry per cell,
 complete circular boundaries, checksum-valid inventories, and
 `simulation_count == 0` for each gallery record.
 
@@ -125,7 +136,7 @@ of the circular boundaries was seen.
 
 | Gate | Result |
 | --- | --- |
-| Retained gallery reader | PASS: 15 cells, 137 checksum-validated artifacts, 5 passed parity reports |
+| Retained gallery verifier | PASS: 15 cells, 137 checksum-validated artifacts, 5 passed parity reports |
 | `uv run pytest -q` | Inconclusive: the one invoked full-suite process exited after emitting progress through `5%`, but its terminal wrapper did not return the final summary or exit status. It was not rerun. |
 | `uv run ruff check src tests` | PASS: `All checks passed!` |
 | `uv run python scripts/validate_work_items.py` | PASS: `Validated 43 work items in docs/work` |
