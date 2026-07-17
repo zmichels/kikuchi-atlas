@@ -23,6 +23,8 @@ _ALGORITHM_VERSION = "bounded-bfs-wide-clearance-v1"
 _WIDE_WIDTH_SCALE = 1.15
 _STANDARD_WIDTH_SCALE = 1.0
 _STANDARD_ALGORITHM_VERSION = "bounded-bfs-standard-clearance-v1"
+_WIDE_EXCLUSION_REASON = "wide_clearance_search_exclusion"
+_STANDARD_EXCLUSION_REASON = "standard_clearance_search_exclusion"
 
 
 class ClearanceSelectionFeasibilityError(ValueError):
@@ -121,6 +123,7 @@ def _select_clearance_valid_tattoo_paths(
     width_scales: tuple[float, ...],
     ledger_key: str,
     algorithm_version: str,
+    exclusion_reason: str,
 ) -> TattooSelection:
     """Select paths by bounded BFS across the requested clearance treatments."""
     queue = deque([frozenset[str]()])
@@ -136,6 +139,7 @@ def _select_clearance_valid_tattoo_paths(
                 catalog,
                 recipe,
                 excluded_member_ids=exclusions,
+                exclusion_reason=exclusion_reason,
             )
         except ValueError:
             if not exclusions:
@@ -197,6 +201,7 @@ def select_clearance_valid_tattoo_paths(
         width_scales=(_WIDE_WIDTH_SCALE, _STANDARD_WIDTH_SCALE),
         ledger_key="wide_clearance_search",
         algorithm_version=_ALGORITHM_VERSION,
+        exclusion_reason=_WIDE_EXCLUSION_REASON,
     )
 
 
@@ -211,6 +216,7 @@ def select_standard_clearance_valid_tattoo_paths(
         width_scales=(_STANDARD_WIDTH_SCALE,),
         ledger_key="standard_clearance_search",
         algorithm_version=_STANDARD_ALGORITHM_VERSION,
+        exclusion_reason=_STANDARD_EXCLUSION_REASON,
     )
 
 

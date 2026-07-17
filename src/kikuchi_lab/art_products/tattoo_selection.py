@@ -350,6 +350,7 @@ def _select_tattoo_paths(
     recipe: HemisphereSelectionRecipe,
     *,
     excluded_member_ids: frozenset[str],
+    exclusion_reason: str = "wide_clearance_search_exclusion",
 ) -> TattooSelection:
     """Select deterministically while retaining excluded candidates in the sheet."""
     if not isinstance(catalog, ArtBandCatalog):
@@ -381,7 +382,7 @@ def _select_tattoo_paths(
             )
         )
         if member.member_id in excluded_member_ids:
-            rejections[member.member_id] = "wide_clearance_search_exclusion"
+            rejections[member.member_id] = exclusion_reason
 
     target_count = sum(recipe.path_allocation.values())
     selectable_candidates = [

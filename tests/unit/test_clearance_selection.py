@@ -214,6 +214,9 @@ def test_standard_clearance_selector_branches_crop_fragments_and_records_search(
     selected = module.select_standard_clearance_valid_tattoo_paths(catalog, recipe)
 
     assert excluded_id not in {path.member_id for path in selected.selected_paths}
+    assert selected.ledger["rejections"][excluded_id] == (
+        "standard_clearance_search_exclusion"
+    )
     assert scales == [1.0, 1.0]
     assert plain_data(selected.ledger["standard_clearance_search"]) == {
         "algorithm_version": "bounded-bfs-standard-clearance-v1",
