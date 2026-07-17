@@ -167,6 +167,151 @@ def test_direct_bundle_rejects_forged_ids_and_linkage_before_output_mutation(
     assert not output_root.exists()
 
 
+def _inputs_with_evidence(
+    direct_inputs: dict[str, object],
+    **changes: object,
+) -> dict[str, object]:
+    evidence = direct_inputs["evidence"]
+    assert isinstance(evidence, DirectReflectorEvidence)
+    forged = replace(evidence, **changes)
+    return {
+        **direct_inputs,
+        "evidence": forged,
+        "catalog": build_art_band_catalog_from_evidence(forged),
+    }
+
+
+@pytest.mark.parametrize(
+    ("ledger_field", "forged_value", "message"),
+    [
+        ("weight_exponent", 2.0001, "weight_exponent does not match"),
+        (
+            "eligibility_min_weight",
+            0.0800000000001,
+            "eligibility_min_weight does not match",
+        ),
+    ],
+)
+def test_direct_bundle_rejects_recipe_policy_ledger_forgery_before_output_mutation(
+    direct_inputs: dict[str, object],
+    tmp_path: Path,
+    ledger_field: str,
+    forged_value: float,
+    message: str,
+) -> None:
+    from kikuchi_lab.art_products.direct_catalog_bundle import (
+        write_direct_art_catalog_bundle,
+    )
+
+    evidence = direct_inputs["evidence"]
+    assert isinstance(evidence, DirectReflectorEvidence)
+    ledger = dict(evidence.ledger)
+    ledger[ledger_field] = forged_value
+    inputs = _inputs_with_evidence(direct_inputs, ledger=ledger)
+    output_root = tmp_path / ledger_field
+
+    with pytest.raises(ValueError, match=message):
+        write_direct_art_catalog_bundle(output_root, **inputs)
+    assert not output_root.exists()
+
+
+def test_direct_bundle_rejects_self_consistent_weight_formula_forgery_before_output_mutation(
+    direct_inputs: dict[str, object],
+    tmp_path: Path,
+) -> None:
+    from kikuchi_lab.art_products.direct_catalog_bundle import (
+        write_direct_art_catalog_bundle,
+    )
+
+    evidence = direct_inputs["evidence"]
+    assert isinstance(evidence, DirectReflectorEvidence)
+    weights = evidence.normalized_weight.copy()
+    weights[int(np.argmax(weights))] = 0.99
+    inputs = _inputs_with_evidence(direct_inputs, normalized_weight=weights)
+    output_root = tmp_path / "weights"
+
+    with pytest.raises(ValueError, match="normalized weights do not match"):
+        write_direct_art_catalog_bundle(output_root, **inputs)
+    assert not output_root.exists()
+
+
+def test_direct_bundle_rejects_below_recipe_dspacing_before_output_mutation(
+    direct_inputs: dict[str, object],
+    tmp_path: Path,
+) -> None:
+    from kikuchi_lab.art_products.direct_catalog_bundle import (
+        write_direct_art_catalog_bundle,
+    )
+
+    evidence = direct_inputs["evidence"]
+    recipe = direct_inputs["recipe"]
+    assert isinstance(evidence, DirectReflectorEvidence)
+    spacing = evidence.dspacing_angstrom.copy()
+    spacing[0] = recipe.min_dspacing_angstrom * 0.99
+    inputs = _inputs_with_evidence(direct_inputs, dspacing_angstrom=spacing)
+    output_root = tmp_path / "dspacing"
+
+    with pytest.raises(ValueError, match="d-spacings violate the recipe minimum"):
+        write_direct_art_catalog_bundle(output_root, **inputs)
+    assert not output_root.exists()
+
+
+def test_direct_bundle_rejects_below_candidate_floor_with_recomputed_ids_before_output_mutation(
+    direct_inputs: dict[str, object],
+    tmp_path: Path,
+) -> None:
+    from kikuchi_lab.art_products.direct_catalog_bundle import (
+        write_direct_art_catalog_bundle,
+    )
+
+    evidence = direct_inputs["evidence"]
+    recipe = direct_inputs["recipe"]
+    assert isinstance(evidence, DirectReflectorEvidence)
+    strengths = evidence.structure_factor_magnitude.copy()
+    strengths[int(np.argmin(strengths))] = (
+        float(np.max(strengths)) * recipe.candidate_relative_factor * 0.5
+    )
+    weights = (strengths / float(np.max(strengths))) ** recipe.weight_exponent
+    inputs = _inputs_with_evidence(
+        direct_inputs,
+        structure_factor_magnitude=strengths,
+        normalized_weight=weights,
+    )
+    output_root = tmp_path / "candidate-floor"
+
+    with pytest.raises(ValueError, match="candidate relative-factor floor"):
+        write_direct_art_catalog_bundle(output_root, **inputs)
+    assert not output_root.exists()
+
+
+def test_direct_bundle_rejects_cross_phase_recipe_source_mismatch_before_output_mutation(
+    direct_inputs: dict[str, object],
+    tmp_path: Path,
+) -> None:
+    from kikuchi_lab.art_products.direct_catalog_bundle import (
+        write_direct_art_catalog_bundle,
+    )
+
+    recipe_path = ROOT / "recipes/reflectors/forsterite-art-bands.yml"
+    forsterite_recipe = load_direct_reflector_recipe(recipe_path)
+    source = load_structure_record(recipe_path.parent / forsterite_recipe.source_record)
+    evidence = build_direct_reflector_evidence(source, forsterite_recipe)
+    ice_recipe = direct_inputs["recipe"]
+    assert ice_recipe.calculation_id == forsterite_recipe.calculation_id
+    assert ice_recipe.weighting_id == forsterite_recipe.weighting_id
+    output_root = tmp_path / "cross-phase"
+
+    with pytest.raises(ValueError, match="source_record does not identify the supplied source"):
+        write_direct_art_catalog_bundle(
+            output_root,
+            source=source,
+            recipe=ice_recipe,
+            evidence=evidence,
+            catalog=build_art_band_catalog_from_evidence(evidence),
+        )
+    assert not output_root.exists()
+
+
 def test_direct_bundle_requires_eleven_tattoo_eligible_members_before_publication(
     direct_inputs: dict[str, object],
     tmp_path: Path,

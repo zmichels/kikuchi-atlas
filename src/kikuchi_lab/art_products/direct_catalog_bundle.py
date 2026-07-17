@@ -8,7 +8,7 @@ import io
 import os
 import zipfile
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from uuid import uuid4
 
 import numpy as np
@@ -107,6 +107,37 @@ def _validate_evidence_order(evidence: DirectReflectorEvidence) -> None:
             raise ValueError(f"direct reflector evidence {key} dtype must be {dtype.str}")
 
 
+def _validate_source_record_link(
+    recipe: DirectReflectorRecipe,
+    source: StructureRecord,
+) -> None:
+    recipe_suffix = PurePosixPath(recipe.source_record).parts[-3:]
+    source_suffix = source.record_path.resolve().parts[-3:]
+    if source_suffix != recipe_suffix:
+        raise ValueError("direct recipe source_record does not identify the supplied source")
+
+
+def _validate_recipe_evidence_policy(
+    recipe: DirectReflectorRecipe,
+    evidence: DirectReflectorEvidence,
+) -> None:
+    if evidence.ledger.get("weight_exponent") != recipe.weight_exponent:
+        raise ValueError("evidence weight_exponent does not match the supplied recipe")
+    if evidence.ledger.get("eligibility_min_weight") != recipe.eligibility_min_weight:
+        raise ValueError("evidence eligibility_min_weight does not match the supplied recipe")
+
+    strengths = evidence.structure_factor_magnitude
+    maximum_strength = float(np.max(strengths))
+    expected_weights = (strengths / maximum_strength) ** recipe.weight_exponent
+    if not np.array_equal(evidence.normalized_weight, expected_weights):
+        raise ValueError("evidence normalized weights do not match the supplied recipe formula")
+    if np.any(evidence.dspacing_angstrom < recipe.min_dspacing_angstrom):
+        raise ValueError("evidence d-spacings violate the recipe minimum")
+    candidate_floor = maximum_strength * recipe.candidate_relative_factor
+    if np.any(strengths < candidate_floor):
+        raise ValueError("evidence amplitudes violate the candidate relative-factor floor")
+
+
 def _validated_payload(
     *,
     source: StructureRecord,
@@ -125,6 +156,7 @@ def _validated_payload(
             raise TypeError(f"{name} must be a {expected.__name__}")
 
     _validate_recipe_ids(recipe)
+    _validate_source_record_link(recipe, source)
     if evidence.source_structure_id != source.identifier:
         raise ValueError("evidence source structure ID does not match the supplied source")
     if evidence.source_structure_sha256 != source.sha256:
@@ -139,6 +171,7 @@ def _validated_payload(
     if evidence.evidence_id != expected_evidence_id:
         raise ValueError("evidence_id does not match evidence content")
     _validate_evidence_order(evidence)
+    _validate_recipe_evidence_policy(recipe, evidence)
 
     expected_catalog_id = stable_id("art-band-catalog", catalog.to_dict())
     if catalog.catalog_id != expected_catalog_id:
