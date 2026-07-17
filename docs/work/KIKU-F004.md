@@ -4,14 +4,26 @@ type: feature
 title: Crystal habit mesh generator
 status: ready
 parent: KIKU-E001
-children: []
+children:
+- KIKU-T025
+- KIKU-T026
+- KIKU-T027
+- KIKU-T028
+- KIKU-T029
+- KIKU-T030
 created: 2026-07-17
 priority: P1
-tags: [crystal-habit, mesh, stl, mtex, print-geometry]
+tags:
+- crystal-habit
+- mesh
+- stl
+- mtex
+- print-geometry
 links:
-  - ../superpowers/specs/2026-07-17-crystal-habit-mesh-generator-design.md
+- ../superpowers/specs/2026-07-17-crystal-habit-mesh-generator-design.md
+- ../superpowers/plans/2026-07-17-crystal-habit-mesh-generator.md
 evidence:
-  - ../incubator/print-geometry.md
+- ../incubator/print-geometry.md
 ---
 
 # KIKU-F004: Crystal habit mesh generator
