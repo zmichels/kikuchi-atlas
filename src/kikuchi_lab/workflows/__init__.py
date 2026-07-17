@@ -47,6 +47,10 @@ from .phase_art_series import (
     PhaseParityReportError,
     render_phase_art_series,
 )
+from .phase_art_orientation_gallery import (
+    PhaseArtOrientationGalleryResult,
+    render_phase_art_orientation_gallery,
+)
 
 __all__ = [
     "FinalRecipe",
@@ -64,6 +68,7 @@ __all__ = [
     "NearDepthRunResult",
     "OrientedSphericalRunResult",
     "PhaseArtSeriesResult",
+    "PhaseArtOrientationGalleryResult",
     "PhaseParityReportError",
     "ReproductionComparison",
     "ReproductionMismatch",
@@ -85,6 +90,7 @@ __all__ = [
     "render_kinematical_depth",
     "render_oriented_spherical_master",
     "render_phase_art_series",
+    "render_phase_art_orientation_gallery",
     "render_ice_tattoo",
     "run_reflector_parity",
     "validate_final_selection",

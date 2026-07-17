@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeVar
 
-from kikuchi_lab.art_products.catalog import build_art_band_catalog_from_evidence
 from kikuchi_lab.art_products.clearance_selection import (
     select_clearance_valid_tattoo_paths,
 )
@@ -25,7 +24,6 @@ from kikuchi_lab.art_products.hemisphere_bundle import (
 )
 from kikuchi_lab.art_products.hemisphere_recipe import (
     HemisphereCompositionRecipe,
-    HemisphereSeriesRecipe,
     HemisphereTreatment,
     load_hemisphere_series_recipe,
 )
@@ -49,17 +47,14 @@ from kikuchi_lab.art_products.tattoo_vector import (
     build_tattoo_geometry,
     render_primary_tattoo,
 )
-from kikuchi_lab.kinematical.kikuchipy_adapter import (
-    build_direct_reflector_evidence,
-)
-from kikuchi_lab.kinematical.reflector_evidence import (
-    DirectReflectorEvidence,
-    DirectReflectorRecipe,
-    load_direct_reflector_recipe,
-)
-from kikuchi_lab.kinematical.reflector_parity import ReflectorParityReport
 from kikuchi_lab.model.identity import plain_data, stable_id
-from kikuchi_lab.sources.structure import load_structure_record, verify_structure
+
+from .direct_phase_preflight import (
+    PhaseParityReportError,
+    build_parity_gated_direct_phase,
+    load_passed_parity_reports,
+    resolve_unique_passed_parity_report,
+)
 
 
 _ICE_SELECTION_MANIFEST = "ice-ih-reviewed-selection-v2.yml"
@@ -69,10 +64,6 @@ _ResultT = TypeVar("_ResultT")
 
 class IceStandardReferenceMismatch(ValueError):
     """The supplied reference is not the corrected reviewed Ice standard."""
-
-
-class PhaseParityReportError(ValueError):
-    """A phase lacks one unique, current, publication-valid parity report."""
 
 
 @dataclass(frozen=True)
@@ -86,15 +77,6 @@ class PhaseArtSeriesResult:
     simulation_count: int
     cell_order: tuple[str, ...]
     manifest_sha256: str
-
-
-@dataclass(frozen=True)
-class _DirectPhase:
-    phase_slug: str
-    recipe: DirectReflectorRecipe
-    evidence: DirectReflectorEvidence
-    catalog: ArtBandCatalog
-    parity: ReflectorParityReport
 
 
 @dataclass(frozen=True)
@@ -124,103 +106,6 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def _load_parity_reports(parity_root: str | Path) -> tuple[ReflectorParityReport, ...]:
-    root = Path(parity_root)
-    if not root.is_dir():
-        raise PhaseParityReportError(f"parity root is not a directory: {root}")
-    report_paths = sorted(root.rglob("reflector-parity-report.json"))
-    if not report_paths:
-        raise PhaseParityReportError(
-            f"parity root contains no reflector-parity-report.json files: {root}"
-        )
-    reports: list[ReflectorParityReport] = []
-    for path in report_paths:
-        try:
-            report = ReflectorParityReport.from_json(
-                path.read_text(encoding="utf-8")
-            ).with_path(path.parent)
-            report.validate_for_publication()
-        except (OSError, TypeError, ValueError) as error:
-            raise PhaseParityReportError(
-                f"malformed or failed reflector parity report {path}: {error}"
-            ) from error
-        reports.append(report)
-    return tuple(reports)
-
-
-def resolve_unique_passed_parity_report(
-    reports: tuple[ReflectorParityReport, ...],
-    *,
-    phase_slug: str,
-    evidence: DirectReflectorEvidence,
-) -> ReflectorParityReport:
-    """Resolve exactly one recursively discovered report and reject stale identity."""
-    candidates = tuple(
-        report
-        for report in reports
-        if report.source_structure_id == evidence.source_structure_id
-    )
-    if len(candidates) != 1:
-        raise PhaseParityReportError(
-            f"expected exactly one passed parity report for {phase_slug}; "
-            f"found {len(candidates)}"
-        )
-    report = candidates[0]
-    expected = {
-        "source_structure_id": evidence.source_structure_id,
-        "source_structure_sha256": evidence.source_structure_sha256,
-        "calculation_id": evidence.calculation_id,
-        "weighting_id": evidence.weighting_id,
-        "direct_evidence_id": evidence.evidence_id,
-    }
-    stale = {
-        field: {"expected": value, "observed": getattr(report, field)}
-        for field, value in expected.items()
-        if getattr(report, field) != value
-    }
-    if stale:
-        raise PhaseParityReportError(
-            f"stale reflector parity report for {phase_slug}: {stale}"
-        )
-    return report
-
-
-def _build_direct_phase(
-    *,
-    recipe_file: Path,
-    series: HemisphereSeriesRecipe,
-    phase_slug: str,
-    reports: tuple[ReflectorParityReport, ...],
-) -> _DirectPhase:
-    reflector_path = (
-        recipe_file.parent / series.reflector_recipes[phase_slug]
-    ).resolve()
-    reflector_recipe = load_direct_reflector_recipe(reflector_path)
-    source_path = (reflector_path.parent / reflector_recipe.source_record).resolve()
-    if source_path.parent.name != phase_slug:
-        raise ValueError(
-            f"reflector source for {phase_slug} resolves to a different phase"
-        )
-    source = load_structure_record(source_path)
-    verify_structure(source)
-    evidence = build_direct_reflector_evidence(source, reflector_recipe)
-    if evidence.ledger.get("simulation_count") != 0:
-        raise ValueError(f"direct evidence for {phase_slug} is not zero-master")
-    catalog = build_art_band_catalog_from_evidence(evidence)
-    parity = resolve_unique_passed_parity_report(
-        reports,
-        phase_slug=phase_slug,
-        evidence=evidence,
-    )
-    return _DirectPhase(
-        phase_slug=phase_slug,
-        recipe=reflector_recipe,
-        evidence=evidence,
-        catalog=catalog,
-        parity=parity,
-    )
 
 
 def _prepare_bundle(
@@ -412,7 +297,7 @@ def render_phase_art_series(
         phase_slug: {"status": "incomplete"} for phase_slug in series.phase_order
     }
     reports = _run_phase_step(
-        lambda: _load_parity_reports(parity_root),
+        lambda: load_passed_parity_reports(parity_root),
         phase_diagnostics,
     )
     frozen_manifest = load_frozen_tattoo_selection(
@@ -427,7 +312,7 @@ def render_phase_art_series(
     reference_run_id: str | None = None
     for phase_slug in series.phase_order:
         direct = _run_phase_step(
-            lambda: _build_direct_phase(
+            lambda: build_parity_gated_direct_phase(
                 recipe_file=recipe_file,
                 series=series,
                 phase_slug=phase_slug,
