@@ -14,6 +14,28 @@ from kikuchi_lab import __version__
 from kikuchi_lab.doctor import collect_doctor_report
 
 
+def _reflector_parity_acceptance_timeout(value: str) -> int:
+    try:
+        timeout = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            "reflector parity timeout must be an integer"
+        ) from None
+    if str(timeout) != value:
+        raise argparse.ArgumentTypeError(
+            "reflector parity timeout must be an integer"
+        )
+    if not 1 <= timeout <= 90:
+        raise argparse.ArgumentTypeError(
+            "reflector parity timeout must be in the range 1..90"
+        )
+    if timeout != 90:
+        raise argparse.ArgumentTypeError(
+            "version-controlled reflector parity acceptance requires timeout 90"
+        )
+    return timeout
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI with an optional explicit argument sequence."""
     arguments = list(sys.argv[1:] if argv is None else argv)
@@ -72,6 +94,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     build_direct_art_catalog_parser.add_argument("--recipe", required=True)
     build_direct_art_catalog_parser.add_argument("--output", required=True)
+    validate_reflector_parity_parser = subparsers.add_parser(
+        "validate-reflector-parity",
+        help="Run one killable master smoke and publish passing reflector parity.",
+    )
+    validate_reflector_parity_parser.add_argument("--recipe", required=True)
+    validate_reflector_parity_parser.add_argument("--output", required=True)
+    validate_reflector_parity_parser.add_argument(
+        "--timeout-seconds",
+        required=True,
+        type=_reflector_parity_acceptance_timeout,
+    )
     render_ice_tattoo_parser = subparsers.add_parser(
         "render-ice-tattoo",
         help="Publish the primary Ice tattoo from a retained strict catalog.",
@@ -394,6 +427,23 @@ def main(argv: Sequence[str] | None = None) -> int:
                 sort_keys=True,
             )
         )
+        return 0
+
+    if args.command == "validate-reflector-parity":
+        from kikuchi_lab.workflows import run_reflector_parity
+
+        try:
+            result = run_reflector_parity(
+                recipe_path=args.recipe,
+                output_root=args.output,
+                timeout_seconds=args.timeout_seconds,
+            )
+        except (OSError, ValueError, RuntimeError) as error:
+            print(f"reflector parity validation failed: {error}", file=sys.stderr)
+            return 1
+        payload = result.to_dict()
+        payload["path"] = str(result.path)
+        print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
 
     if args.command == "render-ice-tattoo":

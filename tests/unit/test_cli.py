@@ -469,6 +469,115 @@ def test_build_direct_art_catalog_cli_normalizes_known_failures(
     assert "Traceback" not in captured.err
 
 
+def test_validate_reflector_parity_cli_requires_90_and_emits_report(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    observed = {}
+    payload = {
+        "schema_version": 1,
+        "report_id": "reflector-parity-report-0123456789abcdef",
+        "run_id": "reflector-parity-run-fedcba9876543210",
+        "passed": True,
+        "simulation_count": 1,
+        "retry_count": 0,
+        "half_size": 32,
+        "master_shape": [2, 65, 65],
+        "master_array_sha256": "a" * 64,
+        "elapsed_seconds": 2.5,
+    }
+    result = SimpleNamespace(
+        path=tmp_path / payload["run_id"],
+        to_dict=lambda: dict(payload),
+    )
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.run_reflector_parity",
+        lambda *args, **kwargs: observed.update(kwargs) or result,
+        raising=False,
+    )
+
+    status = main(
+        [
+            "validate-reflector-parity",
+            "--recipe",
+            "recipes/reflectors/ice-ih-art-bands.yml",
+            "--output",
+            str(tmp_path),
+            "--timeout-seconds",
+            "90",
+        ]
+    )
+
+    assert status == 0
+    assert observed == {
+        "recipe_path": "recipes/reflectors/ice-ih-art-bands.yml",
+        "output_root": str(tmp_path),
+        "timeout_seconds": 90,
+    }
+    assert json.loads(capsys.readouterr().out) == {
+        **payload,
+        "path": str(result.path),
+    }
+
+
+@pytest.mark.parametrize("timeout", ["true", "90.0", "0", "91", "89"])
+def test_validate_reflector_parity_cli_rejects_noncanonical_timeout(
+    timeout: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    worker = Mock(side_effect=AssertionError("workflow must not run"))
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.run_reflector_parity", worker, raising=False
+    )
+
+    with pytest.raises(SystemExit, match="2"):
+        main(
+            [
+                "validate-reflector-parity",
+                "--recipe",
+                "recipe.yml",
+                "--output",
+                "out",
+                "--timeout-seconds",
+                timeout,
+            ]
+        )
+
+    worker.assert_not_called()
+
+
+def test_validate_reflector_parity_cli_retains_failure_diagnostics(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.run_reflector_parity",
+        Mock(side_effect=RuntimeError("worker stderr: bounded failure")),
+        raising=False,
+    )
+
+    status = main(
+        [
+            "validate-reflector-parity",
+            "--recipe",
+            "recipe.yml",
+            "--output",
+            "out",
+            "--timeout-seconds",
+            "90",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 1
+    assert captured.out == ""
+    assert captured.err == (
+        "reflector parity validation failed: worker stderr: bounded failure\n"
+    )
+    assert "Traceback" not in captured.err
+
+
 def test_render_ice_tattoo_cli_forwards_strict_inputs_and_emits_exact_json(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

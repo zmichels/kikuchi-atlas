@@ -1,5 +1,9 @@
 """Reproducible, review-gated project workflows."""
 
+from __future__ import annotations
+
+from typing import Any
+
 from .final import (
     FinalRecipe,
     FinalRecipeError,
@@ -57,6 +61,8 @@ __all__ = [
     "ProofMasterError",
     "ProofRecipeError",
     "ProofRunResult",
+    "ReflectorParityTimeoutError",
+    "ReflectorParityWorkerError",
     "ValidatedFinalSelection",
     "compare_final_bundles",
     "build_direct_art_catalog",
@@ -70,6 +76,27 @@ __all__ = [
     "render_kinematical_depth",
     "render_oriented_spherical_master",
     "render_ice_tattoo",
+    "run_reflector_parity",
     "validate_final_selection",
     "reproduce_final",
 ]
+
+
+def __getattr__(name: str) -> Any:
+    if name in {
+        "ReflectorParityTimeoutError",
+        "ReflectorParityWorkerError",
+        "run_reflector_parity",
+    }:
+        from .reflector_parity import (
+            ReflectorParityTimeoutError,
+            ReflectorParityWorkerError,
+            run_reflector_parity,
+        )
+
+        return {
+            "ReflectorParityTimeoutError": ReflectorParityTimeoutError,
+            "ReflectorParityWorkerError": ReflectorParityWorkerError,
+            "run_reflector_parity": run_reflector_parity,
+        }[name]
+    raise AttributeError(name)
