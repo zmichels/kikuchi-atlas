@@ -10,6 +10,8 @@ import trimesh
 
 from kikuchi_lab.habit.crystallography import ExpandedPlane
 from kikuchi_lab.habit.geometry import (
+    LabeledPolygonMesh,
+    PolygonFace,
     TriangleMesh,
     solve_convex_habit,
     triangulate_habit,
@@ -34,6 +36,62 @@ def _box_planes() -> tuple[ExpandedPlane, ...]:
             ("-z", (0, 0, -1)),
         )
     )
+
+
+def _concave_prism() -> tuple[LabeledPolygonMesh, TriangleMesh]:
+    vertices = np.array(
+        [
+            (0.0, 0.0, 0.0),
+            (2.0, 0.0, 0.0),
+            (2.0, 1.0, 0.0),
+            (1.0, 1.0, 0.0),
+            (1.0, 2.0, 0.0),
+            (0.0, 2.0, 0.0),
+            (0.0, 0.0, 1.0),
+            (2.0, 0.0, 1.0),
+            (2.0, 1.0, 1.0),
+            (1.0, 1.0, 1.0),
+            (1.0, 2.0, 1.0),
+            (0.0, 2.0, 1.0),
+        ]
+    )
+    faces = [
+        PolygonFace("bottom", "body", (0, 0, -1), 0, (0.0, 0.0, -1.0), 0.0, (0, 5, 4, 3, 2, 1)),
+        PolygonFace("top", "body", (0, 0, 1), 0, (0.0, 0.0, 1.0), 1.0, (6, 7, 8, 9, 10, 11)),
+    ]
+    triangles = [
+        (0, 3, 1),
+        (1, 3, 2),
+        (0, 5, 3),
+        (3, 5, 4),
+        (6, 7, 9),
+        (7, 8, 9),
+        (6, 9, 11),
+        (9, 10, 11),
+    ]
+    owners = [0] * 4 + [1] * 4
+    ring = (0, 1, 2, 3, 4, 5)
+    for edge_index, (left, right) in enumerate(zip(ring, (*ring[1:], ring[0]), strict=True)):
+        edge = vertices[right] - vertices[left]
+        normal = (float(edge[1]), float(-edge[0]), 0.0)
+        magnitude = float(np.linalg.norm(normal))
+        normal = tuple(value / magnitude for value in normal)
+        faces.append(
+            PolygonFace(
+                f"side-{edge_index}",
+                "body",
+                (edge_index, 0, 0),
+                edge_index,
+                normal,
+                0.0,
+                (left, right, right + 6, left + 6),
+            )
+        )
+        triangles.extend(((left, right, right + 6), (left, right + 6, left + 6)))
+        owners.extend((edge_index + 2, edge_index + 2))
+    polygon = LabeledPolygonMesh(vertices, tuple(faces), ())
+    mesh = TriangleMesh(vertices, np.asarray(triangles), np.asarray(owners))
+    return polygon, mesh
 
 
 @pytest.fixture
@@ -105,6 +163,65 @@ def test_validation_rejects_duplicate_and_degenerate_triangles(cube_polygon, cub
         validate_triangle_mesh(degenerate_mesh, cube_polygon, fdm_context=None)
 
 
+def test_validation_rejects_multiple_closed_bodies_without_mutation(cube_polygon, cube_triangles):
+    vertex_count = len(cube_triangles.vertices)
+    vertices = np.vstack((cube_triangles.vertices, cube_triangles.vertices + (4.0, 0.0, 0.0)))
+    triangles = np.vstack((cube_triangles.triangles, cube_triangles.triangles + vertex_count))
+    owners = np.concatenate(
+        (cube_triangles.triangle_face_indices, cube_triangles.triangle_face_indices)
+    )
+    multiple = TriangleMesh(vertices, triangles, owners)
+    before_vertices = multiple.vertices.copy()
+    before_triangles = multiple.triangles.copy()
+    inspected = trimesh.Trimesh(vertices=vertices, faces=triangles, process=False)
+    assert inspected.is_watertight
+    assert inspected.is_winding_consistent
+    assert inspected.body_count == 2
+
+    with pytest.raises(ValueError, match="one connected body"):
+        validate_triangle_mesh(multiple, cube_polygon, fdm_context=None)
+
+    assert np.array_equal(multiple.vertices, before_vertices)
+    assert np.array_equal(multiple.triangles, before_triangles)
+
+
+def test_validation_rejects_closed_nonconvex_body_without_mutation():
+    polygon, mesh = _concave_prism()
+    before_vertices = mesh.vertices.copy()
+    before_triangles = mesh.triangles.copy()
+    inspected = trimesh.Trimesh(vertices=mesh.vertices, faces=mesh.triangles, process=False)
+    assert inspected.is_watertight
+    assert inspected.is_winding_consistent
+    assert inspected.body_count == 1
+    assert inspected.volume > 0.0
+    assert not inspected.is_convex
+
+    with pytest.raises(ValueError, match="convex"):
+        validate_triangle_mesh(mesh, polygon, fdm_context=None)
+
+    assert np.array_equal(mesh.vertices, before_vertices)
+    assert np.array_equal(mesh.triangles, before_triangles)
+
+
+def test_validation_rejects_non_positive_closed_volume_without_mutation(
+    cube_polygon, cube_triangles
+):
+    inward = replace(cube_triangles, triangles=cube_triangles.triangles[:, ::-1])
+    before_vertices = inward.vertices.copy()
+    before_triangles = inward.triangles.copy()
+    inspected = trimesh.Trimesh(vertices=inward.vertices, faces=inward.triangles, process=False)
+    assert inspected.is_watertight
+    assert inspected.is_winding_consistent
+    assert inspected.body_count == 1
+    assert inspected.volume < 0.0
+
+    with pytest.raises(ValueError, match="positive volume"):
+        validate_triangle_mesh(inward, cube_polygon, fdm_context=None)
+
+    assert np.array_equal(inward.vertices, before_vertices)
+    assert np.array_equal(inward.triangles, before_triangles)
+
+
 def test_validation_rejects_triangle_face_provenance_mismatch(cube_polygon, cube_triangles):
     owners = cube_triangles.triangle_face_indices.copy()
     owners[0] = 1
@@ -132,12 +249,12 @@ def test_validation_rejects_triangle_vertex_coordinates_outside_source_polygon(
 
 
 def test_validation_rejects_inward_triangle_provenance(cube_polygon, cube_triangles):
-    triangles = cube_triangles.triangles.copy()
-    triangles[0] = triangles[0, ::-1]
-    inward = replace(cube_triangles, triangles=triangles)
+    faces = list(cube_polygon.faces)
+    faces[0] = replace(faces[0], normal=tuple(-value for value in faces[0].normal))
+    conflicting_polygon = replace(cube_polygon, faces=tuple(faces))
 
     with pytest.raises(ValueError, match="outward normal"):
-        validate_triangle_mesh(inward, cube_polygon, fdm_context=None)
+        validate_triangle_mesh(cube_triangles, conflicting_polygon, fdm_context=None)
 
 
 def test_fdm_warnings_are_advisory_and_identify_features(cube_polygon, cube_triangles):

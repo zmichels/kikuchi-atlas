@@ -218,8 +218,6 @@ def validate_triangle_mesh(
         provenance_error = error
     failures = _mesh_failures(inspected, duplicate_count, degenerate_count)
     if failures:
-        if provenance_error is not None and not degenerate_count:
-            raise provenance_error
         raise ValueError("mesh validation failed: " + ", ".join(failures))
     if len(mesh.triangle_face_indices) != len(mesh.triangles):
         raise ValueError("triangle face provenance requires one source polygon per triangle")
