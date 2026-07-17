@@ -111,6 +111,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     render_ice_tattoo_parser.add_argument("--catalog", required=True)
     render_ice_tattoo_parser.add_argument("--recipe", required=True)
+    render_ice_tattoo_parser.add_argument("--selection-manifest")
     render_ice_tattoo_parser.add_argument("--output", required=True)
     render_ice_tattoo_parser.add_argument(
         "--treatment",
@@ -454,6 +455,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = render_ice_tattoo(
                 catalog_path=args.catalog,
                 recipe_path=args.recipe,
+                selection_manifest_path=args.selection_manifest,
                 output_root=args.output,
                 treatment=args.treatment,
             )

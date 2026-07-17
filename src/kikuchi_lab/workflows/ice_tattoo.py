@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from kikuchi_lab.art_products.catalog import load_art_band_catalog
+from kikuchi_lab.art_products.frozen_selection import (
+    bind_frozen_tattoo_selection,
+    load_frozen_tattoo_selection,
+)
 from kikuchi_lab.art_products.tattoo_bundle import DISCLAIMER_TEXT, write_tattoo_bundle
 from kikuchi_lab.art_products.tattoo_recipe import load_tattoo_recipe
 from kikuchi_lab.art_products.tattoo_selection import select_tattoo_paths
@@ -32,6 +36,7 @@ def render_ice_tattoo(
     *,
     catalog_path: str | Path,
     recipe_path: str | Path,
+    selection_manifest_path: str | Path | None = None,
     output_root: str | Path,
     treatment: str,
 ) -> IceTattooResult:
@@ -43,7 +48,16 @@ def render_ice_tattoo(
 
     catalog = load_art_band_catalog(catalog_path)
     recipe = load_tattoo_recipe(recipe_path)
-    selection = select_tattoo_paths(catalog, recipe)
+    frozen_manifest = None
+    if selection_manifest_path is None:
+        selection = select_tattoo_paths(catalog, recipe)
+    else:
+        frozen_manifest = load_frozen_tattoo_selection(selection_manifest_path)
+        selection = bind_frozen_tattoo_selection(
+            catalog,
+            recipe,
+            frozen_manifest,
+        )
     geometry = build_tattoo_geometry(selection, recipe)
     rendered = render_primary_tattoo(geometry)
     bundle = write_tattoo_bundle(
@@ -55,6 +69,7 @@ def render_ice_tattoo(
         rendered=rendered,
         treatment=treatment,
         disclaimer=DISCLAIMER_TEXT,
+        frozen_manifest=frozen_manifest,
     )
     return IceTattooResult(
         run_id=bundle.run_id,

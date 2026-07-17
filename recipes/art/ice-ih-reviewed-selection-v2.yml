@@ -1,0 +1,21 @@
+schema_version: 1
+name: ice-ih-reviewed-selection-v2
+phase_slug: ice-ih
+source_structure_id: COD-1572233-O-sublattice
+source_structure_sha256: 4327a279e414a62f861d143e18570e9d741bbbb7d04dd2fb471c930988f95b81
+orientation_id: orientation-fcc465bb0a3210c9
+legacy_catalog_id: art-band-catalog-05f58424b717d5ad
+legacy_selection_id: tattoo-selection-211db31bbe061d6d
+policy: reviewed_hkl_rebind_under_corrected_physics
+paths:
+  - {hkl: [0, 0, 2], tier: dominant, width_mm: 4.8, legacy_member_id: art-band-member-239b7cb5e485d442}
+  - {hkl: [1, -2, 0], tier: dominant, width_mm: 4.2, legacy_member_id: art-band-member-d38532aafcf1ed7f}
+  - {hkl: [2, -1, 0], tier: dominant, width_mm: 3.6, legacy_member_id: art-band-member-3cb4167967631dcc}
+  - {hkl: [1, 1, 0], tier: dominant, width_mm: 3.1, legacy_member_id: art-band-member-0a414c19f6ab8845}
+  - {hkl: [1, -2, 2], tier: secondary, width_mm: 2.5, legacy_member_id: art-band-member-b4647bcd2cbca9f6}
+  - {hkl: [2, 0, 0], tier: secondary, width_mm: 2.2, legacy_member_id: art-band-member-b67c65e3bc542c16}
+  - {hkl: [2, -1, -2], tier: secondary, width_mm: 1.9, legacy_member_id: art-band-member-263af8004ec3e279}
+  - {hkl: [2, -1, 2], tier: secondary, width_mm: 1.6, legacy_member_id: art-band-member-ef3609aba836233b}
+  - {hkl: [1, -2, -2], tier: fine, width_mm: 1.2, legacy_member_id: art-band-member-4fdb2612d72a02c1}
+  - {hkl: [1, 1, -2], tier: fine, width_mm: 1.0, legacy_member_id: art-band-member-2413565c4ba2c58d}
+  - {hkl: [1, 1, 2], tier: fine, width_mm: 0.8, legacy_member_id: art-band-member-c38e4b2859f9646d}

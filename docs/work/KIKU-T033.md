@@ -6,6 +6,7 @@ status: proposed
 parent: KIKU-F006
 depends_on:
   - KIKU-T032
+  - KIKU-T035
 created: 2026-07-16
 priority: P1
 tags: [quartz, zircon, titanite, provenance, parity]

@@ -200,6 +200,25 @@ The reviewed Ice Ih standard selection manifest is authoritative for the new
 Ice wide derivative. It must not be silently reselected. For each other phase,
 one frozen selection manifest supplies both treatments.
 
+### 4.1 Scientific migration amendment (2026-07-17)
+
+Quartz onboarding exposed an incompatible non-orthogonal coordinate-frame
+handoff between orix phase alignment and diffsims unit-cell expansion. The
+corrected adapter expands each asymmetric site through orix's alignment-aware
+owner, validates the declared per-site multiplicity, and assigns one exact
+intensity magnitude across every point-symmetry/Friedel family before any
+threshold. This correction changes Ice structure factors and catalog/member
+identities; old calculated IDs must not be reused for corrected content.
+
+The retained reviewed Ice standard remains immutable, presentation-only legacy
+evidence. Its exact 11-plane visual decision is migrated through a versioned
+canonical-HKL manifest recording ordered HKLs, orientation, tier, width, and
+legacy identity links. Corrected Ice production must prove every reviewed HKL
+remains present and eligible, bind it to the corrected member ID, prohibit
+automatic reselection, include the manifest snapshot in the new bundle, and
+publish new selection/geometry/run identities. Legacy validation loads the
+retained artifact directly rather than regenerating malformed physics.
+
 Changing orientation later creates a new composition and selection identity and
 reruns only lightweight selection/projection. It does not repeat phase source
 onboarding, structure-factor calculation unless its inputs changed, or master

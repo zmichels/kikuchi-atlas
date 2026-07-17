@@ -28,6 +28,7 @@ from kikuchi_lab.model.identity import plain_data, stable_id
 
 from .catalog_bundle import _validate_catalog_members
 from .contracts import ArtBandCatalog, TattooGeometry
+from .frozen_selection import FrozenTattooSelection, bind_frozen_tattoo_selection
 from .tattoo_recipe import TattooRecipe
 from .tattoo_selection import TattooSelection, select_tattoo_paths
 from .tattoo_vector import (
@@ -86,6 +87,7 @@ class TattooBundleResult:
 class _ValidatedPayload:
     run_identity: dict[str, object]
     files: dict[str, bytes | object]
+    payload_order: tuple[str, ...]
 
 
 def _sha256_bytes(payload: bytes) -> str:
@@ -382,6 +384,7 @@ def _validated_payload(
     rendered: Mapping[str, bytes],
     treatment: str,
     disclaimer: str,
+    frozen_manifest: FrozenTattooSelection | None = None,
 ) -> _ValidatedPayload:
     for value, expected, name in (
         (catalog, ArtBandCatalog, "catalog"),
@@ -429,7 +432,14 @@ def _validated_payload(
         raise ValueError("geometry orientation does not match the tattoo recipe")
     validate_tattoo_geometry(geometry)
 
-    expected_selection = select_tattoo_paths(catalog, recipe)
+    if frozen_manifest is None:
+        expected_selection = select_tattoo_paths(catalog, recipe)
+    else:
+        expected_selection = bind_frozen_tattoo_selection(
+            catalog,
+            recipe,
+            frozen_manifest,
+        )
     if _selection_snapshot(selection) != _selection_snapshot(expected_selection):
         raise ValueError("selection content does not match strict catalog selection")
     expected_geometry = build_tattoo_geometry(expected_selection, recipe)
@@ -479,18 +489,41 @@ def _validated_payload(
         },
         "disclaimer_sha256": _sha256_bytes(disclaimer_bytes),
     }
+    if frozen_manifest is not None:
+        run_identity["frozen_manifest_id"] = frozen_manifest.manifest_id
     files: dict[str, bytes | object] = {
         **target_rendered,
         "tattoo-recipe.json": recipe_snapshot,
         "art-band-catalog.json": catalog_snapshot,
-        "band-selection-ledger.json": selection_snapshot,
-        "path-geometry.json": geometry_snapshot,
-        "stroke-gap-diagnostic.json": diagnostic,
-        "tattoo-artist-review.txt": disclaimer_bytes,
     }
-    if tuple(files) != _PAYLOAD_ORDER:
+    if frozen_manifest is not None:
+        files["frozen-selection-manifest.json"] = {
+            "manifest_id": frozen_manifest.manifest_id,
+            "content": frozen_manifest.to_dict(),
+        }
+    files.update(
+        {
+            "band-selection-ledger.json": selection_snapshot,
+            "path-geometry.json": geometry_snapshot,
+            "stroke-gap-diagnostic.json": diagnostic,
+            "tattoo-artist-review.txt": disclaimer_bytes,
+        }
+    )
+    payload_order = tuple(files)
+    expected_order = (
+        _PAYLOAD_ORDER
+        if frozen_manifest is None
+        else _PAYLOAD_ORDER[:6]
+        + ("frozen-selection-manifest.json",)
+        + _PAYLOAD_ORDER[6:]
+    )
+    if payload_order != expected_order:
         raise AssertionError("tattoo bundle payload order differs from the canonical inventory")
-    return _ValidatedPayload(run_identity=run_identity, files=files)
+    return _ValidatedPayload(
+        run_identity=run_identity,
+        files=files,
+        payload_order=payload_order,
+    )
 
 
 def _write_contents(
@@ -508,7 +541,7 @@ def _write_contents(
             "bytes": (root / name).stat().st_size,
             "sha256": _sha256(root / name),
         }
-        for name in _PAYLOAD_ORDER
+        for name in payload.payload_order
     }
 
 
@@ -522,6 +555,7 @@ def write_tattoo_bundle(
     rendered: Mapping[str, bytes],
     treatment: str,
     disclaimer: str,
+    frozen_manifest: FrozenTattooSelection | None = None,
 ) -> TattooBundleResult:
     """Preflight completely, then atomically publish one primary tattoo bundle."""
     payload = _validated_payload(
@@ -532,6 +566,7 @@ def write_tattoo_bundle(
         rendered=rendered,
         treatment=treatment,
         disclaimer=disclaimer,
+        frozen_manifest=frozen_manifest,
     )
     run_id = stable_id("ice-tattoo-run", payload.run_identity)
     root = Path(output_root)

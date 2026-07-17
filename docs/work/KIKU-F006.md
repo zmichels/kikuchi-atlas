@@ -6,6 +6,7 @@ status: ready
 parent: KIKU-E001
 children:
   - KIKU-T032
+  - KIKU-T035
   - KIKU-T033
   - KIKU-T034
 created: 2026-07-16
@@ -34,3 +35,4 @@ hemisphere designs.
 - [ ] Nine new treatment bundles preserve identical selected centerlines within each phase's standard/wide pair.
 - [ ] A labeled ten-cell comparison sheet supports separate scientific and visual review.
 - [ ] Every real non-test catalog, parity, preview, comparison, vector/geometry, and derived-model product is retained locally and indexed with its exact command, identities, recipes, sources, manifests, and checksums.
+- [ ] The reviewed Ice artifact remains immutable while a versioned canonical-HKL manifest rebinds its same 11-plane composition to corrected reflector physics under new identities.

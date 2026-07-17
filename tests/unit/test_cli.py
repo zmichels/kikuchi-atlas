@@ -606,6 +606,8 @@ def test_render_ice_tattoo_cli_forwards_strict_inputs_and_emits_exact_json(
             "/tmp/ice-art-catalog/art-band-catalog.json",
             "--recipe",
             "recipes/art/ice-ih-tattoo.yml",
+            "--selection-manifest",
+            "recipes/art/ice-ih-reviewed-selection-v2.yml",
             "--output",
             "/tmp/ice-tattoo",
             "--treatment",
@@ -617,6 +619,7 @@ def test_render_ice_tattoo_cli_forwards_strict_inputs_and_emits_exact_json(
     assert observed == {
         "catalog_path": "/tmp/ice-art-catalog/art-band-catalog.json",
         "recipe_path": "recipes/art/ice-ih-tattoo.yml",
+        "selection_manifest_path": "recipes/art/ice-ih-reviewed-selection-v2.yml",
         "output_root": "/tmp/ice-tattoo",
         "treatment": "primary",
     }

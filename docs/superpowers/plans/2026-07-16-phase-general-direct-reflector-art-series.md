@@ -18,9 +18,11 @@
 - Standard widths are `[4.8, 4.2, 3.6, 3.1]`, `[2.5, 2.2, 1.9, 1.6]`, and `[1.2, 1.0, 0.8]` mm. Wide geometry multiplies only these arc widths by exactly `1.15`.
 - The 145.0 mm artboard, 132.0 mm outer diameter, 2.20 mm boundary, 63.8 mm crystallographic clip radius, centerlines, selected member IDs, projection, palette, and lack of blur remain identical between treatments.
 - The reviewed Ice Ih standard-reference bundle is read-only and is never regenerated, overwritten, or silently reselected.
+- Corrected Ice products rebind the reviewed 11 canonical HKLs through `recipes/art/ice-ih-reviewed-selection-v2.yml`; they never reuse legacy calculated IDs and always retain the manifest snapshot in the bundle.
 - Quartz uses COD 9012600; zircon uses a documented isotropic-U derivative of COD 9000684; titanite uses COD 9000509. All source files and source records are checksum-verified and CC0-attributed.
 - Every non-test scientific or visual product is retained under `local/phase-general-direct-reflector-art/` (or an explicitly indexed legacy reference root) in its content-identified directory and is indexed in the acceptance record with the exact reproduction command, recipe/source IDs, manifest ID, and checksums. Pytest temporary outputs are verification scaffolding, not products.
 - Existing Ice-specific catalog, recipe, workflow, filenames, IDs, and tests remain backward compatible.
+- Legacy Ice artifacts remain load-only compatible. Corrected generation deliberately receives new catalog/member/selection/geometry/run IDs because the repaired non-orthogonal structure-factor boundary changes scientific content.
 - Every task follows red-green-refactor TDD, runs the narrow tests first, runs Ruff on touched Python, validates work items when tracker state changes, and commits only its own files.
 - Preserve all unrelated dirty files in the worktree.
 
