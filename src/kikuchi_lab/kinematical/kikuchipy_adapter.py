@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib.metadata import version
 from types import MappingProxyType
-from typing import Any
+from typing import Any, Protocol
 
 import numpy as np
 from diffpy.structure import Atom, Lattice, Structure
@@ -29,6 +29,11 @@ from .contracts import (
     KinematicalRecipe,
     KinematicalSimulation,
 )
+from .reflector_evidence import (
+    DirectReflectorEvidence,
+    DirectReflectorRecipe,
+    own_direct_reflector_evidence,
+)
 
 
 _SPHERICAL_CAMERA_DEG = {
@@ -39,6 +44,13 @@ _SPHERICAL_CAMERA_DEG = {
 
 _DIRECT_AXIS_INDEX = {"a": 0, "b": 1, "c": 2}
 _FRACTIONAL_AXIS_INDEX = {"x": 0, "y": 1, "z": 2}
+
+
+class _ReflectorEnumerationRecipe(Protocol):
+    """Inputs shared by kinematical and direct reflector recipes."""
+
+    min_dspacing_angstrom: float
+    scattering_params: str
 
 
 def _axis_permutation(
@@ -174,7 +186,7 @@ def _allowed_mask(reflectors: ReciprocalLatticeVector) -> np.ndarray:
 
 
 def _enumerate_reflectors(
-    phase: Phase, recipe: KinematicalRecipe
+    phase: Phase, recipe: _ReflectorEnumerationRecipe
 ) -> ReciprocalLatticeVector:
     reflectors = ReciprocalLatticeVector.from_min_dspacing(
         phase, min_dspacing=recipe.min_dspacing_angstrom
@@ -195,6 +207,31 @@ def _select_reflectors(
     selected = reflectors[amplitudes >= relative_factor * float(amplitudes.max())]
     selected.calculate_theta(energy_kev * 1_000.0)
     return selected
+
+
+def build_direct_reflector_evidence(
+    record: StructureRecord,
+    recipe: DirectReflectorRecipe,
+) -> DirectReflectorEvidence:
+    """Calculate owned reflector evidence without constructing a master simulator."""
+    verify_structure(record)
+    phase = _phase_from_record(record)
+    enumerated = _enumerate_reflectors(phase, recipe)
+    selected = _select_reflectors(
+        enumerated,
+        recipe.candidate_relative_factor,
+        recipe.energy_kev,
+    )
+    return own_direct_reflector_evidence(
+        selected,
+        source_structure_id=record.identifier,
+        source_structure_sha256=record.sha256,
+        calculation_id=recipe.calculation_id,
+        weighting_id=recipe.weighting_id,
+        weight_exponent=recipe.weight_exponent,
+        eligibility_min_weight=recipe.eligibility_min_weight,
+        counts={"enumerated": enumerated.size, "selected_signed": selected.size},
+    )
 
 
 def _reflection_catalog(
