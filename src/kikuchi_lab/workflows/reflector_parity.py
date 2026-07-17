@@ -7,6 +7,7 @@ import signal
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import uuid4
@@ -92,21 +93,64 @@ def _validate_timeout(timeout_seconds: object) -> float:
     return timeout
 
 
+def _stream_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode(errors="replace")
+    return value
+
+
+def _process_group_exists(process_group: int) -> bool:
+    try:
+        os.killpg(process_group, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _ignore_cleanup_error(operation: Callable[[], object]) -> None:
+    try:
+        operation()
+    except BaseException:
+        pass
+
+
 def _terminate_then_kill(
     process: subprocess.Popen[str],
+    stdout: str | bytes | None = None,
+    stderr: str | bytes | None = None,
 ) -> tuple[str, str]:
+    captured_stdout = _stream_text(stdout)
+    captured_stderr = _stream_text(stderr)
+    _ignore_cleanup_error(lambda: os.killpg(process.pid, signal.SIGTERM))
     try:
-        os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
+        final_stdout, final_stderr = process.communicate(
+            timeout=_TERMINATE_GRACE_SECONDS
+        )
+        captured_stdout = _stream_text(final_stdout) or captured_stdout
+        captured_stderr = _stream_text(final_stderr) or captured_stderr
+    except subprocess.TimeoutExpired as error:
+        captured_stdout = _stream_text(error.output) or captured_stdout
+        captured_stderr = _stream_text(error.stderr) or captured_stderr
+    except BaseException:
         pass
-    try:
-        return process.communicate(timeout=_TERMINATE_GRACE_SECONDS)
-    except subprocess.TimeoutExpired:
+
+    if _process_group_exists(process.pid):
+        _ignore_cleanup_error(lambda: os.killpg(process.pid, signal.SIGKILL))
         try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
+            final_stdout, final_stderr = process.communicate(
+                timeout=_TERMINATE_GRACE_SECONDS
+            )
+            captured_stdout = _stream_text(final_stdout) or captured_stdout
+            captured_stderr = _stream_text(final_stderr) or captured_stderr
+        except BaseException:
             pass
-        return process.communicate()
+    return captured_stdout, captured_stderr
 
 
 def _publish_report(
@@ -162,42 +206,50 @@ def run_reflector_parity(
         )
         try:
             stdout, stderr = process.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            stdout, stderr = _terminate_then_kill(process)
+        except subprocess.TimeoutExpired as error:
+            stdout, stderr = _terminate_then_kill(
+                process,
+                error.output,
+                error.stderr,
+            )
             raise ReflectorParityTimeoutError(
                 f"reflector parity worker exceeded {timeout:g} seconds",
                 stdout=stdout,
                 stderr=stderr,
             ) from None
-        if process.returncode != 0:
-            raise ReflectorParityWorkerError(
-                f"reflector parity worker exited with status {process.returncode}",
-                stdout=stdout,
-                stderr=stderr,
-            )
-        if not response_path.is_file():
-            raise ReflectorParityWorkerError(
-                "reflector parity worker exited without a response",
-                stdout=stdout,
-                stderr=stderr,
-            )
+        except BaseException:
+            _terminate_then_kill(process)
+            raise
         try:
-            report = ReflectorParityReport.from_json(
-                response_path.read_text(encoding="utf-8")
-            ).with_elapsed(time.monotonic() - started)
-        except (OSError, TypeError, ValueError) as error:
-            raise ReflectorParityWorkerError(
-                f"reflector parity worker response failed validation: {error}",
-                stdout=stdout,
-                stderr=stderr,
-            ) from None
-        if not report.passed:
-            raise ReflectorParityWorkerError(
-                "reflector parity comparison failed",
-                stdout=stdout,
-                stderr=stderr,
-            )
-    return _publish_report(root, report)
+            if process.returncode != 0:
+                raise ReflectorParityWorkerError(
+                    f"reflector parity worker exited with status {process.returncode}",
+                    stdout=stdout,
+                    stderr=stderr,
+                )
+            if not response_path.is_file():
+                raise ReflectorParityWorkerError(
+                    "reflector parity worker exited without a response",
+                    stdout=stdout,
+                    stderr=stderr,
+                )
+            try:
+                report = ReflectorParityReport.from_json(
+                    response_path.read_text(encoding="utf-8")
+                ).with_elapsed(time.monotonic() - started)
+                report.validate_for_publication()
+            except (OSError, TypeError, ValueError) as error:
+                raise ReflectorParityWorkerError(
+                    f"reflector parity worker response failed validation: {error}",
+                    stdout=stdout,
+                    stderr=stderr,
+                ) from None
+            published = _publish_report(root, report)
+        except BaseException:
+            _terminate_then_kill(process, stdout, stderr)
+            raise
+        _terminate_then_kill(process, stdout, stderr)
+    return published
 
 
 def _main(argv: list[str] | None = None) -> int:

@@ -22,6 +22,14 @@ _DSPACING_ATOL = 1e-12
 _THETA_ATOL = 1e-12
 _STRENGTH_ATOL = 1e-10
 _WEIGHT_ATOL = 1e-12
+_REQUIRED_COUNT_FIELDS = {
+    "direct_enumerated",
+    "direct_selected_signed",
+    "direct_axial",
+    "simulator_selected_signed",
+    "simulator_axial",
+}
+_REQUIRED_PACKAGES = {"diffpy-structure", "diffsims", "kikuchipy", "orix"}
 _REPORT_FIELDS = {
     "schema_version",
     "report_id",
@@ -297,6 +305,83 @@ class ReflectorParityReport:
 
     def with_path(self, path: str | Path) -> ReflectorParityReport:
         return replace(self, path=Path(path))
+
+    def validate_for_publication(self) -> None:
+        """Recompute whether this report is safe to publish as passing parity."""
+        violations: list[str] = []
+        if self.simulation_count != 1:
+            violations.append("simulation_count must be 1")
+        if self.retry_count != 0:
+            violations.append("retry_count must be 0")
+        if self.half_size != 32:
+            violations.append("half_size must be 32")
+        if self.hemisphere != "both":
+            violations.append("hemisphere must be both")
+        if self.scaling != "square":
+            violations.append("scaling must be square")
+        if self.master_shape != (2, 65, 65):
+            violations.append("master_shape must be [2, 65, 65]")
+        if self.master_array_sha256 is None:
+            violations.append("master_array_sha256 is required")
+        if not self.provenance_match:
+            violations.append("provenance_match must be true")
+        if not self.exact_hkl_match:
+            violations.append("exact_hkl_match must be true")
+
+        missing_counts = _REQUIRED_COUNT_FIELDS - set(self.reflector_counts)
+        if missing_counts:
+            violations.append(
+                "missing reflector counts: " + ", ".join(sorted(missing_counts))
+            )
+        else:
+            enumerated = self.reflector_counts["direct_enumerated"]
+            direct_signed = self.reflector_counts["direct_selected_signed"]
+            direct_axial = self.reflector_counts["direct_axial"]
+            simulator_signed = self.reflector_counts["simulator_selected_signed"]
+            simulator_axial = self.reflector_counts["simulator_axial"]
+            if enumerated < direct_signed:
+                violations.append("direct_enumerated must include all selected reflectors")
+            if direct_signed <= 0 or direct_axial <= 0:
+                violations.append("direct reflector counts must be positive")
+            if direct_signed != simulator_signed:
+                violations.append("selected signed reflector counts must match exactly")
+            if direct_axial != simulator_axial:
+                violations.append("axial reflector counts must match exactly")
+            if direct_signed < 2 * direct_axial:
+                violations.append("selected signed count must contain every axial pair")
+
+        missing_packages = _REQUIRED_PACKAGES - set(self.package_versions)
+        if missing_packages:
+            violations.append(
+                "missing package versions: " + ", ".join(sorted(missing_packages))
+            )
+        elif any(not self.package_versions[package] for package in _REQUIRED_PACKAGES):
+            violations.append("required package versions must be non-empty")
+
+        residual_limits = {
+            "max_normal_abs_error": _NORMAL_ATOL,
+            "max_dspacing_abs_error": _DSPACING_ATOL,
+            "max_theta_abs_error": _THETA_ATOL,
+            "max_strength_abs_error": _STRENGTH_ATOL,
+            "max_weight_abs_error": _WEIGHT_ATOL,
+        }
+        for field, tolerance in residual_limits.items():
+            residual = getattr(self, field)
+            if residual is None:
+                violations.append(f"{field} is required")
+            elif not math.isfinite(residual) or residual > tolerance:
+                violations.append(f"{field} exceeds {tolerance}")
+
+        derived_passed = not violations
+        if self.passed != derived_passed:
+            violations.append("passed does not equal the recomputed result")
+        if not derived_passed and self.passed is False:
+            violations.append("recomputed parity conditions did not pass")
+        if violations:
+            raise ValueError(
+                "reflector parity publication validation failed: "
+                + "; ".join(violations)
+            )
 
 
 def _maximum_abs_error(first: np.ndarray, second: np.ndarray) -> float | None:

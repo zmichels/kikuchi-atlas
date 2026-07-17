@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 import numpy as np
+import pytest
 
 from kikuchi_lab.kinematical.reflector_evidence import DirectReflectorEvidence
 from kikuchi_lab.kinematical.reflector_parity import compare_reflector_evidence
@@ -22,7 +23,7 @@ def _evidence() -> DirectReflectorEvidence:
         normalized_weight=np.array([0.25, 1.0]),
         ledger={
             "simulation_count": 0,
-            "counts": {"selected_signed": 4, "axial": 2},
+            "counts": {"enumerated": 8, "selected_signed": 4, "axial": 2},
             "package_versions": {
                 "diffpy-structure": "3.3.1",
                 "diffsims": "0.7.0",
@@ -85,3 +86,52 @@ def test_parity_report_identity_excludes_elapsed_time() -> None:
     assert report.half_size == 32
     assert report.master_shape == (2, 65, 65)
     assert len(report.master_array_sha256) == 64
+
+
+def _passing_report():
+    return compare_reflector_evidence(_evidence(), _evidence()).with_master(
+        np.arange(2 * 65 * 65, dtype=np.float64).reshape(2, 65, 65)
+    )
+
+
+def test_publication_validation_accepts_derived_passing_science() -> None:
+    _passing_report().validate_for_publication()
+
+
+@pytest.mark.parametrize(
+    "forge",
+    [
+        lambda report: replace(report, provenance_match=False, passed=True),
+        lambda report: replace(report, exact_hkl_match=False, passed=True),
+        lambda report: replace(
+            report,
+            reflector_counts={
+                **report.reflector_counts,
+                "simulator_selected_signed": 6,
+            },
+            passed=True,
+        ),
+        lambda report: replace(
+            report,
+            reflector_counts={
+                key: value
+                for key, value in report.reflector_counts.items()
+                if key != "simulator_axial"
+            },
+            passed=True,
+        ),
+        lambda report: replace(
+            report,
+            package_versions={"kikuchipy": "0.13.0"},
+            passed=True,
+        ),
+        lambda report: replace(report, max_normal_abs_error=None, passed=True),
+        lambda report: replace(report, max_strength_abs_error=1.0, passed=True),
+        lambda report: replace(report, passed=False),
+    ],
+)
+def test_publication_validation_recomputes_passed_from_report_content(forge) -> None:
+    forged = forge(_passing_report())
+
+    with pytest.raises(ValueError, match="publication validation"):
+        forged.validate_for_publication()
