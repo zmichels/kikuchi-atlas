@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from io import BytesIO
 from pathlib import Path
 
@@ -17,7 +17,10 @@ from .orientation_gallery_bundle import (
     _publish_idempotent_payload,
     _validate_orientation_gallery_cell,
 )
+from .orientation_gallery_recipe import OrientationGalleryRecipe
 from .tattoo_bundle import _ValidatedPayload, _sha256_bytes
+from kikuchi_lab.kinematical.reflector_evidence import load_direct_reflector_recipe
+from kikuchi_lab.sources.structure import load_structure_record
 
 
 ORIENTATION_GALLERY_PANEL_SIZE_PX = 900
@@ -49,6 +52,92 @@ class OrientationGallerySheetBundleResult:
     comparison_sheet: Path
     ledger_path: Path
     manifest_sha256: str
+
+
+@dataclass(frozen=True)
+class _DirectReflectorProvenance:
+    """Canonical direct-reflector identities configured for one phase slot."""
+
+    source_structure_id: str
+    source_structure_sha256: str
+    calculation_id: str
+    weighting_id: str
+
+
+def _recipe_cell_order(recipe: OrientationGalleryRecipe) -> tuple[str, ...]:
+    return tuple(
+        f"{variant.slug}:{phase_slug}"
+        for variant in recipe.variants
+        for phase_slug in recipe.phase_order
+    )
+
+
+def _direct_reflector_provenance(
+    recipe: OrientationGalleryRecipe,
+) -> Mapping[str, _DirectReflectorProvenance]:
+    provenance: dict[str, _DirectReflectorProvenance] = {}
+    for phase_slug in recipe.phase_order:
+        reflector_path = (
+            recipe.source_series_path.parent
+            / recipe.source_series.reflector_recipes[phase_slug]
+        ).resolve()
+        reflector_recipe = load_direct_reflector_recipe(reflector_path)
+        source_record = load_structure_record(
+            (reflector_path.parent / reflector_recipe.source_record).resolve()
+        )
+        provenance[phase_slug] = _DirectReflectorProvenance(
+            source_structure_id=source_record.identifier,
+            source_structure_sha256=source_record.sha256,
+            calculation_id=reflector_recipe.calculation_id,
+            weighting_id=reflector_recipe.weighting_id,
+        )
+    return provenance
+
+
+def _validate_recipe_membership(
+    recipe: OrientationGalleryRecipe,
+    cells: tuple[OrientationGalleryCell, ...],
+) -> tuple[str, ...]:
+    """Require every slot to use its configured phase evidence and orientation."""
+    if not isinstance(recipe, OrientationGalleryRecipe):
+        raise TypeError("orientation gallery sheet recipe must be an OrientationGalleryRecipe")
+    expected_order = _recipe_cell_order(recipe)
+    if len(cells) != len(expected_order):
+        raise ValueError("orientation gallery sheet requires exactly fifteen cells")
+    expected_provenance = _direct_reflector_provenance(recipe)
+    for index, cell in enumerate(cells):
+        _validate_orientation_gallery_cell(cell)
+        expected_variant = recipe.variants[index // len(recipe.phase_order)]
+        expected_phase = recipe.phase_order[index % len(recipe.phase_order)]
+        if cell.phase_slug != expected_phase:
+            raise ValueError("orientation gallery sheet cell does not match its canonical phase")
+        if cell.variant.to_dict() != expected_variant.to_dict():
+            raise ValueError("orientation gallery sheet cell does not match its canonical variant")
+        expected_composition = replace(
+            recipe.source_series.composition_for(expected_phase),
+            orientation=expected_variant.orientation,
+        )
+        if cell.composition.to_dict() != expected_composition.to_dict():
+            raise ValueError("orientation gallery sheet cell does not match its canonical composition")
+        if cell.treatment.to_dict() != recipe.treatment.to_dict():
+            raise ValueError("orientation gallery sheet cell does not match its canonical treatment")
+        expected_source = expected_provenance[expected_phase]
+        if (
+            cell.catalog.source_structure_id != expected_source.source_structure_id
+            or cell.catalog.source_structure_sha256 != expected_source.source_structure_sha256
+            or cell.catalog.source_recipe_id != expected_source.calculation_id
+            or cell.catalog.presentation_recipe_id != expected_source.weighting_id
+            or cell.parity_report.source_structure_id != expected_source.source_structure_id
+            or cell.parity_report.source_structure_sha256
+            != expected_source.source_structure_sha256
+        ):
+            raise ValueError(
+                "orientation gallery sheet cell direct-reflector provenance differs "
+                "from its configured phase"
+            )
+    if tuple(cell.cell_id for cell in cells) != expected_order:
+        raise ValueError("orientation gallery sheet cells differ from the approved order")
+    return expected_order
 
 
 def _draw_geometry(panel: Image.Image, geometry: TattooGeometry) -> None:
@@ -119,12 +208,17 @@ def _draw_labels(
     draw.text((phase_x, 3), cell.phase_slug, fill=(0, 0, 0), font=font)
 
 
-def _cell_record(cell: OrientationGalleryCell, index: int) -> dict[str, object]:
+def _cell_record(
+    cell: OrientationGalleryCell,
+    index: int,
+    *,
+    phase_count: int,
+) -> dict[str, object]:
     return {
         "cell_id": cell.cell_id,
         "cell_index": index,
-        "row": index // len(_PHASE_ORDER),
-        "column": index % len(_PHASE_ORDER),
+        "row": index // phase_count,
+        "column": index % phase_count,
         "phase_slug": cell.phase_slug,
         "variant_id": cell.variant.variant_id,
         "variant_slug": cell.variant.slug,
@@ -145,19 +239,14 @@ def _cell_record(cell: OrientationGalleryCell, index: int) -> dict[str, object]:
 
 
 def render_orientation_gallery_sheet(
+    recipe: OrientationGalleryRecipe,
     cells: Sequence[OrientationGalleryCell],
 ) -> RenderedOrientationGallerySheet:
     """Render the fixed 3-by-5 gallery directly from geometry path vectors."""
     ordered = tuple(cells)
-    if len(ordered) != len(ORIENTATION_GALLERY_CELL_ORDER):
-        raise ValueError("orientation gallery sheet requires exactly fifteen cells")
     if any(not isinstance(cell, OrientationGalleryCell) for cell in ordered):
         raise TypeError("orientation gallery sheet cells must be OrientationGalleryCell values")
-    for cell in ordered:
-        _validate_orientation_gallery_cell(cell)
-    cell_order = tuple(cell.cell_id for cell in ordered)
-    if cell_order != ORIENTATION_GALLERY_CELL_ORDER:
-        raise ValueError("orientation gallery sheet cells differ from the approved order")
+    cell_order = _validate_recipe_membership(recipe, ordered)
     boundary = ordered[0].geometry.boundary.to_dict()
     if any(cell.geometry.boundary.to_dict() != boundary for cell in ordered[1:]):
         raise ValueError("orientation gallery sheet geometries must share one boundary")
@@ -165,14 +254,14 @@ def render_orientation_gallery_sheet(
     comparison = Image.new(
         "RGB",
         (
-            len(_PHASE_ORDER) * ORIENTATION_GALLERY_PANEL_SIZE_PX,
-            len(_VARIANT_ORDER) * ORIENTATION_GALLERY_PANEL_SIZE_PX,
+            len(recipe.phase_order) * ORIENTATION_GALLERY_PANEL_SIZE_PX,
+            len(recipe.variants) * ORIENTATION_GALLERY_PANEL_SIZE_PX,
         ),
         (255, 255, 255),
     )
     records: list[dict[str, object]] = []
     for index, cell in enumerate(ordered):
-        record = _cell_record(cell, index)
+        record = _cell_record(cell, index, phase_count=len(recipe.phase_order))
         panel = Image.new(
             "RGB",
             (ORIENTATION_GALLERY_PANEL_SIZE_PX, ORIENTATION_GALLERY_PANEL_SIZE_PX),
@@ -194,9 +283,9 @@ def render_orientation_gallery_sheet(
         "schema_version": 1,
         "cell_order": list(cell_order),
         "layout": {
-            "columns": 5,
-            "rows": 3,
-            "variant_row_order": list(_VARIANT_ORDER),
+            "columns": len(recipe.phase_order),
+            "rows": len(recipe.variants),
+            "variant_row_order": [variant.slug for variant in recipe.variants],
         },
         "renderer_version": ORIENTATION_GALLERY_RENDERER_VERSION,
         "panel_size_px": ORIENTATION_GALLERY_PANEL_SIZE_PX,
@@ -217,14 +306,15 @@ def render_orientation_gallery_sheet(
 
 def _validated_sheet_payload(
     *,
-    recipe_id: str,
+    recipe: OrientationGalleryRecipe,
     cells: Sequence[OrientationGalleryCell],
 ) -> tuple[str, _ValidatedPayload]:
-    if not isinstance(recipe_id, str) or not recipe_id:
-        raise ValueError("orientation gallery recipe_id must be non-empty text")
+    if not isinstance(recipe, OrientationGalleryRecipe):
+        raise TypeError("orientation gallery sheet recipe must be an OrientationGalleryRecipe")
     source_cells = tuple(cells)
-    rendered = render_orientation_gallery_sheet(source_cells)
-    if rendered.cell_order != ORIENTATION_GALLERY_CELL_ORDER:
+    expected_order = _recipe_cell_order(recipe)
+    rendered = render_orientation_gallery_sheet(recipe, source_cells)
+    if rendered.cell_order != expected_order:
         raise ValueError("orientation gallery rendered cell order differs from the contract")
     with Image.open(BytesIO(rendered.comparison_png)) as image:
         if image.mode not in {"RGB", "RGBA"} or image.size != (4500, 2700):
@@ -237,13 +327,14 @@ def _validated_sheet_payload(
         "orientation-gallery-comparison-ledger", ledger_content
     ):
         raise ValueError("orientation gallery comparison ledger ID differs from content")
-    if ledger.get("cell_order") != list(ORIENTATION_GALLERY_CELL_ORDER):
+    if ledger.get("cell_order") != list(expected_order):
         raise ValueError("orientation gallery comparison ledger cell order differs")
     ledger_cells = ledger.get("cells")
     if not isinstance(ledger_cells, list) or len(ledger_cells) != 15:
         raise ValueError("orientation gallery comparison ledger must contain fifteen cells")
     expected_records = [
-        _cell_record(cell, index) for index, cell in enumerate(source_cells)
+        _cell_record(cell, index, phase_count=len(recipe.phase_order))
+        for index, cell in enumerate(source_cells)
     ]
     if ledger_cells != expected_records:
         raise ValueError("orientation gallery comparison ledger provenance differs")
@@ -257,7 +348,7 @@ def _validated_sheet_payload(
         raise ValueError("orientation gallery comparison ledger provenance is invalid")
     run_identity = {
         "schema_version": 1,
-        "recipe_id": recipe_id,
+        "recipe_id": recipe.recipe_id,
         "ledger_id": ledger["ledger_id"],
         "comparison_sha256": _sha256_bytes(rendered.comparison_png),
         "cell_order": list(rendered.cell_order),
@@ -282,14 +373,14 @@ def _validated_sheet_payload(
 def write_orientation_gallery_sheet_bundle(
     output_root: str | Path,
     *,
-    recipe_id: str,
+    recipe: OrientationGalleryRecipe,
     cells: Sequence[OrientationGalleryCell],
     rendered: RenderedOrientationGallerySheet | None = None,
 ) -> OrientationGallerySheetBundleResult:
     """Derive and atomically publish one native comparison from validated cells."""
     if rendered is not None:
         raise ValueError("caller-provided rendered sheets are forbidden")
-    run_id, payload = _validated_sheet_payload(recipe_id=recipe_id, cells=cells)
+    run_id, payload = _validated_sheet_payload(recipe=recipe, cells=cells)
     path, manifest_sha256 = _publish_idempotent_payload(
         output_root,
         run_id=run_id,

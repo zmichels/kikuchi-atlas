@@ -107,6 +107,8 @@ class OrientationGalleryRecipe:
     source_series: HemisphereSeriesRecipe
     treatment: HemisphereTreatment
     variants: tuple[OrientationGalleryVariant, ...]
+    recipe_path: Path
+    source_series_path: Path
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -125,6 +127,10 @@ class OrientationGalleryRecipe:
             )
         if not isinstance(self.source_series, HemisphereSeriesRecipe):
             raise ValueError("orientation gallery recipe source series is invalid")
+        recipe_path = Path(self.recipe_path).resolve()
+        source_series_path = Path(self.source_series_path).resolve()
+        if not recipe_path.is_file() or not source_series_path.is_file():
+            raise ValueError("orientation gallery recipe provenance paths are invalid")
         if len(self.source_series.phase_order) != _PHASE_COUNT:
             raise ValueError(
                 "orientation gallery recipe source series must contain the approved "
@@ -156,6 +162,8 @@ class OrientationGalleryRecipe:
         ):
             raise ValueError("orientation gallery recipe variant orientations differ from policy")
         object.__setattr__(self, "variants", variants)
+        object.__setattr__(self, "recipe_path", recipe_path)
+        object.__setattr__(self, "source_series_path", source_series_path)
 
     @property
     def phase_order(self) -> tuple[str, ...]:
@@ -194,7 +202,7 @@ def _variants(value: object) -> tuple[OrientationGalleryVariant, ...]:
 
 def load_orientation_gallery_recipe(path: str | Path) -> OrientationGalleryRecipe:
     """Load the strict version-1 standard-width orientation-gallery policy."""
-    recipe_path = Path(path)
+    recipe_path = Path(path).resolve()
     try:
         payload = yaml.safe_load(recipe_path.read_text(encoding="utf-8"))
     except yaml.YAMLError:
@@ -217,7 +225,8 @@ def load_orientation_gallery_recipe(path: str | Path) -> OrientationGalleryRecip
         raise ValueError("orientation gallery recipe treatment must be standard")
     variants = _variants(root["variants"])
     try:
-        source_series = load_hemisphere_series_recipe(recipe_path.parent / source_series_recipe)
+        source_series_path = recipe_path.parent / source_series_recipe
+        source_series = load_hemisphere_series_recipe(source_series_path)
     except OSError:
         raise ValueError("orientation gallery recipe source series is invalid") from None
     return OrientationGalleryRecipe(
@@ -227,6 +236,8 @@ def load_orientation_gallery_recipe(path: str | Path) -> OrientationGalleryRecip
         source_series=source_series,
         treatment=source_series.treatments[_TREATMENT],
         variants=variants,
+        recipe_path=recipe_path,
+        source_series_path=source_series_path,
     )
 
 
