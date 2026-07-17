@@ -9,6 +9,7 @@ from pathlib import Path
 from kikuchi_lab.model.identity import stable_id
 
 from .catalog_bundle import _validate_catalog_members
+from .clearance_selection import select_clearance_valid_tattoo_paths
 from .contracts import ArtBandCatalog, TattooGeometry
 from .frozen_selection import FrozenTattooSelection, bind_frozen_tattoo_selection
 from .hemisphere_recipe import HemisphereCompositionRecipe, HemisphereTreatment
@@ -23,7 +24,7 @@ from .tattoo_bundle import (
     _sha256_bytes,
     _validate_rendered,
 )
-from .tattoo_selection import TattooSelection, select_tattoo_paths
+from .tattoo_selection import TattooSelection
 from .tattoo_vector import (
     build_tattoo_geometry,
     render_primary_tattoo,
@@ -120,7 +121,7 @@ def _validated_phase_payload(
         raise ValueError("hemisphere selection must contain exactly 11 paths")
 
     if frozen_manifest is None:
-        expected_selection = select_tattoo_paths(catalog, recipe)
+        expected_selection = select_clearance_valid_tattoo_paths(catalog, recipe)
     else:
         expected_selection = bind_frozen_tattoo_selection(
             catalog,

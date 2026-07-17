@@ -294,6 +294,9 @@ def test_phase_bundle_rejects_geometry_from_the_wrong_width_treatment(
 def test_standard_bundle_requires_the_same_selection_to_pass_wide_preflight(
     tmp_path: Path,
 ) -> None:
+    from kikuchi_lab.art_products.clearance_selection import (
+        ClearanceSelectionFeasibilityError,
+    )
     from kikuchi_lab.art_products.hemisphere_bundle import (
         write_phase_hemisphere_bundle,
     )
@@ -304,7 +307,7 @@ def test_standard_bundle_requires_the_same_selection_to_pass_wide_preflight(
     catalog = _standard_only_catalog()
     selection = select_tattoo_paths(catalog, recipe)
     geometry = build_tattoo_geometry(selection, recipe, width_scale=1.0)
-    with pytest.raises(ValueError, match="wide geometry preflight"):
+    with pytest.raises(ClearanceSelectionFeasibilityError) as raised:
         write_phase_hemisphere_bundle(
             tmp_path / "standard",
             phase_slug="quartz",
@@ -316,6 +319,9 @@ def test_standard_bundle_requires_the_same_selection_to_pass_wide_preflight(
             rendered=render_primary_tattoo(geometry),
             disclaimer=DISCLAIMER_TEXT,
         )
+    assert raised.value.phase_slug == "quartz"
+    assert raised.value.catalog_id == catalog.catalog_id
+    assert raised.value.evaluated_state_count == 3
     assert not (tmp_path / "standard").exists()
 
 
@@ -346,6 +352,34 @@ def test_standard_bundle_publishes_after_the_wide_preflight_passes(
 
     assert result.treatment == "standard"
     assert result.path.is_dir()
+
+
+def test_non_ice_bundle_preflight_rebuilds_clearance_valid_selection(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    bundle_inputs: dict[str, object],
+) -> None:
+    from kikuchi_lab.art_products import hemisphere_bundle
+
+    calls: list[tuple[object, object]] = []
+
+    def clearance_valid_selector(catalog, recipe):
+        calls.append((catalog, recipe))
+        return bundle_inputs["selection"]
+
+    monkeypatch.setattr(
+        hemisphere_bundle,
+        "select_clearance_valid_tattoo_paths",
+        clearance_valid_selector,
+        raising=False,
+    )
+
+    hemisphere_bundle.write_phase_hemisphere_bundle(
+        tmp_path,
+        **bundle_inputs,
+    )
+
+    assert calls == [(bundle_inputs["catalog"], bundle_inputs["recipe"])]
 
 
 def test_generic_ice_bundle_requires_reviewed_frozen_selection(
@@ -419,6 +453,7 @@ def test_generic_ice_bundle_rejects_a_self_consistent_substitute_manifest(
 
 
 def test_generic_ice_bundle_records_the_authoritative_frozen_manifest(
+    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     from kikuchi_lab.art_products.frozen_selection import (
@@ -426,6 +461,14 @@ def test_generic_ice_bundle_records_the_authoritative_frozen_manifest(
     )
     from kikuchi_lab.art_products.hemisphere_bundle import (
         write_phase_hemisphere_bundle,
+    )
+    from kikuchi_lab.art_products import hemisphere_bundle
+
+    monkeypatch.setattr(
+        hemisphere_bundle,
+        "select_clearance_valid_tattoo_paths",
+        lambda *_args, **_kwargs: pytest.fail("corrected Ice entered automatic search"),
+        raising=False,
     )
 
     series = load_hemisphere_series_recipe(SERIES_RECIPE)

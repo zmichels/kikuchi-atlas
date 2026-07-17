@@ -140,10 +140,17 @@ def test_noncrossing_edge_gap_of_1_49_mm_fails() -> None:
     second = _path(1, _horizontal_chord(62.29))
 
     with pytest.raises(
-        ValueError,
+        _vector().TattooClearanceError,
         match=r"noncrossing edge gap 1\.490000 mm is below 1\.500000 mm",
-    ):
+    ) as raised:
         _vector().validate_tattoo_geometry(_geometry(first, second))
+    assert isinstance(raised.value, ValueError)
+    assert raised.value.clearance_kind == "noncrossing_edge_gap"
+    assert raised.value.member_ids == ("member-00", "member-01")
+    assert str(raised.value) == (
+        "noncrossing edge gap 1.490000 mm is below 1.500000 mm between "
+        "member-00 and member-01"
+    )
 
 
 def test_endpoint_clearance_of_1_99_mm_fails_after_edge_gap_passes() -> None:
@@ -151,10 +158,17 @@ def test_endpoint_clearance_of_1_99_mm_fails_after_edge_gap_passes() -> None:
     unrelated_path = _path(1, _horizontal_chord(72.5))
 
     with pytest.raises(
-        ValueError,
+        _vector().TattooClearanceError,
         match=r"endpoint clearance 1\.990000 mm is below 2\.000000 mm",
-    ):
+    ) as raised:
         _vector().validate_tattoo_geometry(_geometry(ending_path, unrelated_path))
+    assert isinstance(raised.value, ValueError)
+    assert raised.value.clearance_kind == "unrelated_endpoint"
+    assert raised.value.member_ids == ("member-00", "member-01")
+    assert str(raised.value) == (
+        "endpoint clearance 1.990000 mm is below 2.000000 mm from member-00 "
+        "to unrelated path member-01"
+    )
 
 
 def test_closed_path_fails_validation() -> None:

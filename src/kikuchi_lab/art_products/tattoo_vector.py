@@ -42,6 +42,22 @@ _STENCIL_BACKGROUND = "#ffffff"
 _STROKE_CLIP_ID = "tattoo-band-layer-clip"
 
 IntersectionKind = Literal["none", "crossing", "endpoint", "tangent"]
+ClearanceKind = Literal["noncrossing_edge_gap", "unrelated_endpoint"]
+
+
+class TattooClearanceError(ValueError):
+    """Physical-clearance failure carrying the exact conflicting path pair."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        clearance_kind: ClearanceKind,
+        member_ids: tuple[str, str],
+    ) -> None:
+        super().__init__(message)
+        self.clearance_kind = clearance_kind
+        self.member_ids = member_ids
 
 
 def _cross_2d(first: np.ndarray, second: np.ndarray) -> float:
@@ -422,10 +438,12 @@ def validate_tattoo_geometry(geometry: TattooGeometry) -> None:
             centerline_distance = _polyline_distance(first.points_mm, second.points_mm)
             edge_gap = centerline_distance - 0.5 * first.width_mm - 0.5 * second.width_mm
             if edge_gap + _NUMERIC_TOLERANCE < _MIN_EDGE_GAP_MM:
-                raise ValueError(
+                raise TattooClearanceError(
                     f"noncrossing edge gap {edge_gap:.6f} mm is below "
                     f"{_MIN_EDGE_GAP_MM:.6f} mm between {first.member_id} and "
-                    f"{second.member_id}"
+                    f"{second.member_id}",
+                    clearance_kind="noncrossing_edge_gap",
+                    member_ids=(first.member_id, second.member_id),
                 )
 
             endpoint_checks = (
@@ -463,10 +481,12 @@ def validate_tattoo_geometry(geometry: TattooGeometry) -> None:
                     _endpoint_to_polyline_distance(endpoint, unrelated) - 0.5 * unrelated_width
                 )
                 if clearance + _NUMERIC_TOLERANCE < _MIN_ENDPOINT_CLEARANCE_MM:
-                    raise ValueError(
+                    raise TattooClearanceError(
                         f"endpoint clearance {clearance:.6f} mm is below "
                         f"{_MIN_ENDPOINT_CLEARANCE_MM:.6f} mm from {owner_id} to "
-                        f"unrelated path {unrelated_id}"
+                        f"unrelated path {unrelated_id}",
+                        clearance_kind="unrelated_endpoint",
+                        member_ids=(owner_id, unrelated_id),
                     )
 
     _stroke_clip_evidence(geometry)
@@ -759,6 +779,7 @@ def render_primary_tattoo(geometry: TattooGeometry) -> Mapping[str, bytes]:
 
 
 __all__ = [
+    "TattooClearanceError",
     "build_tattoo_geometry",
     "primary_svg_bytes",
     "render_primary_tattoo",

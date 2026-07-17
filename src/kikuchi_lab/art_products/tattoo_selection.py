@@ -345,11 +345,13 @@ def _tier_assignments(
     return tuple(result)
 
 
-def select_tattoo_paths(
+def _select_tattoo_paths(
     catalog: ArtBandCatalog,
     recipe: HemisphereSelectionRecipe,
+    *,
+    excluded_member_ids: frozenset[str],
 ) -> TattooSelection:
-    """Select the approved 11-path hierarchy from rotated eligible bands."""
+    """Select deterministically while retaining excluded candidates in the sheet."""
     if not isinstance(catalog, ArtBandCatalog):
         raise TypeError("catalog must be an ArtBandCatalog")
     if not isinstance(recipe, HemisphereSelectionRecipe):
@@ -378,15 +380,23 @@ def select_tattoo_paths(
                 midpoint_sector=_midpoint_sector(trace, recipe.coverage_sectors),
             )
         )
+        if member.member_id in excluded_member_ids:
+            rejections[member.member_id] = "wide_clearance_search_exclusion"
 
     target_count = sum(recipe.path_allocation.values())
-    if len(candidates) < target_count:
+    selectable_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate.member_id not in excluded_member_ids
+    ]
+    if len(selectable_candidates) < target_count:
+        candidate_kind = "selectable" if excluded_member_ids else "eligible"
         raise ValueError(
-            f"tattoo catalog has {len(candidates)} eligible candidates; "
+            f"tattoo catalog has {len(selectable_candidates)} {candidate_kind} candidates; "
             f"{target_count} are required"
         )
     max_half_width = max(candidate.bragg_half_width_rad for candidate in candidates)
-    remaining = list(candidates)
+    remaining = list(selectable_candidates)
     selected_candidates: list[TattooCandidate] = []
     selected_scores: dict[str, tuple[dict[str, float], float]] = {}
     used_sectors: set[int] = set()
@@ -486,6 +496,18 @@ def select_tattoo_paths(
         candidates=tuple(candidates),
         selected_paths=tuple(selected_paths),
         ledger=ledger,
+    )
+
+
+def select_tattoo_paths(
+    catalog: ArtBandCatalog,
+    recipe: HemisphereSelectionRecipe,
+) -> TattooSelection:
+    """Select the approved 11-path hierarchy from rotated eligible bands."""
+    return _select_tattoo_paths(
+        catalog,
+        recipe,
+        excluded_member_ids=frozenset(),
     )
 
 
