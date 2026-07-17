@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+import errno
 import shutil
 import tempfile
 from dataclasses import dataclass, replace
@@ -27,6 +27,7 @@ from kikuchi_lab.art_products.orientation_gallery_sheet import (
 )
 from kikuchi_lab.art_products.tattoo_vector import build_tattoo_geometry
 from kikuchi_lab.artifacts import BundleExistsError
+from kikuchi_lab.kinematical.bundle import _promote_directory_no_replace
 
 from .direct_phase_preflight import (
     build_parity_gated_direct_phase,
@@ -153,6 +154,18 @@ def _relocate_sheet_bundle(
     )
 
 
+def _promote_gallery_root(staging: Path, requested_root: Path) -> None:
+    """Atomically promote a completed gallery root without replacing a competitor."""
+    try:
+        _promote_directory_no_replace(staging, requested_root)
+    except OSError as error:
+        if error.errno in {errno.EEXIST, errno.ENOTEMPTY} or requested_root.exists():
+            raise BundleExistsError(
+                f"orientation gallery root already exists: {requested_root}"
+            ) from None
+        raise
+
+
 def render_phase_art_orientation_gallery(
     *,
     recipe_path: str | Path,
@@ -185,7 +198,7 @@ def render_phase_art_orientation_gallery(
             recipe=recipe,
             cells=cells,
         )
-        os.replace(staging, requested_root)
+        _promote_gallery_root(staging, requested_root)
     finally:
         if staging.exists():
             shutil.rmtree(staging, ignore_errors=True)

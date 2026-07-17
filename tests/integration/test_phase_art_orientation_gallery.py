@@ -15,6 +15,7 @@ from kikuchi_lab.art_products.orientation_gallery_recipe import (
     OrientationGalleryRecipe,
     load_orientation_gallery_recipe,
 )
+from kikuchi_lab.artifacts import BundleExistsError
 from kikuchi_lab.kinematical import kikuchipy_adapter
 from kikuchi_lab.kinematical.kikuchipy_adapter import (
     build_direct_reflector_evidence,
@@ -198,3 +199,24 @@ def test_gallery_late_geometry_preflight_leaves_requested_root_absent(
         )
 
     assert not output_root.exists()
+
+
+def test_gallery_final_promotion_refuses_a_concurrent_root_without_replacement(
+    tmp_path: Path,
+) -> None:
+    import kikuchi_lab.workflows.phase_art_orientation_gallery as gallery_workflow
+
+    staging = tmp_path / ".gallery-staging"
+    staging.mkdir()
+    staged_file = staging / "staged.txt"
+    staged_file.write_text("staged gallery", encoding="utf-8")
+    requested_root = tmp_path / "gallery"
+    requested_root.mkdir()
+    sentinel = requested_root / "concurrent-owner.txt"
+    sentinel.write_text("keep this root", encoding="utf-8")
+
+    with pytest.raises(BundleExistsError, match="gallery root already exists"):
+        gallery_workflow._promote_gallery_root(staging, requested_root)
+
+    assert sentinel.read_text(encoding="utf-8") == "keep this root"
+    assert staged_file.read_text(encoding="utf-8") == "staged gallery"
