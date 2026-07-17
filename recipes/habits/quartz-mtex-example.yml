@@ -1,0 +1,25 @@
+schema: kikuchi.habit-recipe/v1
+phase:
+  name: quartz
+  formula: SiO2
+  space_group_number: 154
+  cif: ../../phases/quartz/COD-9000775.cif
+  sha256: 10dd04655c03f6b152897a5e2d863e42892bd84561cb6dfc1febd86271e70b57
+  provenance:
+    uri: https://www.crystallography.net/cod/9000775.cif
+    license: public-domain
+    citation: Levien, Prewitt, and Weidner (1980), American Mineralogist 65, 920-930.
+habit:
+  index_convention: hkil
+  faces:
+    - {family: [1, 0, -1, 0], relative_distance: 0.5091702048436217, label: m}
+    - {family: [1, 0, -1, 1], relative_distance: 1.0, label: r}
+    - {family: [0, 1, -1, 1], relative_distance: 1.1111111111111112, label: z}
+    - {family: [2, -1, -1, 1], relative_distance: 0.9557191976124586, label: s1}
+    - {family: [6, -1, -5, 1], relative_distance: 0.7545681549701853, label: x1}
+geometry:
+  maximum_dimension_mm: 60.0
+exports: [stl]
+fdm_context:
+  nozzle_width_mm: 0.4
+  layer_height_mm: 0.2
