@@ -1,6 +1,6 @@
 # Print Geometry
 
-- Status: Incubating
+- Status: Promoted in part to [KIKU-F005](../work/KIKU-F005.md)
 - Boundary: derived, labeled geometry products, not simulated intensity truth
 
 ## Motivation
@@ -59,10 +59,19 @@ manufacturable geometry.
   openable viewing model from topology- and unit-constrained print geometry.
 - [KIKU-F004](../work/KIKU-F004.md) tracks the direct crystal-habit generator
   and shared mesh spine without changing this record's relief semantics.
+- The approved [spherical intensity relief globe design](../superpowers/specs/2026-07-17-spherical-intensity-relief-globe-design.md)
+  and [KIKU-F005](../work/KIKU-F005.md) promote the first intensity-derived
+  product: raw both-hemisphere master intensity on a subdivision-7 geodesic
+  sphere, with an `80.0 mm` base diameter, `1.2 mm` outward relief, and a
+  recorded `0.8 mm` spherical feature filter.
 
 ## Promotion trigger
 
-Promote when one labeled source field and one target fabrication process have explicit scale, relief, topology, and minimum-feature acceptance tests.
+The first promotion trigger is satisfied by `KIKU-F005`: the labeled source is
+raw canonical both-hemisphere master intensity, the target process context is
+filament FDM, and scale, relief, topology, and minimum-feature acceptance are
+explicit. Exact band ribbons, multiscale blends, shells, stands, and habit
+hybrids remain incubating rather than inheriting that promotion.
 
 ## Present non-goals
 
