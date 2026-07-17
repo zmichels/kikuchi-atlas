@@ -10,8 +10,8 @@ from pathlib import Path
 import yaml
 
 from kikuchi_lab.art_products.contracts import ArtBandCatalog, TattooTier
-from kikuchi_lab.art_products.tattoo_recipe import TattooRecipe
 from kikuchi_lab.art_products.tattoo_selection import (
+    HemisphereSelectionRecipe,
     SelectedTattooPath,
     TattooCandidate,
     TattooSelection,
@@ -215,14 +215,14 @@ def load_frozen_tattoo_selection(path: str | Path) -> FrozenTattooSelection:
 
 def bind_frozen_tattoo_selection(
     catalog: ArtBandCatalog,
-    recipe: TattooRecipe,
+    recipe: HemisphereSelectionRecipe,
     manifest: FrozenTattooSelection,
 ) -> TattooSelection:
     """Rebind reviewed HKLs to a corrected catalog without automatic reselection."""
     if not isinstance(catalog, ArtBandCatalog):
         raise TypeError("catalog must be an ArtBandCatalog")
-    if not isinstance(recipe, TattooRecipe):
-        raise TypeError("recipe must be a TattooRecipe")
+    if not isinstance(recipe, HemisphereSelectionRecipe):
+        raise TypeError("recipe must satisfy HemisphereSelectionRecipe")
     if not isinstance(manifest, FrozenTattooSelection):
         raise TypeError("manifest must be a FrozenTattooSelection")
     if (

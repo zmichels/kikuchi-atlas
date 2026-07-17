@@ -57,11 +57,33 @@ def test_retained_legacy_ice_catalog_publishes_the_unchanged_primary_tattoo(
     selection = json.loads((result.path / "band-selection-ledger.json").read_text())
     diagnostic = json.loads((result.path / "stroke-gap-diagnostic.json").read_text())
     assert result.catalog_id == "art-band-catalog-05f58424b717d5ad"
+    assert result.run_id == "ice-tattoo-run-9a5ce6ac83e4bdd9"
+    assert result.selection_id == "tattoo-selection-211db31bbe061d6d"
     assert result.geometry_id == geometry["geometry_id"]
     assert result.geometry_id == "tattoo-geometry-55aa84c7c4d78a1b"
     assert result.treatment == "primary"
     assert result.manifest_sha256 == hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    assert result.manifest_sha256 == (
+        "be95fd5ef5e50f29c336c2695695f9028f57a51275ab15b9aca2c8450cd2671c"
+    )
     assert manifest["run_identity"]["catalog_id"] == result.catalog_id
+    assert manifest["run_identity"]["boundary_id"] == (
+        "tattoo-boundary-da45c61d325de3be"
+    )
+    assert manifest["run_identity"]["rendered_sha256"] == {
+        "ice-ih-tattoo-mockup.png": (
+            "815fb04d77ac84e5cf3912debb6a1d855cac991abf73b51d229c12bdfb7efe64"
+        ),
+        "ice-ih-tattoo-primary.pdf": (
+            "5924f6a59ec472cbd0708a73fd3bbdbb84145c6f53b1c69f69ec42932cd6056c"
+        ),
+        "ice-ih-tattoo-primary.svg": (
+            "6a4ca87da6ca6cd243ac59259e84953c2c450b74bfab0954394ee7ea2fc6bc2e"
+        ),
+        "ice-ih-tattoo-stencil.png": (
+            "86ab4a6eb8d7d53b3ccc44695c71213b8043c8202e19d414dcf02d48187bda89"
+        ),
+    }
     assert tuple(path["member_id"] for path in selection["selected_paths"]) == (
         EXPECTED_MEMBERS
     )

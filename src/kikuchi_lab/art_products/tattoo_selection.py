@@ -7,15 +7,14 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any, Literal
+from typing import Any, Literal, Protocol, runtime_checkable
 
 import numpy as np
 
 from kikuchi_lab.art_products.contracts import ArtBandCatalog, TattooTier
 from kikuchi_lab.model.identity import stable_id
+from kikuchi_lab.model.recipes import Orientation
 from kikuchi_lab.spherical_intensity.orientation import orientation_matrix
-
-from .tattoo_recipe import TattooRecipe
 
 
 DecisionReason = Literal["selected", "angular_redundancy", "allocation_complete"]
@@ -28,6 +27,26 @@ _SCORE_NAMES = (
     "zone_relationship",
 )
 _ARRAY_DTYPE = np.dtype("<f8")
+
+
+@runtime_checkable
+class HemisphereSelectionRecipe(Protocol):
+    """Structural policy consumed by selection and hemisphere geometry."""
+
+    orientation: Orientation
+    artboard_size_mm: float
+    path_allocation: Mapping[str, int]
+    stroke_widths_mm: Mapping[str, tuple[float, ...]]
+    great_circle_samples: int
+    crop_radius: float
+    redundancy_threshold_deg: float
+    score_weights: Mapping[str, float]
+    coverage_sectors: int
+    zone_interior_margin_deg: float
+    projection_boundary: Mapping[str, object]
+
+    @property
+    def recipe_id(self) -> str: ...
 
 
 def _owned_array(
@@ -266,7 +285,7 @@ def _axial_separation_deg(first: np.ndarray, second: np.ndarray) -> float:
 def _zone_relationship(
     normal: np.ndarray,
     selected: Sequence[TattooCandidate],
-    recipe: TattooRecipe,
+    recipe: HemisphereSelectionRecipe,
 ) -> float:
     if not selected:
         return 0.0
@@ -295,7 +314,7 @@ def _candidate_scores(
     selected: Sequence[TattooCandidate],
     used_sectors: set[int],
     max_half_width: float,
-    recipe: TattooRecipe,
+    recipe: HemisphereSelectionRecipe,
 ) -> tuple[dict[str, float], float, float]:
     separations = [
         _axial_separation_deg(candidate.normal_sample, prior.normal_sample)
@@ -313,7 +332,9 @@ def _candidate_scores(
     return components, float(total), minimum_separation
 
 
-def _tier_assignments(recipe: TattooRecipe) -> tuple[tuple[TattooTier, float], ...]:
+def _tier_assignments(
+    recipe: HemisphereSelectionRecipe,
+) -> tuple[tuple[TattooTier, float], ...]:
     result: list[tuple[TattooTier, float]] = []
     for tier in _TIER_ORDER:
         count = recipe.path_allocation[tier]
@@ -326,13 +347,13 @@ def _tier_assignments(recipe: TattooRecipe) -> tuple[tuple[TattooTier, float], .
 
 def select_tattoo_paths(
     catalog: ArtBandCatalog,
-    recipe: TattooRecipe,
+    recipe: HemisphereSelectionRecipe,
 ) -> TattooSelection:
     """Select the approved 11-path hierarchy from rotated eligible bands."""
     if not isinstance(catalog, ArtBandCatalog):
         raise TypeError("catalog must be an ArtBandCatalog")
-    if not isinstance(recipe, TattooRecipe):
-        raise TypeError("recipe must be a TattooRecipe")
+    if not isinstance(recipe, HemisphereSelectionRecipe):
+        raise TypeError("recipe must satisfy HemisphereSelectionRecipe")
     rotation = orientation_matrix(recipe.orientation)
     candidates: list[TattooCandidate] = []
     rejections: dict[str, str] = {}
@@ -469,6 +490,7 @@ def select_tattoo_paths(
 
 
 __all__ = [
+    "HemisphereSelectionRecipe",
     "SelectedTattooPath",
     "TattooCandidate",
     "TattooSelection",

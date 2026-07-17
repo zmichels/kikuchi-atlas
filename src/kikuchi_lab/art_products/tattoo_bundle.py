@@ -545,30 +545,13 @@ def _write_contents(
     }
 
 
-def write_tattoo_bundle(
+def _publish_validated_payload(
     output_root: str | Path,
     *,
-    catalog: ArtBandCatalog,
-    recipe: TattooRecipe,
-    selection: TattooSelection,
-    geometry: TattooGeometry,
-    rendered: Mapping[str, bytes],
-    treatment: str,
-    disclaimer: str,
-    frozen_manifest: FrozenTattooSelection | None = None,
-) -> TattooBundleResult:
-    """Preflight completely, then atomically publish one primary tattoo bundle."""
-    payload = _validated_payload(
-        catalog=catalog,
-        recipe=recipe,
-        selection=selection,
-        geometry=geometry,
-        rendered=rendered,
-        treatment=treatment,
-        disclaimer=disclaimer,
-        frozen_manifest=frozen_manifest,
-    )
-    run_id = stable_id("ice-tattoo-run", payload.run_identity)
+    run_id: str,
+    payload: _ValidatedPayload,
+) -> tuple[Path, str]:
+    """Publish an already validated payload without replacing an existing run."""
     root = Path(output_root)
     root.mkdir(parents=True, exist_ok=True)
     completed = root / run_id
@@ -622,14 +605,46 @@ def write_tattoo_bundle(
             raise PartialBundleError(
                 f"partial bundle could not be promoted atomically: {partial}"
             ) from None
-        return TattooBundleResult(
-            run_id=run_id,
-            path=completed,
-            manifest_sha256=manifest_sha256,
-        )
+        return completed, manifest_sha256
     finally:
         ownership.rmdir()
         _fsync_directory(root)
+
+
+def write_tattoo_bundle(
+    output_root: str | Path,
+    *,
+    catalog: ArtBandCatalog,
+    recipe: TattooRecipe,
+    selection: TattooSelection,
+    geometry: TattooGeometry,
+    rendered: Mapping[str, bytes],
+    treatment: str,
+    disclaimer: str,
+    frozen_manifest: FrozenTattooSelection | None = None,
+) -> TattooBundleResult:
+    """Preflight completely, then atomically publish one primary tattoo bundle."""
+    payload = _validated_payload(
+        catalog=catalog,
+        recipe=recipe,
+        selection=selection,
+        geometry=geometry,
+        rendered=rendered,
+        treatment=treatment,
+        disclaimer=disclaimer,
+        frozen_manifest=frozen_manifest,
+    )
+    run_id = stable_id("ice-tattoo-run", payload.run_identity)
+    completed, manifest_sha256 = _publish_validated_payload(
+        output_root,
+        run_id=run_id,
+        payload=payload,
+    )
+    return TattooBundleResult(
+        run_id=run_id,
+        path=completed,
+        manifest_sha256=manifest_sha256,
+    )
 
 
 __all__ = [

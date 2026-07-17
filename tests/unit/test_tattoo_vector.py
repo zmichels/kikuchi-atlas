@@ -112,6 +112,19 @@ def test_build_preserves_order_widths_and_centered_crop_without_mutation() -> No
         assert not selected.center_trace.flags.writeable
 
 
+def test_explicit_standard_width_scale_preserves_legacy_geometry_and_bytes() -> None:
+    vector = _vector()
+    recipe = load_tattoo_recipe(RECIPE)
+    selection = _selection()
+
+    legacy = vector.build_tattoo_geometry(selection, recipe)
+    explicit = vector.build_tattoo_geometry(selection, recipe, width_scale=1.0)
+
+    assert legacy.geometry_id == explicit.geometry_id
+    assert legacy.to_dict() == explicit.to_dict()
+    assert vector.render_primary_tattoo(legacy) == vector.render_primary_tattoo(explicit)
+
+
 def test_geometry_contains_complete_boundary_and_unchanged_path_hierarchy() -> None:
     selection = _selection()
     geometry = _vector().build_tattoo_geometry(selection, load_tattoo_recipe(RECIPE))

@@ -21,8 +21,10 @@ from kikuchi_lab.art_products.contracts import (
     TattooGeometry,
     TattooPath,
 )
-from kikuchi_lab.art_products.tattoo_recipe import TattooRecipe
-from kikuchi_lab.art_products.tattoo_selection import TattooSelection
+from kikuchi_lab.art_products.tattoo_selection import (
+    HemisphereSelectionRecipe,
+    TattooSelection,
+)
 
 
 _PATH_COUNT = 11
@@ -472,13 +474,22 @@ def validate_tattoo_geometry(geometry: TattooGeometry) -> None:
 
 def build_tattoo_geometry(
     selection: TattooSelection,
-    recipe: TattooRecipe,
+    recipe: HemisphereSelectionRecipe,
+    *,
+    width_scale: float = 1.0,
 ) -> TattooGeometry:
     """Clip selected traces, transform them to millimeters, and validate them."""
     if not isinstance(selection, TattooSelection):
         raise TypeError("selection must be a TattooSelection")
-    if not isinstance(recipe, TattooRecipe):
-        raise TypeError("recipe must be a TattooRecipe")
+    if not isinstance(recipe, HemisphereSelectionRecipe):
+        raise TypeError("recipe must satisfy HemisphereSelectionRecipe")
+    if (
+        isinstance(width_scale, bool)
+        or not isinstance(width_scale, (int, float))
+        or float(width_scale) not in (1.0, 1.15)
+    ):
+        raise ValueError("width_scale must be exactly 1.0 or 1.15")
+    width_scale = float(width_scale)
     if selection.recipe_id != recipe.recipe_id:
         raise ValueError("selection recipe_id does not match the tattoo recipe")
     if selection.orientation_id != recipe.orientation.orientation_id:
@@ -536,7 +547,7 @@ def build_tattoo_geometry(
             TattooPath(
                 member_id=selected.member_id,
                 tier=selected.tier,
-                width_mm=selected.width_mm,
+                width_mm=selected.width_mm * width_scale,
                 points_mm=points_mm,
                 score_components=selected.score_components,
                 selection_reason=selected.selection_reason,
