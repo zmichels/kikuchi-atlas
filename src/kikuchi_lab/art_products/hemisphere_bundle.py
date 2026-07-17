@@ -31,6 +31,11 @@ from .tattoo_vector import (
 )
 
 
+_AUTHORITATIVE_ICE_FROZEN_MANIFEST_ID = (
+    "frozen-tattoo-selection-f0e4f843362bab65"
+)
+
+
 @dataclass(frozen=True)
 class PhaseHemisphereBundleResult:
     """Published identity and location for one immutable phase treatment."""
@@ -84,6 +89,14 @@ def _validated_phase_payload(
         raise ValueError("frozen selection manifests are reserved for Ice Ih")
     if frozen_manifest is not None and frozen_manifest.phase_slug != phase_slug:
         raise ValueError("frozen selection phase does not match phase_slug")
+    if (
+        phase_slug == "ice-ih"
+        and frozen_manifest is not None
+        and frozen_manifest.manifest_id != _AUTHORITATIVE_ICE_FROZEN_MANIFEST_ID
+    ):
+        raise ValueError(
+            "Ice Ih publication requires the authoritative reviewed manifest"
+        )
     if disclaimer != DISCLAIMER_TEXT:
         raise ValueError(
             "tattoo-artist disclaimer is required and must match the approved text"
@@ -116,6 +129,16 @@ def _validated_phase_payload(
         )
     if _selection_snapshot(selection) != _selection_snapshot(expected_selection):
         raise ValueError("selection content does not match strict catalog selection")
+
+    if treatment.name == "standard":
+        try:
+            build_tattoo_geometry(
+                expected_selection,
+                recipe,
+                width_scale=1.15,
+            )
+        except ValueError as error:
+            raise ValueError(f"wide geometry preflight failed: {error}") from error
 
     if geometry.boundary.boundary_id != stable_id(
         "tattoo-boundary", geometry.boundary.identity_dict()
