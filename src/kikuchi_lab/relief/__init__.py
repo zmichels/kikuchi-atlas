@@ -30,6 +30,15 @@ from .mapping import (
     sample_mapped_field,
 )
 from .topology import IcosphereTopology, build_icosphere
+from .mesh import (
+    FIELD_ARRAY_ORDER,
+    ReliefFieldArtifact,
+    ReliefMeshValidation,
+    relief_field_npz_bytes,
+    relief_stl_bytes,
+    validate_relief_mesh,
+    write_relief_preview,
+)
 
 __all__ = [
     "DirectionalSamples",
@@ -37,15 +46,18 @@ __all__ = [
     "MappedDirectionalSamples",
     "MappedSphericalField",
     "ReliefFDMContext",
+    "ReliefFieldArtifact",
     "ReliefGeometrySpec",
     "ReliefGlobeRecipe",
     "ReliefMappingSpec",
     "ReliefGeometry",
+    "ReliefMeshValidation",
     "ReliefSourceExpectation",
     "SeamDiagnostics",
     "SphericalScalarField",
     "SphericalFilterSpec",
     "SphericalFilterDiagnostics",
+    "FIELD_ARRAY_ORDER",
     "build_relief_geometry",
     "build_spherical_scalar_field",
     "build_icosphere",
@@ -55,6 +67,10 @@ __all__ = [
     "lambert_square_to_directions",
     "load_relief_globe_recipe",
     "map_source_field",
+    "relief_field_npz_bytes",
+    "relief_stl_bytes",
     "sample_mapped_field",
     "sample_spherical_field",
+    "validate_relief_mesh",
+    "write_relief_preview",
 ]
