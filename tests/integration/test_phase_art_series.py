@@ -16,6 +16,7 @@ from kikuchi_lab.art_products.frozen_selection import (
     load_frozen_tattoo_selection,
 )
 from kikuchi_lab.art_products.hemisphere_bundle import (
+    _validated_phase_payload,
     write_phase_hemisphere_bundle,
 )
 from kikuchi_lab.art_products.hemisphere_recipe import (
@@ -37,6 +38,8 @@ from kikuchi_lab.kinematical.reflector_parity import compare_reflector_evidence
 from kikuchi_lab.sources.structure import load_structure_record
 from kikuchi_lab.workflows.phase_art_series import (
     IceStandardReferenceMismatch,
+    PhaseParityReportError,
+    assert_reviewed_ice_reference,
     render_phase_art_series,
 )
 
@@ -56,6 +59,10 @@ CELL_ORDER = (
     "titanite:standard",
     "titanite:wide",
 )
+PHASE_ORDER = ("ice-ih", "forsterite", "quartz", "zircon", "titanite")
+ALL_PHASES_INCOMPLETE = {
+    phase_slug: {"status": "incomplete"} for phase_slug in PHASE_ORDER
+}
 
 pytestmark = [
     pytest.mark.filterwarnings("ignore:.*abcABG.*:DeprecationWarning"),
@@ -69,6 +76,7 @@ pytestmark = [
 class SeriesInputs:
     parity_root: Path
     ice_standard_reference: Path
+    ice_reference_kwargs: dict[str, object]
 
 
 @pytest.fixture(scope="module")
@@ -113,6 +121,25 @@ def series_inputs(tmp_path_factory: pytest.TempPathFactory) -> SeriesInputs:
         frozen_manifest,
     )
     standard = build_tattoo_geometry(selection, composition, width_scale=1.0)
+    standard_rendered = render_primary_tattoo(standard)
+    reference_kwargs = {
+        "expected_payload": _validated_phase_payload(
+            phase_slug="ice-ih",
+            treatment=series.treatments["standard"],
+            catalog=ice_catalog,
+            recipe=composition,
+            selection=selection,
+            geometry=standard,
+            rendered=standard_rendered,
+            disclaimer=DISCLAIMER_TEXT,
+            frozen_manifest=frozen_manifest,
+        ),
+        "catalog": ice_catalog,
+        "composition": composition,
+        "selection": selection,
+        "standard_geometry": standard,
+        "frozen_manifest": frozen_manifest,
+    }
     reference = write_phase_hemisphere_bundle(
         temporary_root / "corrected-ice-reference",
         phase_slug="ice-ih",
@@ -121,13 +148,14 @@ def series_inputs(tmp_path_factory: pytest.TempPathFactory) -> SeriesInputs:
         recipe=composition,
         selection=selection,
         geometry=standard,
-        rendered=render_primary_tattoo(standard),
+        rendered=standard_rendered,
         disclaimer=DISCLAIMER_TEXT,
         frozen_manifest=frozen_manifest,
     )
     return SeriesInputs(
         parity_root=parity_root,
         ice_standard_reference=reference.path,
+        ice_reference_kwargs=reference_kwargs,
     )
 
 
@@ -223,6 +251,74 @@ def test_ice_reference_checksum_or_selection_mismatch_is_fatal_before_output(
             output_root=output_root,
         )
 
+    assert not output_root.exists()
+
+
+def test_ice_reference_rejects_self_consistent_render_tampering(
+    tmp_path: Path,
+    series_inputs: SeriesInputs,
+) -> None:
+    damaged_reference = tmp_path / series_inputs.ice_standard_reference.name
+    shutil.copytree(series_inputs.ice_standard_reference, damaged_reference)
+    render_name = "ice-ih-hemisphere-standard.svg"
+    render_path = damaged_reference / render_name
+    render_path.write_bytes(b"<svg>tampered reviewed render</svg>\n")
+    manifest_path = damaged_reference / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["files"][render_name] = {
+        "bytes": render_path.stat().st_size,
+        "sha256": hashlib.sha256(render_path.read_bytes()).hexdigest(),
+    }
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(IceStandardReferenceMismatch, match="reviewed Ice"):
+        assert_reviewed_ice_reference(
+            reference_path=damaged_reference,
+            **series_inputs.ice_reference_kwargs,
+        )
+
+
+def test_missing_parity_root_has_all_incomplete_diagnostics_without_output(
+    tmp_path: Path,
+) -> None:
+    output_root = tmp_path / "must-not-exist"
+
+    with pytest.raises(
+        PhaseParityReportError,
+        match="parity root is not a directory",
+    ) as caught:
+        render_phase_art_series(
+            recipe_path=SERIES_RECIPE,
+            parity_root=tmp_path / "missing-parity",
+            ice_standard_reference=tmp_path / "unused-reference",
+            output_root=output_root,
+        )
+
+    assert caught.value.phase_diagnostics == ALL_PHASES_INCOMPLETE
+    assert not output_root.exists()
+
+
+def test_malformed_parity_report_has_all_incomplete_diagnostics_without_output(
+    tmp_path: Path,
+) -> None:
+    parity_root = tmp_path / "malformed-parity"
+    report_path = parity_root / "nested" / "reflector-parity-report.json"
+    report_path.parent.mkdir(parents=True)
+    report_path.write_text("not-json", encoding="utf-8")
+    output_root = tmp_path / "must-not-exist"
+
+    with pytest.raises(
+        PhaseParityReportError,
+        match="malformed or failed reflector parity report",
+    ) as caught:
+        render_phase_art_series(
+            recipe_path=SERIES_RECIPE,
+            parity_root=parity_root,
+            ice_standard_reference=tmp_path / "unused-reference",
+            output_root=output_root,
+        )
+
+    assert caught.value.phase_diagnostics == ALL_PHASES_INCOMPLETE
     assert not output_root.exists()
 
 

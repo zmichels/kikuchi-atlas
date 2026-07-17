@@ -284,6 +284,9 @@ def _validate_reference_inventory(
     files = manifest["files"]
     if not isinstance(run_identity, dict) or not isinstance(files, dict):
         raise ValueError("reference manifest identity and files must be mappings")
+    expected_identity = plain_data(expected_payload.run_identity)
+    if plain_data(run_identity) != expected_identity:
+        raise ValueError("reference run identity differs from corrected standard")
     expected_names = set(expected_payload.files)
     if set(files) != expected_names:
         raise ValueError("reference manifest inventory differs from corrected standard")
@@ -302,9 +305,15 @@ def _validate_reference_inventory(
             raise ValueError(f"reference inventory record is invalid for {name}")
         if path.stat().st_size != record["bytes"] or _sha256(path) != record["sha256"]:
             raise ValueError(f"reference checksum inventory differs for {name}")
+        expected_content = expected_payload.files[name]
+        if isinstance(expected_content, bytes):
+            if path.read_bytes() != expected_content:
+                raise ValueError(f"reference {name} bytes differ from corrected content")
+        elif _read_json(path) != plain_data(expected_content):
+            raise ValueError(f"reference {name} differs from corrected content")
     expected_run_id = stable_id(
         "ice-ih-hemisphere-standard-run",
-        run_identity,
+        expected_identity,
     )
     if manifest["run_id"] != expected_run_id or reference.name != expected_run_id:
         raise ValueError("reference run identity differs from its manifest or path")
@@ -353,23 +362,6 @@ def assert_reviewed_ice_reference(
         for name, expected in expected_snapshots.items():
             if _read_json(reference / name) != plain_data(expected):
                 raise ValueError(f"reference {name} differs from corrected content")
-        identity = manifest["run_identity"]
-        expected_identity = expected_payload.run_identity
-        locked_fields = {
-            "schema_version",
-            "phase_slug",
-            "catalog_id",
-            "recipe_id",
-            "treatment_id",
-            "selection_id",
-            "geometry_id",
-            "boundary_id",
-            "treatment",
-            "arc_width_scale",
-            "frozen_manifest_id",
-        }
-        if any(identity.get(field) != expected_identity.get(field) for field in locked_fields):
-            raise ValueError("reference identity differs from corrected standard")
         selected = _read_json(reference / "band-selection-ledger.json")
         selected_paths = selected["selected_paths"]
         if [path["member_id"] for path in selected_paths] != [
@@ -416,7 +408,13 @@ def render_phase_art_series(
     """Preflight all five phases, then publish nine bundles and one series."""
     recipe_file = Path(recipe_path).resolve()
     series = load_hemisphere_series_recipe(recipe_file)
-    reports = _load_parity_reports(parity_root)
+    phase_diagnostics: dict[str, dict[str, object]] = {
+        phase_slug: {"status": "incomplete"} for phase_slug in series.phase_order
+    }
+    reports = _run_phase_step(
+        lambda: _load_parity_reports(parity_root),
+        phase_diagnostics,
+    )
     frozen_manifest = load_frozen_tattoo_selection(
         recipe_file.parent / _ICE_SELECTION_MANIFEST
     )
@@ -424,9 +422,6 @@ def render_phase_art_series(
     prepared_bundles: list[_PreparedBundle] = []
     prepared_cells: dict[str, tuple[TattooSelection, TattooGeometry]] = {}
     reference_run_id: str | None = None
-    phase_diagnostics: dict[str, dict[str, object]] = {
-        phase_slug: {"status": "incomplete"} for phase_slug in series.phase_order
-    }
     for phase_slug in series.phase_order:
         direct = _run_phase_step(
             lambda: _build_direct_phase(
