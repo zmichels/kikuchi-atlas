@@ -22,6 +22,11 @@ manufacturable geometry.
   ([aesthetic-clarity.yml](../../reference/catalog/aesthetic-clarity.yml)).
 - [ADR 0003](../decisions/0003-clarity-aesthetic-target.md) explicitly keeps
   spherical and print products outside the planar final-pattern contract.
+- The approved [crystal-habit mesh generator design](../superpowers/specs/2026-07-17-crystal-habit-mesh-generator-design.md)
+  and [KIKU-F004](../work/KIKU-F004.md) promote a direct-morphology mesh spine
+  using a quartz habit proof. That work establishes shared scale, triangulation,
+  validation, export, and provenance components, but it does not promote an
+  intensity-derived or diagrammatic Kikuchi relief product.
 
 ## Dependencies
 
@@ -34,8 +39,9 @@ manufacturable geometry.
 
 ## Unresolved questions
 
-- Should the first printable artifact be a planar relief, a full sphere, or a
-  spherical segment?
+- For the Kikuchi-derived product, should the first printable artifact be a
+  full sphere or a spherical segment? The separately promoted direct habit
+  solid does not answer this relief-specific choice.
 - Does readable geometry require a continuous master-pattern map, extracted
   band centerlines, or a multiscale blend of both?
 - Which physical size, material, process, and relief limits should define the
@@ -51,6 +57,8 @@ manufacturable geometry.
   future route to continuous spherical source fields.
 - [Interactive spherical view](interactive-spherical-view.md) separates an
   openable viewing model from topology- and unit-constrained print geometry.
+- [KIKU-F004](../work/KIKU-F004.md) tracks the direct crystal-habit generator
+  and shared mesh spine without changing this record's relief semantics.
 
 ## Promotion trigger
 
