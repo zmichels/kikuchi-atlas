@@ -12,6 +12,7 @@ priority: P1
 tags: [orientation, great-circle, vector, gallery, direct-reflector]
 links:
   - ../superpowers/specs/2026-07-17-five-phase-standard-orientation-gallery-design.md
+  - ../superpowers/plans/2026-07-17-five-phase-standard-orientation-gallery.md
 evidence:
   - ../superpowers/specs/2026-07-17-five-phase-standard-orientation-gallery-design.md
 ---
