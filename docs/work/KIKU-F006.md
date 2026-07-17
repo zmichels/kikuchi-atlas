@@ -13,6 +13,7 @@ priority: P1
 tags: [phase-general, reflectors, science-art, tattoo, vector]
 links:
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
+  - ../superpowers/plans/2026-07-16-phase-general-direct-reflector-art-series.md
 evidence:
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
 ---

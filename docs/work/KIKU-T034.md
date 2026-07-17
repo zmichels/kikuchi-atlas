@@ -12,6 +12,7 @@ priority: P1
 tags: [orientation, great-circle, vector, tattoo, gallery]
 links:
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
+  - ../superpowers/plans/2026-07-16-phase-general-direct-reflector-art-series.md
 evidence:
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
 ---

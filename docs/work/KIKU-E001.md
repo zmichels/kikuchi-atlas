@@ -25,6 +25,7 @@ links:
   - ../superpowers/plans/2026-07-16-ice-art-catalog-and-tattoo.md
   - ../superpowers/plans/2026-07-16-ice-relief-globe.md
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
+  - ../superpowers/plans/2026-07-16-phase-general-direct-reflector-art-series.md
 evidence:
   - ../superpowers/specs/2026-07-12-kikuchi-companion-design.md
   - ../acceptance/forsterite-milestone.md

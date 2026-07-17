@@ -9,6 +9,7 @@ priority: P1
 tags: [reflectors, structure-factor, parity, finite-work]
 links:
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
+  - ../superpowers/plans/2026-07-16-phase-general-direct-reflector-art-series.md
 evidence:
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
 ---

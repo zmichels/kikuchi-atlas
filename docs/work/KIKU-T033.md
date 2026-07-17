@@ -11,6 +11,7 @@ priority: P1
 tags: [quartz, zircon, titanite, provenance, parity]
 links:
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
+  - ../superpowers/plans/2026-07-16-phase-general-direct-reflector-art-series.md
 evidence:
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
 ---
