@@ -1,0 +1,1 @@
+Scientific claim: presentation-only science art derived from retained orientation-independent direct-reflector evidence. This gallery rotates crystal normals into the recorded crystal_to_sample frame before drawing the stereographic geometry. No master-pattern simulation was calculated for this gallery cell; simulation_count is 0.
