@@ -106,6 +106,15 @@ choice-1 fractional offset `[0, 1/4, -1/8]` because diffpy's numbered space
 group 141 operators use choice 1. Expansion must prove the exact
 `4 Zr + 4 Si + 16 O` conventional cell before reflector calculation.
 
+For titanite, COD 9000509 supplies the 298.15 K synthetic `P 1 21/a 1`
+structure. diffpy's numbered space group 14 uses standard `P 1 21/c 1`, so
+the simulation record swaps source `a/c` and fractional `x/z`; the explicit
+source and target symmetry translations must then agree exactly. If upstream
+Cartesian point-group symmetrisation yields non-integer pseudo-HKLs for this
+non-orthogonal cell, the direct path must expand exact reciprocal-index orbits
+from the space-group fractional rotation matrices. It may not round those
+pseudo-indices into claimed reflectors.
+
 ### 2. Direct reflector evidence
 
 The existing adapter already enumerates reciprocal-lattice vectors and
@@ -150,6 +159,11 @@ requires evidence, a revised recipe identity, and renewed design approval.
 
 No dense stereographic, Lambert, detector, or spherical intensity array is
 created on this production path.
+
+A fully versioned migration of every phase from reviewed upstream Cartesian
+orbits to one canonical exact fractional-index engine is parked until after the
+first comparison series. It will require new evidence identities and explicit
+parity review even when plotted geometry changes only below visual precision.
 
 ### 3. Phase catalog boundary
 

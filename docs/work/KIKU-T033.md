@@ -2,7 +2,7 @@
 id: KIKU-T033
 type: task
 title: Onboard quartz zircon and titanite reflector catalogs
-status: proposed
+status: active
 parent: KIKU-F006
 depends_on:
   - KIKU-T032
@@ -25,9 +25,14 @@ Add cited, checksum-verified, setting-explicit structure records for alpha-quart
 stoichiometric zircon, and stoichiometric monoclinic titanite, then validate one
 bounded direct-versus-simulator reflector parity proof for each phase.
 
+Onboarded source identities are `COD-9012600`,
+`COD-9000684-isotropic-U`, and `COD-9000509`. Zircon records the explicit
+origin-choice-2 to choice-1 offset; titanite records the exact P21/a to P21/c
+axis/coordinate mapping and the non-integer-orbit fallback boundary.
+
 ## Acceptance Criteria
 
-- [ ] Each source record identifies license, checksum, cell setting, sites, occupancies, thermal treatment, transformations, and limitations.
-- [ ] Structural validation and reflection/systematic-absence checks pass for all three phases.
+- [x] Each source record identifies license, checksum, cell setting, sites, occupancies, thermal treatment, transformations, and limitations.
+- [x] Structural validation and reflection/systematic-absence checks pass for all three phases.
 - [ ] Each phase retains one bounded onboarding parity diagnostic without automatic retry or resolution growth.
 - [ ] Every phase publishes an orientation-independent, provenance-bearing art-band catalog with at least 11 defensible axial candidates.

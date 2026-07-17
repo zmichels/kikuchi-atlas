@@ -239,6 +239,47 @@ def _allowed_mask(reflectors: ReciprocalLatticeVector) -> np.ndarray:
         raise
 
 
+def _reciprocal_rotation_matrices(phase: Phase) -> tuple[np.ndarray, ...]:
+    """Return exact unique reciprocal-index rotations from space-group operators."""
+    matrices: list[np.ndarray] = []
+    for operation in phase.space_group.symop_list:
+        direct_float = np.asarray(operation.R, dtype=np.float64)
+        direct = np.rint(direct_float).astype(np.int64)
+        if not np.allclose(direct_float, direct, rtol=0.0, atol=1e-12):
+            raise ValueError("space-group direct rotations must be integer-valued")
+        reciprocal_float = np.linalg.inv(direct).T
+        reciprocal = np.rint(reciprocal_float).astype(np.int64)
+        if not np.allclose(reciprocal_float, reciprocal, rtol=0.0, atol=1e-12):
+            raise ValueError("space-group reciprocal rotations must be integer-valued")
+        if not any(np.array_equal(reciprocal, existing) for existing in matrices):
+            matrices.append(reciprocal)
+    if not matrices:
+        raise ValueError("space group must provide at least one reciprocal rotation")
+    return tuple(matrices)
+
+
+def _canonical_axial_hkl(indices: np.ndarray) -> tuple[int, int, int]:
+    nonzero = np.flatnonzero(indices)
+    if not nonzero.size:
+        raise ValueError("direct reflector HKLs must be nonzero")
+    sign = 1 if int(indices[int(nonzero[0])]) > 0 else -1
+    return tuple(int(value) for value in sign * indices)
+
+
+def _symmetrise_exact_integer_hkls(
+    reflectors: ReciprocalLatticeVector,
+) -> ReciprocalLatticeVector:
+    """Expand exact reciprocal-index orbits without Cartesian point-group drift."""
+    hkl_float = np.asarray(reflectors.hkl, dtype=np.float64)
+    hkl = np.rint(hkl_float).astype(np.int64)
+    if not np.allclose(hkl_float, hkl, rtol=0.0, atol=1e-8):
+        raise ValueError("enumerated reflector HKLs must be integer-valued")
+    rotations = _reciprocal_rotation_matrices(reflectors.phase)
+    orbit = np.concatenate([hkl @ rotation.T for rotation in rotations], axis=0)
+    unique = np.unique(orbit, axis=0)
+    return ReciprocalLatticeVector(reflectors.phase, hkl=unique)
+
+
 def _enumerate_reflectors(
     phase: Phase, recipe: _ReflectorEnumerationRecipe
 ) -> ReciprocalLatticeVector:
@@ -246,7 +287,16 @@ def _enumerate_reflectors(
         phase, min_dspacing=recipe.min_dspacing_angstrom
     )
     reflectors = reflectors[_allowed_mask(reflectors)]
-    reflectors = reflectors.unique(use_symmetry=True).symmetrise()
+    upstream_symmetrised = reflectors.unique(use_symmetry=True).symmetrise()
+    upstream_hkl = np.asarray(upstream_symmetrised.hkl, dtype=np.float64)
+    if np.allclose(upstream_hkl, np.rint(upstream_hkl), rtol=0.0, atol=1e-8):
+        # Preserve the reviewed upstream representation when it remains a valid
+        # reciprocal-index orbit. Some non-orthogonal settings (notably
+        # monoclinic 2/m) rotate about orix's Cartesian convention and yield
+        # non-integer pseudo-HKLs; those must use the exact fractional-space path.
+        reflectors = upstream_symmetrised
+    else:
+        reflectors = _symmetrise_exact_integer_hkls(reflectors)
     return _calculate_axial_structure_factors(
         reflectors, recipe.scattering_params
     )
@@ -290,17 +340,21 @@ def _calculate_axial_structure_factors(
         scattering_params=scattering_params,
     )
     factor_by_key = dict(zip(map(tuple, canonical), factors, strict=True))
+    rotations = _reciprocal_rotation_matrices(reflectors.phase)
+    factor_keys = set(factor_by_key)
     representative_by_key: dict[tuple[int, int, int], tuple[int, int, int]] = {}
-    for family_indices in reflectors.get_hkl_sets().values():
-        family_keys = sorted({keys[int(index)] for index in family_indices[0]})
-        representative = family_keys[0]
-        for key in family_keys:
-            previous = representative_by_key.setdefault(key, representative)
-            if previous != representative:
-                raise ValueError(
-                    "direct reflector point-symmetry families overlap "
-                    "inconsistently after axial canonicalization"
-                )
+    for key in factor_by_key:
+        indices = np.asarray(key, dtype=np.int64)
+        family_keys = {
+            _canonical_axial_hkl(rotation @ indices) for rotation in rotations
+        }
+        missing = family_keys - factor_keys
+        if missing:
+            raise ValueError(
+                "direct reflector symmetry orbit is incomplete after exact "
+                f"integer symmetrisation: {sorted(missing)!r}"
+            )
+        representative_by_key[key] = min(family_keys)
     # Kikuchi intensity uses |F|. Reuse one actually calculated family
     # representative so symmetry-equivalent magnitudes remain exact ties;
     # the opposite axial direction receives its exact conjugate below.

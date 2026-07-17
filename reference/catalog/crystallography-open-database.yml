@@ -60,3 +60,22 @@ entries:
       year: 1979
       volume: 64
       pages: 196-201
+  COD-9000509:
+    record: ../../phases/titanite/source.yml
+    page_uri: https://www.crystallography.net/cod/9000509.html
+    cif_uri: https://www.crystallography.net/cod/9000509.cif
+    retrieved: 2026-07-16
+    sha256: ed45563f6621488f165373f2847c65acef197744322e0937d985518a3437be42
+    license: CC0-1.0
+    source_setting: P 1 21/a 1
+    simulation_setting: "P 1 21/c 1 via a,c and x,z swap"
+    temperature_kelvin: 298.15
+    specimen: synthetic stoichiometric CaTiSiO5
+    excluded_polymorph: high-temperature A2/a
+    original_publication:
+      authors: [M. Taylor, G. E. Brown]
+      title: High-temperature structural study of the P2_1/a - A2/a phase transition in synthetic titanite, CaTiSiO5
+      journal: American Mineralogist
+      year: 1976
+      volume: 61
+      pages: 435-447

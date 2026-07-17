@@ -1,0 +1,52 @@
+schema_version: 1
+identifier: COD-9000509
+cif: COD-9000509.cif
+sha256: ed45563f6621488f165373f2847c65acef197744322e0937d985518a3437be42
+retrieved: 2026-07-16
+uri: https://www.crystallography.net/cod/9000509.cif
+page_uri: https://www.crystallography.net/cod/9000509.html
+license: CC0-1.0
+license_uri: https://creativecommons.org/publicdomain/zero/1.0/
+copying_policy: Public-domain COD data; acknowledge the original structural-data authors.
+citation: >-
+  Taylor, M. and Brown, G. E. (1976). High-temperature structural study of
+  the P2_1/a - A2/a phase transition in synthetic titanite, CaTiSiO5.
+  American Mineralogist 61, 435-447. Structure measured at 25 degrees C.
+phase:
+  name: synthetic-titanite-25C
+  formula: CaTiSiO5
+  space_group_number: 14
+  setting: P 1 21/a 1
+  lattice_angstrom: [7.068, 8.714, 6.562, 90.0, 113.82, 90.0]
+sites:
+  - {label: Ca, element: Ca, fract: [0.24390, 0.41840, 0.25130], occupancy: 1.0, u_iso_angstrom_sq: 0.01596}
+  - {label: Ti, element: Ti, fract: [0.51240, 0.25570, 0.74980], occupancy: 1.0, u_iso_angstrom_sq: 0.00760}
+  - {label: Si, element: Si, fract: [0.74940, 0.43270, 0.24930], occupancy: 1.0, u_iso_angstrom_sq: 0.00507}
+  - {label: O1, element: O, fract: [0.74970, 0.32120, 0.74980], occupancy: 1.0, u_iso_angstrom_sq: 0.00887}
+  - {label: O2, element: O, fract: [0.90950, 0.31750, 0.43290], occupancy: 1.0, u_iso_angstrom_sq: 0.00950}
+  - {label: O3, element: O, fract: [0.08700, 0.18510, 0.06260], occupancy: 1.0, u_iso_angstrom_sq: 0.00760}
+  - {label: O4, element: O, fract: [0.38130, 0.45860, 0.64480], occupancy: 1.0, u_iso_angstrom_sq: 0.00659}
+  - {label: O5, element: O, fract: [0.61780, 0.03810, 0.85200], occupancy: 1.0, u_iso_angstrom_sq: 0.00925}
+thermal_factor_policy:
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
+  simulation_units: angstrom^2
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
+simulation_setting:
+  reason: >-
+    The source is the 298.15 K synthetic P21/a structure. diffpy exposes
+    space-group 14 in the standard P21/c setting, so swap source a/c axes and
+    x/z fractional coordinates; the explicit symmetry translations then match
+    exactly. This is neither the high-temperature A2/a polymorph nor a
+    compositionally substituted natural titanite.
+  source_setting: P 1 21/a 1
+  target_setting: P 1 21/c 1
+  target_lattice_from_source: [c, b, a]
+  target_fractional_from_source: [z, y, x]
+  target_site_multiplicities: [4, 4, 4, 4, 4, 4, 4, 4]
+  temperature_kelvin: 298.15
+  specimen: synthetic stoichiometric CaTiSiO5
+  excluded_polymorph: high-temperature A2/a

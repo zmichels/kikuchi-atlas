@@ -845,6 +845,14 @@ git commit -m "feat: onboard zircon reflectors"
 - Produces: verified source identifier `COD-9000509` and a shared-policy direct recipe.
 - Source: `https://www.crystallography.net/cod/9000509.cif`; raw SHA-256 `ed45563f6621488f165373f2847c65acef197744322e0937d985518a3437be42`.
 
+**Implementation amendment (2026-07-17):** COD uses `P 1 21/a 1`, while
+diffpy's numbered group 14 uses `P 1 21/c 1`; the source record therefore maps
+`[a,b,c] -> [c,b,a]` and `[x,y,z] -> [z,y,x]`. orix's Cartesian monoclinic
+point-group convention produces non-integer pseudo-HKLs at symmetrisation, so
+the direct adapter detects that invalid orbit and rebuilds exact integer
+reciprocal orbits from the fractional space-group rotations. Reviewed upstream
+orbits remain unchanged when their HKLs are valid integers.
+
 - [ ] **Step 1: Write failing room-temperature P21/a structure tests**
 
 ```python
@@ -910,14 +918,19 @@ Run: `uv run pytest tests/adapters/test_titanite_source.py tests/integration/tes
 
 Expected: PASS with at least 11 eligible bands; otherwise stop without threshold relaxation.
 
-- [ ] **Step 6: Mark KIKU-T033 done only if all three sources pass, then commit**
+- [ ] **Step 6: Keep KIKU-T033 active for parity, then commit the source slice**
 
-Update the tracker with exact source IDs and checked criteria, run `uv run python scripts/validate_work_items.py`, then commit:
+Update the tracker with exact source IDs and only the satisfied source/catalog
+criteria. Its bounded-parity criterion remains open until Task 12. Run
+`uv run python scripts/validate_work_items.py`, then commit:
 
 ```bash
 git add phases/titanite recipes/reflectors/titanite-art-bands.yml reference/catalog/crystallography-open-database.yml tests/adapters/test_titanite_source.py docs/work/KIKU-T033.md
 git commit -m "feat: onboard titanite reflectors"
 ```
+
+KIKU-T033 remains `active` after source/catalog onboarding because its separate
+bounded parity acceptance criterion is completed in Task 12.
 
 ---
 
