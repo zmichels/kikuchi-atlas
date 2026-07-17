@@ -4,20 +4,27 @@ type: feature
 title: Spherical intensity relief globe
 status: ready
 parent: KIKU-E001
-children: []
+children:
+- KIKU-T031
+- KIKU-T032
+- KIKU-T033
+- KIKU-T034
+- KIKU-T035
+- KIKU-T036
 created: 2026-07-17
 priority: P1
 tags:
-  - spherical-intensity
-  - relief
-  - mesh
-  - stl
-  - print-geometry
+- spherical-intensity
+- relief
+- mesh
+- stl
+- print-geometry
 links:
-  - ../superpowers/specs/2026-07-17-spherical-intensity-relief-globe-design.md
+- ../superpowers/specs/2026-07-17-spherical-intensity-relief-globe-design.md
+- ../superpowers/plans/2026-07-17-spherical-intensity-relief-globe.md
 evidence:
-  - ../incubator/print-geometry.md
-  - ../acceptance/forsterite-milestone.md
+- ../incubator/print-geometry.md
+- ../acceptance/forsterite-milestone.md
 ---
 
 # KIKU-F005: Spherical intensity relief globe
