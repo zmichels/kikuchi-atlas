@@ -140,7 +140,7 @@ def _manifest(
             "solver_relative": SOLVER_CONTRACT["relative_tolerance"],
             "minimum_triangle_area_mm2": MESH_CONTRACT["minimum_triangle_area_mm2"],
         },
-        "software_versions": _software_versions(),
+        "software_versions": identity["software_versions"],
         "validation_report": "mesh-validation.json",
         "validation": report.to_dict(),
         "files": files,
@@ -226,12 +226,14 @@ def build_habit(
     )
     triangles = triangulate_habit(polygon)
     report = validate_triangle_mesh(triangles, polygon, recipe.fdm_context)
+    software_versions = _software_versions()
     identity = {
         "schema": "kikuchi.habit-build/v1",
         "recipe": recipe.identity_dict(),
         "phase": asdict(phase),
         "solver": SOLVER_CONTRACT,
         "mesh_contract": MESH_CONTRACT,
+        "software_versions": software_versions,
     }
     if mtex_reference is not None:
         reference_bytes = Path(mtex_reference).read_bytes()

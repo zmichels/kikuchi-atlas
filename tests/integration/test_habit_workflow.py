@@ -67,6 +67,22 @@ def test_quartz_build_is_atomic_reproducible_and_complete(tmp_path: Path):
     assert loaded.extents.max() == pytest.approx(60.0, abs=1e-8)
 
 
+def test_runtime_version_change_changes_build_id(tmp_path: Path, monkeypatch):
+    import kikuchi_lab.habit.workflow as workflow
+
+    recipe = ROOT / "recipes/habits/quartz-mtex-example.yml"
+    observed_versions = workflow._software_versions()
+    first = build_habit(recipe, tmp_path / "first")
+    changed_versions = {**observed_versions, "scipy": "runtime-version-changed"}
+    monkeypatch.setattr(workflow, "_software_versions", lambda: changed_versions)
+    second = build_habit(recipe, tmp_path / "second")
+
+    assert first.build_id != second.build_id
+    manifest = json.loads(second.manifest.read_text(encoding="utf-8"))
+    assert manifest["identity"]["software_versions"] == changed_versions
+    assert manifest["software_versions"] == changed_versions
+
+
 def test_failed_build_removes_partial_bundle(tmp_path: Path, monkeypatch):
     import kikuchi_lab.habit.workflow as workflow
 

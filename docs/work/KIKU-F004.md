@@ -47,6 +47,6 @@ pipeline, with quartz as the first MTEX-referenced watertight STL proof.
 - Child tasks [KIKU-T025](KIKU-T025.md) through
   [KIKU-T030](KIKU-T030.md) are complete against tests and generated evidence.
 - [Crystal habit acceptance ledger](../acceptance/crystal-habit-mesh.md) links
-  bundle `habit-build-2a7cd569e2ec19d6`, validation, parity, preview, STL, and
+  bundle `habit-build-4a38bc559c829536`, validation, parity, preview, STL, and
   the FlashForge AD5X-oriented slicer observation.
 - `KIKU-F001` through `KIKU-F003` were not changed by this feature closure.

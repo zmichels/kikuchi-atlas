@@ -1,11 +1,31 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
 from kikuchi_lab.habit.recipes import load_habit_recipe
 
 ROOT = Path(__file__).parents[3]
 RECIPE = ROOT / "recipes/habits/quartz-mtex-example.yml"
+
+
+def _recipe_mapping() -> dict:
+    raw = yaml.safe_load(RECIPE.read_text(encoding="utf-8"))
+    raw["phase"]["cif"] = str(ROOT / "phases/quartz/COD-9000775.cif")
+    return raw
+
+
+def _nested_mapping(raw: dict, path: tuple[str | int, ...]) -> dict:
+    value = raw
+    for part in path:
+        value = value[part]
+    return value
+
+
+def _write_recipe(tmp_path: Path, raw: dict) -> Path:
+    candidate = tmp_path / "habit.yml"
+    candidate.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
+    return candidate
 
 
 def test_quartz_recipe_preserves_explicit_support_distances_and_source_identity():
@@ -131,4 +151,56 @@ def test_recipe_rejects_all_zero_family(tmp_path: Path, convention: str):
     candidate.write_text(text, encoding="utf-8")
 
     with pytest.raises(ValueError, match="family must not be all zero"):
+        load_habit_recipe(candidate)
+
+
+@pytest.mark.parametrize(
+    ("path", "mapping_name", "unknown_key"),
+    [
+        ((), "root", "unexpected_root"),
+        (("phase",), "phase", "unexpected_phase"),
+        (("phase", "provenance"), "phase provenance", "unexpected_provenance"),
+        (("habit",), "habit", "unexpected_habit"),
+        (("habit", "faces", 0), "habit face", "unexpected_face"),
+        (("geometry",), "geometry", "orientation_matrx"),
+        (("fdm_context",), "fdm_context", "unexpected_fdm"),
+    ],
+)
+def test_recipe_rejects_unknown_keys_at_every_mapping_level(
+    tmp_path: Path,
+    path: tuple[str | int, ...],
+    mapping_name: str,
+    unknown_key: str,
+):
+    raw = _recipe_mapping()
+    _nested_mapping(raw, path)[unknown_key] = "typo"
+    candidate = _write_recipe(tmp_path, raw)
+
+    with pytest.raises(ValueError, match=rf"{mapping_name}.*unknown keys.*{unknown_key}"):
+        load_habit_recipe(candidate)
+
+
+@pytest.mark.parametrize(
+    ("path", "mapping_name", "missing_key"),
+    [
+        ((), "root", "exports"),
+        (("phase",), "phase", "formula"),
+        (("phase", "provenance"), "phase provenance", "license"),
+        (("habit",), "habit", "index_convention"),
+        (("habit", "faces", 0), "habit face", "label"),
+        (("geometry",), "geometry", "maximum_dimension_mm"),
+        (("fdm_context",), "fdm_context", "nozzle_width_mm"),
+    ],
+)
+def test_recipe_rejects_missing_required_keys_at_every_mapping_level(
+    tmp_path: Path,
+    path: tuple[str | int, ...],
+    mapping_name: str,
+    missing_key: str,
+):
+    raw = _recipe_mapping()
+    del _nested_mapping(raw, path)[missing_key]
+    candidate = _write_recipe(tmp_path, raw)
+
+    with pytest.raises(ValueError, match=rf"{mapping_name}.*missing keys.*{missing_key}"):
         load_habit_recipe(candidate)

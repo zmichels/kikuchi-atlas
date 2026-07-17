@@ -31,5 +31,7 @@ support distances, source hash, and content-derived recipe identity.
 
 - `phases/quartz/COD-9000775.cif`, `recipes/habits/quartz-mtex-example.yml`,
   and `tests/unit/habit/test_habit_recipes.py`.
+- Every recipe mapping has exact allowed and required keys; regressions cover
+  root, phase, provenance, habit, face, geometry, and FDM mappings.
 - The reviewed CIF SHA-256 is
   `10dd04655c03f6b152897a5e2d863e42892bd84561cb6dfc1febd86271e70b57`.

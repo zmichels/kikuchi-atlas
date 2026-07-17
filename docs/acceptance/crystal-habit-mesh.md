@@ -3,7 +3,7 @@
 - Status: Accepted
 - Feature: [KIKU-F004](../work/KIKU-F004.md)
 - MTEX parity task: [KIKU-T030](../work/KIKU-T030.md)
-- Acceptance bundle: `habit-build-2a7cd569e2ec19d6`
+- Acceptance bundle: `habit-build-4a38bc559c829536`
 
 ## Scientific and mesh evidence
 
@@ -14,16 +14,18 @@ visible faces, labels `m`, `r`, and `z`, vertex Hausdorff distance
 `2.5364330118318267e-14`, relative volume difference
 `2.1562284150802615e-14`, and maximum matched face-normal angle `0.0 rad`.
 
-- [Bundle directory](../../local/habits/quartz-acceptance/habit-build-2a7cd569e2ec19d6/)
-- [Validation report](../../local/habits/quartz-acceptance/habit-build-2a7cd569e2ec19d6/mesh-validation.json)
-- [MTEX parity report](../../local/habits/quartz-acceptance/habit-build-2a7cd569e2ec19d6/mtex-parity.json)
-- [Labeled preview](../../local/habits/quartz-acceptance/habit-build-2a7cd569e2ec19d6/quartz-habit-preview.png)
-- [Unmodified binary STL](../../local/habits/quartz-acceptance/habit-build-2a7cd569e2ec19d6/quartz-habit.stl)
+- [Bundle directory](../../local/habits/quartz-acceptance/habit-build-4a38bc559c829536/)
+- [Validation report](../../local/habits/quartz-acceptance/habit-build-4a38bc559c829536/mesh-validation.json)
+- [MTEX parity report](../../local/habits/quartz-acceptance/habit-build-4a38bc559c829536/mtex-parity.json)
+- [Labeled preview](../../local/habits/quartz-acceptance/habit-build-4a38bc559c829536/quartz-habit-preview.png)
+- [Unmodified binary STL](../../local/habits/quartz-acceptance/habit-build-4a38bc559c829536/quartz-habit.stl)
 
 The validation report proves one watertight, consistently wound, convex body
 with a maximum dimension of exactly `60.0 mm`. Production validation and STL
 export use `trimesh` with `process=False`; `process=True` remains confined to
-the binary-STL round-trip regression.
+the binary-STL round-trip regression. Build identity includes the recorded
+runtime versions (`kikuchi-lab 0.1.0`, `matplotlib 3.11.0`, `numpy 2.4.6`,
+`orix 0.14.3`, `scipy 1.18.0`, and `trimesh 4.12.2`).
 
 ## FlashForge-oriented slicer inspection
 

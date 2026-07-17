@@ -31,6 +31,8 @@ and hashes into one atomic content-addressed bundle exposed by `habit build`.
 
 - `src/kikuchi_lab/habit/workflow.py`, `src/kikuchi_lab/cli/main.py`,
   `tests/integration/test_habit_workflow.py`, and `tests/unit/test_cli.py`.
+- Runtime software versions are part of immutable build identity and are
+  covered by a regression proving version drift changes the bundle ID.
 - [Crystal habit acceptance ledger](../acceptance/crystal-habit-mesh.md) links
   the optional-parity five-file bundle; the no-reference four-file contract
   remains covered by the reproducibility regression.

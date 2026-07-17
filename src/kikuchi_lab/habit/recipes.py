@@ -18,6 +18,19 @@ from kikuchi_lab.model.identity import stable_id
 
 _LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _PROVENANCE_FIELDS = ("uri", "license", "citation")
+_ROOT_FIELDS = ("schema", "phase", "habit", "geometry", "exports", "fdm_context")
+_PHASE_FIELDS = (
+    "name",
+    "formula",
+    "space_group_number",
+    "cif",
+    "sha256",
+    "provenance",
+)
+_HABIT_FIELDS = ("index_convention", "faces")
+_FACE_FIELDS = ("family", "relative_distance", "label")
+_GEOMETRY_FIELDS = ("maximum_dimension_mm", "orientation_matrix")
+_FDM_FIELDS = ("nozzle_width_mm", "layer_height_mm")
 
 
 @dataclass(frozen=True)
@@ -88,6 +101,23 @@ def _required_mapping(mapping: Mapping[str, Any], key: str) -> Mapping[str, Any]
     return value
 
 
+def _check_mapping_keys(
+    mapping: Mapping[str, Any],
+    name: str,
+    *,
+    allowed: tuple[str, ...],
+    required: tuple[str, ...],
+) -> None:
+    unknown = set(mapping) - set(allowed)
+    if unknown:
+        rendered = ", ".join(sorted((repr(key) for key in unknown)))
+        raise ValueError(f"{name} has unknown keys: {rendered}")
+    missing = set(required) - set(mapping)
+    if missing:
+        rendered = ", ".join(sorted(missing))
+        raise ValueError(f"{name} has missing keys: {rendered}")
+
+
 def _required_text(mapping: Mapping[str, Any], key: str) -> str:
     value = mapping.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -108,6 +138,12 @@ def _positive_float(mapping: Mapping[str, Any], key: str) -> float:
 def _parse_face(value: Any, convention: str) -> HabitFace:
     if not isinstance(value, dict):
         raise ValueError("habit face must be a mapping")
+    _check_mapping_keys(
+        value,
+        "habit face",
+        allowed=_FACE_FIELDS,
+        required=_FACE_FIELDS,
+    )
     family = value.get("family")
     expected_length = 3 if convention == "hkl" else 4
     if not isinstance(family, list) or len(family) != expected_length:
@@ -159,6 +195,12 @@ def _parse_fdm_context(value: Any) -> FDMContext | None:
         return None
     if not isinstance(value, dict):
         raise ValueError("fdm_context must be a mapping or null")
+    _check_mapping_keys(
+        value,
+        "fdm_context",
+        allowed=_FDM_FIELDS,
+        required=_FDM_FIELDS,
+    )
     return FDMContext(
         nozzle_width_mm=_positive_float(value, "nozzle_width_mm"),
         layer_height_mm=_positive_float(value, "layer_height_mm"),
@@ -192,9 +234,40 @@ def load_habit_recipe(path: str | Path) -> HabitRecipe:
     raw = yaml.safe_load(recipe_path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict) or raw.get("schema") != "kikuchi.habit-recipe/v1":
         raise ValueError("unsupported habit recipe schema")
+    _check_mapping_keys(
+        raw,
+        "root",
+        allowed=_ROOT_FIELDS,
+        required=tuple(field for field in _ROOT_FIELDS if field != "fdm_context"),
+    )
     phase_raw = _required_mapping(raw, "phase")
     habit_raw = _required_mapping(raw, "habit")
     geometry_raw = _required_mapping(raw, "geometry")
+    _check_mapping_keys(
+        phase_raw,
+        "phase",
+        allowed=_PHASE_FIELDS,
+        required=_PHASE_FIELDS,
+    )
+    provenance_raw = _required_mapping(phase_raw, "provenance")
+    _check_mapping_keys(
+        provenance_raw,
+        "phase provenance",
+        allowed=_PROVENANCE_FIELDS,
+        required=_PROVENANCE_FIELDS,
+    )
+    _check_mapping_keys(
+        habit_raw,
+        "habit",
+        allowed=_HABIT_FIELDS,
+        required=_HABIT_FIELDS,
+    )
+    _check_mapping_keys(
+        geometry_raw,
+        "geometry",
+        allowed=_GEOMETRY_FIELDS,
+        required=("maximum_dimension_mm",),
+    )
     convention = _required_text(habit_raw, "index_convention")
     if convention not in {"hkl", "hkil"}:
         raise ValueError("index_convention must be hkl or hkil")
@@ -217,10 +290,9 @@ def load_habit_recipe(path: str | Path) -> HabitRecipe:
         faces=faces,
         maximum_dimension_mm=_positive_float(geometry_raw, "maximum_dimension_mm"),
         orientation_matrix=_parse_orientation(
-            geometry_raw.get(
-                "orientation_matrix",
-                [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
-            )
+            geometry_raw["orientation_matrix"]
+            if "orientation_matrix" in geometry_raw
+            else [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
         ),
         exports=_parse_exports(raw.get("exports")),
         fdm_context=_parse_fdm_context(raw.get("fdm_context")),
