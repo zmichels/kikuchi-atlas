@@ -36,6 +36,7 @@ from .mesh import (
     ReliefMeshValidation,
     relief_field_npz_bytes,
     relief_stl_bytes,
+    validate_canonical_relief_mesh,
     validate_relief_mesh,
     write_relief_preview,
 )
@@ -71,6 +72,7 @@ __all__ = [
     "relief_stl_bytes",
     "sample_mapped_field",
     "sample_spherical_field",
+    "validate_canonical_relief_mesh",
     "validate_relief_mesh",
     "write_relief_preview",
 ]

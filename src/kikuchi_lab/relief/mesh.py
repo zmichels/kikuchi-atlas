@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import zipfile
 from dataclasses import asdict, dataclass
+from functools import lru_cache
 from pathlib import Path
 
 import matplotlib
@@ -15,15 +17,20 @@ matplotlib.use("Agg")
 from matplotlib import pyplot as plt  # noqa: E402
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection  # noqa: E402
 
-from kikuchi_lab.model.identity import plain_data
+from kikuchi_lab.model.identity import canonical_json, plain_data
 
 from .mapping import ReliefGeometry
 from .recipes import ReliefFDMContext
-from .topology import IcosphereTopology
+from .topology import IcosphereTopology, build_icosphere
 
 _MIN_TRIANGLE_AREA_MM2 = 1e-12
 _RADIAL_RANGE_TOLERANCE_MM = 1e-10
 _FDM_FEATURE_FLOOR_MM = 0.8
+_DIRECTION_NORM_TOLERANCE = 1e-12
+_RADIAL_REPRESENTATION_TOLERANCE_MM = 1e-10
+_CANONICAL_SUBDIVISIONS = 7
+_CANONICAL_BASE_RADIUS_MM = 40.0
+_CANONICAL_MAXIMUM_RELIEF_MM = 1.2
 
 FIELD_ARRAY_ORDER = (
     "directions",
@@ -56,6 +63,8 @@ class ReliefMeshValidation:
     duplicate_triangle_count: int
     radial_certificate_minimum: float
     radial_certificate_tolerance: float
+    topology_fingerprint: str
+    geometry_fingerprint: str
     self_intersection_contract: str
     warnings: tuple[dict[str, object], ...]
 
@@ -121,6 +130,9 @@ def _canonical_topology_failures(topology: IcosphereTopology) -> tuple[list[str]
         or np.any(faces >= len(directions))
     ):
         return ["canonical topology arrays"], 0
+    norms = np.linalg.norm(directions, axis=1)
+    if not np.allclose(norms, 1.0, rtol=0.0, atol=_DIRECTION_NORM_TOLERANCE):
+        failures.append("finite unit directions")
 
     duplicate_count = duplicate_triangle_count(faces)
     if duplicate_count:
@@ -156,6 +168,44 @@ def _canonical_topology_failures(topology: IcosphereTopology) -> tuple[list[str]
 def _radial_certificate(geometry: ReliefGeometry) -> np.ndarray:
     a, b, c = np.moveaxis(np.asarray(geometry.vertices)[geometry.faces], 1, 0)
     return np.einsum("ij,ij->i", np.cross(b - a, c - a), a)
+
+
+def _array_sha256(array: np.ndarray) -> str:
+    value = np.asarray(array)
+    digest = hashlib.sha256()
+    digest.update(value.dtype.str.encode("ascii"))
+    digest.update(repr(value.shape).encode("ascii"))
+    digest.update(np.ascontiguousarray(value).tobytes(order="C"))
+    return digest.hexdigest()
+
+
+def _topology_fingerprint(topology: IcosphereTopology) -> str:
+    payload = {
+        "topology_id": topology.topology_id,
+        "subdivisions": topology.subdivisions,
+        "directions_sha256": _array_sha256(topology.directions),
+        "faces_sha256": _array_sha256(topology.faces),
+    }
+    digest = hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
+    return f"relief-topology-sha256-{digest}"
+
+
+def _geometry_fingerprint(
+    geometry: ReliefGeometry, topology_fingerprint: str
+) -> str:
+    payload = {
+        "topology_fingerprint": topology_fingerprint,
+        "topology_id": geometry.topology_id,
+        "base_radius_mm": geometry.base_radius_mm,
+        "maximum_relief_mm": geometry.maximum_relief_mm,
+        "directions_sha256": _array_sha256(geometry.directions),
+        "faces_sha256": _array_sha256(geometry.faces),
+        "filtered_values_sha256": _array_sha256(geometry.filtered_values),
+        "radii_mm_sha256": _array_sha256(geometry.radii_mm),
+        "vertices_sha256": _array_sha256(geometry.vertices),
+    }
+    digest = hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
+    return f"relief-geometry-sha256-{digest}"
 
 
 def _relief_fdm_warnings(
@@ -231,24 +281,71 @@ def validate_relief_mesh(
     if topology_failures:
         raise ValueError("relief mesh validation failed: " + ", ".join(topology_failures))
 
+    count = len(topology.directions)
     vertices = np.asarray(geometry.vertices)
-    if vertices.shape != topology.directions.shape or not np.isfinite(vertices).all():
+    radii_ledger = np.asarray(geometry.radii_mm)
+    filtered = np.asarray(geometry.filtered_values)
+    if vertices.shape != (count, 3) or not np.isfinite(vertices).all():
         raise ValueError("relief mesh validation failed: finite vertices")
+    if radii_ledger.shape != (count,) or not np.isfinite(radii_ledger).all():
+        raise ValueError("relief mesh validation failed: finite aligned radii_mm")
+    if filtered.shape != (count,) or not np.isfinite(filtered).all():
+        raise ValueError("relief mesh validation failed: finite aligned filtered values")
+    if (
+        isinstance(geometry.base_radius_mm, bool)
+        or isinstance(geometry.maximum_relief_mm, bool)
+        or not np.isfinite((geometry.base_radius_mm, geometry.maximum_relief_mm)).all()
+        or geometry.base_radius_mm <= 0.0
+        or geometry.maximum_relief_mm <= 0.0
+    ):
+        raise ValueError("relief mesh validation failed: positive finite configured dimensions")
+
+    radii = np.linalg.norm(vertices, axis=1)
+    representation_failures: list[str] = []
+    if np.any(radii_ledger <= 0.0):
+        representation_failures.append("positive radii_mm")
+    if np.any(radii_ledger < geometry.base_radius_mm - _RADIAL_RANGE_TOLERANCE_MM) or np.any(
+        radii_ledger
+        > geometry.base_radius_mm
+        + geometry.maximum_relief_mm
+        + _RADIAL_RANGE_TOLERANCE_MM
+    ):
+        representation_failures.append("configured radial range")
+    if not np.allclose(
+        radii,
+        radii_ledger,
+        rtol=0.0,
+        atol=_RADIAL_REPRESENTATION_TOLERANCE_MM,
+    ) or not np.allclose(
+        vertices,
+        geometry.directions * radii_ledger[:, None],
+        rtol=0.0,
+        atol=_RADIAL_REPRESENTATION_TOLERANCE_MM,
+    ):
+        representation_failures.append("radial representation")
+    if np.any(filtered < 0.0) or np.any(filtered > 1.0):
+        representation_failures.append("filtered values in [0, 1]")
+    expected_radii = geometry.base_radius_mm + geometry.maximum_relief_mm * filtered
+    if not np.allclose(
+        radii_ledger,
+        expected_radii,
+        rtol=0.0,
+        atol=_RADIAL_REPRESENTATION_TOLERANCE_MM,
+    ):
+        representation_failures.append(
+            "filtered values consistent with configured radius displacement"
+        )
+    if representation_failures:
+        raise ValueError(
+            "relief mesh validation failed: " + ", ".join(representation_failures)
+        )
 
     inspected = _trimesh(geometry)
-    radii = np.linalg.norm(vertices, axis=1)
     duplicate_count = duplicate_triangle_count(geometry.faces)
     degenerate_count = int(np.count_nonzero(inspected.area_faces <= _MIN_TRIANGLE_AREA_MM2))
     certificate = _radial_certificate(geometry)
     certificate_tolerance = 1e-12 * geometry.base_radius_mm**3
     failures: list[str] = []
-    if np.any(radii < geometry.base_radius_mm - _RADIAL_RANGE_TOLERANCE_MM) or np.any(
-        radii
-        > geometry.base_radius_mm
-        + geometry.maximum_relief_mm
-        + _RADIAL_RANGE_TOLERANCE_MM
-    ):
-        failures.append("configured radial range")
     if not inspected.is_watertight:
         failures.append("watertight")
     if not inspected.is_winding_consistent:
@@ -269,6 +366,7 @@ def validate_relief_mesh(
         raise ValueError("relief mesh validation failed: " + ", ".join(failures))
 
     bounds = np.asarray(inspected.bounds, dtype=np.float64)
+    topology_fingerprint = _topology_fingerprint(topology)
     return ReliefMeshValidation(
         passed=True,
         watertight=True,
@@ -285,24 +383,83 @@ def validate_relief_mesh(
         duplicate_triangle_count=0,
         radial_certificate_minimum=float(certificate.min()),
         radial_certificate_tolerance=float(certificate_tolerance),
+        topology_fingerprint=topology_fingerprint,
+        geometry_fingerprint=_geometry_fingerprint(geometry, topology_fingerprint),
         self_intersection_contract="positive-radial-bijection-over-canonical-icosphere",
         warnings=_relief_fdm_warnings(geometry, inspected, fdm_context),
     )
 
 
+@lru_cache(maxsize=1)
+def _approved_topology() -> IcosphereTopology:
+    return build_icosphere(_CANONICAL_SUBDIVISIONS)
+
+
+def validate_canonical_relief_mesh(
+    geometry: ReliefGeometry,
+    topology: IcosphereTopology,
+    fdm_context: ReliefFDMContext | None,
+) -> ReliefMeshValidation:
+    """Accept only the approved full-resolution printable relief contract."""
+    if topology.subdivisions != _CANONICAL_SUBDIVISIONS:
+        raise ValueError("publishable relief requires the approved subdivision-7 topology")
+    approved = _approved_topology()
+    if (
+        topology.topology_id != approved.topology_id
+        or not np.array_equal(topology.directions, approved.directions)
+        or not np.array_equal(topology.faces, approved.faces)
+    ):
+        raise ValueError("publishable relief differs from the approved canonical topology")
+    if (
+        geometry.base_radius_mm != _CANONICAL_BASE_RADIUS_MM
+        or geometry.maximum_relief_mm != _CANONICAL_MAXIMUM_RELIEF_MM
+    ):
+        raise ValueError("publishable relief requires 40.0 mm base and 1.2 mm maximum relief")
+    return validate_relief_mesh(geometry, topology, fdm_context)
+
+
+def _verify_accepted_validation(
+    geometry: ReliefGeometry,
+    topology: IcosphereTopology,
+    validation: ReliefMeshValidation,
+) -> ReliefMeshValidation:
+    current = validate_canonical_relief_mesh(geometry, topology, fdm_context=None)
+    if (
+        not isinstance(validation, ReliefMeshValidation)
+        or not validation.passed
+        or validation.topology_fingerprint != current.topology_fingerprint
+        or validation.geometry_fingerprint != current.geometry_fingerprint
+    ):
+        raise ValueError("accepted validation fingerprint does not match supplied relief mesh")
+    return current
+
+
 def relief_stl_bytes(geometry: ReliefGeometry, topology: IcosphereTopology) -> bytes:
     """Return deterministic binary STL bytes for a validated relief mesh."""
-    validate_relief_mesh(geometry, topology, fdm_context=None)
+    validate_canonical_relief_mesh(geometry, topology, fdm_context=None)
     payload = _trimesh(geometry).export(file_type="stl")
     if not isinstance(payload, bytes):
         raise TypeError("Trimesh STL export did not return bytes")
     return payload
 
 
-def _validate_field_artifact(artifact: ReliefFieldArtifact) -> None:
+def _validate_field_artifact(
+    artifact: ReliefFieldArtifact,
+    geometry: ReliefGeometry,
+    topology: IcosphereTopology,
+) -> None:
     if not isinstance(artifact, ReliefFieldArtifact):
         raise TypeError("artifact must be a ReliefFieldArtifact")
-    count = len(artifact.directions)
+    if (
+        not isinstance(artifact.directions, np.ndarray)
+        or artifact.directions.dtype != np.float64
+        or artifact.directions.ndim != 2
+        or artifact.directions.shape[1:] != (3,)
+    ):
+        raise ValueError("field artifact directions has wrong dtype or shape")
+    count = artifact.directions.shape[0]
+    if not isinstance(artifact.faces, np.ndarray) or artifact.faces.ndim != 2:
+        raise ValueError("field artifact faces has wrong dtype or shape")
     expected = {
         "directions": (np.dtype(np.float64), (count, 3)),
         "hemisphere": (np.dtype(np.int8), (count,)),
@@ -322,8 +479,36 @@ def _validate_field_artifact(artifact: ReliefFieldArtifact) -> None:
             raise ValueError(f"field artifact {name} has wrong dtype or shape")
         if not np.isfinite(array).all():
             raise ValueError(f"field artifact {name} must be finite")
+    if not np.array_equal(artifact.directions, topology.directions):
+        raise ValueError("field artifact canonical directions are misaligned")
+    if not np.array_equal(artifact.faces, topology.faces):
+        raise ValueError("field artifact faces differ from canonical topology")
+    if not np.array_equal(artifact.radii_mm, geometry.radii_mm):
+        raise ValueError("field artifact radii_mm differ from canonical geometry")
+    if not np.array_equal(artifact.filtered, geometry.filtered_values):
+        raise ValueError("field artifact filtered values differ from canonical geometry")
     if not np.isin(artifact.hemisphere, (-1, 1)).all():
         raise ValueError("field artifact hemisphere values must be -1 or 1")
+    expected_hemisphere = np.where(artifact.directions[:, 2] >= 0.0, 1, -1)
+    if not np.array_equal(artifact.hemisphere, expected_hemisphere):
+        raise ValueError("field artifact hemisphere alignment differs from directions")
+    direction_norms = np.linalg.norm(artifact.directions, axis=1)
+    if not np.allclose(
+        direction_norms, 1.0, rtol=0.0, atol=_DIRECTION_NORM_TOLERANCE
+    ):
+        raise ValueError("field artifact directions must be finite unit vectors")
+    if np.any(artifact.source_rows < 0):
+        raise ValueError("field artifact source_rows must be nonnegative")
+    if np.any(artifact.source_columns < 0):
+        raise ValueError("field artifact source_columns must be nonnegative")
+    if np.any(artifact.weights < 0.0):
+        raise ValueError("field artifact weights must be nonnegative")
+    if not np.allclose(artifact.weights.sum(axis=1), 1.0, rtol=0.0, atol=1e-12):
+        raise ValueError("field artifact weights rows must sum to 1")
+    if np.any(artifact.mapped < 0.0) or np.any(artifact.mapped > 1.0):
+        raise ValueError("field artifact mapped values must lie in [0, 1]")
+    if np.any(artifact.filtered < 0.0) or np.any(artifact.filtered > 1.0):
+        raise ValueError("field artifact filtered values must lie in [0, 1]")
     if np.any(artifact.faces < 0) or np.any(artifact.faces >= count):
         raise ValueError("field artifact faces are not aligned to directions")
 
@@ -334,9 +519,15 @@ def _npy_bytes(array: np.ndarray) -> bytes:
     return stream.getvalue()
 
 
-def relief_field_npz_bytes(artifact: ReliefFieldArtifact) -> bytes:
+def relief_field_npz_bytes(
+    artifact: ReliefFieldArtifact,
+    geometry: ReliefGeometry,
+    topology: IcosphereTopology,
+    validation: ReliefMeshValidation,
+) -> bytes:
     """Return a deterministic fixed-inventory uncompressed NPZ field ledger."""
-    _validate_field_artifact(artifact)
+    _validate_field_artifact(artifact, geometry, topology)
+    _verify_accepted_validation(geometry, topology, validation)
     stream = io.BytesIO()
     with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_STORED) as archive:
         for name in FIELD_ARRAY_ORDER:
@@ -350,6 +541,7 @@ def relief_field_npz_bytes(artifact: ReliefFieldArtifact) -> bytes:
 def write_relief_preview(
     path: Path,
     geometry: ReliefGeometry,
+    topology: IcosphereTopology,
     validation: ReliefMeshValidation,
     *,
     lower_percentile: float,
@@ -358,8 +550,20 @@ def write_relief_preview(
     filter_fwhm_mm: float,
 ) -> None:
     """Write the accepted full-resolution relief mesh as a fixed RGBA PNG."""
-    if not validation.passed:
-        raise ValueError("relief preview requires an accepted mesh")
+    parameters = (lower_percentile, upper_percentile, gamma, filter_fwhm_mm)
+    try:
+        finite_parameters = np.isfinite(parameters).all()
+    except (TypeError, ValueError):
+        finite_parameters = False
+    if (
+        any(isinstance(value, (bool, np.bool_)) for value in parameters)
+        or not finite_parameters
+        or not 0.0 <= lower_percentile < upper_percentile <= 100.0
+        or gamma <= 0.0
+        or filter_fwhm_mm <= 0.0
+    ):
+        raise ValueError("relief preview parameters are invalid")
+    _verify_accepted_validation(geometry, topology, validation)
     vertices = np.array(geometry.vertices, dtype=np.float64, copy=True)
     faces = np.array(geometry.faces, dtype=np.int64, copy=True)
     filtered = np.array(geometry.filtered_values, dtype=np.float64, copy=True)
@@ -373,12 +577,6 @@ def write_relief_preview(
         or not np.isfinite(filtered).all()
     ):
         raise ValueError("relief preview geometry is invalid")
-    radii = np.linalg.norm(vertices, axis=1)
-    if not np.isclose(radii.min(), validation.minimum_radius_mm) or not np.isclose(
-        radii.max(), validation.maximum_radius_mm
-    ):
-        raise ValueError("relief preview geometry differs from accepted mesh")
-
     triangles = vertices[faces]
     face_values = filtered[faces].mean(axis=1)
     normals = np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0])
