@@ -9,6 +9,7 @@ from .geometry import (
     solve_convex_habit,
     triangulate_habit,
 )
+from .mesh import MeshValidation, stl_bytes, validate_triangle_mesh, write_habit_preview
 from .recipes import FDMContext, HabitFace, HabitRecipe, PhaseSource, load_habit_recipe
 
 __all__ = [
@@ -18,6 +19,7 @@ __all__ = [
     "HabitFace",
     "HabitRecipe",
     "LabeledPolygonMesh",
+    "MeshValidation",
     "PhaseSource",
     "PolygonFace",
     "TriangleMesh",
@@ -25,5 +27,8 @@ __all__ = [
     "load_habit_recipe",
     "orient_and_scale_habit",
     "solve_convex_habit",
+    "stl_bytes",
     "triangulate_habit",
+    "validate_triangle_mesh",
+    "write_habit_preview",
 ]

@@ -21,6 +21,8 @@ dependencies = [
   "scipy>=1.15,<2",
   "scikit-image>=0.25,<0.26",
   "tifffile>=2025.6,<2026",
+  "trimesh>=4.12.2,<5",
+  "matplotlib>=3.11,<4",
 ]
 
 [project.scripts]
