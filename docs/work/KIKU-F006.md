@@ -33,3 +33,4 @@ hemisphere designs.
 - [ ] Ice Ih, forsterite, alpha-quartz, zircon, and titanite have validated, provenance-bearing phase catalogs.
 - [ ] Nine new treatment bundles preserve identical selected centerlines within each phase's standard/wide pair.
 - [ ] A labeled ten-cell comparison sheet supports separate scientific and visual review.
+- [ ] Every real non-test catalog, parity, preview, comparison, vector/geometry, and derived-model product is retained locally and indexed with its exact command, identities, recipes, sources, manifests, and checksums.

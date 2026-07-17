@@ -19,6 +19,7 @@
 - The 145.0 mm artboard, 132.0 mm outer diameter, 2.20 mm boundary, 63.8 mm crystallographic clip radius, centerlines, selected member IDs, projection, palette, and lack of blur remain identical between treatments.
 - The reviewed Ice Ih standard-reference bundle is read-only and is never regenerated, overwritten, or silently reselected.
 - Quartz uses COD 9012600; zircon uses a documented isotropic-U derivative of COD 9000684; titanite uses COD 9000509. All source files and source records are checksum-verified and CC0-attributed.
+- Every non-test scientific or visual product is retained under `local/phase-general-direct-reflector-art/` (or an explicitly indexed legacy reference root) in its content-identified directory and is indexed in the acceptance record with the exact reproduction command, recipe/source IDs, manifest ID, and checksums. Pytest temporary outputs are verification scaffolding, not products.
 - Existing Ice-specific catalog, recipe, workflow, filenames, IDs, and tests remain backward compatible.
 - Every task follows red-green-refactor TDD, runs the narrow tests first, runs Ruff on touched Python, validates work items when tracker state changes, and commits only its own files.
 - Preserve all unrelated dirty files in the worktree.
@@ -1287,7 +1288,7 @@ git commit -m "feat: publish five phase hemisphere art series"
 
 **Interfaces:**
 - Consumes: five tracked direct recipes and reviewed Ice reference `/Users/Z/Documents/kikuchi/.worktrees/spherical-intensity/local/ice-tattoo-primary-proof/ice-tattoo-run-9a5ce6ac83e4bdd9`.
-- Produces: five passed parity reports, nine new bundles, one ten-cell sheet, and one retained acceptance record.
+- Produces: five passed parity reports, nine new bundles, one ten-cell sheet, and one retained acceptance record that indexes every real non-test product and its reproduction evidence.
 
 - [ ] **Step 1: Run all non-real tests and static validation first**
 
@@ -1358,6 +1359,8 @@ The acceptance document records:
 - identical selected member IDs and centerline hashes within every pair;
 - standard and wide width arrays and unchanged 2.20 mm boundary;
 - series ID, comparison-sheet path and hash, test commands/results, and scientific-claim boundaries;
+- a retained-product index containing the exact generating command, recipe and source IDs, run/bundle/manifest IDs, paths, and checksums for every real catalog, parity report, preview, comparison sheet, vector/geometry bundle, and later derived model created during this execution;
+- the Task 5 Ice smoke's retained report evidence and master SHA-256, noting that its pytest-temporary array predated the retention rule and that the Task 12 Ice parity run is the retained replacement rather than a retry;
 - `visual_review: pending` until the user explicitly accepts the comparison.
 
 Mark KIKU-T034 and KIKU-F006 `done` only if all non-visual criteria pass and the user explicitly accepts the visual family; otherwise keep them `active` with checked objective criteria and the remaining review box open.

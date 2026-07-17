@@ -242,6 +242,15 @@ Every new treatment bundle publishes atomically with:
 - validation report and scientific-claim disclaimer; and
 - top-level content manifest.
 
+Every non-test scientific or visual computation is a retained product. Its
+content-identified directory remains under
+`local/phase-general-direct-reflector-art/` (or an explicitly recorded legacy
+reference root) and is not deleted or silently replaced after inspection. The
+acceptance record indexes each retained catalog, parity report, preview,
+comparison sheet, vector/geometry bundle, and later derived model with its
+exact command, recipe/source IDs, manifest ID, and checksums. Ephemeral pytest
+temporary directories are verification scaffolding rather than products.
+
 The labeled comparison sheet is a review derivative. It identifies phase,
 treatment, orientation, and bundle ID for every cell and never replaces the
 individual canonical artifacts.
@@ -328,5 +337,7 @@ separate gates.
   the crystallographic widths scaled by `1.15`.
 - The existing reviewed Ice standard reference remains unchanged.
 - A ten-cell labeled comparison sheet is retained for user review.
+- Every real non-test product is retained locally and indexed with sufficient
+  command, identity, recipe, source, and checksum evidence to reproduce it.
 - All finite-work, determinism, containment, parity, and bundle-validation tests
   pass before the series is presented as complete.
