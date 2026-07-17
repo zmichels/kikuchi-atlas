@@ -2,7 +2,7 @@
 id: KIKU-T035
 type: task
 title: Correct non-orthogonal reflector frames and migrate reviewed Ice selection
-status: active
+status: done
 parent: KIKU-F006
 depends_on:
   - KIKU-T032
@@ -15,6 +15,7 @@ links:
 evidence:
   - ../../.superpowers/sdd/task-6-debug-report.md
   - ../../.superpowers/sdd/task-6-frame-repair-report.md
+  - ../acceptance/ice-ih-corrected-reviewed-v2.md
 ---
 
 # KIKU-T035: Correct non-orthogonal reflector frames and migrate reviewed Ice selection
@@ -32,5 +33,5 @@ the reviewed Ice artifact as immutable legacy evidence while rebinding its same
 - [x] Symmetry-equivalent magnitudes are exact ties and `hkl/-hkl` partners cross thresholds together.
 - [x] The reviewed Ice catalog/tattoo artifacts remain unchanged and loadable as legacy products.
 - [x] A strict versioned manifest records the reviewed ordered HKLs, orientation, tiers, widths, and legacy identity links.
-- [ ] Corrected Ice generation rebinds all 11 HKLs, records the manifest in the new bundle, passes containment, and publishes under new IDs.
-- [ ] Focused and full regression suites, Ruff, tracker validation, and retained-product checks pass.
+- [x] Corrected Ice generation rebinds all 11 HKLs, records the manifest in the new bundle, passes containment, and publishes under new IDs.
+- [x] Focused and full regression suites, Ruff, tracker validation, and retained-product checks pass.
