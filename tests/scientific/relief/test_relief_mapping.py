@@ -123,20 +123,40 @@ def test_filter_preserves_constant_at_coarse_resolution():
         filter_spec(),
     )
     assert np.allclose(constant, 0.375, atol=1e-12, rtol=0)
+    expected_sigma_rad = (0.8 / 40.0) / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    expected_cutoff_chord = 2.0 * np.sin(3.0 * expected_sigma_rad / 2.0)
+    assert diagnostics.fwhm_mm == pytest.approx(0.8)
     assert diagnostics.fwhm_rad == pytest.approx(0.8 / 40.0)
+    assert diagnostics.sigma_rad == pytest.approx(expected_sigma_rad)
+    assert diagnostics.cutoff_sigma == pytest.approx(3.0)
+    assert diagnostics.cutoff_chord == pytest.approx(expected_cutoff_chord)
     assert diagnostics.constant_residual <= 1e-12
     assert diagnostics.minimum_neighbor_count > 0
     assert diagnostics.maximum_neighbor_count >= diagnostics.minimum_neighbor_count
 
 
 def test_filter_is_invariant_under_rigid_rotation():
-    topology = build_icosphere(3)
+    topology = build_icosphere(6)
     values = 0.5 + 0.2 * topology.directions[:, 0] - 0.1 * topology.directions[:, 2]
-    rotation = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]], dtype=float)
-    original, _ = filter_spherical_values(values, topology.directions, 40.0, filter_spec())
+    axis = np.array([1.0, 2.0, 3.0])
+    axis /= np.linalg.norm(axis)
+    angle = 0.731
+    cross = np.array(
+        [[0.0, -axis[2], axis[1]], [axis[2], 0.0, -axis[0]], [-axis[1], axis[0], 0.0]]
+    )
+    rotation = (
+        np.cos(angle) * np.eye(3)
+        + (1.0 - np.cos(angle)) * np.outer(axis, axis)
+        + np.sin(angle) * cross
+    )
+    assert np.linalg.det(rotation) == pytest.approx(1.0)
+    original, diagnostics = filter_spherical_values(
+        values, topology.directions, 40.0, filter_spec()
+    )
     rotated, _ = filter_spherical_values(
         values, topology.directions @ rotation.T, 40.0, filter_spec()
     )
+    assert diagnostics.minimum_neighbor_count > 1
     assert np.allclose(rotated, original, atol=2e-14, rtol=0)
 
 
