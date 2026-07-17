@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import errno
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -54,6 +56,157 @@ def _tree_hashes(path: Path) -> dict[str, str]:
     return {item.name: _sha256(item) for item in sorted(path.iterdir())}
 
 
+@pytest.mark.parametrize(
+    ("needle", "replacement", "field"),
+    [
+        ("lower: 1.0", "lower: 2.0", "percentiles"),
+        ("upper: 99.0", "upper: 98.0", "percentiles"),
+        ("gamma: 1.0", "gamma: 0.8", "gamma"),
+        ("fwhm_mm: 0.8", "fwhm_mm: 0.9", "FWHM"),
+        ("cutoff_sigma: 3.0", "cutoff_sigma: 2.5", "cutoff"),
+        ("base_diameter_mm: 80.0", "base_diameter_mm: 79.0", "geometry"),
+        ("maximum_relief_mm: 1.2", "maximum_relief_mm: 1.1", "geometry"),
+        ("subdivisions: 7", "subdivisions: 6", "geometry"),
+        ("topology: icosphere", "topology: alternate-sphere", "geometry"),
+        ("direction: bright_outward", "direction: dark_outward", "direction"),
+        ("kind: spherical_gaussian", "kind: alternate_filter", "filter kind"),
+        ("- stl", "- obj", "export"),
+    ],
+)
+def test_workflow_rejects_noncanonical_recipe_before_source_work(
+    monkeypatch, tmp_path, canonical_recipe_file, needle, replacement, field
+):
+    candidate = tmp_path / f"changed-{field.replace(' ', '-')}.yml"
+    candidate.write_text(
+        canonical_recipe_file.read_text(encoding="utf-8").replace(needle, replacement),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        workflow,
+        "_sha256_file",
+        lambda _path: (_ for _ in ()).throw(AssertionError("source work must not start")),
+    )
+
+    with pytest.raises(ValueError, match=f"canonical.*{field}"):
+        build_relief_globe("unused.npz", candidate, tmp_path / "out")
+
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.parametrize("spoof", [True, float("nan"), "1.0"])
+def test_workflow_rejects_type_spoofed_canonical_number_before_source_work(
+    monkeypatch, tmp_path, canonical_recipe_file, spoof
+):
+    recipe = workflow.load_relief_globe_recipe(canonical_recipe_file)
+    monkeypatch.setattr(
+        workflow,
+        "load_relief_globe_recipe",
+        lambda _path: replace(recipe, mapping=replace(recipe.mapping, gamma=spoof)),
+    )
+    monkeypatch.setattr(
+        workflow,
+        "_sha256_file",
+        lambda _path: (_ for _ in ()).throw(AssertionError("source work must not start")),
+    )
+
+    with pytest.raises(ValueError, match="canonical.*gamma"):
+        build_relief_globe("unused.npz", "unused.yml", tmp_path / "out")
+
+
+def test_real_no_replace_primitive_preserves_existing_destination(tmp_path):
+    staging = tmp_path / "build.partial"
+    completed = tmp_path / "build"
+    staging.mkdir()
+    completed.mkdir()
+    (staging / "new").write_text("new", encoding="utf-8")
+    (completed / "sentinel").write_text("original", encoding="utf-8")
+
+    with pytest.raises(FileExistsError):
+        workflow._rename_directory_no_replace(staging, completed)
+
+    assert (completed / "sentinel").read_text(encoding="utf-8") == "original"
+    assert (staging / "new").read_text(encoding="utf-8") == "new"
+
+
+def test_no_replace_primitive_fails_closed_on_unsupported_platform(monkeypatch, tmp_path):
+    staging = tmp_path / "build.partial"
+    completed = tmp_path / "build"
+    staging.mkdir()
+    monkeypatch.setattr(workflow.platform, "system", lambda: "UnsupportedOS")
+
+    with pytest.raises(RuntimeError, match="no-replace.*unsupported"):
+        workflow._rename_directory_no_replace(staging, completed)
+
+    assert staging.exists() and not completed.exists()
+
+
+def test_destination_race_never_clobbers_and_cleans_partial(monkeypatch, tmp_path):
+    staging = tmp_path / "build.partial"
+    completed = tmp_path / "build"
+    staging.mkdir()
+    (staging / "new").write_text("new", encoding="utf-8")
+
+    def race(_staging, destination):
+        destination.mkdir()
+        (destination / "sentinel").write_text("racer", encoding="utf-8")
+        raise FileExistsError(errno.EEXIST, "exists")
+
+    monkeypatch.setattr(workflow, "_rename_directory_no_replace", race)
+    with pytest.raises(FileExistsError):
+        workflow._publish_staging(staging, completed, tmp_path)
+
+    assert (completed / "sentinel").read_text(encoding="utf-8") == "racer"
+    assert not staging.exists()
+
+
+def test_rename_failure_cleans_partial(monkeypatch, tmp_path):
+    staging = tmp_path / "build.partial"
+    completed = tmp_path / "build"
+    staging.mkdir()
+    monkeypatch.setattr(
+        workflow, "_rename_directory_no_replace", lambda *_args: (_ for _ in ()).throw(OSError("rename failed"))
+    )
+
+    with pytest.raises(OSError, match="rename failed"):
+        workflow._publish_staging(staging, completed, tmp_path)
+
+    assert not staging.exists() and not completed.exists()
+
+
+def test_parent_fsync_failure_rolls_back_publication(monkeypatch, tmp_path):
+    staging = tmp_path / "build.partial"
+    completed = tmp_path / "build"
+    staging.mkdir()
+    (staging / "artifact").write_text("payload", encoding="utf-8")
+    calls = 0
+
+    def fsync(_path):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise OSError("parent fsync failed")
+
+    monkeypatch.setattr(workflow, "_fsync_directory", fsync)
+    with pytest.raises(RuntimeError, match="rolled back.*parent fsync failed"):
+        workflow._publish_staging(staging, completed, tmp_path)
+
+    assert calls == 2
+    assert not staging.exists() and not completed.exists()
+
+
+def test_rollback_failure_reports_uncertain_completed_path(monkeypatch, tmp_path):
+    staging = tmp_path / "build.partial"
+    completed = tmp_path / "build"
+    staging.mkdir()
+    monkeypatch.setattr(workflow, "_fsync_directory", lambda _path: (_ for _ in ()).throw(OSError("fsync")))
+    monkeypatch.setattr(workflow, "_remove_published_directory", lambda _path: (_ for _ in ()).throw(OSError("rollback")))
+
+    with pytest.raises(workflow.ReliefPublicationUncertainError, match=str(completed)):
+        workflow._publish_staging(staging, completed, tmp_path)
+
+    assert completed.exists() and not staging.exists()
+
+
 @pytest.mark.slow
 def test_analytic_globe_build_is_reproducible_atomic_and_complete(
     tmp_path, analytic_master_file, canonical_recipe_file
@@ -82,6 +235,9 @@ def test_analytic_globe_build_is_reproducible_atomic_and_complete(
     assert set(manifest["files"]) == {
         first.stl.name, first.preview.name, first.field.name, first.validation.name
     }
+    for name, record in manifest["files"].items():
+        artifact = first.path / name
+        assert record == {"bytes": artifact.stat().st_size, "sha256": _sha256(artifact)}
     loaded = trimesh.load_mesh(first.stl, process=True)
     assert loaded.is_volume and loaded.body_count == 1
 

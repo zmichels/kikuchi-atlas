@@ -53,12 +53,24 @@ are explicitly outside this acceptance.
 
 ## Runtime and reproducibility
 
-The final real CLI build completed in approximately 33 seconds on the acceptance machine. Two
+The final reviewed real CLI rebuild completed in `27.72 s` on the acceptance machine. Two
 independent full-resolution analytic builds produced identical build IDs and byte-identical
 five-file trees. The accepted runtime identity is Python 3.12.13, kikuchi-lab 0.1.0, NumPy
 2.4.6, SciPy 1.18.0, kikuchipy 0.13.0, Trimesh 4.12.2, and Matplotlib 3.11.0.
 
-The four non-manifest artifact hashes are inventoried in the manifest. The complete bundle is
-exactly five files; publication used a fresh `.partial` directory, file and directory fsync,
-and atomic rename. Failure injection at the final preview seam left no partial or completed
-bundle.
+The manifest SHA-256 is
+`6a21e1e8b6b16a56f3bb6ae323d06aa27839232022ef597e495a047d5f863e86`. Its four-file inventory
+was independently recomputed and matched exactly: STL
+`c9c52b5b1e6fe302a2f49dbecb84a4b1432906a9d4f2cfc5626ec0d3734eb1cf` (16384084 bytes),
+preview `fefe61d934324cd2d1d9886227404eee79aeda45b9ded09b5c663ca0090ea105`
+(150894 bytes), field NPZ
+`d17af8175f7f9777c865337c4bd983bee4858290c2f05b6ec73587aa83ace9a1` (27691524 bytes), and
+validation JSON `0ac2dd9a67bfa327c91524bbbe857fd9c7072eb43cf1d2ac9c443c1e55389622`
+(1525 bytes).
+
+The complete bundle is exactly five files. Publication fsyncs the staged tree, uses Darwin
+`renamex_np(..., RENAME_EXCL)` for atomic no-clobber directory publication, then fsyncs the
+parent. Tests prove a racing or pre-existing destination is never overwritten. Rename failure
+cleans staging; parent-fsync failure rolls back and re-fsyncs; an unprovable rollback raises an
+explicit uncertain-publication error naming the completed path. Failure injection at the final
+preview seam also left no partial or completed bundle.

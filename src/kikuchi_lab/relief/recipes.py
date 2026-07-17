@@ -113,6 +113,13 @@ def _exact_text(mapping: dict[str, Any], key: str, expected: str) -> str:
     return expected
 
 
+def _text(mapping: dict[str, Any], key: str) -> str:
+    value = mapping.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{key} must be non-empty text")
+    return value
+
+
 def _source_expectation(mapping: dict[str, Any]) -> ReliefSourceExpectation:
     product_id = mapping.get("product_id")
     if not isinstance(product_id, str) or not _MASTER_PRODUCT_ID.fullmatch(product_id):
@@ -183,15 +190,24 @@ def load_relief_globe_recipe(path: str | Path) -> ReliefGlobeRecipe:
     _keys(export, allowed={"formats"}, required={"formats"}, field="export")
 
     subdivisions = geometry.get("subdivisions")
-    if isinstance(subdivisions, bool) or not isinstance(subdivisions, int) or subdivisions != 7:
-        raise ValueError("subdivisions must equal 7")
+    if (
+        isinstance(subdivisions, bool)
+        or not isinstance(subdivisions, int)
+        or not 0 <= subdivisions <= 7
+    ):
+        raise ValueError("subdivisions must be an integer in [0, 7]")
     lower = _finite_number(percentiles, "lower")
     upper = _finite_number(percentiles, "upper")
     if not 0.0 <= lower < upper <= 100.0:
         raise ValueError("percentile bounds must satisfy 0 <= lower < upper <= 100")
     formats = export.get("formats")
-    if formats != ["stl"]:
-        raise ValueError("formats must contain exactly stl")
+    if (
+        not isinstance(formats, list)
+        or not formats
+        or any(not isinstance(item, str) or not item.strip() for item in formats)
+        or len(set(formats)) != len(formats)
+    ):
+        raise ValueError("formats must be a non-empty list of unique text values")
 
     recipe_without_id = ReliefGlobeRecipe(
         schema="kikuchi.relief-globe-recipe/v1",
@@ -199,20 +215,20 @@ def load_relief_globe_recipe(path: str | Path) -> ReliefGlobeRecipe:
         geometry=ReliefGeometrySpec(
             base_diameter_mm=_positive_number(geometry, "base_diameter_mm"),
             maximum_relief_mm=_positive_number(geometry, "maximum_relief_mm"),
-            topology=_exact_text(geometry, "topology", "icosphere"),
+            topology=_text(geometry, "topology"),
             subdivisions=subdivisions,
         ),
         mapping=ReliefMappingSpec(
             percentiles=(lower, upper),
             gamma=_positive_number(mapping, "gamma"),
-            direction=_exact_text(mapping, "direction", "bright_outward"),
+            direction=_text(mapping, "direction"),
         ),
         filter=SphericalFilterSpec(
-            kind=_exact_text(filtering, "kind", "spherical_gaussian"),
+            kind=_text(filtering, "kind"),
             fwhm_mm=_positive_number(filtering, "fwhm_mm"),
             cutoff_sigma=_positive_number(filtering, "cutoff_sigma"),
         ),
-        exports=("stl",),
+        exports=tuple(formats),
         fdm_context=_fdm_context(raw.get("fdm_context")),
         recipe_id="",
     )

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import ctypes
+import errno
+import math
 import os
 import platform
 import re
@@ -11,6 +14,7 @@ import shutil
 from dataclasses import asdict, dataclass
 from importlib.metadata import version
 from pathlib import Path
+from numbers import Real
 
 import numpy as np
 
@@ -45,6 +49,10 @@ class ReliefGlobeBuildResult:
     preview: Path
     field: Path
     validation: Path
+
+
+class ReliefPublicationUncertainError(RuntimeError):
+    """Raised when publication durability or rollback cannot be proven."""
 
 
 def _sha256_file(path: Path) -> str:
@@ -131,6 +139,107 @@ def _require_fresh_destinations(partial: Path, completed: Path) -> None:
         raise FileExistsError(f"completed relief globe bundle already exists: {completed}")
     if partial.exists():
         raise FileExistsError(f"partial relief globe bundle already exists: {partial}")
+
+
+def _canonical_real(value: object, expected: float) -> bool:
+    return (
+        not isinstance(value, (bool, np.bool_))
+        and isinstance(value, Real)
+        and math.isfinite(float(value))
+        and float(value) == expected
+    )
+
+
+def _require_canonical_publication_recipe(recipe) -> None:
+    geometry = recipe.geometry
+    if (
+        not _canonical_real(geometry.base_diameter_mm, 80.0)
+        or not _canonical_real(geometry.maximum_relief_mm, 1.2)
+        or isinstance(geometry.subdivisions, bool)
+        or not isinstance(geometry.subdivisions, int)
+        or geometry.subdivisions != 7
+        or not isinstance(geometry.topology, str)
+        or geometry.topology != "icosphere"
+    ):
+        raise ValueError(
+            "canonical relief publication geometry requires 80.0 mm diameter, "
+            "1.2 mm relief, subdivision-7 icosphere"
+        )
+    percentiles = recipe.mapping.percentiles
+    if (
+        not isinstance(percentiles, tuple)
+        or len(percentiles) != 2
+        or not _canonical_real(percentiles[0], 1.0)
+        or not _canonical_real(percentiles[1], 99.0)
+    ):
+        raise ValueError("canonical relief publication percentiles must equal (1.0, 99.0)")
+    if not _canonical_real(recipe.mapping.gamma, 1.0):
+        raise ValueError("canonical relief publication gamma must equal 1.0")
+    if (
+        not isinstance(recipe.mapping.direction, str)
+        or recipe.mapping.direction != "bright_outward"
+    ):
+        raise ValueError("canonical relief publication direction must be bright_outward")
+    if not isinstance(recipe.filter.kind, str) or recipe.filter.kind != "spherical_gaussian":
+        raise ValueError("canonical relief publication filter kind must be spherical_gaussian")
+    if not _canonical_real(recipe.filter.fwhm_mm, 0.8):
+        raise ValueError("canonical relief publication FWHM must equal 0.8 mm")
+    if not _canonical_real(recipe.filter.cutoff_sigma, 3.0):
+        raise ValueError("canonical relief publication cutoff must equal 3.0 sigma")
+    if (
+        not isinstance(recipe.exports, tuple)
+        or recipe.exports != ("stl",)
+        or any(not isinstance(item, str) for item in recipe.exports)
+    ):
+        raise ValueError("canonical relief publication export must contain exactly STL")
+
+
+def _rename_directory_no_replace(staging: Path, completed: Path) -> None:
+    """Atomically publish a directory without replacing an existing destination."""
+    if platform.system() != "Darwin":
+        raise RuntimeError(
+            "atomic no-replace directory publication is unsupported on this platform"
+        )
+    library = ctypes.CDLL(None, use_errno=True)
+    try:
+        renamex_np = library.renamex_np
+    except AttributeError as error:
+        raise RuntimeError("Darwin renamex_np is unavailable") from error
+    renamex_np.argtypes = (ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint)
+    renamex_np.restype = ctypes.c_int
+    rename_exclusive = 0x00000004
+    if renamex_np(os.fsencode(staging), os.fsencode(completed), rename_exclusive) != 0:
+        code = ctypes.get_errno()
+        if code == errno.EEXIST:
+            raise FileExistsError(code, os.strerror(code), str(completed))
+        raise OSError(code, os.strerror(code), str(completed))
+
+
+def _remove_published_directory(path: Path) -> None:
+    shutil.rmtree(path)
+
+
+def _publish_staging(staging: Path, completed: Path, root: Path) -> None:
+    """No-clobber publish, with explicit rollback after a parent fsync failure."""
+    try:
+        _rename_directory_no_replace(staging, completed)
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    try:
+        _fsync_directory(root)
+    except Exception as sync_error:
+        try:
+            _remove_published_directory(completed)
+            _fsync_directory(root)
+        except Exception as rollback_error:
+            raise ReliefPublicationUncertainError(
+                "relief globe publication is uncertain at "
+                f"{completed}: parent fsync failed and rollback could not be proven"
+            ) from rollback_error
+        raise RuntimeError(
+            f"relief globe publication rolled back after parent fsync failed: {sync_error}"
+        ) from sync_error
 
 
 def _artifact(samples, filtered: np.ndarray, geometry) -> ReliefFieldArtifact:
@@ -251,20 +360,13 @@ def _manifest(identity, recipe, master, field, topology, mapped, filter_report,
     }
 
 
-def _result(build_id: str, completed: Path) -> ReliefGlobeBuildResult:
-    stl = tuple(completed.glob("*-intensity-relief-globe.stl"))
-    preview = tuple(completed.glob("*-intensity-relief-preview.png"))
-    expected = {"relief-field.npz", "mesh-validation.json", "relief-manifest.json"}
-    if len(stl) != 1 or len(preview) != 1 or not expected.issubset(
-        path.name for path in completed.iterdir()
-    ) or len(tuple(completed.iterdir())) != 5:
-        raise RuntimeError("published relief globe bundle has an invalid export inventory")
+def _result(build_id: str, completed: Path, stem: str) -> ReliefGlobeBuildResult:
     return ReliefGlobeBuildResult(
         build_id=build_id,
         path=completed,
         manifest=completed / "relief-manifest.json",
-        stl=stl[0],
-        preview=preview[0],
+        stl=completed / f"{stem}-globe.stl",
+        preview=completed / f"{stem}-preview.png",
         field=completed / "relief-field.npz",
         validation=completed / "mesh-validation.json",
     )
@@ -277,6 +379,7 @@ def build_relief_globe(
 ) -> ReliefGlobeBuildResult:
     """Build, validate, and atomically publish one immutable relief globe."""
     recipe = load_relief_globe_recipe(recipe_path)
+    _require_canonical_publication_recipe(recipe)
     source_path = Path(master_pattern_path).resolve()
     source_file_sha256 = _sha256_file(source_path)
     if source_file_sha256 != recipe.source.file_sha256:
@@ -318,8 +421,9 @@ def build_relief_globe(
     root.mkdir(parents=True, exist_ok=True)
     _require_fresh_destinations(partial, completed)
     partial.mkdir()
+    stem = f"{_safe_slug(master.metadata_dict()['phase']['name'])}-intensity-relief"
+    result = _result(build_id, completed, stem)
     try:
-        stem = f"{_safe_slug(master.metadata_dict()['phase']['name'])}-intensity-relief"
         (partial / f"{stem}-globe.stl").write_bytes(
             relief_stl_bytes(geometry, topology, validation)
         )
@@ -343,10 +447,18 @@ def build_relief_globe(
             geometry, validation, partial
         )
         _write_json(partial / "relief-manifest.json", manifest)
+        expected = {
+            result.stl.name,
+            result.preview.name,
+            result.field.name,
+            result.validation.name,
+            result.manifest.name,
+        }
+        if {path.name for path in partial.iterdir()} != expected:
+            raise RuntimeError("staged relief globe bundle has an invalid export inventory")
         _fsync_tree(partial)
-        os.replace(partial, completed)
-        _fsync_directory(root)
+        _publish_staging(partial, completed, root)
     except Exception:
         shutil.rmtree(partial, ignore_errors=True)
         raise
-    return _result(build_id, completed)
+    return result

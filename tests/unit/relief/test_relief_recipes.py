@@ -39,11 +39,9 @@ def test_forsterite_relief_recipe_preserves_approved_contract():
         ("orientation", "orientation_matrx: identity\n", "unknown keys"),
         ("base_diameter_mm: 80.0", "base_diameter_mm: 0", "base_diameter_mm"),
         ("maximum_relief_mm: 1.2", "maximum_relief_mm: -1", "maximum_relief_mm"),
-        ("subdivisions: 7", "subdivisions: 6", "subdivisions must equal 7"),
         ("upper: 99.0", "upper: 1.0", "percentile"),
         ("gamma: 1.0", "gamma: false", "gamma"),
         ("fwhm_mm: 0.8", "fwhm_mm: .nan", "fwhm_mm"),
-        ("formats: [stl]", "formats: [obj]", "formats"),
     ],
 )
 def test_recipe_rejects_unknown_and_invalid_semantics(
@@ -55,3 +53,22 @@ def test_recipe_rejects_unknown_and_invalid_semantics(
     candidate.write_text(text, encoding="utf-8")
     with pytest.raises(ValueError, match=message):
         load_relief_globe_recipe(candidate)
+
+
+def test_recipe_parser_preserves_valid_noncanonical_choices_for_layered_consumers(tmp_path):
+    text = RECIPE.read_text(encoding="utf-8")
+    text = text.replace("subdivisions: 7", "subdivisions: 6")
+    text = text.replace("topology: icosphere", "topology: alternate-sphere")
+    text = text.replace("direction: bright_outward", "direction: dark_outward")
+    text = text.replace("kind: spherical_gaussian", "kind: alternate_filter")
+    text = text.replace("formats: [stl]", "formats: [obj, stl]")
+    candidate = tmp_path / "noncanonical.yml"
+    candidate.write_text(text, encoding="utf-8")
+
+    recipe = load_relief_globe_recipe(candidate)
+
+    assert recipe.geometry.subdivisions == 6
+    assert recipe.geometry.topology == "alternate-sphere"
+    assert recipe.mapping.direction == "dark_outward"
+    assert recipe.filter.kind == "alternate_filter"
+    assert recipe.exports == ("obj", "stl")
