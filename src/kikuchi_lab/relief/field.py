@@ -269,10 +269,10 @@ def interpolate_sample_ledger(
     row0, row1 = samples.source_rows.T
     col0, col1 = samples.source_columns.T
     if (
-        np.any(row0 < 0)
-        or np.any(row1 >= north.shape[0])
-        or np.any(col0 < 0)
-        or np.any(col1 >= north.shape[1])
+        np.any(samples.source_rows < 0)
+        or np.any(samples.source_rows >= north.shape[0])
+        or np.any(samples.source_columns < 0)
+        or np.any(samples.source_columns >= north.shape[1])
     ):
         raise ValueError("sample ledger indices exceed grid bounds")
     corners = np.empty((count, 4), dtype=np.float64)
