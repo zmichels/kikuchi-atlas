@@ -29,6 +29,21 @@ from kikuchi_lab.art_products.orientation_gallery_recipe import (
     OrientationGalleryVariant,
     load_orientation_gallery_recipe,
 )
+from kikuchi_lab.art_products.orientation_gallery_bundle import (
+    OrientationGalleryCell,
+    OrientationGalleryCellBundleResult,
+    write_orientation_gallery_cell_bundle,
+)
+from kikuchi_lab.art_products.orientation_gallery_sheet import (
+    ORIENTATION_GALLERY_CELL_ORDER,
+    ORIENTATION_GALLERY_PANEL_SIZE_PX,
+    ORIENTATION_GALLERY_RENDERER_VERSION,
+    OrientationGallerySheetBundleResult,
+    OrientationGallerySheetCell,
+    RenderedOrientationGallerySheet,
+    render_orientation_gallery_sheet,
+    write_orientation_gallery_sheet_bundle,
+)
 from kikuchi_lab.art_products.tattoo_vector import TattooClearanceError
 from kikuchi_lab.art_products.series_sheet import (
     RenderedSeriesSheet,
@@ -50,6 +65,14 @@ __all__ = [
     "HemisphereTreatment",
     "OrientationGalleryRecipe",
     "OrientationGalleryVariant",
+    "OrientationGalleryCell",
+    "OrientationGalleryCellBundleResult",
+    "ORIENTATION_GALLERY_CELL_ORDER",
+    "ORIENTATION_GALLERY_PANEL_SIZE_PX",
+    "ORIENTATION_GALLERY_RENDERER_VERSION",
+    "OrientationGallerySheetBundleResult",
+    "OrientationGallerySheetCell",
+    "RenderedOrientationGallerySheet",
     "RenderedSeriesSheet",
     "SeriesSheetBundleResult",
     "SeriesSheetCell",
@@ -62,7 +85,10 @@ __all__ = [
     "load_frozen_tattoo_selection",
     "load_hemisphere_series_recipe",
     "load_orientation_gallery_recipe",
+    "render_orientation_gallery_sheet",
     "render_series_sheet",
     "select_clearance_valid_tattoo_paths",
     "write_series_sheet_bundle",
+    "write_orientation_gallery_cell_bundle",
+    "write_orientation_gallery_sheet_bundle",
 ]
