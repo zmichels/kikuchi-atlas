@@ -21,8 +21,11 @@ import numpy as np
 from kikuchi_lab import __version__
 from kikuchi_lab.model import load_master_product
 from kikuchi_lab.model.identity import plain_data, stable_id
+from kikuchi_lab.model import identity as identity_module
 
+from . import mesh as mesh_module
 from .field import build_spherical_scalar_field
+from .field import LAMBERT_INTERPOLATION_CONTRACT
 from .mapping import (
     build_relief_geometry,
     filter_spherical_values,
@@ -38,6 +41,12 @@ from .mesh import (
 )
 from .recipes import load_relief_globe_recipe
 from .topology import build_icosphere
+
+
+RELIEF_BUILD_SCHEMA = "kikuchi.relief-globe-build/v1"
+RELIEF_MANIFEST_SCHEMA = "kikuchi.relief-globe-manifest/v1"
+RELIEF_MANIFEST_INVENTORY_CONTRACT = "sha256-bytes/four-payload-files/v1"
+RELIEF_BUNDLE_LAYOUT_CONTRACT = "atomic-five-file-relief-bundle/v1"
 
 
 @dataclass(frozen=True)
@@ -86,6 +95,25 @@ def _software_versions() -> dict[str, str]:
         "kikuchipy": version("kikuchipy"),
         "trimesh": version("trimesh"),
         "matplotlib": version("matplotlib"),
+    }
+
+
+def _contract_versions() -> dict[str, str]:
+    """Return all serialization/layout contracts that participate in identity."""
+    return {
+        "RELIEF_STL_SERIALIZATION_CONTRACT": mesh_module.RELIEF_STL_SERIALIZATION_CONTRACT,
+        "RELIEF_FIELD_NPZ_SERIALIZATION_CONTRACT": (
+            mesh_module.RELIEF_FIELD_NPZ_SERIALIZATION_CONTRACT
+        ),
+        "RELIEF_PREVIEW_RENDER_CONTRACT": mesh_module.RELIEF_PREVIEW_RENDER_CONTRACT,
+        "RELIEF_PREVIEW_STYLE_CONTRACT": mesh_module.RELIEF_PREVIEW_STYLE_CONTRACT,
+        "CANONICAL_JSON_SERIALIZATION_CONTRACT": (
+            identity_module.CANONICAL_JSON_SERIALIZATION_CONTRACT
+        ),
+        "RELIEF_VALIDATION_JSON_SCHEMA": mesh_module.RELIEF_VALIDATION_JSON_SCHEMA,
+        "RELIEF_MANIFEST_SCHEMA": RELIEF_MANIFEST_SCHEMA,
+        "RELIEF_MANIFEST_INVENTORY_CONTRACT": RELIEF_MANIFEST_INVENTORY_CONTRACT,
+        "RELIEF_BUNDLE_LAYOUT_CONTRACT": RELIEF_BUNDLE_LAYOUT_CONTRACT,
     }
 
 
@@ -243,19 +271,26 @@ def _publish_staging(staging: Path, completed: Path, root: Path) -> None:
 
 
 def _artifact(samples, filtered: np.ndarray, geometry) -> ReliefFieldArtifact:
-    rows = np.asarray(samples.source_rows, dtype=np.int32)
-    columns = np.asarray(samples.source_columns, dtype=np.int32)
+    def frozen(value, dtype) -> np.ndarray:
+        array = np.array(value, dtype=dtype, order="C", copy=True)
+        array.setflags(write=False)
+        return array
+
+    rows = np.asarray(samples.source_rows)
+    columns = np.asarray(samples.source_columns)
     return ReliefFieldArtifact(
-        directions=np.asarray(geometry.directions, dtype=np.float64),
-        hemisphere=np.where(geometry.directions[:, 2] >= 0.0, 1, -1).astype(np.int8),
-        source_rows=rows[:, (0, 1, 0, 1)],
-        source_columns=columns[:, (0, 0, 1, 1)],
-        weights=np.asarray(samples.weights, dtype=np.float64),
-        sampled_raw=np.asarray(samples.raw_values, dtype=np.float64),
-        mapped=np.asarray(samples.mapped_values, dtype=np.float64),
-        filtered=np.asarray(filtered, dtype=np.float64),
-        radii_mm=np.asarray(geometry.radii_mm, dtype=np.float64),
-        faces=np.asarray(geometry.faces, dtype=np.int64),
+        directions=frozen(geometry.directions, np.float64),
+        hemisphere=frozen(
+            np.where(np.asarray(geometry.directions)[:, 2] >= 0.0, 1, -1), np.int8
+        ),
+        source_rows=frozen(rows[:, (0, 1, 0, 1)], np.int32),
+        source_columns=frozen(columns[:, (0, 0, 1, 1)], np.int32),
+        weights=frozen(samples.weights, np.float64),
+        sampled_raw=frozen(samples.raw_values, np.float64),
+        mapped=frozen(samples.mapped_values, np.float64),
+        filtered=frozen(filtered, np.float64),
+        radii_mm=frozen(geometry.radii_mm, np.float64),
+        faces=frozen(geometry.faces, np.int64),
     )
 
 
@@ -271,7 +306,8 @@ def _identity(
     versions,
 ) -> dict[str, object]:
     return {
-        "schema": "kikuchi.relief-globe-build/v1",
+        "schema": RELIEF_BUILD_SCHEMA,
+        "contracts": _contract_versions(),
         "recipe": recipe.identity_dict(),
         "recipe_id": recipe.recipe_id,
         "source": {
@@ -283,6 +319,9 @@ def _identity(
             "field_id": field.field_id,
             "coordinate_frame": field.coordinate_frame,
             "projection": field.projection,
+            "intensity_units": field.intensity_units,
+            "source_array_shape": list(field.source_array_shape),
+            "lambert_transform_contract": field.lambert_transform_contract,
             "seam": asdict(field.seam),
         },
         "mapping": {
@@ -299,9 +338,7 @@ def _identity(
             "directions": _array_record(topology.directions),
             "faces": _array_record(topology.faces),
         },
-        "interpolation": {
-            "contract": "lambert-square-bilinear-ledger/north-owns-equator/v1"
-        },
+        "interpolation": {"contract": LAMBERT_INTERPOLATION_CONTRACT},
         "filter": asdict(filter_report),
         "validation": validation.to_dict(),
         "software_versions": versions,
@@ -319,9 +356,10 @@ def _manifest(identity, recipe, master, field, topology, mapped, filter_report,
     bounds = validation.bounds_mm
     maximum_diameter = 2.0 * validation.maximum_radius_mm
     return {
-        "schema": "kikuchi.relief-globe-manifest/v1",
+        "schema": RELIEF_MANIFEST_SCHEMA,
         "build_id": stable_id("relief-globe-build", identity),
         "identity": identity,
+        "contracts": identity["contracts"],
         "recipe_id": recipe.recipe_id,
         "recipe": recipe.identity_dict(),
         "source": {
@@ -332,6 +370,9 @@ def _manifest(identity, recipe, master, field, topology, mapped, filter_report,
             "grid": metadata["array"],
             "projection": field.projection,
             "coordinate_frame": field.coordinate_frame,
+            "intensity_units": field.intensity_units,
+            "source_array_shape": list(field.source_array_shape),
+            "lambert_transform_contract": field.lambert_transform_contract,
             "hemisphere_order": metadata["hemisphere_order"],
             "seam": asdict(field.seam),
         },
@@ -441,7 +482,10 @@ def build_relief_globe(
         (partial / "relief-field.npz").write_bytes(
             relief_field_npz_bytes(artifact, geometry, topology, validation)
         )
-        _write_json(partial / "mesh-validation.json", validation.to_dict())
+        _write_json(
+            partial / "mesh-validation.json",
+            {"schema": mesh_module.RELIEF_VALIDATION_JSON_SCHEMA, **validation.to_dict()},
+        )
         manifest = _manifest(
             identity, recipe, master, field, topology, mapped, filter_report,
             geometry, validation, partial

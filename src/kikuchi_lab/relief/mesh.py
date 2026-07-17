@@ -10,13 +10,13 @@ from functools import lru_cache
 from numbers import Real
 from pathlib import Path
 
-import matplotlib
 import numpy as np
 import trimesh
 
-matplotlib.use("Agg")
-from matplotlib import pyplot as plt  # noqa: E402
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection  # noqa: E402
+from matplotlib import colormaps
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from kikuchi_lab.model.identity import canonical_json, plain_data
 
@@ -32,6 +32,14 @@ _RADIAL_REPRESENTATION_TOLERANCE_MM = 1e-10
 _CANONICAL_SUBDIVISIONS = 7
 _CANONICAL_BASE_RADIUS_MM = 40.0
 _CANONICAL_MAXIMUM_RELIEF_MM = 1.2
+
+RELIEF_STL_SERIALIZATION_CONTRACT = "trimesh-binary-stl/process-false/v1"
+RELIEF_FIELD_NPZ_SERIALIZATION_CONTRACT = (
+    "zip-stored-npy/fixed-order-1980-epoch-mode-0600/v1"
+)
+RELIEF_PREVIEW_RENDER_CONTRACT = "matplotlib-figure-canvas-agg/900x900-rgba/v1"
+RELIEF_PREVIEW_STYLE_CONTRACT = "gray-relief-fixed-view-light-inset/v1"
+RELIEF_VALIDATION_JSON_SCHEMA = "kikuchi.relief-mesh-validation/v1"
 
 FIELD_ARRAY_ORDER = (
     "directions",
@@ -489,6 +497,12 @@ def _validate_field_artifact(
         dtype, shape = expected[name]
         if not isinstance(array, np.ndarray) or array.dtype != dtype or array.shape != shape:
             raise ValueError(f"field artifact {name} has wrong dtype or shape")
+        if array.flags.writeable:
+            raise ValueError(f"field artifact {name} must be read-only")
+        if not array.flags.owndata:
+            raise ValueError(f"field artifact {name} must own its data")
+        if not array.flags.c_contiguous:
+            raise ValueError(f"field artifact {name} must be C-contiguous")
         if not np.isfinite(array).all():
             raise ValueError(f"field artifact {name} must be finite")
     if not np.array_equal(artifact.directions, topology.directions):
@@ -596,10 +610,11 @@ def write_relief_preview(
     light = np.array([0.35, -0.45, 0.82], dtype=np.float64)
     light /= np.linalg.norm(light)
     shade = 0.35 + 0.65 * np.clip(normals @ light, 0.0, 1.0)
-    rgba = plt.get_cmap("gray")(face_values)
+    rgba = colormaps["gray"](face_values)
     rgba[:, :3] *= shade[:, None]
 
-    figure = plt.figure(figsize=(9, 9), dpi=100, facecolor="white")
+    figure = Figure(figsize=(9, 9), dpi=100, facecolor="white")
+    canvas = FigureCanvasAgg(figure)
     axes = figure.add_subplot(111, projection="3d")
     axes.add_collection3d(Poly3DCollection(triangles, facecolors=rgba, linewidths=0))
     radius = geometry.base_radius_mm + geometry.maximum_relief_mm
@@ -615,12 +630,8 @@ def write_relief_preview(
         f"filter FWHM: {filter_fwhm_mm:.3f} mm"
     )
     figure.text(0.025, 0.025, inset, ha="left", va="bottom", family="monospace")
-    figure.savefig(
+    canvas.print_png(
         Path(path),
-        format="png",
-        dpi=100,
-        facecolor="white",
-        transparent=False,
         metadata={"Software": "kikuchi-lab"},
     )
-    plt.close(figure)
+    figure.clear()

@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+import kikuchi_lab.relief.field as field_module
 from kikuchi_lab.model.persistence import load_master_product
 from kikuchi_lab.relief.field import (
     DirectionalSamples,
@@ -73,6 +74,28 @@ def test_field_owns_one_equator_and_exact_source_identity():
     assert field.seam.maximum_normalized_residual == 0.0
     assert field.seam.equator_owner == "north"
     assert not field.directions.flags.writeable
+    assert field.intensity_units == "raw dynamical intensity"
+    assert field.source_array_shape == (2, 9, 9)
+    assert field.lambert_transform_contract == (
+        "callahan-emsoft-square-lambert/v1"
+    )
+    assert all(type(value) is int for value in field.source_array_shape)
+
+
+def test_field_identity_changes_with_lambert_transform_contract(monkeypatch):
+    master = analytic_master_product(size=9)
+    expected = expectation_for(master)
+    original = build_spherical_scalar_field(master, expected)
+    monkeypatch.setattr(
+        field_module,
+        "LAMBERT_TRANSFORM_CONTRACT",
+        "callahan-emsoft-square-lambert/test-change",
+    )
+
+    changed = build_spherical_scalar_field(master, expected)
+
+    assert changed.field_id != original.field_id
+    assert changed.lambert_transform_contract.endswith("/test-change")
 
 
 def test_transform_field_and_sample_arrays_are_immutable_float64_or_int64():

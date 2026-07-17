@@ -23,7 +23,10 @@ _SQRT_PI_OVER_2 = np.sqrt(np.pi) / 2.0
 _TWO_OVER_SQRT_PI = 2.0 / np.sqrt(np.pi)
 _SEAM_TOLERANCE = 1e-6
 _EQUATOR_TOLERANCE = 1e-14
-_TRANSFORM_CONTRACT = "callahan-emsoft-square-lambert/v1"
+LAMBERT_TRANSFORM_CONTRACT = "callahan-emsoft-square-lambert/v1"
+LAMBERT_INTERPOLATION_CONTRACT = (
+    "lambert-square-bilinear-ledger/north-owns-equator/v1"
+)
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -54,6 +57,9 @@ class SphericalScalarField:
     master_array_sha256: str
     projection: str
     coordinate_frame: str
+    intensity_units: str
+    source_array_shape: tuple[int, int, int]
+    lambert_transform_contract: str
     north_grid: np.ndarray
     south_grid: np.ndarray
     directions: np.ndarray
@@ -165,6 +171,9 @@ def _validate_master(
     coordinate_frame = metadata.get("coordinate_frame")
     if not isinstance(coordinate_frame, str) or not coordinate_frame:
         raise ValueError("master coordinate frame is required")
+    intensity_units = metadata.get("intensity_units")
+    if not isinstance(intensity_units, str) or not intensity_units:
+        raise ValueError("master intensity units are required")
     return intensity, metadata
 
 
@@ -225,7 +234,9 @@ def build_spherical_scalar_field(
         },
         "projection": metadata["projection"],
         "coordinate_frame": metadata["coordinate_frame"],
-        "transform_contract": _TRANSFORM_CONTRACT,
+        "intensity_units": metadata["intensity_units"],
+        "source_array_shape": list(intensity.shape),
+        "transform_contract": LAMBERT_TRANSFORM_CONTRACT,
         "seam": asdict(seam),
     }
     return SphericalScalarField(
@@ -234,6 +245,9 @@ def build_spherical_scalar_field(
         master_array_sha256=master.array_sha256,
         projection=str(metadata["projection"]),
         coordinate_frame=str(metadata["coordinate_frame"]),
+        intensity_units=str(metadata["intensity_units"]),
+        source_array_shape=tuple(int(value) for value in intensity.shape),
+        lambert_transform_contract=LAMBERT_TRANSFORM_CONTRACT,
         north_grid=north_grid,
         south_grid=south_grid,
         directions=directions,

@@ -28,8 +28,10 @@ record real forsterite acceptance without claiming an unperformed print.
 
 - [x] The nested CLI produces exactly one five-file atomic bundle or removes partial output and returns a concise failure without traceback.
 - [x] Build identity and manifest inventory include recipe, source, mapping, topology, filter, validation, runtime versions, file hashes, byte sizes, and millimetre units.
-- [ ] Two independent full-resolution builds are identical, the retained `501 x 501` forsterite source passes mesh and slicer inspection, and all repository gates remain green.
+- [x] Two independent full-resolution builds are identical, the retained `501 x 501` forsterite source passes canonical and processed-round-trip mesh inspection, and all repository gates remain green.
+- [ ] Human Flash Studio GUI inspection records the retained STL as one unmodified solid without repair warnings.
 
 The reproducibility, retained-source mesh inspection, and repository gates passed. Flash Studio
 1.7.11 exposes no discovered safe noninteractive slicer seam, so slicer-native inspection remains
-unobserved and is recorded as a concern in the acceptance report.
+unobserved and is recorded as the sole concern in the acceptance report. `KIKU-T036` remains open
+only for that external GUI inspection.

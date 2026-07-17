@@ -13,6 +13,8 @@ import numpy as np
 
 _KIND = re.compile(r"^[a-z][a-z0-9_-]*$")
 
+CANONICAL_JSON_SERIALIZATION_CONTRACT = "canonical-json/sorted-compact-unicode/v1"
+
 
 def plain_data(value: Any) -> Any:
     """Return JSON-compatible Python values, rejecting ambiguous values."""

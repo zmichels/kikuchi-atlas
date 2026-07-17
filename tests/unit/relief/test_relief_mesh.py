@@ -22,6 +22,12 @@ from kikuchi_lab.relief.mesh import (
 from kikuchi_lab.relief.topology import IcosphereTopology
 
 
+def _frozen_owned(value, dtype):
+    array = np.array(value, dtype=dtype, order="C", copy=True)
+    array.setflags(write=False)
+    return array
+
+
 def _geometry(topology, filtered=None, *, base=40.0, maximum=1.2):
     if filtered is None:
         filtered = 0.5 * (topology.directions[:, 2] + 1.0)
@@ -57,17 +63,57 @@ def field_artifact(canonical_fixture):
     topology, geometry, _ = canonical_fixture
     count = len(topology.directions)
     return ReliefFieldArtifact(
-        directions=topology.directions,
-        hemisphere=np.where(topology.directions[:, 2] >= 0.0, 1, -1).astype(np.int8),
-        source_rows=np.zeros((count, 4), dtype=np.int32),
-        source_columns=np.ones((count, 4), dtype=np.int32),
-        weights=np.full((count, 4), 0.25, dtype=np.float64),
-        sampled_raw=np.linspace(0.0, 2.0, count, dtype=np.float64),
-        mapped=np.linspace(0.0, 1.0, count, dtype=np.float64),
-        filtered=geometry.filtered_values,
-        radii_mm=geometry.radii_mm,
-        faces=topology.faces,
+        directions=_frozen_owned(topology.directions, np.float64),
+        hemisphere=_frozen_owned(
+            np.where(topology.directions[:, 2] >= 0.0, 1, -1), np.int8
+        ),
+        source_rows=_frozen_owned(np.zeros((count, 4)), np.int32),
+        source_columns=_frozen_owned(np.ones((count, 4)), np.int32),
+        weights=_frozen_owned(np.full((count, 4), 0.25), np.float64),
+        sampled_raw=_frozen_owned(np.linspace(0.0, 2.0, count), np.float64),
+        mapped=_frozen_owned(np.linspace(0.0, 1.0, count), np.float64),
+        filtered=_frozen_owned(geometry.filtered_values, np.float64),
+        radii_mm=_frozen_owned(geometry.radii_mm, np.float64),
+        faces=_frozen_owned(topology.faces, np.int64),
     )
+
+
+def test_field_artifact_arrays_are_independently_owned_contiguous_and_read_only(
+    field_artifact,
+):
+    arrays = [getattr(field_artifact, name) for name in FIELD_ARRAY_ORDER]
+    assert all(array.flags.owndata for array in arrays)
+    assert all(array.flags.c_contiguous for array in arrays)
+    assert all(not array.flags.writeable for array in arrays)
+    assert len({array.ctypes.data for array in arrays}) == len(arrays)
+    with pytest.raises(ValueError, match="read-only"):
+        field_artifact.sampled_raw[0] = -1.0
+
+
+@pytest.mark.parametrize("name", FIELD_ARRAY_ORDER)
+def test_field_artifact_serialization_rejects_writable_array(
+    canonical_fixture, field_artifact, name
+):
+    topology, geometry, validation = canonical_fixture
+    writable = np.array(getattr(field_artifact, name), copy=True)
+    changed = replace(field_artifact, **{name: writable})
+
+    with pytest.raises(ValueError, match=f"field artifact {name} must be read-only"):
+        relief_field_npz_bytes(changed, geometry, topology, validation)
+
+
+def test_field_artifact_serialization_rejects_non_owned_array(
+    canonical_fixture, field_artifact
+):
+    topology, geometry, validation = canonical_fixture
+    backing = np.array(field_artifact.sampled_raw, copy=True)
+    view = backing.view()
+    view.setflags(write=False)
+
+    with pytest.raises(ValueError, match="sampled_raw must own its data"):
+        relief_field_npz_bytes(
+            replace(field_artifact, sampled_raw=view), geometry, topology, validation
+        )
 
 
 def test_valid_radial_mesh_passes_without_mutation(relief_fixture):
@@ -360,7 +406,10 @@ def test_field_npz_rejects_malformed_or_misaligned_artifact(
     canonical_fixture, field_artifact, field, value, message
 ):
     topology, geometry, validation = canonical_fixture
-    altered = replace(field_artifact, **{field: value(getattr(field_artifact, field))})
+    changed = value(getattr(field_artifact, field))
+    if isinstance(changed, np.ndarray):
+        changed = _frozen_owned(changed, changed.dtype)
+    altered = replace(field_artifact, **{field: changed})
     with pytest.raises(ValueError, match=message):
         relief_field_npz_bytes(altered, geometry, topology, validation)
 
@@ -382,8 +431,8 @@ def test_exports_reject_stale_validation_report(canonical_fixture, field_artifac
         relief_field_npz_bytes(
             replace(
                 field_artifact,
-                filtered=altered.filtered_values,
-                radii_mm=altered.radii_mm,
+                filtered=_frozen_owned(altered.filtered_values, np.float64),
+                radii_mm=_frozen_owned(altered.radii_mm, np.float64),
             ),
             altered,
             topology,

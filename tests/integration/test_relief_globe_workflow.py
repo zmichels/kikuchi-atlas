@@ -5,12 +5,16 @@ import json
 import errno
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
+import numpy as np
 import pytest
 import trimesh
 import yaml
 
 import kikuchi_lab.relief.workflow as workflow
+import kikuchi_lab.relief.mesh as relief_mesh
+import kikuchi_lab.model.identity as model_identity
 from kikuchi_lab.model import MasterPatternProduct, load_master_product, save_master_product
 from kikuchi_lab.relief import build_relief_globe
 from tests.relief_fixtures import analytic_master_product
@@ -57,6 +61,73 @@ def _write_canonical_recipe(master_file: Path, path: Path) -> Path:
 
 def _tree_hashes(path: Path) -> dict[str, str]:
     return {item.name: _sha256(item) for item in sorted(path.iterdir())}
+
+
+@pytest.mark.parametrize(
+    ("module", "name"),
+    [
+        (relief_mesh, "RELIEF_STL_SERIALIZATION_CONTRACT"),
+        (relief_mesh, "RELIEF_FIELD_NPZ_SERIALIZATION_CONTRACT"),
+        (relief_mesh, "RELIEF_PREVIEW_RENDER_CONTRACT"),
+        (relief_mesh, "RELIEF_PREVIEW_STYLE_CONTRACT"),
+        (model_identity, "CANONICAL_JSON_SERIALIZATION_CONTRACT"),
+        (relief_mesh, "RELIEF_VALIDATION_JSON_SCHEMA"),
+        (workflow, "RELIEF_MANIFEST_SCHEMA"),
+        (workflow, "RELIEF_MANIFEST_INVENTORY_CONTRACT"),
+        (workflow, "RELIEF_BUNDLE_LAYOUT_CONTRACT"),
+    ],
+)
+def test_each_export_contract_changes_build_identity(monkeypatch, module, name):
+    baseline = workflow._contract_versions()
+    baseline_id = workflow.stable_id("relief-contract-test", baseline)
+    monkeypatch.setattr(module, name, f"{baseline[name]}/changed")
+    changed = workflow._contract_versions()
+
+    assert changed[name] != baseline[name]
+    assert workflow.stable_id("relief-contract-test", changed) != baseline_id
+
+
+def test_contract_mapping_is_shared_exactly_by_identity_and_manifest():
+    contracts = workflow._contract_versions()
+    identity = {"contracts": contracts}
+    manifest = {"identity": identity, "contracts": identity["contracts"]}
+
+    assert manifest["contracts"] == manifest["identity"]["contracts"]
+    assert manifest["contracts"] is manifest["identity"]["contracts"]
+
+
+def test_artifact_owns_frozen_copies_unaffected_by_pipeline_mutation():
+    source = np.arange(12, dtype=np.float64).reshape(4, 3)
+    rows = np.array([[0, 1]] * 4, dtype=np.int64)
+    columns = np.array([[1, 2]] * 4, dtype=np.int64)
+    weights = np.full((4, 4), 0.25)
+    raw = np.arange(4, dtype=np.float64)
+    mapped = raw / 3.0
+    filtered = mapped.copy()
+    faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int64)
+    samples = SimpleNamespace(
+        source_rows=rows,
+        source_columns=columns,
+        weights=weights,
+        raw_values=raw,
+        mapped_values=mapped,
+    )
+    geometry = SimpleNamespace(
+        directions=source,
+        radii_mm=40.0 + filtered,
+        faces=faces,
+    )
+
+    artifact = workflow._artifact(samples, filtered, geometry)
+    before = {name: getattr(artifact, name).copy() for name in relief_mesh.FIELD_ARRAY_ORDER}
+    for array in (source, rows, columns, weights, raw, mapped, filtered, faces):
+        array[...] = 0
+
+    for name, expected in before.items():
+        actual = getattr(artifact, name)
+        assert np.array_equal(actual, expected)
+        assert actual.flags.owndata and actual.flags.c_contiguous
+        assert not actual.flags.writeable
 
 
 def test_invalid_phase_slug_leaves_no_staging_and_does_not_block_corrected_retry(
@@ -265,6 +336,13 @@ def test_analytic_globe_build_is_reproducible_atomic_and_complete(
     assert manifest["source"]["master_product_id"] == load_master_product(analytic_master_file).product_id
     assert manifest["validation"]["passed"] is True
     assert manifest["identity"]["validation"] == manifest["validation"]
+    assert manifest["contracts"] == manifest["identity"]["contracts"]
+    assert manifest["source"]["intensity_units"] == "raw dynamical intensity"
+    assert manifest["source"]["source_array_shape"] == [2, 9, 9]
+    assert manifest["source"]["lambert_transform_contract"] == (
+        "callahan-emsoft-square-lambert/v1"
+    )
+    assert manifest["identity"]["field"]["source_array_shape"] == [2, 9, 9]
     assert manifest["identity"]["validation"]["geometry_fingerprint"].startswith(
         "relief-geometry-sha256-"
     )
@@ -274,6 +352,8 @@ def test_analytic_globe_build_is_reproducible_atomic_and_complete(
     for name, record in manifest["files"].items():
         artifact = first.path / name
         assert record == {"bytes": artifact.stat().st_size, "sha256": _sha256(artifact)}
+    validation_payload = json.loads(first.validation.read_text(encoding="utf-8"))
+    assert validation_payload["schema"] == "kikuchi.relief-mesh-validation/v1"
     loaded = trimesh.load_mesh(first.stl, process=True)
     assert loaded.is_volume and loaded.body_count == 1
 

@@ -44,4 +44,11 @@ filtering, and complete source-to-mesh provenance.
 - [x] The canonical mesh contains exactly `163842` vertices and `327680` triangles, preserves subdivision-7 connectivity, and passes the reviewed radial-projection certificate.
 - [x] The STL is one watertight, consistently wound, positive-volume body with radii in `[40.0, 41.2] mm`, no duplicate or degenerate triangles, and no silent repair.
 - [ ] Slicer inspection records one unmodified solid while keeping physical printing, orientation, supports, infill, and material as operator decisions.
-- [ ] Existing crystal-habit and forsterite milestone products remain unchanged.
+- [x] Existing crystal-habit and forsterite milestone products remain unchanged.
+
+The unchanged-product criterion is supported by the tracked
+[forsterite milestone acceptance](../acceptance/forsterite-milestone.md), the relief acceptance's
+processed one-volume STL round trip, and the full fast regression gate recorded in
+[spherical relief acceptance](../acceptance/spherical-intensity-relief-globe.md). The sole open
+boundary is human Flash Studio GUI inspection of the retained STL; `KIKU-F005` remains open only
+for that inspection.
