@@ -24,4 +24,7 @@ proofs, beginning with an Ice Ih oxygen-sublattice review candidate.
 validated science-art products: an open-silhouette tattoo and a canonical-frame
 relief globe. Its secondary gray-wash/dotwork task depends explicitly on user
 acceptance of the primary tattoo geometry.
+`KIKU-F006` extracts a phase-general direct-reflector seam and applies one
+configurable orientation to a five-phase standard/wide vector-art family without
+making dense master-pattern rasters a routine rendering dependency.
 Parent/child links remain symmetric, and only accepted work is marked `done`.

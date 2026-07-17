@@ -10,6 +10,7 @@ children:
   - KIKU-F003
   - KIKU-F004
   - KIKU-F005
+  - KIKU-F006
 created: 2026-07-12
 priority: P0
 tags: [forsterite, milestone]
@@ -23,6 +24,7 @@ links:
   - ../superpowers/specs/2026-07-16-ice-art-globe-and-tattoo-design.md
   - ../superpowers/plans/2026-07-16-ice-art-catalog-and-tattoo.md
   - ../superpowers/plans/2026-07-16-ice-relief-globe.md
+  - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
 evidence:
   - ../superpowers/specs/2026-07-12-kikuchi-companion-design.md
   - ../acceptance/forsterite-milestone.md
