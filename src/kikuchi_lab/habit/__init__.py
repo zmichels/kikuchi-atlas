@@ -10,6 +10,7 @@ from .geometry import (
     triangulate_habit,
 )
 from .mesh import MeshValidation, stl_bytes, validate_triangle_mesh, write_habit_preview
+from .parity import MTEXParityReport, compare_mtex_reference
 from .recipes import FDMContext, HabitFace, HabitRecipe, PhaseSource, load_habit_recipe
 from .workflow import HabitBuildResult, build_habit
 
@@ -22,11 +23,13 @@ __all__ = [
     "HabitRecipe",
     "LabeledPolygonMesh",
     "MeshValidation",
+    "MTEXParityReport",
     "PhaseSource",
     "PolygonFace",
     "TriangleMesh",
     "expand_habit_planes",
     "build_habit",
+    "compare_mtex_reference",
     "load_habit_recipe",
     "orient_and_scale_habit",
     "solve_convex_habit",

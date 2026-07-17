@@ -82,6 +82,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     habit_commands = habit.add_subparsers(dest="habit_command", required=True)
     habit_build = habit_commands.add_parser("build", help="Build one validated habit bundle.")
     habit_build.add_argument("--recipe", required=True)
+    habit_build.add_argument("--mtex-reference")
     habit_build.add_argument("--output", required=True)
     args = parser.parse_args(arguments)
 
@@ -93,7 +94,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         from kikuchi_lab.habit import build_habit
 
         try:
-            result = build_habit(args.recipe, args.output)
+            result = build_habit(
+                args.recipe, args.output, mtex_reference=args.mtex_reference
+            )
         except (OSError, ValueError, RuntimeError) as error:
             print(f"kikuchi-lab: habit build failed: {error}", file=sys.stderr)
             return 1
@@ -105,6 +108,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "stl": str(result.stl),
                     "preview": str(result.preview),
                     "validation": str(result.validation),
+                    "parity": str(result.parity) if result.parity is not None else None,
                 },
                 indent=2,
                 sort_keys=True,

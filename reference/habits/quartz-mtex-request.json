@@ -1,0 +1,12 @@
+{
+  "schema": "kikuchi.mtex-habit-request/v1",
+  "cif": "../../phases/quartz/COD-9000775.cif",
+  "mtex_version": "6.1.1",
+  "families": [
+    {"label": "m", "indices": [1, 0, -1, 0], "normal_multiplier": 2.5},
+    {"label": "r", "indices": [1, 0, -1, 1], "normal_multiplier": 1.0},
+    {"label": "z", "indices": [0, 1, -1, 1], "normal_multiplier": 0.9},
+    {"label": "s1", "indices": [2, -1, -1, 1], "normal_multiplier": 0.7},
+    {"label": "x1", "indices": [6, -1, -5, 1], "normal_multiplier": 0.3}
+  ]
+}

@@ -2,7 +2,7 @@
 id: KIKU-T025
 type: task
 title: Define habit recipe and quartz reference source
-status: ready
+status: done
 parent: KIKU-F004
 created: '2026-07-17'
 priority: P1
@@ -23,6 +23,13 @@ support distances, source hash, and content-derived recipe identity.
 
 ## Acceptance Criteria
 
-- [ ] Quartz CIF bytes and public-domain provenance are tracked with the reviewed SHA-256.
-- [ ] The recipe validates Miller convention, support distances, target millimetres, and optional FDM context.
-- [ ] Recipe identity includes semantic content and CIF bytes without machine-local paths.
+- [x] Quartz CIF bytes and public-domain provenance are tracked with the reviewed SHA-256.
+- [x] The recipe validates Miller convention, support distances, target millimetres, and optional FDM context.
+- [x] Recipe identity includes semantic content and CIF bytes without machine-local paths.
+
+## Accepted Evidence
+
+- `phases/quartz/COD-9000775.cif`, `recipes/habits/quartz-mtex-example.yml`,
+  and `tests/unit/habit/test_habit_recipes.py`.
+- The reviewed CIF SHA-256 is
+  `10dd04655c03f6b152897a5e2d863e42892bd84561cb6dfc1febd86271e70b57`.

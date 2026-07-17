@@ -64,20 +64,40 @@ def test_habit_build_cli_routes_arguments_and_prints_json(monkeypatch, capsys):
         stl=Path("/tmp/habit-build-abc123/quartz-habit.stl"),
         preview=Path("/tmp/habit-build-abc123/quartz-habit-preview.png"),
         validation=Path("/tmp/habit-build-abc123/mesh-validation.json"),
+        parity=Path("/tmp/habit-build-abc123/mtex-parity.json"),
     )
     calls = []
     monkeypatch.setattr(
         "kikuchi_lab.habit.build_habit",
-        lambda recipe, output: calls.append((recipe, output)) or expected,
+        lambda recipe, output, *, mtex_reference=None: calls.append(
+            (recipe, output, mtex_reference)
+        )
+        or expected,
     )
 
-    assert main(["habit", "build", "--recipe", "r.yml", "--output", "out"]) == 0
-    assert calls == [("r.yml", "out")]
-    assert json.loads(capsys.readouterr().out)["build_id"] == expected.build_id
+    assert (
+        main(
+            [
+                "habit",
+                "build",
+                "--recipe",
+                "r.yml",
+                "--mtex-reference",
+                "mtex.json",
+                "--output",
+                "out",
+            ]
+        )
+        == 0
+    )
+    assert calls == [("r.yml", "out", "mtex.json")]
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["build_id"] == expected.build_id
+    assert payload["parity"] == str(expected.parity)
 
 
 def test_habit_build_cli_reports_domain_error_without_traceback(monkeypatch, capsys):
-    def fail(*_args):
+    def fail(*_args, **_kwargs):
         raise ValueError("maximum_dimension_mm must be positive")
 
     monkeypatch.setattr("kikuchi_lab.habit.build_habit", fail)

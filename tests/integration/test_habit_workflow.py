@@ -81,3 +81,41 @@ def test_failed_build_removes_partial_bundle(tmp_path: Path, monkeypatch):
 
     assert list(tmp_path.glob("*.partial")) == []
     assert list(tmp_path.iterdir()) == []
+
+
+def test_quartz_build_includes_passing_mtex_parity_in_inventory(tmp_path: Path):
+    result = build_habit(
+        ROOT / "recipes/habits/quartz-mtex-example.yml",
+        tmp_path,
+        mtex_reference=ROOT / "reference/habits/quartz-mtex-6.1.1.json",
+    )
+
+    assert result.parity == result.path / "mtex-parity.json"
+    parity = json.loads(result.parity.read_text(encoding="utf-8"))
+    assert parity["passed"] is True
+    manifest = json.loads(result.manifest.read_text(encoding="utf-8"))
+    assert manifest["mtex_parity_report"] == "mtex-parity.json"
+    assert "mtex-parity.json" in manifest["files"]
+
+
+def test_failed_mtex_parity_does_not_publish_or_leave_partial_bundle(
+    tmp_path: Path,
+):
+    ledger = json.loads(
+        (ROOT / "reference/habits/quartz-mtex-6.1.1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    ledger["vertices"][0][0] += 1e-4
+    bad_reference = tmp_path / "bad-reference.json"
+    bad_reference.write_text(json.dumps(ledger) + "\n", encoding="utf-8")
+    output = tmp_path / "output"
+
+    with pytest.raises(ValueError, match=r"MTEX parity failed: .*vertex_hausdorff"):
+        build_habit(
+            ROOT / "recipes/habits/quartz-mtex-example.yml",
+            output,
+            mtex_reference=bad_reference,
+        )
+
+    assert not output.exists()

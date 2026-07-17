@@ -23,6 +23,7 @@ from kikuchi_lab.habit.mesh import (
     validate_triangle_mesh,
     write_habit_preview,
 )
+from kikuchi_lab.habit.parity import MTEXParityReport, compare_mtex_reference
 from kikuchi_lab.habit.recipes import load_habit_recipe
 from kikuchi_lab.model.identity import plain_data, stable_id
 
@@ -96,6 +97,7 @@ def _manifest(
     polygon: object,
     triangles: object,
     report: object,
+    parity_report: MTEXParityReport | None,
     staging: Path,
 ) -> dict[str, object]:
     visible_polygons = [asdict(face) for face in polygon.faces]
@@ -112,7 +114,7 @@ def _manifest(
         for path in sorted(staging.iterdir(), key=lambda item: item.name)
         if path.is_file() and path.name != "habit-manifest.json"
     }
-    return {
+    manifest = {
         "schema": "kikuchi.habit-manifest/v1",
         "build_id": stable_id("habit-build", identity),
         "identity": identity,
@@ -143,6 +145,10 @@ def _manifest(
         "validation": report.to_dict(),
         "files": files,
     }
+    if parity_report is not None:
+        manifest["mtex_parity_report"] = "mtex-parity.json"
+        manifest["mtex_parity"] = parity_report.to_dict()
+    return manifest
 
 
 def _require_fresh_destinations(staging: Path, completed: Path) -> None:
@@ -189,16 +195,32 @@ def _result(build_id: str, completed: Path) -> HabitBuildResult:
         stl=stl_files[0],
         preview=preview_files[0],
         validation=completed / "mesh-validation.json",
+        parity=(
+            completed / "mtex-parity.json"
+            if (completed / "mtex-parity.json").is_file()
+            else None
+        ),
     )
 
 
-def build_habit(recipe_path: str | Path, output_root: str | Path) -> HabitBuildResult:
+def build_habit(
+    recipe_path: str | Path,
+    output_root: str | Path,
+    *,
+    mtex_reference: str | Path | None = None,
+) -> HabitBuildResult:
     """Build, validate, and atomically publish one immutable habit bundle."""
 
     recipe = load_habit_recipe(recipe_path)
     phase, planes = expand_habit_planes(recipe)
+    crystal_polygon = solve_convex_habit(planes)
+    parity_report = (
+        compare_mtex_reference(crystal_polygon, mtex_reference)
+        if mtex_reference is not None
+        else None
+    )
     polygon = orient_and_scale_habit(
-        solve_convex_habit(planes),
+        crystal_polygon,
         recipe.orientation_matrix,
         recipe.maximum_dimension_mm,
     )
@@ -211,6 +233,9 @@ def build_habit(recipe_path: str | Path, output_root: str | Path) -> HabitBuildR
         "solver": SOLVER_CONTRACT,
         "mesh_contract": MESH_CONTRACT,
     }
+    if mtex_reference is not None:
+        reference_bytes = Path(mtex_reference).read_bytes()
+        identity["mtex_reference_sha256"] = hashlib.sha256(reference_bytes).hexdigest()
     build_id = stable_id("habit-build", identity)
     root = Path(output_root).resolve()
     staging = root / f"{build_id}.partial"
@@ -223,7 +248,19 @@ def build_habit(recipe_path: str | Path, output_root: str | Path) -> HabitBuildR
         (staging / f"{stem}.stl").write_bytes(stl_bytes(triangles))
         write_habit_preview(staging / f"{stem}-preview.png", polygon)
         _write_json(staging / "mesh-validation.json", report.to_dict())
-        manifest = _manifest(identity, recipe, phase, planes, polygon, triangles, report, staging)
+        if parity_report is not None:
+            _write_json(staging / "mtex-parity.json", parity_report.to_dict())
+        manifest = _manifest(
+            identity,
+            recipe,
+            phase,
+            planes,
+            polygon,
+            triangles,
+            report,
+            parity_report,
+            staging,
+        )
         _write_json(staging / "habit-manifest.json", manifest)
         _fsync_tree(staging)
         os.replace(staging, completed)
