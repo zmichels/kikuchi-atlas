@@ -115,6 +115,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--ice-standard-reference", required=True
     )
     render_phase_art_series_parser.add_argument("--output", required=True)
+    render_phase_art_orientation_gallery_parser = subparsers.add_parser(
+        "render-phase-art-orientation-gallery",
+        help="Publish the parity-gated fifteen-cell phase orientation gallery.",
+        description="Publish the parity-gated fifteen-cell phase orientation gallery.",
+    )
+    render_phase_art_orientation_gallery_parser.add_argument("--recipe", required=True)
+    render_phase_art_orientation_gallery_parser.add_argument("--parity-root", required=True)
+    render_phase_art_orientation_gallery_parser.add_argument("--output", required=True)
     render_ice_tattoo_parser = subparsers.add_parser(
         "render-ice-tattoo",
         help="Publish the primary Ice tattoo from a retained strict catalog.",
@@ -495,6 +503,51 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "bundle_ids": [
                         bundle.run_id for bundle in result.new_bundles
                     ],
+                    "manifest_sha256": result.manifest_sha256,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "render-phase-art-orientation-gallery":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_phase_art_orientation_gallery
+
+        print(
+            "phase-art-orientation-gallery finite-work phases=5 orientations=3 cells=15 "
+            "simulation_count=0",
+            file=sys.stderr,
+            flush=True,
+        )
+        try:
+            result = render_phase_art_orientation_gallery(
+                recipe_path=args.recipe,
+                parity_root=args.parity_root,
+                output_root=args.output,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(
+                f"phase art orientation gallery render failed: {error}",
+                file=sys.stderr,
+            )
+            return 1
+        print(
+            json.dumps(
+                {
+                    "path": str(result.path),
+                    "cell_count": len(result.cell_bundles),
+                    "comparison_id": result.comparison_id,
+                    "comparison_sheet": str(result.comparison_sheet),
+                    "ledger_path": str(result.ledger_path),
+                    "simulation_count": result.simulation_count,
                     "manifest_sha256": result.manifest_sha256,
                 },
                 indent=2,

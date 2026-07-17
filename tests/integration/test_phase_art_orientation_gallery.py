@@ -16,6 +16,7 @@ from kikuchi_lab.art_products.orientation_gallery_recipe import (
     load_orientation_gallery_recipe,
 )
 from kikuchi_lab.artifacts import BundleExistsError
+from kikuchi_lab.cli.main import main
 from kikuchi_lab.kinematical import kikuchipy_adapter
 from kikuchi_lab.kinematical.kikuchipy_adapter import (
     build_direct_reflector_evidence,
@@ -167,6 +168,49 @@ def test_gallery_stale_parity_preflight_leaves_requested_root_absent(
             output_root=output_root,
         )
 
+    assert not output_root.exists()
+
+
+def test_gallery_cli_stale_parity_preflight_leaves_requested_root_absent(
+    tmp_path: Path,
+    gallery_inputs: GalleryInputs,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    parity_root = tmp_path / "stale-parity"
+    shutil.copytree(gallery_inputs.parity_root, parity_root)
+    titanite_report = next(
+        path
+        for path in parity_root.rglob("reflector-parity-report.json")
+        if "titanite" in path.parts
+    )
+    report = ReflectorParityReport.from_json(titanite_report.read_text(encoding="utf-8"))
+    stale = replace(report, direct_evidence_id="direct-reflector-evidence-stale")
+    stale.validate_for_publication()
+    titanite_report.write_text(stale.to_json(), encoding="utf-8")
+    output_root = tmp_path / "must-not-exist"
+
+    status = main(
+        [
+            "render-phase-art-orientation-gallery",
+            "--recipe",
+            str(GALLERY_RECIPE),
+            "--parity-root",
+            str(parity_root),
+            "--output",
+            str(output_root),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 1
+    assert captured.out == ""
+    assert captured.err.startswith(
+        "phase-art-orientation-gallery finite-work phases=5 orientations=3 cells=15 "
+        "simulation_count=0\n"
+    )
+    assert "phase art orientation gallery render failed: stale reflector parity report" in (
+        captured.err
+    )
     assert not output_root.exists()
 
 

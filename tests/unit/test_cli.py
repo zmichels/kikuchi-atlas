@@ -678,6 +678,120 @@ def test_render_phase_art_series_cli_normalizes_preflight_failure(
     assert "Traceback" not in captured.err
 
 
+def test_render_phase_art_orientation_gallery_help_describes_gallery_inputs(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit, match="0"):
+        main(["render-phase-art-orientation-gallery", "--help"])
+
+    help_text = capsys.readouterr().out
+    assert "fifteen-cell phase orientation gallery" in help_text
+    assert "--recipe" in help_text
+    assert "--parity-root" in help_text
+    assert "--output" in help_text
+
+
+def test_render_phase_art_orientation_gallery_cli_emits_finite_work_and_publication_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    observed = {}
+    result = SimpleNamespace(
+        path=tmp_path / "phase-art-orientation-gallery-0123456789abcdef",
+        cell_bundles=tuple(
+            SimpleNamespace(run_id=f"gallery-cell-{index:02d}-0123456789abcdef")
+            for index in range(15)
+        ),
+        comparison_id="orientation-gallery-sheet-0123456789abcdef",
+        comparison_sheet=(
+            tmp_path
+            / "phase-art-orientation-gallery-0123456789abcdef"
+            / "orientation-gallery-sheet-0123456789abcdef"
+            / "comparison.png"
+        ),
+        ledger_path=(
+            tmp_path
+            / "phase-art-orientation-gallery-0123456789abcdef"
+            / "orientation-gallery-sheet-0123456789abcdef"
+            / "orientation-gallery-ledger.json"
+        ),
+        simulation_count=0,
+        manifest_sha256="e" * 64,
+    )
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.render_phase_art_orientation_gallery",
+        lambda **kwargs: observed.update(kwargs) or result,
+        raising=False,
+    )
+
+    status = main(
+        [
+            "render-phase-art-orientation-gallery",
+            "--recipe",
+            "recipes/art/five-phase-standard-orientation-gallery.yml",
+            "--parity-root",
+            "/tmp/parity",
+            "--output",
+            str(tmp_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 0
+    assert observed == {
+        "recipe_path": "recipes/art/five-phase-standard-orientation-gallery.yml",
+        "parity_root": "/tmp/parity",
+        "output_root": str(tmp_path),
+    }
+    assert captured.err == (
+        "phase-art-orientation-gallery finite-work phases=5 orientations=3 cells=15 "
+        "simulation_count=0\n"
+    )
+    assert json.loads(captured.out) == {
+        "cell_count": 15,
+        "comparison_id": result.comparison_id,
+        "comparison_sheet": str(result.comparison_sheet),
+        "ledger_path": str(result.ledger_path),
+        "manifest_sha256": result.manifest_sha256,
+        "path": str(result.path),
+        "simulation_count": 0,
+    }
+
+
+def test_render_phase_art_orientation_gallery_cli_normalizes_preflight_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.render_phase_art_orientation_gallery",
+        Mock(side_effect=ValueError("stale quartz parity")),
+        raising=False,
+    )
+
+    status = main(
+        [
+            "render-phase-art-orientation-gallery",
+            "--recipe",
+            "gallery.yml",
+            "--parity-root",
+            "parity",
+            "--output",
+            "out",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 1
+    assert captured.out == ""
+    assert captured.err == (
+        "phase-art-orientation-gallery finite-work phases=5 orientations=3 cells=15 "
+        "simulation_count=0\n"
+        "phase art orientation gallery render failed: stale quartz parity\n"
+    )
+    assert "Traceback" not in captured.err
+
+
 def test_render_ice_tattoo_cli_forwards_strict_inputs_and_emits_exact_json(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
