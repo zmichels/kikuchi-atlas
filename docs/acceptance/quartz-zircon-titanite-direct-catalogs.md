@@ -2,7 +2,7 @@
 
 - Work item: [KIKU-T033](../work/KIKU-T033.md)
 - Design: [phase-general direct-reflector art series](../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md)
-- Production state: source/catalog onboarding complete; bounded parity still pending
+- Production state: source/catalog onboarding and bounded parity complete
 - Scientific claim: `presentation_only`
 
 ## Retained production invocations
@@ -99,6 +99,8 @@ Manifest SHA-256:
 | Work-item validation | PASS: `Validated 42 work items in docs/work` |
 | `git diff --check` | PASS: exit `0` |
 
-The work item remains active because the independently bounded
-direct-versus-simulator parity products are intentionally deferred to the
-series acceptance step; no parity claim is made here.
+The independently bounded direct-versus-simulator parity products were
+completed once per phase during the series acceptance step. Their exact
+commands, report IDs, master-array hashes, retained paths, and checksums are
+indexed in
+[the five-phase series acceptance record](phase-general-direct-reflector-art-series.md).

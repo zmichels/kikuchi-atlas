@@ -2,7 +2,7 @@
 id: KIKU-F006
 type: feature
 title: Phase-general direct-reflector art series
-status: ready
+status: active
 parent: KIKU-E001
 children:
   - KIKU-T032
@@ -17,6 +17,7 @@ links:
   - ../superpowers/plans/2026-07-16-phase-general-direct-reflector-art-series.md
 evidence:
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
+  - ../acceptance/phase-general-direct-reflector-art-series.md
 ---
 
 # KIKU-F006: Phase-general direct-reflector art series
@@ -30,9 +31,15 @@ hemisphere designs.
 
 ## Acceptance Criteria
 
-- [ ] A project-owned direct-reflector seam matches the established simulator reflector boundary without requiring master arrays in production.
-- [ ] Ice Ih, forsterite, alpha-quartz, zircon, and titanite have validated, provenance-bearing phase catalogs.
-- [ ] Nine new treatment bundles preserve identical selected centerlines within each phase's standard/wide pair.
-- [ ] A labeled ten-cell comparison sheet supports separate scientific and visual review.
-- [ ] Every real non-test catalog, parity, preview, comparison, vector/geometry, and derived-model product is retained locally and indexed with its exact command, identities, recipes, sources, manifests, and checksums.
-- [ ] The reviewed Ice artifact remains immutable while a versioned canonical-HKL manifest rebinds its same 11-plane composition to corrected reflector physics under new identities.
+- [x] A project-owned direct-reflector seam matches the established simulator reflector boundary without requiring master arrays in production.
+- [x] Ice Ih, forsterite, alpha-quartz, zircon, and titanite have validated, provenance-bearing phase catalogs.
+- [x] Nine new treatment bundles preserve identical selected centerlines within each phase's standard/wide pair.
+- [x] A labeled ten-cell comparison sheet supports separate scientific and visual review.
+- [x] Every real non-test catalog, parity, preview, comparison, vector/geometry, and derived-model product is retained locally and indexed with its exact command, identities, recipes, sources, manifests, and checksums.
+- [x] The reviewed Ice artifact remains immutable while a versioned canonical-HKL manifest rebinds its same 11-plane composition to corrected reflector physics under new identities.
+
+## Review State
+
+The feature remains active only for human aesthetic review of the retained
+comparison. Its scientific, computational, provenance, and reproducibility
+contracts are complete.
