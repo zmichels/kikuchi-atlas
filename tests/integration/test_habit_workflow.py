@@ -62,8 +62,7 @@ def test_quartz_build_is_atomic_reproducible_and_complete(tmp_path: Path):
             "bytes": len(payload),
             "sha256": hashlib.sha256(payload).hexdigest(),
         }
-    loaded = trimesh.load_mesh(first.stl, process=False)
-    loaded.merge_vertices()
+    loaded = trimesh.load_mesh(first.stl, process=True)
     assert loaded.is_volume and loaded.body_count == 1
     assert loaded.extents.max() == pytest.approx(60.0, abs=1e-8)
 
