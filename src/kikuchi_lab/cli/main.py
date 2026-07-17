@@ -105,6 +105,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         required=True,
         type=_reflector_parity_acceptance_timeout,
     )
+    render_phase_art_series_parser = subparsers.add_parser(
+        "render-phase-art-series",
+        help="Publish the parity-gated five-phase hemisphere art series.",
+    )
+    render_phase_art_series_parser.add_argument("--recipe", required=True)
+    render_phase_art_series_parser.add_argument("--parity-root", required=True)
+    render_phase_art_series_parser.add_argument(
+        "--ice-standard-reference", required=True
+    )
+    render_phase_art_series_parser.add_argument("--output", required=True)
     render_ice_tattoo_parser = subparsers.add_parser(
         "render-ice-tattoo",
         help="Publish the primary Ice tattoo from a retained strict catalog.",
@@ -445,6 +455,52 @@ def main(argv: Sequence[str] | None = None) -> int:
         payload = result.to_dict()
         payload["path"] = str(result.path)
         print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "render-phase-art-series":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_phase_art_series
+
+        print(
+            "phase-art-series finite-work phases=5 new_bundle_count=9 "
+            "comparison_cells=10 simulation_count=0 "
+            "orientation_bunge_deg=17,31,43",
+            file=sys.stderr,
+            flush=True,
+        )
+        try:
+            result = render_phase_art_series(
+                recipe_path=args.recipe,
+                parity_root=args.parity_root,
+                ice_standard_reference=args.ice_standard_reference,
+                output_root=args.output,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(f"phase art series render failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "series_id": result.series_id,
+                    "path": str(result.path),
+                    "new_bundle_count": len(result.new_bundles),
+                    "comparison_sheet": str(result.comparison_sheet),
+                    "simulation_count": result.simulation_count,
+                    "bundle_ids": [
+                        bundle.run_id for bundle in result.new_bundles
+                    ],
+                    "manifest_sha256": result.manifest_sha256,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
 
     if args.command == "render-ice-tattoo":

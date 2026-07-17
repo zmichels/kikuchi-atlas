@@ -25,6 +25,13 @@ from kikuchi_lab.art_products.hemisphere_recipe import (
     load_hemisphere_series_recipe,
 )
 from kikuchi_lab.art_products.tattoo_vector import TattooClearanceError
+from kikuchi_lab.art_products.series_sheet import (
+    RenderedSeriesSheet,
+    SeriesSheetBundleResult,
+    SeriesSheetCell,
+    render_series_sheet,
+    write_series_sheet_bundle,
+)
 
 
 __all__ = [
@@ -36,6 +43,9 @@ __all__ = [
     "HemisphereCompositionRecipe",
     "HemisphereSeriesRecipe",
     "HemisphereTreatment",
+    "RenderedSeriesSheet",
+    "SeriesSheetBundleResult",
+    "SeriesSheetCell",
     "TattooBoundary",
     "TattooClearanceError",
     "TattooGeometry",
@@ -44,5 +54,7 @@ __all__ = [
     "build_art_band_catalog_from_evidence",
     "load_frozen_tattoo_selection",
     "load_hemisphere_series_recipe",
+    "render_series_sheet",
     "select_clearance_valid_tattoo_paths",
+    "write_series_sheet_bundle",
 ]

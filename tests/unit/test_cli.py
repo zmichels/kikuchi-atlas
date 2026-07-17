@@ -578,6 +578,106 @@ def test_validate_reflector_parity_cli_retains_failure_diagnostics(
     assert "Traceback" not in captured.err
 
 
+def test_render_phase_art_series_cli_emits_finite_work_and_exact_success_json(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    observed = {}
+    bundles = tuple(
+        SimpleNamespace(run_id=f"phase-bundle-{index:02d}-0123456789abcdef")
+        for index in range(9)
+    )
+    result = SimpleNamespace(
+        series_id="phase-art-series-0123456789abcdef",
+        path=tmp_path / "phase-art-series-0123456789abcdef",
+        new_bundles=bundles,
+        comparison_sheet=(
+            tmp_path / "phase-art-series-0123456789abcdef" / "comparison.png"
+        ),
+        simulation_count=0,
+        manifest_sha256="d" * 64,
+    )
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.render_phase_art_series",
+        lambda **kwargs: observed.update(kwargs) or result,
+        raising=False,
+    )
+
+    status = main(
+        [
+            "render-phase-art-series",
+            "--recipe",
+            "recipes/art/five-phase-hemisphere-series.yml",
+            "--parity-root",
+            "/tmp/parity",
+            "--ice-standard-reference",
+            "/tmp/ice-standard",
+            "--output",
+            str(tmp_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 0
+    assert observed == {
+        "recipe_path": "recipes/art/five-phase-hemisphere-series.yml",
+        "parity_root": "/tmp/parity",
+        "ice_standard_reference": "/tmp/ice-standard",
+        "output_root": str(tmp_path),
+    }
+    assert captured.err == (
+        "phase-art-series finite-work phases=5 new_bundle_count=9 "
+        "comparison_cells=10 simulation_count=0 "
+        "orientation_bunge_deg=17,31,43\n"
+    )
+    assert json.loads(captured.out) == {
+        "bundle_ids": [bundle.run_id for bundle in bundles],
+        "comparison_sheet": str(result.comparison_sheet),
+        "manifest_sha256": "d" * 64,
+        "new_bundle_count": 9,
+        "path": str(result.path),
+        "series_id": result.series_id,
+        "simulation_count": 0,
+    }
+
+
+def test_render_phase_art_series_cli_normalizes_preflight_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.render_phase_art_series",
+        Mock(side_effect=ValueError("stale quartz parity")),
+        raising=False,
+    )
+
+    status = main(
+        [
+            "render-phase-art-series",
+            "--recipe",
+            "series.yml",
+            "--parity-root",
+            "parity",
+            "--ice-standard-reference",
+            "ice-standard",
+            "--output",
+            "out",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 1
+    assert captured.out == ""
+    assert captured.err == (
+        "phase-art-series finite-work phases=5 new_bundle_count=9 "
+        "comparison_cells=10 simulation_count=0 "
+        "orientation_bunge_deg=17,31,43\n"
+        "phase art series render failed: stale quartz parity\n"
+    )
+    assert "Traceback" not in captured.err
+
+
 def test_render_ice_tattoo_cli_forwards_strict_inputs_and_emits_exact_json(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

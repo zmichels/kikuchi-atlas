@@ -41,6 +41,12 @@ from .ice_art_catalog import (
 )
 from .ice_tattoo import IceTattooResult, render_ice_tattoo
 from .direct_art_catalog import DirectArtCatalogResult, build_direct_art_catalog
+from .phase_art_series import (
+    IceStandardReferenceMismatch,
+    PhaseArtSeriesResult,
+    PhaseParityReportError,
+    render_phase_art_series,
+)
 
 __all__ = [
     "FinalRecipe",
@@ -53,9 +59,12 @@ __all__ = [
     "IceArtCatalogResult",
     "IceArtCatalogTimeoutError",
     "IceTattooResult",
+    "IceStandardReferenceMismatch",
     "KinematicalRunResult",
     "NearDepthRunResult",
     "OrientedSphericalRunResult",
+    "PhaseArtSeriesResult",
+    "PhaseParityReportError",
     "ReproductionComparison",
     "ReproductionMismatch",
     "ProofMasterError",
@@ -75,6 +84,7 @@ __all__ = [
     "render_kinematical",
     "render_kinematical_depth",
     "render_oriented_spherical_master",
+    "render_phase_art_series",
     "render_ice_tattoo",
     "run_reflector_parity",
     "validate_final_selection",
