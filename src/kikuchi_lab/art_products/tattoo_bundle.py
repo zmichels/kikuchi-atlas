@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import errno
 import hashlib
+import math
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import Mapping
@@ -12,6 +13,7 @@ from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
+import numpy as np
 from PIL import Image
 
 from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
@@ -32,6 +34,8 @@ from .tattoo_vector import (
     _endpoint_to_polyline_distance,
     _paths_cross,
     _polyline_distance,
+    _STROKE_CLIP_ID,
+    _stroke_clip_evidence,
     build_tattoo_geometry,
     render_primary_tattoo,
     validate_tattoo_geometry,
@@ -66,6 +70,7 @@ _PDF_MEDIA_BOX = re.compile(
     rb"/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+"
     rb"([0-9.]+)\s+([0-9.]+)\s*\]"
 )
+_PDF_DIMENSION_TOLERANCE_POINTS = 0.02 * 72.0 / 25.4
 
 
 @dataclass(frozen=True)
@@ -139,11 +144,36 @@ def _validate_svg(payload: bytes, *, boundary_id: str) -> None:
     if root.tag != "{http://www.w3.org/2000/svg}svg":
         raise ValueError("primary SVG root must be svg")
     children = list(root)
-    paths = children[:11]
+    definitions = [
+        child for child in children if child.tag == "{http://www.w3.org/2000/svg}defs"
+    ]
+    if len(definitions) != 1 or children[0] is not definitions[0]:
+        raise ValueError("primary SVG must place one stroke clip definition before artwork")
+    definition_children = list(definitions[0])
+    if len(definition_children) != 1:
+        raise ValueError("primary SVG must contain one exact stroke clip definition")
+    clip_path = definition_children[0]
+    clip_children = list(clip_path)
     if (
-        len(children) != 12
+        clip_path.tag != "{http://www.w3.org/2000/svg}clipPath"
+        or clip_path.attrib
+        != {
+            "clipPathUnits": "userSpaceOnUse",
+            "id": _STROKE_CLIP_ID,
+        }
+        or len(clip_children) != 1
+        or clip_children[0].tag != "{http://www.w3.org/2000/svg}circle"
+        or clip_children[0].attrib
+        != {"cx": "72.500000", "cy": "72.500000", "r": "63.800000"}
+    ):
+        raise ValueError("primary SVG stroke clip does not match the exact 63.8 mm disc")
+
+    artwork = children[1:]
+    paths = artwork[:11]
+    if (
+        len(artwork) != 12
         or any(path.tag != "{http://www.w3.org/2000/svg}path" for path in paths)
-        or children[-1].tag != "{http://www.w3.org/2000/svg}circle"
+        or artwork[-1].tag != "{http://www.w3.org/2000/svg}circle"
     ):
         raise ValueError(
             "primary SVG must contain exactly 11 paths followed by one boundary circle"
@@ -151,11 +181,15 @@ def _validate_svg(payload: bytes, *, boundary_id: str) -> None:
     if any(
         element.attrib.get("stroke") != "#000000"
         or element.attrib.get("fill") != "none"
-        for element in children
+        for element in artwork
     ):
         raise ValueError("primary SVG must use only black ink")
-    if children[-1].attrib.get("id") != boundary_id:
+    if artwork[-1].attrib.get("id") != boundary_id:
         raise ValueError("primary SVG boundary ID does not match geometry")
+    if any(
+        path.attrib.get("clip-path") != f"url(#{_STROKE_CLIP_ID})" for path in paths
+    ):
+        raise ValueError("every primary SVG path must use the canonical stroke clip")
     if any(
         path.attrib.get("stroke-linecap") != "round"
         or path.attrib.get("stroke-linejoin") != "round"
@@ -172,7 +206,17 @@ def _validate_pdf(payload: bytes) -> None:
         raise ValueError("primary PDF lacks a physical media box")
     expected_points = 145.0 * 72.0 / 25.4
     dimensions = (float(match.group(1)), float(match.group(2)))
-    if any(abs(value - expected_points) > 0.06 for value in dimensions):
+    differences = [abs(value - expected_points) for value in dimensions]
+    if any(
+        difference > _PDF_DIMENSION_TOLERANCE_POINTS
+        and not math.isclose(
+            difference,
+            _PDF_DIMENSION_TOLERANCE_POINTS,
+            rel_tol=0.0,
+            abs_tol=1e-12,
+        )
+        for difference in differences
+    ):
         raise ValueError("primary PDF must have an exact 145 mm square page")
 
 
@@ -195,6 +239,7 @@ def _validate_png(
             ):
                 raise ValueError(f"{name} must record exact 300 dpi output")
             colors = source.convert("RGB").getcolors(maxcolors=3)
+            pixels = np.asarray(source.convert("RGB"))
     except (OSError, ValueError) as error:
         if isinstance(error, ValueError):
             raise
@@ -202,6 +247,18 @@ def _validate_png(
     expected_colors = {background, (0, 0, 0)}
     if colors is None or {color for _, color in colors} != expected_colors:
         raise ValueError(f"{name} palette must contain only black and its background")
+    black_y, black_x = np.nonzero(np.all(pixels == 0, axis=2))
+    if black_x.size == 0:
+        raise ValueError(f"{name} must contain black tattoo geometry")
+    scale = pixels.shape[1] / 145.0
+    black_x_mm = (black_x.astype(np.float64) + 0.5) / scale
+    black_y_mm = (black_y.astype(np.float64) + 0.5) / scale
+    radial_extent_mm = float(
+        np.max(np.hypot(black_x_mm - 72.5, black_y_mm - 72.5))
+    )
+    half_pixel_diagonal_mm = math.sqrt(2.0) / (2.0 * scale)
+    if radial_extent_mm > 66.0 + half_pixel_diagonal_mm:
+        raise ValueError(f"{name} black pixels escape the 66.0 mm outer radius")
 
 
 def _validate_rendered(
@@ -236,6 +293,15 @@ def _validate_rendered(
 
 
 def _gap_diagnostic(geometry: TattooGeometry) -> dict[str, object]:
+    stroke_clip = _stroke_clip_evidence(geometry)
+    stroke_containment = (
+        "passed"
+        if stroke_clip["max_post_clip_stroke_radius_mm"]
+        <= stroke_clip["outer_boundary_radius_mm"]
+        else "failed"
+    )
+    if stroke_containment != "passed":
+        raise ValueError("clipped stroke footprint escapes the projection boundary")
     noncrossing: list[dict[str, object]] = []
     for first_index, first in enumerate(geometry.paths):
         for second in geometry.paths[first_index + 1 :]:
@@ -271,9 +337,11 @@ def _gap_diagnostic(geometry: TattooGeometry) -> dict[str, object]:
             "status": "passed",
             "minimum_noncrossing_edge_gap_mm": _MIN_EDGE_GAP_MM,
             "minimum_endpoint_clearance_mm": _MIN_ENDPOINT_CLEARANCE_MM,
-            "complete_hemisphere_boundary": "passed",
+            "complete_hemisphere_boundary": stroke_containment,
             "boundary_endpoint_contact": "passed",
+            "stroke_containment": stroke_containment,
         },
+        "stroke_clip": stroke_clip,
         "observed": {
             "noncrossing_pair_count": len(noncrossing),
             "minimum_noncrossing_edge_gap_mm": (

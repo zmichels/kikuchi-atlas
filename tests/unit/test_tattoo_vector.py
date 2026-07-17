@@ -241,18 +241,22 @@ def test_primary_svg_is_canonical_black_transparent_and_deterministic() -> None:
     )
     assert svg.endswith("</svg>\n")
     assert svg.count("<path ") == 11
-    assert svg.count("<circle ") == 1
+    assert svg.count("<circle ") == 2
+    assert svg.count("<clipPath ") == 1
     assert "<rect" not in svg
     assert "background" not in svg
     assert "rim" not in svg
     assert "node" not in svg
 
     root = ET.fromstring(first)
-    paths = list(root)[:-1]
+    definitions = list(root)[0]
+    assert definitions.tag == "{http://www.w3.org/2000/svg}defs"
+    paths = list(root)[1:-1]
     assert len(paths) == 11
     for element, path in zip(paths, geometry.paths, strict=True):
         assert element.tag == "{http://www.w3.org/2000/svg}path"
         assert element.attrib["id"] == path.path_id
+        assert element.attrib["clip-path"] == "url(#tattoo-band-layer-clip)"
         assert element.attrib["fill"] == "none"
         assert element.attrib["stroke"] == "#000000"
         assert element.attrib["stroke-linecap"] == "round"
@@ -265,6 +269,7 @@ def test_primary_svg_is_canonical_black_transparent_and_deterministic() -> None:
     path_lines = [line for line in svg.splitlines() if line.startswith("  <path ")]
     for line in path_lines:
         assert re.findall(r" ([A-Za-z:-]+)=", line) == [
+            "clip-path",
             "d",
             "fill",
             "id",

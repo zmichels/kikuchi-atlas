@@ -2,7 +2,7 @@
 
 - Work items: [KIKU-T028](../work/KIKU-T028.md), [KIKU-T029](../work/KIKU-T029.md)
 - Boundary contract: [design](../superpowers/specs/2026-07-16-ice-tattoo-hemisphere-boundary-design.md), [implementation plan](../superpowers/plans/2026-07-16-ice-tattoo-hemisphere-boundary.md)
-- Production state: machine-verified bounded primary candidate retained locally
+- Production state: machine-verified stroke-clipped bounded primary candidate retained locally
 - `presentation_status: awaiting_user_review`
 - Scientific claim: `presentation_only`
 
@@ -50,10 +50,25 @@ test -f local/ice-art-catalog-primary-proof/ice-art-catalog-run-57478bf29894e175
 uv run kikuchi-lab render-ice-tattoo --catalog local/ice-art-catalog-primary-proof/ice-art-catalog-run-57478bf29894e175/art-band-catalog.json --recipe recipes/art/ice-ih-tattoo.yml --output local/ice-tattoo-primary-proof --treatment primary
 ```
 
+The final whole-branch review then found that rounded path caps in
+`ice-tattoo-run-59c4eb958d5f2ab9` reached beyond the approved `66.0 mm` outer
+radius. Immediately before the containment-fix publication, the output root
+contained exactly that first bounded run and the rimless audit run. The same
+command was invoked exactly once. Atomic no-replace publication added the
+stroke-clipped run, and the complete two-run retained hash inventory was
+identical before and after (`625c6a8d41fb203ef593f2b0a428a95195d740c011310a4a857a3885590ecda3`).
+
+The truthful supersession chain is:
+`ice-tattoo-run-d158193b08f3668e` (rimless) ->
+`ice-tattoo-run-59c4eb958d5f2ab9` (first bounded, superseded for cap escape) ->
+`ice-tattoo-run-9a5ce6ac83e4bdd9` (stroke-clipped bounded candidate).
+
 | Product | Run ID | Manifest SHA-256 | Retained bundle |
 | --- | --- | --- | --- |
 | catalog | `ice-art-catalog-run-57478bf29894e175` | `f220a20b7a48a3113ca25067b721c6d5f94d9266a839eb246dc007be15819aeb` | `local/ice-art-catalog-primary-proof/ice-art-catalog-run-57478bf29894e175` |
-| bounded primary tattoo | `ice-tattoo-run-59c4eb958d5f2ab9` | `8d784f34fcc64a32867c596653f087773a6ac82492e23d98956049112afcda9d` | `local/ice-tattoo-primary-proof/ice-tattoo-run-59c4eb958d5f2ab9` |
+| rimless audit | `ice-tattoo-run-d158193b08f3668e` | `8f30394d69611e4fbd535cf491d5e7a4be08060a87bf781bf8df4db0e25ad635` | `local/ice-tattoo-primary-proof/ice-tattoo-run-d158193b08f3668e` |
+| first bounded audit | `ice-tattoo-run-59c4eb958d5f2ab9` | `8d784f34fcc64a32867c596653f087773a6ac82492e23d98956049112afcda9d` | `local/ice-tattoo-primary-proof/ice-tattoo-run-59c4eb958d5f2ab9` |
+| stroke-clipped bounded primary | `ice-tattoo-run-9a5ce6ac83e4bdd9` | `be95fd5ef5e50f29c336c2695695f9028f57a51275ab15b9aca2c8450cd2671c` | `local/ice-tattoo-primary-proof/ice-tattoo-run-9a5ce6ac83e4bdd9` |
 
 ## Catalog, selection, and geometry identities
 
@@ -71,7 +86,7 @@ uv run kikuchi-lab render-ice-tattoo --catalog local/ice-art-catalog-primary-pro
 | Selection ID | `tattoo-selection-211db31bbe061d6d` |
 | Geometry ID | `tattoo-geometry-55aa84c7c4d78a1b` |
 | Boundary ID | `tattoo-boundary-da45c61d325de3be` |
-| Stroke-gap diagnostic ID | `tattoo-stroke-gap-diagnostic-d038b54b183e38c0` |
+| Stroke-gap diagnostic ID | `tattoo-stroke-gap-diagnostic-3287938295b4b2b4` |
 
 The exact unchanged ordered catalog-member contract is:
 
@@ -95,9 +110,15 @@ ordered widths remain `4.8, 4.2, 3.6, 3.1, 2.5, 2.2, 1.9, 1.6, 1.2, 1.0,
 
 The separate boundary has exact outer diameter `132.0 mm`, stroke width
 `2.2 mm`, center `(72.5, 72.5) mm`, black ink `#000000`, and a `6.5 mm`
-outer clear margin on every side of the artboard. The SVG contains exactly 11
-`path` children followed by one `circle` child. The diagnostic reports
-`complete_hemisphere_boundary: passed` and `boundary_endpoint_contact: passed`.
+outer clear margin on every side of the artboard. The band layer is clipped to
+the exact `63.8 mm` boundary-inner disc in SVG, PDF, and PNG while retaining
+rounded paths and exact centerline endpoints. The SVG has one non-rendering
+`defs/clipPath/circle` definition before direct artwork, exactly 11 path
+children assigned to it, and one final visible boundary circle. The diagnostic
+records all 11 path IDs as requiring clipping, a raw rounded-footprint maximum
+of `66.2 mm`, a post-clip maximum of `63.8 mm`, and reports
+`complete_hemisphere_boundary: passed`, `boundary_endpoint_contact: passed`,
+and `stroke_containment: passed`.
 
 The diagnostic retains hard minimums of `1.5 mm` for noncrossing edge gaps and
 `2.0 mm` for unrelated endpoint clearance. All 55 pairs in this great-circle
@@ -105,10 +126,10 @@ network are true crystallographic crossings, so there are no noncrossing pairs
 to which those two clearance measurements apply; the observed minima are
 therefore `null`, not relaxed thresholds.
 
-## Bounded primary inventory
+## Current stroke-clipped bounded primary inventory
 
 All paths below are inside
-`local/ice-tattoo-primary-proof/ice-tattoo-run-59c4eb958d5f2ab9`.
+`local/ice-tattoo-primary-proof/ice-tattoo-run-9a5ce6ac83e4bdd9`.
 
 | Artifact | Exact dimensions or role | SHA-256 |
 | --- | --- | --- |
@@ -116,13 +137,35 @@ All paths below are inside
 | `tattoo-recipe.json` | `935 bytes`; bounded recipe snapshot | `a14906754b544167dbb4aa0983c76b41fe1cdd68fcf328003a2b1edddc41876a` |
 | `band-selection-ledger.json` | `200,594 bytes`; 11 selected paths with score/rejection provenance | `ca9e2f7d74c631ac5051810d46b25593d661a9a4640a7c5be7fb57c710aa4f60` |
 | `path-geometry.json` | `145,146 bytes`; 11 paths plus separate boundary | `6b5c0493a9ad15e079f68badfe2fb93e4ca50e16a8814865279627e74f5fe610` |
-| `stroke-gap-diagnostic.json` | `3,040 bytes`; validation status `passed` | `62800064f807d2383220af13e46ba83f0274fbb0436d73f487f5cbabefd2f7dd` |
-| `ice-ih-tattoo-primary.svg` | `145 x 145 mm`, transparent canvas, 11 paths plus 1 circle | `448dad7842b97a0d1d91787afc6b0136398afe7bdf252c054a2c42997405bef3` |
-| `ice-ih-tattoo-primary.pdf` | `145 x 145 mm`; `411.024 x 411.024 pt` MediaBox | `87ae5dcc8de11e06804f8e82a232261df80717e1fbe7c165d9d251482949a921` |
-| `ice-ih-tattoo-mockup.png` | `1713 x 1713 px`, embedded `299.9994 dpi`, RGB | `db034ee627671753b579a14ee88f508b4cbe3f91846b2eb312dcfd89fb68883e` |
-| `ice-ih-tattoo-stencil.png` | `1713 x 1713 px`, embedded `299.9994 dpi`, RGB | `69ed8a819fe6e2a6beaaa857d4d7f6ee1aa82299008aa954161e2b6245ef196a` |
+| `stroke-gap-diagnostic.json` | `3,586 bytes`; clip evidence and validation status `passed` | `81e77669c90075320459ab9e2fb00bf050669b83888f449ef91c9962c8c793af` |
+| `ice-ih-tattoo-primary.svg` | `83,873 bytes`; `145 x 145 mm`, one clip definition, 11 clipped paths, final boundary | `6a4ca87da6ca6cd243ac59259e84953c2c450b74bfab0954394ee7ea2fc6bc2e` |
+| `ice-ih-tattoo-primary.pdf` | `18,318 bytes`; `145 x 145 mm`, `411.0236220472 pt` square MediaBox | `5924f6a59ec472cbd0708a73fd3bbdbb84145c6f53b1c69f69ec42932cd6056c` |
+| `ice-ih-tattoo-mockup.png` | `38,606 bytes`; `1713 x 1713 px`, embedded `299.9994 dpi`, RGB | `815fb04d77ac84e5cf3912debb6a1d855cac991abf73b51d229c12bdfb7efe64` |
+| `ice-ih-tattoo-stencil.png` | `38,465 bytes`; `1713 x 1713 px`, embedded `299.9994 dpi`, RGB | `86ab4a6eb8d7d53b3ccc44695c71213b8043c8202e19d414dcf02d48187bda89` |
 | `tattoo-artist-review.txt` | required `136-byte` disclaimer | `691a5269ba346bc5c09f69f6a149ecf2a4d06d69e4a9ed8d06638698dbd5ebe4` |
-| `manifest.json` | `2,103 bytes`; written last before promotion | `8d784f34fcc64a32867c596653f087773a6ac82492e23d98956049112afcda9d` |
+| `manifest.json` | `2,103 bytes`; written last before promotion | `be95fd5ef5e50f29c336c2695695f9028f57a51275ab15b9aca2c8450cd2671c` |
+
+## Superseded first bounded audit evidence
+
+The complete `ice-tattoo-run-59c4eb958d5f2ab9` bundle remains immutable.
+Its centerlines, geometry, selection, boundary, recipe, and catalog are the
+same as the current candidate, but its rounded strokes were not clipped. An
+all-black-pixel scan measured both retained PNGs at
+`66.260348653293 mm`, beyond the `66.0 mm` outer radius.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `art-band-catalog.json` | `2cb0eae81cc18d1db088bcf0c0a139c9769d4789a16b211e71d517ff490ab385` |
+| `band-selection-ledger.json` | `ca9e2f7d74c631ac5051810d46b25593d661a9a4640a7c5be7fb57c710aa4f60` |
+| `ice-ih-tattoo-mockup.png` | `db034ee627671753b579a14ee88f508b4cbe3f91846b2eb312dcfd89fb68883e` |
+| `ice-ih-tattoo-primary.pdf` | `87ae5dcc8de11e06804f8e82a232261df80717e1fbe7c165d9d251482949a921` |
+| `ice-ih-tattoo-primary.svg` | `448dad7842b97a0d1d91787afc6b0136398afe7bdf252c054a2c42997405bef3` |
+| `ice-ih-tattoo-stencil.png` | `69ed8a819fe6e2a6beaaa857d4d7f6ee1aa82299008aa954161e2b6245ef196a` |
+| `manifest.json` | `8d784f34fcc64a32867c596653f087773a6ac82492e23d98956049112afcda9d` |
+| `path-geometry.json` | `6b5c0493a9ad15e079f68badfe2fb93e4ca50e16a8814865279627e74f5fe610` |
+| `stroke-gap-diagnostic.json` | `62800064f807d2383220af13e46ba83f0274fbb0436d73f487f5cbabefd2f7dd` |
+| `tattoo-artist-review.txt` | `691a5269ba346bc5c09f69f6a149ecf2a4d06d69e4a9ed8d06638698dbd5ebe4` |
+| `tattoo-recipe.json` | `a14906754b544167dbb4aa0983c76b41fe1cdd68fcf328003a2b1edddc41876a` |
 
 ## Superseded rimless audit evidence
 
@@ -150,12 +193,14 @@ publication:
 | Gate | Result |
 | --- | --- |
 | Ordered-member sensitivity check | Expected RED: a temporary wrong first member failed at index `0` against `art-band-member-239b7cb5e485d442`; the required tuple was restored |
-| `uv run pytest tests/integration/test_ice_tattoo.py -q` | PASS: `2 passed` |
-| `uv run pytest -q` | PASS: `1077 passed, 1 skipped, 2095 warnings`; warnings are upstream diffpy/orix/diffsims deprecations |
+| Stroke-footprint regression RED | Expected RED: `11 failed, 26 passed`; both synthetic PNGs reached `66.195165062025 mm` against the `66.059854339330 mm` pixel-aware limit, SVG/PDF clip evidence and diagnostic containment were absent, and the old PDF tolerance accepted an out-of-range MediaBox |
+| `uv run pytest tests/unit/test_tattoo_vector.py tests/scientific/test_tattoo_clearance.py tests/unit/test_tattoo_render.py tests/unit/test_tattoo_bundle.py tests/integration/test_ice_tattoo.py -q` | PASS: `52 passed in 28.82s` |
+| `uv run pytest -q` | PASS: `1083 passed, 1 skipped, 2095 warnings in 150.02s`; warnings are upstream diffpy/orix/diffsims deprecations |
 | `uv run ruff check .` | PASS: `All checks passed!` |
 | `uv run python scripts/validate_work_items.py` | PASS: `Validated 37 work items in docs/work` |
 | `git diff --check` | PASS: exit `0` |
-| Retained JSON/SVG probe | PASS: exactly one non-audit candidate, 11 geometry paths, `132.0 mm` outer diameter, and SVG child order `11 path, 1 circle` |
+| No-replace publication gate | PASS: exactly the two required old runs before publication, exactly three completed runs after, and identical old-run aggregate hashes before/after |
+| Retained JSON/SVG/PNG probe | PASS: unchanged geometry and 11 paths, exact `132.0 mm` outer diameter, SVG direct order `defs, 11 path, circle`, all 11 paths clipped, and both new PNGs at `66.059778481232 mm <= 66.059854339330 mm` |
 
 The exact-harmonic regression continues to run with NumPy floating-point
 errors enabled and runtime warnings promoted to errors. Parallel axial normals
@@ -164,11 +209,14 @@ zero cross product.
 
 ## Controller visual inspection and open gate
 
-The bounded mockup and stencil were opened at their original `1713 x 1713 px`
+The stroke-clipped mockup and stencil were opened at their original `1713 x 1713 px`
 resolution. Both show the full circular projection boundary with clear canvas
 margin on every side. The 11 path contacts merge into the boundary, the circle
-reads continuously above them, and no black geometry extends beyond its outer
-edge. The dominant/secondary/fine width hierarchy remains visually apparent.
+reads continuously above them, and the clipped contacts no longer produce cap
+escape. The all-black-pixel radial measurement, rather than four cardinal
+samples or visual inspection alone, proves containment within the outer radius
+plus half a pixel diagonal. The dominant/secondary/fine width hierarchy remains
+visually apparent.
 
 The outputs contain no detector rectangle, node glyph, halo, doubled boundary,
 graywash, or spatially filtered image geometry. The network remains deliberately

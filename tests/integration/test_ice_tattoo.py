@@ -57,6 +57,7 @@ def test_real_bounded_ice_catalog_publishes_primary_tattoo(
     diagnostic = json.loads((result.path / "stroke-gap-diagnostic.json").read_text())
     assert result.catalog_id == catalog.catalog_id
     assert result.geometry_id == geometry["geometry_id"]
+    assert result.geometry_id == "tattoo-geometry-55aa84c7c4d78a1b"
     assert result.treatment == "primary"
     assert result.manifest_sha256 == hashlib.sha256(manifest_path.read_bytes()).hexdigest()
     assert manifest["run_identity"]["catalog_id"] == catalog.catalog_id
@@ -81,6 +82,13 @@ def test_real_bounded_ice_catalog_publishes_primary_tattoo(
     ]
     assert diagnostic["validation"]["status"] == "passed"
     assert diagnostic["validation"]["complete_hemisphere_boundary"] == "passed"
+    assert diagnostic["validation"]["stroke_containment"] == "passed"
+    assert diagnostic["stroke_clip"]["radius_mm"] == 63.8
+    assert diagnostic["stroke_clip"]["max_post_clip_stroke_radius_mm"] == 63.8
+    assert diagnostic["stroke_clip"]["outer_boundary_radius_mm"] == 66.0
+    assert diagnostic["stroke_clip"]["paths_requiring_clipping"] == [
+        path["path_id"] for path in geometry["content"]["paths"]
+    ]
     stderr = capsys.readouterr().err
     assert "ice-art-catalog finite-work profile=smoke source_half_size=32" in stderr
     assert "profile=review" not in stderr

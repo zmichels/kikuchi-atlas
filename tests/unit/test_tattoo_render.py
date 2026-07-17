@@ -81,9 +81,31 @@ def test_primary_svg_has_11_paths_then_one_complete_projection_boundary() -> Non
     root = ElementTree.fromstring(primary_svg_bytes(geometry))
     children = list(root)
     assert [child.tag.rsplit("}", 1)[-1] for child in children] == [
+        "defs",
         *("path" for _ in range(11)),
         "circle",
     ]
+    definitions = children[0]
+    assert len(definitions) == 1
+    clip_path = definitions[0]
+    assert clip_path.tag.rsplit("}", 1)[-1] == "clipPath"
+    assert clip_path.attrib == {
+        "clipPathUnits": "userSpaceOnUse",
+        "id": "tattoo-band-layer-clip",
+    }
+    assert len(clip_path) == 1
+    assert clip_path[0].tag.rsplit("}", 1)[-1] == "circle"
+    assert clip_path[0].attrib == {
+        "cx": "72.500000",
+        "cy": "72.500000",
+        "r": "63.800000",
+    }
+    paths = children[1:-1]
+    assert len(paths) == 11
+    assert all(
+        path.attrib["clip-path"] == "url(#tattoo-band-layer-clip)"
+        for path in paths
+    )
     circle = children[-1]
     assert circle.attrib == {
         "cx": "72.500000",
@@ -150,7 +172,7 @@ def test_primary_pdf_has_exact_physical_page_and_stable_metadata() -> None:
     assert b"/FlateDecode" not in payload
 
 
-def test_primary_pdf_boundary_effective_zorder_is_above_paths(
+def test_primary_pdf_paths_share_exact_data_coordinate_clip_below_boundary(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from matplotlib.axes import Axes
@@ -159,12 +181,23 @@ def test_primary_pdf_boundary_effective_zorder_is_above_paths(
 
     path_zorders: list[float] = []
     boundary_zorders: list[float] = []
+    path_clips: list[Circle] = []
     real_add_line = Axes.add_line
     real_add_patch = Axes.add_patch
+    real_set_clip_path = Line2D.set_clip_path
 
     def capture_line(axis: Axes, line: Line2D) -> Line2D:
         path_zorders.append(line.get_zorder())
         return real_add_line(axis, line)
+
+    def capture_clip_path(
+        line: Line2D,
+        path: object,
+        transform: object | None = None,
+    ) -> None:
+        if isinstance(path, Circle) and path.radius == 63.8:
+            path_clips.append(path)
+        real_set_clip_path(line, path, transform)
 
     def capture_patch(axis: Axes, patch: Patch) -> Patch:
         if isinstance(patch, Circle):
@@ -173,11 +206,16 @@ def test_primary_pdf_boundary_effective_zorder_is_above_paths(
 
     monkeypatch.setattr(Axes, "add_line", capture_line)
     monkeypatch.setattr(Axes, "add_patch", capture_patch)
+    monkeypatch.setattr(Line2D, "set_clip_path", capture_clip_path)
 
     payload = render_primary_tattoo(_geometry())["primary.pdf"]
 
     assert payload.startswith(b"%PDF-")
     assert len(path_zorders) == 11
+    assert len(path_clips) == 11
+    assert len({id(clip) for clip in path_clips}) == 1
+    assert path_clips[0].center == (72.5, 72.5)
+    assert path_clips[0].radius == 63.8
     assert len(boundary_zorders) == 1
     assert boundary_zorders[0] > max(path_zorders)
 
@@ -224,3 +262,25 @@ def test_primary_png_shows_complete_132_mm_boundary_with_clear_margin(
         assert image.getpixel((center, _px(138.5))) == (0, 0, 0)
         assert image.getpixel((_px(5.0), center)) == background
         assert image.getpixel((_px(140.0), center)) == background
+
+
+@pytest.mark.parametrize("name", ("mockup.png", "stencil.png"))
+def test_primary_png_all_black_pixels_stay_within_outer_boundary(name: str) -> None:
+    geometry = _geometry()
+    payload = render_primary_tattoo(geometry)[name]
+    with Image.open(BytesIO(payload)) as source:
+        pixels = np.asarray(source.convert("RGB"))
+
+    black_y, black_x = np.nonzero(np.all(pixels == 0, axis=2))
+    assert black_x.size > 0
+    scale = pixels.shape[1] / geometry.artboard_size_mm
+    center_x_mm, center_y_mm = geometry.boundary.center_mm
+    black_x_mm = (black_x.astype(np.float64) + 0.5) / scale
+    black_y_mm = (black_y.astype(np.float64) + 0.5) / scale
+    radial_extent_mm = float(
+        np.max(np.hypot(black_x_mm - center_x_mm, black_y_mm - center_y_mm))
+    )
+    half_pixel_diagonal_mm = math.sqrt(2.0) / (2.0 * scale)
+    assert radial_extent_mm <= (
+        geometry.boundary.outer_diameter_mm / 2.0 + half_pixel_diagonal_mm
+    )

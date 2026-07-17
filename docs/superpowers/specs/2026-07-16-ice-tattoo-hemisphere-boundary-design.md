@@ -1,6 +1,6 @@
 # Ice-Ih Tattoo Hemisphere Boundary Design
 
-**Status:** approved design; implementation pending
+**Status:** implemented; awaiting visual acceptance
 
 **Date:** 2026-07-16
 

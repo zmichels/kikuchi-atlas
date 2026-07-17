@@ -118,6 +118,7 @@ def test_bundle_svg_validator_accepts_canonical_paths_then_boundary(
     boundary_id = bundle_inputs["geometry"].boundary.boundary_id
     root = ET.fromstring(payload)
     assert [child.tag.rsplit("}", 1)[-1] for child in root] == [
+        "defs",
         *("path" for _ in range(11)),
         "circle",
     ]
@@ -127,7 +128,61 @@ def test_bundle_svg_validator_accepts_canonical_paths_then_boundary(
 @pytest.mark.parametrize(
     ("mutation", "message"),
     (
-        ("boundary-first", "exactly 11 paths followed by one boundary circle"),
+        ("forged-radius", "stroke clip"),
+        ("missing-assignment", "stroke clip"),
+        ("reordered-definition", "stroke clip definition before artwork"),
+    ),
+)
+def test_forged_missing_or_reordered_svg_clip_fails_before_output_mutation(
+    bundle_inputs: dict[str, object],
+    mutation: str,
+    message: str,
+    tmp_path: Path,
+) -> None:
+    from kikuchi_lab.art_products.tattoo_bundle import write_tattoo_bundle
+
+    rendered = dict(bundle_inputs["rendered"])
+    root = ET.fromstring(rendered["primary.svg"])
+    if root[0].tag.rsplit("}", 1)[-1] != "defs":
+        namespace = root.tag.split("}", 1)[0].lstrip("{")
+        definitions = ET.Element(f"{{{namespace}}}defs")
+        clip_path = ET.SubElement(
+            definitions,
+            f"{{{namespace}}}clipPath",
+            {"clipPathUnits": "userSpaceOnUse", "id": "tattoo-band-layer-clip"},
+        )
+        ET.SubElement(
+            clip_path,
+            f"{{{namespace}}}circle",
+            {"cx": "72.500000", "cy": "72.500000", "r": "63.800000"},
+        )
+        root.insert(0, definitions)
+        for path in root[1:-1]:
+            path.set("clip-path", "url(#tattoo-band-layer-clip)")
+    definitions = root[0]
+    if mutation == "forged-radius":
+        definitions[0][0].set("r", "63.900000")
+    elif mutation == "missing-assignment":
+        root[1].attrib.pop("clip-path")
+    else:
+        root.remove(definitions)
+        root.insert(1, definitions)
+    rendered["primary.svg"] = ET.tostring(root)
+    output_root = tmp_path / mutation / "runs"
+
+    with pytest.raises(ValueError, match=message):
+        write_tattoo_bundle(
+            output_root,
+            **{**bundle_inputs, "rendered": rendered},
+        )
+
+    assert not output_root.exists()
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("boundary-first", "stroke clip definition before artwork"),
         ("second-boundary", "exactly 11 paths followed by one boundary circle"),
         ("nonblack-boundary", "only black ink"),
         ("missing-boundary", "exactly 11 paths followed by one boundary circle"),
@@ -161,6 +216,21 @@ def test_bundle_svg_validator_rejects_noncanonical_boundary(
             ET.tostring(root),
             boundary_id=geometry.boundary.boundary_id,
         )
+
+
+def test_pdf_validator_uses_exact_point_tolerance_for_002_mm() -> None:
+    from kikuchi_lab.art_products.tattoo_bundle import _validate_pdf
+
+    expected_points = 145.0 * 72.0 / 25.4
+    tolerance_points = 0.02 * 72.0 / 25.4
+
+    def payload(difference: float) -> bytes:
+        dimension = expected_points + difference
+        return f"%PDF-1.4\n/MediaBox [0 0 {dimension:.12f} {dimension:.12f}]\n".encode()
+
+    _validate_pdf(payload(tolerance_points))
+    with pytest.raises(ValueError, match="exact 145 mm square page"):
+        _validate_pdf(payload((tolerance_points + 0.06) / 2.0))
 
 
 def test_primary_bundle_has_exact_inventory_manifest_last_and_auditable_content(
@@ -229,7 +299,15 @@ def test_primary_bundle_has_exact_inventory_manifest_last_and_auditable_content(
         "complete_hemisphere_boundary": "passed",
         "minimum_endpoint_clearance_mm": 2.0,
         "minimum_noncrossing_edge_gap_mm": 1.5,
+        "stroke_containment": "passed",
         "status": "passed",
+    }
+    assert diagnostic["stroke_clip"] == {
+        "max_post_clip_stroke_radius_mm": 63.8,
+        "outer_boundary_radius_mm": 66.0,
+        "paths_requiring_clipping": [path.path_id for path in geometry.paths],
+        "radius_mm": 63.8,
+        "raw_rounded_footprint_max_radius_mm": 66.2,
     }
     assert diagnostic["geometry_id"] == geometry.geometry_id
     assert [record["points_sha256"] for record in diagnostic["paths"]] == [

@@ -14,7 +14,7 @@ from matplotlib.backends.backend_pdf import FigureCanvasPdf
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Circle
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 from kikuchi_lab.art_products.contracts import (
     TattooBoundary,
@@ -37,6 +37,7 @@ _PNG_DPI = 300
 _PNG_SIZE_PX = 1713
 _MOCKUP_BACKGROUND = "#d8b59a"
 _STENCIL_BACKGROUND = "#ffffff"
+_STROKE_CLIP_ID = "tattoo-band-layer-clip"
 
 IntersectionKind = Literal["none", "crossing", "endpoint", "tangent"]
 
@@ -354,6 +355,35 @@ def _endpoint_to_polyline_distance(endpoint: np.ndarray, points: np.ndarray) -> 
     )
 
 
+def _stroke_clip_evidence(geometry: TattooGeometry) -> dict[str, object]:
+    center = np.asarray(geometry.boundary.center_mm, dtype=_ARRAY_DTYPE)
+    outer_radius_mm = geometry.boundary.outer_diameter_mm / 2.0
+    clip_radius_mm = outer_radius_mm - geometry.boundary.width_mm
+    if clip_radius_mm != 63.8:
+        raise ValueError("primary tattoo stroke clip radius must be exactly 63.8 mm")
+
+    raw_footprints = [
+        float(np.max(np.linalg.norm(path.points_mm - center, axis=1)))
+        + path.width_mm / 2.0
+        for path in geometry.paths
+    ]
+    paths_requiring_clipping = [
+        path.path_id
+        for path, raw_radius in zip(geometry.paths, raw_footprints, strict=True)
+        if raw_radius > clip_radius_mm + _NUMERIC_TOLERANCE
+    ]
+    max_post_clip_stroke_radius_mm = clip_radius_mm
+    if max_post_clip_stroke_radius_mm > outer_radius_mm + _NUMERIC_TOLERANCE:
+        raise ValueError("clipped stroke footprint escapes the projection boundary")
+    return {
+        "radius_mm": clip_radius_mm,
+        "outer_boundary_radius_mm": outer_radius_mm,
+        "raw_rounded_footprint_max_radius_mm": max(raw_footprints),
+        "max_post_clip_stroke_radius_mm": max_post_clip_stroke_radius_mm,
+        "paths_requiring_clipping": paths_requiring_clipping,
+    }
+
+
 def validate_tattoo_geometry(geometry: TattooGeometry) -> None:
     """Validate the primary open-path and physical-clearance contract."""
     if not isinstance(geometry, TattooGeometry):
@@ -395,6 +425,7 @@ def validate_tattoo_geometry(geometry: TattooGeometry) -> None:
                     f"{_MIN_EDGE_GAP_MM:.6f} mm between {first.member_id} and "
                     f"{second.member_id}"
                 )
+
             endpoint_checks = (
                 (
                     first.points_mm[0],
@@ -435,6 +466,8 @@ def validate_tattoo_geometry(geometry: TattooGeometry) -> None:
                         f"{_MIN_ENDPOINT_CLEARANCE_MM:.6f} mm from {owner_id} to "
                         f"unrelated path {unrelated_id}"
                     )
+
+    _stroke_clip_evidence(geometry)
 
 
 def build_tattoo_geometry(
@@ -531,17 +564,31 @@ def primary_svg_bytes(geometry: TattooGeometry) -> bytes:
         f'<svg height="{size}mm" version="1.1" viewBox="0 0 {size} {size}" '
         f'width="{size}mm" xmlns="http://www.w3.org/2000/svg">'
     ]
+    center_x, center_y = geometry.boundary.center_mm
+    clip_radius_mm = (
+        geometry.boundary.outer_diameter_mm / 2.0 - geometry.boundary.width_mm
+    )
+    lines.extend(
+        (
+            "  <defs>",
+            f'    <clipPath clipPathUnits="userSpaceOnUse" id="{_STROKE_CLIP_ID}">',
+            f'      <circle cx="{center_x:.6f}" cy="{center_y:.6f}" '
+            f'r="{clip_radius_mm:.6f}"/>',
+            "    </clipPath>",
+            "  </defs>",
+        )
+    )
     for path in geometry.paths:
         coordinates = [f"{point[0]:.6f} {point[1]:.6f}" for point in path.points_mm]
         path_data = "M " + coordinates[0]
         if len(coordinates) > 1:
             path_data += " " + " ".join(f"L {value}" for value in coordinates[1:])
         lines.append(
-            f'  <path d="{path_data}" fill="none" id="{path.path_id}" '
+            f'  <path clip-path="url(#{_STROKE_CLIP_ID})" d="{path_data}" '
+            f'fill="none" id="{path.path_id}" '
             f'stroke="#000000" stroke-linecap="round" stroke-linejoin="round" '
             f'stroke-width="{path.width_mm:.6f}"/>'
         )
-    center_x, center_y = geometry.boundary.center_mm
     centerline_radius = (
         geometry.boundary.outer_diameter_mm - geometry.boundary.width_mm
     ) / 2.0
@@ -564,17 +611,25 @@ def _primary_pdf_bytes(geometry: TattooGeometry) -> bytes:
     axis.set_ylim(geometry.artboard_size_mm, 0.0)
     axis.set_aspect("equal", adjustable="box")
     axis.set_axis_off()
+    clip_radius_mm = (
+        geometry.boundary.outer_diameter_mm / 2.0 - geometry.boundary.width_mm
+    )
+    stroke_clip = Circle(
+        geometry.boundary.center_mm,
+        radius=clip_radius_mm,
+        transform=axis.transData,
+    )
     for path in geometry.paths:
-        axis.add_line(
-            Line2D(
-                path.points_mm[:, 0],
-                path.points_mm[:, 1],
-                color="#000000",
-                linewidth=path.width_mm * _POINTS_PER_INCH / _MILLIMETERS_PER_INCH,
-                solid_capstyle="round",
-                solid_joinstyle="round",
-            )
+        line = Line2D(
+            path.points_mm[:, 0],
+            path.points_mm[:, 1],
+            color="#000000",
+            linewidth=path.width_mm * _POINTS_PER_INCH / _MILLIMETERS_PER_INCH,
+            solid_capstyle="round",
+            solid_joinstyle="round",
         )
+        line.set_clip_path(stroke_clip)
+        axis.add_line(line)
     axis.add_patch(
         Circle(
             geometry.boundary.center_mm,
@@ -609,35 +664,65 @@ def _primary_pdf_bytes(geometry: TattooGeometry) -> bytes:
 
 def _primary_png_bytes(geometry: TattooGeometry, *, background: str) -> bytes:
     image = Image.new("RGB", (_PNG_SIZE_PX, _PNG_SIZE_PX), background)
-    draw = ImageDraw.Draw(image)
+    band_layer = Image.new("L", (_PNG_SIZE_PX, _PNG_SIZE_PX), 0)
+    draw_bands = ImageDraw.Draw(band_layer)
     scale = _PNG_SIZE_PX / geometry.artboard_size_mm
     for path in geometry.paths:
         points = [tuple(float(value) * scale for value in point) for point in path.points_mm]
         width_px = max(1, round(path.width_mm * scale))
-        draw.line(points, fill="#000000", width=width_px, joint="curve")
+        draw_bands.line(points, fill=255, width=width_px, joint="curve")
         radius = width_px / 2.0
         for point in points:
-            draw.ellipse(
+            draw_bands.ellipse(
                 (
                     point[0] - radius,
                     point[1] - radius,
                     point[0] + radius,
                     point[1] + radius,
                 ),
-                fill="#000000",
+                fill=255,
             )
     center_x, center_y = geometry.boundary.center_mm
+    clip_radius_mm = (
+        geometry.boundary.outer_diameter_mm / 2.0 - geometry.boundary.width_mm
+    )
+    circular_mask = Image.new("L", (_PNG_SIZE_PX, _PNG_SIZE_PX), 0)
+    ImageDraw.Draw(circular_mask).ellipse(
+        (
+            (center_x - clip_radius_mm) * scale,
+            (center_y - clip_radius_mm) * scale,
+            (center_x + clip_radius_mm) * scale,
+            (center_y + clip_radius_mm) * scale,
+        ),
+        fill=255,
+    )
+    clipped_bands = ImageChops.multiply(band_layer, circular_mask)
+    image.paste((0, 0, 0), mask=clipped_bands)
+
     outer_radius_mm = geometry.boundary.outer_diameter_mm / 2.0
-    draw.ellipse(
+    boundary_layer = Image.new("L", (_PNG_SIZE_PX, _PNG_SIZE_PX), 0)
+    ImageDraw.Draw(boundary_layer).ellipse(
         (
             (center_x - outer_radius_mm) * scale,
             (center_y - outer_radius_mm) * scale,
             (center_x + outer_radius_mm) * scale,
             (center_y + outer_radius_mm) * scale,
         ),
-        outline="#000000",
+        outline=255,
         width=round(geometry.boundary.width_mm * scale),
     )
+    half_pixel_diagonal_mm = math.sqrt(2.0) / (2.0 * scale)
+    pixel_centers_mm = (np.arange(_PNG_SIZE_PX, dtype=np.float64) + 0.5) / scale
+    x_distance_squared = (pixel_centers_mm - center_x) ** 2
+    y_distance_squared = (pixel_centers_mm - center_y) ** 2
+    within_outer_disc = (
+        y_distance_squared[:, None] + x_distance_squared[None, :]
+        <= (outer_radius_mm + half_pixel_diagonal_mm) ** 2
+    )
+    bounded_boundary = Image.fromarray(
+        np.where(within_outer_disc, np.asarray(boundary_layer), 0).astype(np.uint8)
+    )
+    image.paste((0, 0, 0), mask=bounded_boundary)
 
     payload = BytesIO()
     image.save(

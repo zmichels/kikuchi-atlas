@@ -32,6 +32,6 @@ edges or node embellishments.
 - [x] The approved orientation deterministically selects 11 unique catalog members in the fixed dominant, secondary, and fine allocation.
 - [x] Physical vector geometry satisfies the prescribed widths, crop, noncrossing gap, endpoint-clearance, and black/skin-only constraints.
 - [x] The complete 132.0 mm stereographic hemisphere boundary is serialized and identified separately as a noncrystallographic projection primitive, never as a twelfth reflector.
-- [x] The full-disc SVG, PDF, mockup, and stencil retain the whole boundary on the 145 mm artboard with all path contacts inside it.
+- [x] The full-disc SVG, PDF, mockup, and stencil clip the complete crystallographic stroke layer to the exact 63.8 mm inner disc, draw the 132.0 mm outer boundary last, and retain every black pixel within the outer radius plus raster tolerance.
 - [x] SVG, PDF, mockup, stencil, ledgers, diagnostics, disclaimer, and manifest publish atomically with reproducible identities.
 - [ ] The user explicitly accepts the primary geometry before this task is marked done or any secondary treatment begins.
