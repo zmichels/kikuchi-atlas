@@ -385,6 +385,7 @@ def build_relief_globe(
     if source_file_sha256 != recipe.source.file_sha256:
         raise ValueError("master product file SHA-256 does not match relief recipe")
     master = load_master_product(source_path)
+    stem = f"{_safe_slug(master.metadata_dict()['phase']['name'])}-intensity-relief"
     field = build_spherical_scalar_field(master, recipe.source)
     topology = build_icosphere(recipe.geometry.subdivisions)
     mapped = map_source_field(field, recipe.mapping)
@@ -418,11 +419,10 @@ def build_relief_globe(
     root = Path(output_root).resolve()
     partial = root / f"{build_id}.partial"
     completed = root / build_id
+    result = _result(build_id, completed, stem)
     root.mkdir(parents=True, exist_ok=True)
     _require_fresh_destinations(partial, completed)
     partial.mkdir()
-    stem = f"{_safe_slug(master.metadata_dict()['phase']['name'])}-intensity-relief"
-    result = _result(build_id, completed, stem)
     try:
         (partial / f"{stem}-globe.stl").write_bytes(
             relief_stl_bytes(geometry, topology, validation)

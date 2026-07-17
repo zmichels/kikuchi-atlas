@@ -11,7 +11,7 @@ import trimesh
 import yaml
 
 import kikuchi_lab.relief.workflow as workflow
-from kikuchi_lab.model import load_master_product, save_master_product
+from kikuchi_lab.model import MasterPatternProduct, load_master_product, save_master_product
 from kikuchi_lab.relief import build_relief_globe
 from tests.relief_fixtures import analytic_master_product
 
@@ -27,13 +27,17 @@ def analytic_master_file(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def canonical_recipe_file(tmp_path: Path, analytic_master_file: Path) -> Path:
-    master = load_master_product(analytic_master_file)
+    return _write_canonical_recipe(analytic_master_file, tmp_path / "analytic.yml")
+
+
+def _write_canonical_recipe(master_file: Path, path: Path) -> Path:
+    master = load_master_product(master_file)
     payload = {
         "schema": "kikuchi.relief-globe-recipe/v1",
         "source": {
             "product_id": master.product_id,
             "array_sha256": master.array_sha256,
-            "file_sha256": _sha256(analytic_master_file),
+            "file_sha256": _sha256(master_file),
         },
         "geometry": {
             "base_diameter_mm": 80.0,
@@ -47,13 +51,45 @@ def canonical_recipe_file(tmp_path: Path, analytic_master_file: Path) -> Path:
         "export": {"formats": ["stl"]},
         "fdm_context": {"process": "filament_fdm"},
     }
-    path = tmp_path / "analytic.yml"
     path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     return path
 
 
 def _tree_hashes(path: Path) -> dict[str, str]:
     return {item.name: _sha256(item) for item in sorted(path.iterdir())}
+
+
+def test_invalid_phase_slug_leaves_no_staging_and_does_not_block_corrected_retry(
+    monkeypatch, tmp_path
+):
+    source = analytic_master_product()
+    invalid_metadata = source.metadata_dict()
+    invalid_metadata["phase"]["name"] = "岩"
+    invalid = MasterPatternProduct.from_array(source.intensity, metadata=invalid_metadata)
+    invalid_file = save_master_product(tmp_path / "invalid.npz", invalid)
+    invalid_recipe = _write_canonical_recipe(invalid_file, tmp_path / "invalid.yml")
+    output = tmp_path / "out"
+    monkeypatch.setattr(
+        workflow,
+        "build_spherical_scalar_field",
+        lambda *_args: (_ for _ in ()).throw(RuntimeError("corrected retry reached pipeline")),
+    )
+
+    with pytest.raises(
+        ValueError, match="phase name cannot form a safe lowercase ASCII slug"
+    ):
+        build_relief_globe(invalid_file, invalid_recipe, output)
+
+    assert not output.exists()
+    assert list(tmp_path.glob("**/*.partial")) == []
+    assert list(tmp_path.glob("**/relief-globe-build-*")) == []
+
+    corrected_file = save_master_product(tmp_path / "corrected.npz", source)
+    corrected_recipe = _write_canonical_recipe(corrected_file, tmp_path / "corrected.yml")
+    with pytest.raises(RuntimeError, match="corrected retry reached pipeline"):
+        build_relief_globe(corrected_file, corrected_recipe, output)
+
+    assert not output.exists()
 
 
 @pytest.mark.parametrize(
