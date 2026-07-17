@@ -7,6 +7,7 @@ import io
 import zipfile
 from dataclasses import asdict, dataclass
 from functools import lru_cache
+from numbers import Real
 from pathlib import Path
 
 import matplotlib
@@ -311,6 +312,13 @@ def validate_relief_mesh(
         + _RADIAL_RANGE_TOLERANCE_MM
     ):
         representation_failures.append("configured radial range")
+    if np.any(radii < geometry.base_radius_mm - _RADIAL_RANGE_TOLERANCE_MM) or np.any(
+        radii
+        > geometry.base_radius_mm
+        + geometry.maximum_relief_mm
+        + _RADIAL_RANGE_TOLERANCE_MM
+    ):
+        representation_failures.append("actual vertex radial range")
     if not np.allclose(
         radii,
         radii_ledger,
@@ -551,19 +559,19 @@ def write_relief_preview(
 ) -> None:
     """Write the accepted full-resolution relief mesh as a fixed RGBA PNG."""
     parameters = (lower_percentile, upper_percentile, gamma, filter_fwhm_mm)
-    try:
-        finite_parameters = np.isfinite(parameters).all()
-    except (TypeError, ValueError):
-        finite_parameters = False
+    if any(
+        isinstance(value, (bool, np.bool_)) or not isinstance(value, Real)
+        for value in parameters
+    ):
+        raise ValueError("relief preview parameters are invalid")
     if (
-        any(isinstance(value, (bool, np.bool_)) for value in parameters)
-        or not finite_parameters
+        not np.isfinite(parameters).all()
         or not 0.0 <= lower_percentile < upper_percentile <= 100.0
         or gamma <= 0.0
         or filter_fwhm_mm <= 0.0
     ):
         raise ValueError("relief preview parameters are invalid")
-    _verify_accepted_validation(geometry, topology, validation)
+    current_validation = _verify_accepted_validation(geometry, topology, validation)
     vertices = np.array(geometry.vertices, dtype=np.float64, copy=True)
     faces = np.array(geometry.faces, dtype=np.int64, copy=True)
     filtered = np.array(geometry.filtered_values, dtype=np.float64, copy=True)
@@ -597,7 +605,8 @@ def write_relief_preview(
     axes.set_axis_off()
     inset = (
         f"base radius: {geometry.base_radius_mm:.3f} mm\n"
-        f"observed relief: {validation.maximum_radius_mm - validation.minimum_radius_mm:.3f} mm\n"
+        f"observed relief: "
+        f"{current_validation.maximum_radius_mm - current_validation.minimum_radius_mm:.3f} mm\n"
         f"mapping: p{lower_percentile:g}-p{upper_percentile:g}, gamma {gamma:g}\n"
         f"filter FWHM: {filter_fwhm_mm:.3f} mm"
     )

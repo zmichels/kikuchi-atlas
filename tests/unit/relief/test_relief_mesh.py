@@ -157,6 +157,61 @@ def test_validation_rejects_spoofed_radial_arrays(relief_fixture, mutation, mess
         validate_relief_mesh(mutation(geometry), topology, None)
 
 
+def test_actual_radius_cannot_stack_ledger_and_representation_tolerances(
+    relief_fixture,
+):
+    topology, geometry = relief_fixture
+    index = int(np.argmax(geometry.filtered_values))
+    upper = geometry.base_radius_mm + geometry.maximum_relief_mm
+    filtered = geometry.filtered_values.copy()
+    filtered[index] = 1.0
+    radii = geometry.radii_mm.copy()
+    radii[index] = upper + 0.79e-10
+    vertices = geometry.vertices.copy()
+    vertices[index] = geometry.directions[index] * (upper + 1.78e-10)
+    stacked = replace(
+        geometry,
+        filtered_values=filtered,
+        radii_mm=radii,
+        vertices=vertices,
+    )
+
+    with pytest.raises(ValueError, match="actual vertex radial range"):
+        validate_relief_mesh(stacked, topology, None)
+
+
+@pytest.mark.parametrize(("filtered_value", "offset"), [(0.0, -0.99e-10), (1.0, 0.99e-10)])
+def test_actual_and_ledger_radii_pass_inside_each_physical_tolerance_boundary(
+    relief_fixture, filtered_value, offset
+):
+    topology, geometry = relief_fixture
+    index = int(
+        np.argmin(geometry.filtered_values)
+        if filtered_value == 0.0
+        else np.argmax(geometry.filtered_values)
+    )
+    configured = geometry.base_radius_mm + geometry.maximum_relief_mm * filtered_value
+    accepted_radius = configured + offset
+    filtered = geometry.filtered_values.copy()
+    filtered[index] = filtered_value
+    radii = geometry.radii_mm.copy()
+    radii[index] = accepted_radius
+    vertices = geometry.vertices.copy()
+    vertices[index] = geometry.directions[index] * accepted_radius
+
+    report = validate_relief_mesh(
+        replace(
+            geometry,
+            filtered_values=filtered,
+            radii_mm=radii,
+            vertices=vertices,
+        ),
+        topology,
+        None,
+    )
+    assert report.passed is True
+
+
 def test_validation_rejects_nonunit_topology_directions(relief_fixture):
     topology, geometry = relief_fixture
     directions = topology.directions.copy()
@@ -209,7 +264,6 @@ def test_topology_validation_proves_edge_incidence_uniqueness_and_connectivity(
         validate_relief_mesh(
             replace(geometry, faces=bad_incidence_faces), bad_incidence_topology, None
         )
-
     directions = np.array(
         [(1, 1, 1), (-1, -1, 1), (-1, 1, -1), (1, -1, -1)], dtype=np.float64
     )
@@ -371,6 +425,44 @@ def test_npz_and_preview_reject_stale_validation_report(canonical_fixture, field
         )
 
 
+def test_preview_uses_fresh_metrics_when_report_scalars_are_stale(
+    canonical_fixture, tmp_path, monkeypatch
+):
+    topology, geometry, validation = canonical_fixture
+    stale = replace(validation, minimum_radius_mm=-100.0, maximum_radius_mm=100.0)
+    captured_text = []
+    import kikuchi_lab.relief.mesh as mesh_module
+    from matplotlib.figure import Figure
+
+    original_collection = mesh_module.Poly3DCollection
+    original_text = Figure.text
+
+    def one_triangle_collection(triangles, *args, **kwargs):
+        return original_collection(triangles[:1], *args, **kwargs)
+
+    def recording_text(figure, x, y, text, *args, **kwargs):
+        captured_text.append(text)
+        return original_text(figure, x, y, text, *args, **kwargs)
+
+    monkeypatch.setattr(mesh_module, "Poly3DCollection", one_triangle_collection)
+    monkeypatch.setattr(Figure, "text", recording_text)
+    monkeypatch.setattr(Figure, "savefig", lambda *args, **kwargs: None)
+    write_relief_preview(
+        tmp_path / "fresh-metrics.png",
+        geometry,
+        topology,
+        stale,
+        lower_percentile=2,
+        upper_percentile=98,
+        gamma=0.8,
+        filter_fwhm_mm=0.6,
+    )
+
+    observed = validation.maximum_radius_mm - validation.minimum_radius_mm
+    assert f"observed relief: {observed:.3f} mm" in captured_text[0]
+    assert "observed relief: 200.000 mm" not in captured_text[0]
+
+
 @pytest.mark.parametrize(
     ("name", "value"),
     [
@@ -379,6 +471,8 @@ def test_npz_and_preview_reject_stale_validation_report(canonical_fixture, field
         ("upper_percentile", np.inf),
         ("gamma", 0.0),
         ("gamma", np.nan),
+        ("gamma", 1.0 + 0.0j),
+        ("gamma", "1.0"),
         ("filter_fwhm_mm", 0.0),
     ],
 )
