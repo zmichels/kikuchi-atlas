@@ -10,6 +10,12 @@ from .contracts import (
 )
 from .kikuchipy_adapter import execute_kinematical
 from .recipe import load_kinematical_recipe
+from .reflector_evidence import (
+    DirectReflectorEvidence,
+    DirectReflectorRecipe,
+    load_direct_reflector_recipe,
+    own_direct_reflector_evidence,
+)
 from .render import (
     asinh_tone_map,
     circular_stereographic_field,
@@ -17,6 +23,8 @@ from .render import (
 )
 
 __all__ = [
+    "DirectReflectorEvidence",
+    "DirectReflectorRecipe",
     "EtchedMasterStyle",
     "KinematicalArrayProduct",
     "KinematicalBundleResult",
@@ -26,7 +34,9 @@ __all__ = [
     "asinh_tone_map",
     "circular_stereographic_field",
     "execute_kinematical",
+    "load_direct_reflector_recipe",
     "load_kinematical_recipe",
+    "own_direct_reflector_evidence",
     "render_kinematical_figures",
     "write_kinematical_bundle",
 ]
