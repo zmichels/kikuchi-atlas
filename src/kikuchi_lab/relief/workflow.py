@@ -47,6 +47,9 @@ RELIEF_BUILD_SCHEMA = "kikuchi.relief-globe-build/v1"
 RELIEF_MANIFEST_SCHEMA = "kikuchi.relief-globe-manifest/v1"
 RELIEF_MANIFEST_INVENTORY_CONTRACT = "sha256-bytes/four-payload-files/v1"
 RELIEF_BUNDLE_LAYOUT_CONTRACT = "atomic-five-file-relief-bundle/v1"
+RELIEF_JSON_ARTIFACT_SERIALIZATION_CONTRACT = (
+    "json/sorted-indent-2-utf8-newline/v1"
+)
 
 
 @dataclass(frozen=True)
@@ -114,6 +117,9 @@ def _contract_versions() -> dict[str, str]:
         "RELIEF_MANIFEST_SCHEMA": RELIEF_MANIFEST_SCHEMA,
         "RELIEF_MANIFEST_INVENTORY_CONTRACT": RELIEF_MANIFEST_INVENTORY_CONTRACT,
         "RELIEF_BUNDLE_LAYOUT_CONTRACT": RELIEF_BUNDLE_LAYOUT_CONTRACT,
+        "RELIEF_JSON_ARTIFACT_SERIALIZATION_CONTRACT": (
+            RELIEF_JSON_ARTIFACT_SERIALIZATION_CONTRACT
+        ),
     }
 
 

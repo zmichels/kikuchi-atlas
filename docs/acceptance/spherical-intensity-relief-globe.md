@@ -6,12 +6,12 @@ and repair reporting remain unobserved. No physical print was performed.
 
 ## Accepted build
 
-- Build ID: `relief-globe-build-1c53ac8193f6ac87`
-- Bundle: [local acceptance bundle](../../local/relief-globes/forsterite-501/relief-globe-build-1c53ac8193f6ac87)
-- Manifest: [relief-manifest.json](../../local/relief-globes/forsterite-501/relief-globe-build-1c53ac8193f6ac87/relief-manifest.json)
-- Validation: [mesh-validation.json](../../local/relief-globes/forsterite-501/relief-globe-build-1c53ac8193f6ac87/mesh-validation.json)
-- Preview: [forsterite-intensity-relief-preview.png](../../local/relief-globes/forsterite-501/relief-globe-build-1c53ac8193f6ac87/forsterite-intensity-relief-preview.png)
-- STL: [forsterite-intensity-relief-globe.stl](../../local/relief-globes/forsterite-501/relief-globe-build-1c53ac8193f6ac87/forsterite-intensity-relief-globe.stl)
+- Build ID: `relief-globe-build-3334895cd23540f5`
+- Bundle: [local acceptance bundle](../../local/relief-globes/forsterite-501/relief-globe-build-3334895cd23540f5)
+- Manifest: [relief-manifest.json](../../local/relief-globes/forsterite-501/relief-globe-build-3334895cd23540f5/relief-manifest.json)
+- Validation: [mesh-validation.json](../../local/relief-globes/forsterite-501/relief-globe-build-3334895cd23540f5/mesh-validation.json)
+- Preview: [forsterite-intensity-relief-preview.png](../../local/relief-globes/forsterite-501/relief-globe-build-3334895cd23540f5/forsterite-intensity-relief-preview.png)
+- STL: [forsterite-intensity-relief-globe.stl](../../local/relief-globes/forsterite-501/relief-globe-build-3334895cd23540f5/forsterite-intensity-relief-globe.stl)
 
 The source file SHA-256 was verified before loading. It is
 `cd056ab4af34aa3695e492f2f6a85f47beb5e97658ef6c5cc4120802ae161c03`; the loaded product is
@@ -56,19 +56,21 @@ are explicitly outside this acceptance.
 
 ## Runtime and reproducibility
 
-The final reviewed real CLI rebuild completed in `31.65 s` on the acceptance machine. Two
+The final reviewed real CLI rebuild completed in `99.01 s` wall time (`30.29 s` user time) on the
+acceptance machine. Two
 independent full-resolution analytic builds produced identical build IDs and byte-identical
 five-file trees. The accepted runtime identity is Python 3.12.13, kikuchi-lab 0.1.0, NumPy
 2.4.6, SciPy 1.18.0, kikuchipy 0.13.0, Trimesh 4.12.2, and Matplotlib 3.11.0.
 
-Build identity and the readable manifest share one exact mapping of nine named project contracts:
+Build identity and the readable manifest share one exact mapping of ten named project contracts:
 canonical JSON, binary STL, deterministic NPZ, preview rendering, preview style, validation JSON
-schema, manifest schema, manifest inventory, and five-file bundle layout. Focused relief gates
+schema, manifest schema, manifest inventory, five-file bundle layout, and sorted indented UTF-8
+JSON artifact-file serialization with a trailing newline. Focused relief gates
 passed with `155 passed, 5 deselected`; the explicit slow workflow gate passed all `3` tests; and
 the full fast repository gate passed `595` tests with one environment-dependent skip.
 
 The manifest SHA-256 is
-`c2b333798619d1d10ed8e275e2fcfd5f7f730759702c500c6ec6087418aa7e22`. Its four-file inventory
+`f9d39c287b0608f4e54c6da2d55d6c29d22e0c98a92b62f3aa0a6f3551b5cd69`. Its four-file inventory
 was independently recomputed and matched exactly: STL
 `c9c52b5b1e6fe302a2f49dbecb84a4b1432906a9d4f2cfc5626ec0d3734eb1cf` (16384084 bytes),
 preview `fefe61d934324cd2d1d9886227404eee79aeda45b9ded09b5c663ca0090ea105`

@@ -16,6 +16,7 @@ import kikuchi_lab.relief.workflow as workflow
 import kikuchi_lab.relief.mesh as relief_mesh
 import kikuchi_lab.model.identity as model_identity
 from kikuchi_lab.model import MasterPatternProduct, load_master_product, save_master_product
+from kikuchi_lab.model.identity import canonical_json
 from kikuchi_lab.relief import build_relief_globe
 from tests.relief_fixtures import analytic_master_product
 
@@ -75,16 +76,22 @@ def _tree_hashes(path: Path) -> dict[str, str]:
         (workflow, "RELIEF_MANIFEST_SCHEMA"),
         (workflow, "RELIEF_MANIFEST_INVENTORY_CONTRACT"),
         (workflow, "RELIEF_BUNDLE_LAYOUT_CONTRACT"),
+        (workflow, "RELIEF_JSON_ARTIFACT_SERIALIZATION_CONTRACT"),
     ],
 )
 def test_each_export_contract_changes_build_identity(monkeypatch, module, name):
     baseline = workflow._contract_versions()
-    baseline_id = workflow.stable_id("relief-contract-test", baseline)
+    baseline_id = workflow.stable_id(
+        "relief-globe-build", {"contracts": baseline}
+    )
     monkeypatch.setattr(module, name, f"{baseline[name]}/changed")
     changed = workflow._contract_versions()
 
     assert changed[name] != baseline[name]
-    assert workflow.stable_id("relief-contract-test", changed) != baseline_id
+    assert (
+        workflow.stable_id("relief-globe-build", {"contracts": changed})
+        != baseline_id
+    )
 
 
 def test_contract_mapping_is_shared_exactly_by_identity_and_manifest():
@@ -94,6 +101,23 @@ def test_contract_mapping_is_shared_exactly_by_identity_and_manifest():
 
     assert manifest["contracts"] == manifest["identity"]["contracts"]
     assert manifest["contracts"] is manifest["identity"]["contracts"]
+
+
+def test_json_artifact_serialization_contract_matches_exact_file_bytes(tmp_path):
+    path = tmp_path / "artifact.json"
+    payload = {"z": 1, "a": "µ"}
+
+    workflow._write_json(path, payload)
+
+    assert workflow.RELIEF_JSON_ARTIFACT_SERIALIZATION_CONTRACT == (
+        "json/sorted-indent-2-utf8-newline/v1"
+    )
+    assert path.read_bytes() == b'{\n  "a": "\xc2\xb5",\n  "z": 1\n}\n'
+    assert model_identity.CANONICAL_JSON_SERIALIZATION_CONTRACT == (
+        "canonical-json/sorted-compact-unicode/v1"
+    )
+    assert canonical_json(payload) == '{"a":"µ","z":1}'
+    assert canonical_json(payload).encode("utf-8") != path.read_bytes()
 
 
 def test_artifact_owns_frozen_copies_unaffected_by_pipeline_mutation():
