@@ -19,6 +19,7 @@ from numbers import Real
 import numpy as np
 
 from kikuchi_lab import __version__
+from kikuchi_lab.globe_mesh import GlobeGeometrySpec, build_radial_geometry
 from kikuchi_lab.model import load_master_product
 from kikuchi_lab.model.identity import plain_data, stable_id
 from kikuchi_lab.model import identity as identity_module
@@ -26,12 +27,7 @@ from kikuchi_lab.model import identity as identity_module
 from . import mesh as mesh_module
 from .field import build_spherical_scalar_field
 from .field import LAMBERT_INTERPOLATION_CONTRACT
-from .mapping import (
-    build_relief_geometry,
-    filter_spherical_values,
-    map_source_field,
-    sample_mapped_field,
-)
+from .mapping import filter_spherical_values, map_source_field, sample_mapped_field
 from .mesh import (
     ReliefFieldArtifact,
     relief_field_npz_bytes,
@@ -47,9 +43,7 @@ RELIEF_BUILD_SCHEMA = "kikuchi.relief-globe-build/v1"
 RELIEF_MANIFEST_SCHEMA = "kikuchi.relief-globe-manifest/v1"
 RELIEF_MANIFEST_INVENTORY_CONTRACT = "sha256-bytes/four-payload-files/v1"
 RELIEF_BUNDLE_LAYOUT_CONTRACT = "atomic-five-file-relief-bundle/v1"
-RELIEF_JSON_ARTIFACT_SERIALIZATION_CONTRACT = (
-    "json/sorted-indent-2-utf8-newline/v1"
-)
+RELIEF_JSON_ARTIFACT_SERIALIZATION_CONTRACT = "json/sorted-indent-2-utf8-newline/v1"
 
 
 @dataclass(frozen=True)
@@ -286,9 +280,7 @@ def _artifact(samples, filtered: np.ndarray, geometry) -> ReliefFieldArtifact:
     columns = np.asarray(samples.source_columns)
     return ReliefFieldArtifact(
         directions=frozen(geometry.directions, np.float64),
-        hemisphere=frozen(
-            np.where(np.asarray(geometry.directions)[:, 2] >= 0.0, 1, -1), np.int8
-        ),
+        hemisphere=frozen(np.where(np.asarray(geometry.directions)[:, 2] >= 0.0, 1, -1), np.int8),
         source_rows=frozen(rows[:, (0, 1, 0, 1)], np.int32),
         source_columns=frozen(columns[:, (0, 0, 1, 1)], np.int32),
         weights=frozen(samples.weights, np.float64),
@@ -351,8 +343,18 @@ def _identity(
     }
 
 
-def _manifest(identity, recipe, master, field, topology, mapped, filter_report,
-              geometry, validation, staging: Path) -> dict[str, object]:
+def _manifest(
+    identity,
+    recipe,
+    master,
+    field,
+    topology,
+    mapped,
+    filter_report,
+    geometry,
+    validation,
+    staging: Path,
+) -> dict[str, object]:
     files = {
         path.name: _file_record(path)
         for path in sorted(staging.iterdir(), key=lambda item: item.name)
@@ -443,11 +445,14 @@ def build_relief_globe(
         recipe.geometry.base_diameter_mm / 2.0,
         recipe.filter,
     )
-    geometry = build_relief_geometry(
+    geometry = build_radial_geometry(
         topology,
         filtered,
-        recipe.geometry.base_diameter_mm,
-        recipe.geometry.maximum_relief_mm,
+        GlobeGeometrySpec(
+            recipe.geometry.base_diameter_mm,
+            recipe.geometry.maximum_relief_mm,
+            recipe.geometry.subdivisions,
+        ),
     )
     validation = validate_canonical_relief_mesh(geometry, topology, recipe.fdm_context)
     versions = _software_versions()
@@ -493,8 +498,16 @@ def build_relief_globe(
             {"schema": mesh_module.RELIEF_VALIDATION_JSON_SCHEMA, **validation.to_dict()},
         )
         manifest = _manifest(
-            identity, recipe, master, field, topology, mapped, filter_report,
-            geometry, validation, partial
+            identity,
+            recipe,
+            master,
+            field,
+            topology,
+            mapped,
+            filter_report,
+            geometry,
+            validation,
+            partial,
         )
         _write_json(partial / "relief-manifest.json", manifest)
         expected = {

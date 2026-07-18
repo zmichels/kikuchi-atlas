@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import zipfile
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from numbers import Real
 from pathlib import Path
@@ -18,7 +18,12 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-from kikuchi_lab.model.identity import canonical_json, plain_data
+from kikuchi_lab.model.identity import canonical_json
+from kikuchi_lab.globe_mesh import (
+    GlobeGeometrySpec,
+    ReliefMeshValidation,
+    validate_globe_mesh,
+)
 
 from .mapping import ReliefGeometry
 from .recipes import ReliefFDMContext
@@ -34,9 +39,7 @@ _CANONICAL_BASE_RADIUS_MM = 40.0
 _CANONICAL_MAXIMUM_RELIEF_MM = 1.2
 
 RELIEF_STL_SERIALIZATION_CONTRACT = "trimesh-binary-stl/process-false/v1"
-RELIEF_FIELD_NPZ_SERIALIZATION_CONTRACT = (
-    "zip-stored-npy/fixed-order-1980-epoch-mode-0600/v1"
-)
+RELIEF_FIELD_NPZ_SERIALIZATION_CONTRACT = "zip-stored-npy/fixed-order-1980-epoch-mode-0600/v1"
 RELIEF_PREVIEW_RENDER_CONTRACT = "matplotlib-figure-canvas-agg/900x900-rgba/v1"
 RELIEF_PREVIEW_STYLE_CONTRACT = "gray-relief-fixed-view-light-inset/v1"
 RELIEF_VALIDATION_JSON_SCHEMA = "kikuchi.relief-mesh-validation/v1"
@@ -53,32 +56,6 @@ FIELD_ARRAY_ORDER = (
     "radii_mm",
     "faces",
 )
-
-
-@dataclass(frozen=True)
-class ReliefMeshValidation:
-    passed: bool
-    watertight: bool
-    winding_consistent: bool
-    body_count: int
-    euler_characteristic: int
-    positive_volume: bool
-    volume_mm3: float
-    surface_area_mm2: float
-    bounds_mm: tuple[tuple[float, float, float], tuple[float, float, float]]
-    minimum_radius_mm: float
-    maximum_radius_mm: float
-    degenerate_triangle_count: int
-    duplicate_triangle_count: int
-    radial_certificate_minimum: float
-    radial_certificate_tolerance: float
-    topology_fingerprint: str
-    geometry_fingerprint: str
-    self_intersection_contract: str
-    warnings: tuple[dict[str, object], ...]
-
-    def to_dict(self) -> dict[str, object]:
-        return plain_data(asdict(self))
 
 
 @dataclass(frozen=True)
@@ -199,9 +176,7 @@ def _topology_fingerprint(topology: IcosphereTopology) -> str:
     return f"relief-topology-sha256-{digest}"
 
 
-def _geometry_fingerprint(
-    geometry: ReliefGeometry, topology_fingerprint: str
-) -> str:
+def _geometry_fingerprint(geometry: ReliefGeometry, topology_fingerprint: str) -> str:
     payload = {
         "topology_fingerprint": topology_fingerprint,
         "topology_id": geometry.topology_id,
@@ -246,9 +221,7 @@ def _relief_fdm_warnings(
 
     dot = np.einsum("ij,ij->i", directions[edges[:, 0]], directions[edges[:, 1]])
     arc_lengths = geometry.base_radius_mm * np.arccos(np.clip(dot, -1.0, 1.0))
-    slopes = np.degrees(
-        np.arctan(np.abs(radii[edges[:, 1]] - radii[edges[:, 0]]) / arc_lengths)
-    )
+    slopes = np.degrees(np.arctan(np.abs(radii[edges[:, 1]] - radii[edges[:, 0]]) / arc_lengths))
     face_normals = np.array(inspected.face_normals, dtype=np.float64, copy=True)
     downward_fraction = float(np.count_nonzero(face_normals[:, 2] < 0.0) / len(face_normals))
     return (
@@ -273,7 +246,7 @@ def _relief_fdm_warnings(
     )
 
 
-def validate_relief_mesh(
+def _legacy_validate_relief_mesh(
     geometry: ReliefGeometry,
     topology: IcosphereTopology,
     fdm_context: ReliefFDMContext | None,
@@ -315,16 +288,11 @@ def validate_relief_mesh(
         representation_failures.append("positive radii_mm")
     if np.any(radii_ledger < geometry.base_radius_mm - _RADIAL_RANGE_TOLERANCE_MM) or np.any(
         radii_ledger
-        > geometry.base_radius_mm
-        + geometry.maximum_relief_mm
-        + _RADIAL_RANGE_TOLERANCE_MM
+        > geometry.base_radius_mm + geometry.maximum_relief_mm + _RADIAL_RANGE_TOLERANCE_MM
     ):
         representation_failures.append("configured radial range")
     if np.any(radii < geometry.base_radius_mm - _RADIAL_RANGE_TOLERANCE_MM) or np.any(
-        radii
-        > geometry.base_radius_mm
-        + geometry.maximum_relief_mm
-        + _RADIAL_RANGE_TOLERANCE_MM
+        radii > geometry.base_radius_mm + geometry.maximum_relief_mm + _RADIAL_RANGE_TOLERANCE_MM
     ):
         representation_failures.append("actual vertex radial range")
     if not np.allclose(
@@ -352,9 +320,7 @@ def validate_relief_mesh(
             "filtered values consistent with configured radius displacement"
         )
     if representation_failures:
-        raise ValueError(
-            "relief mesh validation failed: " + ", ".join(representation_failures)
-        )
+        raise ValueError("relief mesh validation failed: " + ", ".join(representation_failures))
 
     inspected = _trimesh(geometry)
     duplicate_count = duplicate_triangle_count(geometry.faces)
@@ -406,6 +372,35 @@ def validate_relief_mesh(
     )
 
 
+def validate_relief_mesh(
+    geometry: ReliefGeometry,
+    topology: IcosphereTopology,
+    fdm_context: ReliefFDMContext | None,
+) -> ReliefMeshValidation:
+    """Compatibility adapter for the generic globe mesh proof."""
+    if (
+        isinstance(geometry.base_radius_mm, bool)
+        or isinstance(geometry.maximum_relief_mm, bool)
+        or not np.isfinite((geometry.base_radius_mm, geometry.maximum_relief_mm)).all()
+        or geometry.base_radius_mm <= 0.0
+        or geometry.maximum_relief_mm <= 0.0
+    ):
+        raise ValueError("relief mesh validation failed: positive finite configured dimensions")
+    validation = validate_globe_mesh(
+        geometry,
+        topology,
+        GlobeGeometrySpec(
+            geometry.base_radius_mm * 2.0,
+            geometry.maximum_relief_mm,
+            topology.subdivisions,
+        ),
+    )
+    return replace(
+        validation,
+        warnings=_relief_fdm_warnings(geometry, _trimesh(geometry), fdm_context),
+    )
+
+
 @lru_cache(maxsize=1)
 def _approved_topology() -> IcosphereTopology:
     return build_icosphere(_CANONICAL_SUBDIVISIONS)
@@ -431,7 +426,15 @@ def validate_canonical_relief_mesh(
         or geometry.maximum_relief_mm != _CANONICAL_MAXIMUM_RELIEF_MM
     ):
         raise ValueError("publishable relief requires 40.0 mm base and 1.2 mm maximum relief")
-    return validate_relief_mesh(geometry, topology, fdm_context)
+    validation = validate_globe_mesh(
+        geometry,
+        topology,
+        GlobeGeometrySpec(80.0, 1.2, _CANONICAL_SUBDIVISIONS),
+    )
+    return replace(
+        validation,
+        warnings=_relief_fdm_warnings(geometry, _trimesh(geometry), fdm_context),
+    )
 
 
 def _verify_accepted_validation(
@@ -519,9 +522,7 @@ def _validate_field_artifact(
     if not np.array_equal(artifact.hemisphere, expected_hemisphere):
         raise ValueError("field artifact hemisphere alignment differs from directions")
     direction_norms = np.linalg.norm(artifact.directions, axis=1)
-    if not np.allclose(
-        direction_norms, 1.0, rtol=0.0, atol=_DIRECTION_NORM_TOLERANCE
-    ):
+    if not np.allclose(direction_norms, 1.0, rtol=0.0, atol=_DIRECTION_NORM_TOLERANCE):
         raise ValueError("field artifact directions must be finite unit vectors")
     if np.any(artifact.source_rows < 0):
         raise ValueError("field artifact source_rows must be nonnegative")
@@ -578,8 +579,7 @@ def write_relief_preview(
     """Write the accepted full-resolution relief mesh as a fixed RGBA PNG."""
     parameters = (lower_percentile, upper_percentile, gamma, filter_fwhm_mm)
     if any(
-        isinstance(value, (bool, np.bool_)) or not isinstance(value, Real)
-        for value in parameters
+        isinstance(value, (bool, np.bool_)) or not isinstance(value, Real) for value in parameters
     ):
         raise ValueError("relief preview parameters are invalid")
     if (

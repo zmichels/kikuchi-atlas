@@ -8,6 +8,8 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.spatial import cKDTree
 
+from kikuchi_lab.globe_mesh import GlobeGeometrySpec, ReliefGeometry, build_radial_geometry
+
 from .field import (
     SphericalScalarField,
     immutable_float_array,
@@ -18,8 +20,6 @@ from .recipes import ReliefMappingSpec, SphericalFilterSpec
 from .topology import IcosphereTopology
 
 _UNIT_TOLERANCE = 2e-12
-_CANONICAL_BASE_DIAMETER_MM = 80.0
-_CANONICAL_MAXIMUM_RELIEF_MM = 1.2
 
 
 def _immutable_int_array(value: object, *, width: int | None = None) -> np.ndarray:
@@ -77,21 +77,7 @@ class SphericalFilterDiagnostics:
     constant_residual: float
 
 
-@dataclass(frozen=True)
-class ReliefGeometry:
-    topology_id: str
-    directions: np.ndarray
-    faces: np.ndarray
-    filtered_values: np.ndarray
-    radii_mm: np.ndarray
-    vertices: np.ndarray
-    base_radius_mm: float
-    maximum_relief_mm: float
-
-
-def map_source_field(
-    field: SphericalScalarField, spec: ReliefMappingSpec
-) -> MappedSphericalField:
+def map_source_field(field: SphericalScalarField, spec: ReliefMappingSpec) -> MappedSphericalField:
     """Map one raw two-hemisphere field using a single global percentile range."""
     if not isinstance(field, SphericalScalarField):
         raise TypeError("field must be a SphericalScalarField")
@@ -226,9 +212,7 @@ def filter_spherical_values(
     cutoff_chord = 2.0 * np.sin(cutoff_angle / 2.0)
     tree = cKDTree(unit)
     neighborhoods = tree.query_ball_point(unit, cutoff_chord, workers=1)
-    filtered, counts = _filter_from_neighborhoods(
-        value_array, unit, neighborhoods, sigma_rad
-    )
+    filtered, counts = _filter_from_neighborhoods(value_array, unit, neighborhoods, sigma_rad)
     constant_residual = _constant_filter_residual(unit, neighborhoods, sigma_rad)
     if constant_residual > 1e-12 or not np.isfinite(filtered).all():
         raise ValueError("spherical filter failed its constant-field invariant")
@@ -251,36 +235,15 @@ def build_relief_geometry(
     base_diameter_mm: float,
     maximum_relief_mm: float,
 ) -> ReliefGeometry:
-    """Displace a copied canonical topology radially outward only."""
+    """Build only the legacy 80 mm / 1.2 mm relief geometry contract."""
     if not isinstance(topology, IcosphereTopology):
         raise TypeError("topology must be an IcosphereTopology")
     diameter = _positive_finite_number(base_diameter_mm, field="base diameter")
     relief = _positive_finite_number(maximum_relief_mm, field="maximum relief")
-    if diameter != _CANONICAL_BASE_DIAMETER_MM or relief != _CANONICAL_MAXIMUM_RELIEF_MM:
+    if diameter != 80.0 or relief != 1.2:
         raise ValueError("canonical geometry must use an 80.0 mm diameter and 1.2 mm relief")
-    try:
-        values = np.asarray(filtered_values, dtype=np.float64).reshape(-1)
-    except (TypeError, ValueError) as error:
-        raise ValueError("filtered values must be finite and align with topology") from error
-    if len(values) != len(topology.directions) or not np.isfinite(values).all():
-        raise ValueError("filtered values must be finite and align with topology")
-    if np.any(values < 0.0) or np.any(values > 1.0):
-        raise ValueError("filtered values must lie in [0, 1]")
-
-    directions = _immutable_float_matrix(topology.directions, width=3)
-    faces = _immutable_int_array(topology.faces, width=3)
-    if not np.array_equal(faces, topology.faces):
-        raise ValueError("relief faces must exactly preserve topology")
-    base_radius = diameter / 2.0
-    radii = base_radius + relief * values
-    vertices = directions * radii[:, None]
-    return ReliefGeometry(
-        topology_id=topology.topology_id,
-        directions=directions,
-        faces=faces,
-        filtered_values=immutable_float_array(values),
-        radii_mm=immutable_float_array(radii),
-        vertices=_immutable_float_matrix(vertices, width=3),
-        base_radius_mm=base_radius,
-        maximum_relief_mm=relief,
+    return build_radial_geometry(
+        topology,
+        filtered_values,
+        GlobeGeometrySpec(diameter, relief, topology.subdivisions),
     )

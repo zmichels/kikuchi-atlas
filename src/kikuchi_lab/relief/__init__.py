@@ -1,5 +1,11 @@
 """Spherical intensity-relief recipe contracts."""
 
+from kikuchi_lab.globe_mesh import (
+    GlobeGeometrySpec,
+    build_radial_geometry,
+    validate_globe_mesh,
+)
+
 from .field import (
     DirectionalSamples,
     SeamDiagnostics,
@@ -44,6 +50,7 @@ from .workflow import ReliefGlobeBuildResult, build_relief_globe
 
 __all__ = [
     "DirectionalSamples",
+    "GlobeGeometrySpec",
     "IcosphereTopology",
     "MappedDirectionalSamples",
     "MappedSphericalField",
@@ -62,6 +69,7 @@ __all__ = [
     "SphericalFilterDiagnostics",
     "FIELD_ARRAY_ORDER",
     "build_relief_geometry",
+    "build_radial_geometry",
     "build_relief_globe",
     "build_spherical_scalar_field",
     "build_icosphere",
@@ -76,6 +84,7 @@ __all__ = [
     "sample_mapped_field",
     "sample_spherical_field",
     "validate_canonical_relief_mesh",
+    "validate_globe_mesh",
     "validate_relief_mesh",
     "write_relief_preview",
 ]
