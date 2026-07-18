@@ -50,6 +50,11 @@ def angular_gaussian(
     return np.exp(-0.5 * (angles / sigma) ** 2)
 
 
+@pytest.fixture(scope="module")
+def canonical_topology():
+    return build_icosphere(7)
+
+
 def test_global_mapping_uses_one_both_hemisphere_percentile_range():
     field = field_with_north_range_and_brighter_south()
 
@@ -188,8 +193,8 @@ def test_filter_rejects_invalid_direct_specs(spec):
         filter_spherical_values([0.0], [[1, 0, 0]], 40.0, spec)
 
 
-def test_relief_geometry_is_outward_only_and_preserves_topology():
-    topology = build_icosphere(3)
+def test_relief_geometry_is_outward_only_and_preserves_topology(canonical_topology):
+    topology = canonical_topology
     values = np.linspace(0.0, 1.0, len(topology.directions))
     geometry = build_relief_geometry(
         topology, values, base_diameter_mm=80.0, maximum_relief_mm=1.2
@@ -226,15 +231,17 @@ def test_relief_geometry_is_outward_only_and_preserves_topology():
         ([0.5], 80.0, 1.3, "canonical geometry"),
     ],
 )
-def test_relief_geometry_rejects_invalid_inputs(values, diameter, relief, match):
-    topology = build_icosphere(0)
+def test_relief_geometry_rejects_invalid_inputs(
+    values, diameter, relief, match, canonical_topology
+):
+    topology = canonical_topology
     full_values = np.full(len(topology.directions), values[0])
     with pytest.raises(ValueError, match=match):
         build_relief_geometry(topology, full_values, diameter, relief)
 
 
-def test_relief_geometry_rejects_value_length_mismatch():
-    topology = build_icosphere(1)
+def test_relief_geometry_rejects_value_length_mismatch(canonical_topology):
+    topology = canonical_topology
     with pytest.raises(ValueError, match="finite and align"):
         build_relief_geometry(topology, [0.5], 80.0, 1.2)
 

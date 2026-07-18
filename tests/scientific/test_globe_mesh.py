@@ -27,6 +27,11 @@ def test_existing_canonical_relief_rejects_noncanonical_geometry() -> None:
         build_relief_geometry(build_icosphere(2), np.zeros(162), 80.0, 3.0)
 
 
+def test_existing_canonical_relief_rejects_noncanonical_topology() -> None:
+    with pytest.raises(ValueError, match="approved subdivision-7 topology"):
+        build_relief_geometry(build_icosphere(2), np.zeros(162), 80.0, 1.2)
+
+
 @pytest.mark.parametrize(
     "spec",
     [

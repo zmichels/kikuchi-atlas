@@ -242,8 +242,10 @@ def build_relief_geometry(
     relief = _positive_finite_number(maximum_relief_mm, field="maximum relief")
     if diameter != 80.0 or relief != 1.2:
         raise ValueError("canonical geometry must use an 80.0 mm diameter and 1.2 mm relief")
+    if topology.subdivisions != 7:
+        raise ValueError("canonical geometry must use the approved subdivision-7 topology")
     return build_radial_geometry(
         topology,
         filtered_values,
-        GlobeGeometrySpec(diameter, relief, topology.subdivisions),
+        GlobeGeometrySpec(diameter, relief, 7),
     )
