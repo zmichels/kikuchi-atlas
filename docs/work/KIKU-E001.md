@@ -27,6 +27,8 @@ links:
 evidence:
   - ../superpowers/specs/2026-07-12-kikuchi-companion-design.md
   - ../acceptance/forsterite-milestone.md
+  - ../acceptance/ice-ih-reflector-ridge-globe.md
+  - ../acceptance/ice-ih-intensity-relief-globe.md
 ---
 
 # KIKU-E001: Dynamical Kikuchi companion

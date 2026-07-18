@@ -1,8 +1,16 @@
 # Ice Ih reflector-ridge globe acceptance
 
-Status: **DONE_WITH_CONCERNS**. The deterministic, printer-neutral mesh bundle is
-accepted by automated validation and by a visual review of its fixed preview. No
-physical print, slicer import, repair result, or slicer success is claimed.
+Status: **AUTOMATED_EVIDENCE_RECORDED**. The deterministic, printer-neutral mesh
+bundle passed automated validation. User visual review of the fixed preview is
+pending explicit approval. No physical print, slicer import, repair result,
+manufacturability result, or slicer success is claimed.
+
+## Product boundary
+
+This is a reflector-defined, analytic raised-ridge mesh made from the selected
+reflector catalog; it is not a dynamical EBSD intensity simulation. It is a
+separate product from the intensity-relief globe and does not use a sampled
+intensity master for its geometry.
 
 ## Accepted bundle
 
@@ -17,7 +25,7 @@ The source-compatible catalog retains 15 selected reflector members across four
 tie-preserving cohorts. The field is evaluated at all 163842 subdivision-7
 icosphere directions and exported with 327680 unchanged indexed triangles.
 
-## Geometry validation
+## Generated geometry evidence
 
 The published binary STL, reloaded after float32 serialization, is one
 watertight and consistently wound positive-volume body with no duplicate or
@@ -29,9 +37,9 @@ relief bounded by 3.0 mm. Its measured bounds are
 `[42.9999885559082, 42.9999885559082, 42.9999885559082]` mm. The radial
 certificate minimum is `4.5547612162859155`, above the `6.4e-08` tolerance.
 
-The fixed preview was visually reviewed: the raised blue corridors are
-continuous and legible around the sphere, with no obvious missing surface patch
-or seam. This preview review is not a slicer or physical-print inspection.
+The fixed preview is generated evidence only. Its visual readability is pending
+explicit user approval; it has not been used as a slicer or physical-print
+inspection.
 
 ## Inventory and reproducibility
 

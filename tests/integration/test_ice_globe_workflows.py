@@ -48,3 +48,12 @@ def test_intensity_rerun_is_deterministic_and_accepts_non_80_mm_recipe(tmp_path:
     assert first_manifest["files"] == second_manifest["files"]
     assert first_manifest["validation"]["minimum_radius_mm"] >= 30.0
     assert first_manifest["validation"]["maximum_radius_mm"] <= 31.5
+
+
+def test_ice_globe_acceptance_notes_name_distinct_product_boundaries() -> None:
+    ridge = (ROOT / "docs/acceptance/ice-ih-reflector-ridge-globe.md").read_text()
+    intensity = (ROOT / "docs/acceptance/ice-ih-intensity-relief-globe.md").read_text()
+
+    assert "not a dynamical EBSD intensity simulation" in ridge
+    assert "raw kinematical master" in intensity
+    assert "hybrid" not in ridge.lower()

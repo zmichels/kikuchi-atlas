@@ -1,9 +1,15 @@
 # Ice Ih intensity-relief globe acceptance
 
-Status: **DONE_WITH_CONCERNS**. The separate stereographic-master intensity
-globe is accepted by deterministic automated validation and visual review of
-its fixed preview. This is not a physical-print, slicer-import, repair, or
-manufacturability claim.
+Status: **AUTOMATED_EVIDENCE_RECORDED**. The separate stereographic-master
+intensity globe passed deterministic automated validation. User visual review
+of its fixed preview is pending explicit approval. This is not a physical-print,
+slicer-import, repair, or manufacturability claim.
+
+## Product boundary
+
+This is an intensity-relief mesh sampled from the raw kinematical master over
+its valid stereographic disk domain. It is separate from the reflector-defined
+ridge product and does not use its reflector catalog to define the relief.
 
 ## Accepted bundle
 
@@ -23,7 +29,7 @@ diagnostic has upper ownership, four exact grid-boundary samples, and zero
 residual. The bundle has 163842 vertices and 327680 unchanged indexed
 triangles.
 
-## Geometry and preview review
+## Generated geometry evidence
 
 Automated validation found one watertight, consistently wound, positive-volume
 body, with Euler characteristic 2 and no duplicate or degenerate triangles.
@@ -34,10 +40,9 @@ Its reloaded bounds are `[-42.9999885559082, -42.9999885559082,
 `4.575064230158891`, above the `6.4e-08`
 tolerance.
 
-The fixed preview was visually reviewed: the intensity-derived relief is
-continuous across the visible sphere, with strong equatorial structure and no
-obvious missing surface patch. This visual check remains only a preview review,
-not a claim about slicer behavior or a physical print.
+The fixed preview is generated evidence only. Its visual readability is pending
+explicit user approval; it is not evidence of slicer behavior or a physical
+print.
 
 ## Inventory and reproducibility
 
