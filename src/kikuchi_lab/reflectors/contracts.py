@@ -74,7 +74,9 @@ class ReflectorMember:
         # an immutable backing buffer as well as a read-only flag.
         normal = np.frombuffer(normal.astype("<f8", copy=False).tobytes(), dtype="<f8")
         object.__setattr__(self, "normal_crystal", normal)
-        object.__setattr__(self, "dspacing_angstrom", _finite_positive("dspacing_angstrom", self.dspacing_angstrom))
+        object.__setattr__(
+            self, "dspacing_angstrom", _finite_positive("dspacing_angstrom", self.dspacing_angstrom)
+        )
         object.__setattr__(
             self,
             "bragg_half_width_rad",
@@ -154,7 +156,14 @@ class ReflectorCatalog:
                     "energy_kev": self.energy_kev,
                     "reflection_recipe_id": self.reflection_recipe_id,
                     "selection": _plain_frozen(selection),
-                    "member_ids": [member.member_id for member in members],
+                    "members": [
+                        {
+                            "member_id": member.member_id,
+                            "eligible": member.eligible,
+                            "cohort": member.cohort,
+                        }
+                        for member in members
+                    ],
                 },
             ),
         )

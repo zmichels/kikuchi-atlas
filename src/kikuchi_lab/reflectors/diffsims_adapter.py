@@ -95,9 +95,7 @@ def enumerate_reflector_members(
         raise ValueError("structure-factor normalization requires a finite positive maximum")
     vectors = vectors[strengths >= recipe.selection_relative_factor * maximum]
 
-    groups: dict[
-        tuple[int, int, int], list[tuple[np.ndarray, float, float, float]]
-    ] = {}
+    groups: dict[tuple[int, int, int], list[tuple[np.ndarray, float, float, float]]] = {}
     for hkl, normal, spacing, theta, factor in zip(
         vectors.hkl,
         vectors.unit.data,
@@ -136,7 +134,7 @@ def enumerate_reflector_members(
             (hkl, normal, float(spacings.mean()), float(widths.mean()), float(factors.mean()))
         )
 
-    return tuple(
+    members = (
         ReflectorMember(
             hkl=hkl,
             normal_crystal=normal,
@@ -146,4 +144,10 @@ def enumerate_reflector_members(
             normalized_weight=(factor / maximum) ** recipe.weight_exponent,
         )
         for hkl, normal, spacing, width, factor in collapsed
+    )
+    return tuple(
+        sorted(
+            members,
+            key=lambda member: (-member.normalized_weight, member.hkl, member.member_id),
+        )
     )

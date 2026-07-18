@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import numpy as np
 import pytest
@@ -12,9 +12,10 @@ def test_member_requires_unit_normal_and_stable_intrinsic_id() -> None:
     member = ReflectorMember((1, 0, 0), [1.0, 0.0, 0.0], 2.0, 0.01, 12.0, 1.0)
 
     assert member.member_id.startswith("reflector-member-")
-    assert member.member_id == ReflectorMember(
-        (1, 0, 0), [1.0, 0.0, 0.0], 2.0, 0.01, 12.0, 1.0
-    ).member_id
+    assert (
+        member.member_id
+        == ReflectorMember((1, 0, 0), [1.0, 0.0, 0.0], 2.0, 0.01, 12.0, 1.0).member_id
+    )
     with pytest.raises(ValueError, match="unit normal"):
         ReflectorMember((1, 0, 0), [2.0, 0.0, 0.0], 2.0, 0.01, 12.0, 1.0)
 
@@ -57,3 +58,18 @@ def test_catalog_identity_uses_content_not_local_paths() -> None:
     assert catalog.members == (member,)
     with pytest.raises(FrozenInstanceError):
         catalog.energy_kev = 30.0
+
+
+def test_catalog_identity_includes_member_selection_state() -> None:
+    member = ReflectorMember((1, 0, 0), [1.0, 0.0, 0.0], 2.0, 0.01, 12.0, 1.0)
+    selected_member = replace(member, eligible=True, cohort=1)
+
+    unselected_catalog = ReflectorCatalog(
+        "ice-ih", "a" * 64, 20.0, "reflector-recipe-1234", {}, [member]
+    )
+    selected_catalog = ReflectorCatalog(
+        "ice-ih", "a" * 64, 20.0, "reflector-recipe-1234", {}, [selected_member]
+    )
+
+    assert member.member_id == selected_member.member_id
+    assert unselected_catalog.catalog_id != selected_catalog.catalog_id
