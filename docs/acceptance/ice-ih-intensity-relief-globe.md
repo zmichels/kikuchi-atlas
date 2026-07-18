@@ -16,18 +16,19 @@ ridge product and does not use its reflector catalog to define the relief.
 - Build ID: `ice-intensity-globe-build-cbc3baa5d5b360bd`
 - Bundle: [published bundle](../../local/ice-intensity-globes/ice-intensity-globe-build-cbc3baa5d5b360bd)
 - Product kind: `intensity_relief`
+- Master product ID: `kinematical-ec6fd101f0576f08`
 - Recipe ID: `ice-intensity-globe-recipe-769cc72ff0cb9891`
 - Field ID: `ice-intensity-field-9c93f457b44632fb`
 - Topology ID: `icosphere-b542bf2969717758`
 
 The field is sampled directly from the both-hemisphere Ice kinematical
-stereographic master over its published `X^2 + Y^2 <= 1` disk, with upper
-ownership of the true equator; it is not a Lambert field and does not use
-reflector-defined ridge data. A single 1st–99th percentile, gamma-1.0 map is
-applied across both hemispheres using only disk samples. The true disk-equator
-diagnostic has upper ownership, four exact grid-boundary samples, and zero
-residual. The bundle has 163842 vertices and 327680 unchanged indexed
-triangles.
+stereographic master `kinematical-ec6fd101f0576f08` over its published
+`X^2 + Y^2 <= 1` disk, with upper ownership of the true equator; it is not a
+Lambert field and does not use reflector-defined ridge data. A single 1st–99th
+percentile, gamma-1.0 map is applied across both hemispheres using only disk
+samples. The true disk-equator diagnostic has upper ownership, four exact
+grid-boundary samples, and zero residual. The bundle has 163842 vertices and
+327680 unchanged indexed triangles.
 
 ## Generated geometry evidence
 

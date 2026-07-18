@@ -16,14 +16,16 @@ intensity master for its geometry.
 
 - Build ID: `reflector-ridge-globe-build-cf6eb051b29a78f8`
 - Bundle: [published bundle](../../local/ice-reflector-globes/reflector-ridge-globe-build-cf6eb051b29a78f8)
+- Source structure ID: `COD-1572233-O-sublattice`
 - Catalog ID: `reflector-catalog-2ca281743468ecab`
 - Recipe ID: `reflector-ridge-recipe-40e658077c46b698`
 - Field ID: `reflector-ridge-field-1752c00dbcd8b3b7`
 - Topology ID: `icosphere-b542bf2969717758`
 
-The source-compatible catalog retains 15 selected reflector members across four
-tie-preserving cohorts. The field is evaluated at all 163842 subdivision-7
-icosphere directions and exported with 327680 unchanged indexed triangles.
+The source-compatible catalog retains 15 selected reflector members from
+`COD-1572233-O-sublattice` across four tie-preserving cohorts. The field is
+evaluated at all 163842 subdivision-7 icosphere directions and exported with
+327680 unchanged indexed triangles.
 
 ## Generated geometry evidence
 
