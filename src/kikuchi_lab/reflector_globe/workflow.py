@@ -377,6 +377,7 @@ def build_reflector_globe(
         }
         manifest = {
             "schema": REFLECTOR_GLOBE_MANIFEST_SCHEMA,
+            "product_kind": "reflector_defined_ridges",
             "build_id": build_id,
             "identity": identity,
             "contracts": contracts,

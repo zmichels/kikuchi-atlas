@@ -1,0 +1,12 @@
+schema: kikuchi.ice-intensity-globe-recipe/v1
+geometry:
+  base_diameter_mm: 80.0
+  maximum_relief_mm: 3.0
+  topology: icosphere
+  subdivisions: 7
+  direction: bright_outward
+mapping:
+  percentiles:
+    lower: 1.0
+    upper: 99.0
+  gamma: 1.0

@@ -111,6 +111,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     reflector_globe_build.add_argument("--catalog", required=True)
     reflector_globe_build.add_argument("--recipe", required=True)
     reflector_globe_build.add_argument("--output", required=True)
+    ice_globe = subparsers.add_parser(
+        "ice-globe", help="Build separate Ice kinematical globe products."
+    )
+    ice_globe_commands = ice_globe.add_subparsers(dest="ice_globe_command", required=True)
+    ice_intensity = ice_globe_commands.add_parser(
+        "intensity", help="Build one validated stereographic-master intensity globe."
+    )
+    ice_intensity.add_argument("--kinematical-recipe", required=True)
+    ice_intensity.add_argument("--recipe", required=True)
+    ice_intensity.add_argument("--output", required=True)
     args = parser.parse_args(arguments)
 
     if args.command == "version":
@@ -201,6 +211,34 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = build_reflector_globe(args.catalog, args.recipe, args.output)
         except (OSError, ValueError, RuntimeError) as error:
             print(f"kikuchi-lab: reflector globe build failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "build_id": result.build_id,
+                    "field": str(result.field),
+                    "ledger": str(result.ledger),
+                    "manifest": str(result.manifest),
+                    "path": str(result.path),
+                    "preview": str(result.preview),
+                    "stl": str(result.stl),
+                    "validation": str(result.validation),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "ice-globe" and args.ice_globe_command == "intensity":
+        from kikuchi_lab.ice_globe import build_ice_intensity_globe
+
+        try:
+            result = build_ice_intensity_globe(
+                args.kinematical_recipe, args.recipe, args.output
+            )
+        except (OSError, ValueError, RuntimeError) as error:
+            print(f"kikuchi-lab: Ice intensity globe build failed: {error}", file=sys.stderr)
             return 1
         print(
             json.dumps(
