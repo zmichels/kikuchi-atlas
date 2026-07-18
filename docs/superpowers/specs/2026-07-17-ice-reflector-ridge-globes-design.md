@@ -123,16 +123,25 @@ closed-schema recipes, and source-independent identities.
 For the initial Ice recipe, selection uses the historical policy:
 
 ```yaml
+source_master_relative_factor: 0.03
+selection_relative_factor: 0.22
+weight_exponent: 2.0
 eligibility_min_weight: 0.08
 tie_policy: keep_equal_weights_together
 ranking: normalized_structure_factor_weight
 cohort_count: 4
 ```
 
-The full axial catalog has 30 members; 15 satisfy this explicit threshold.
+The recovered tattoo/art lineage came through a bounded master recipe with
+`source_master_relative_factor: 0.03`, then retained signed reflectors with
+`abs(F) >= 0.22 * max(abs(F))`, then collapsed exact antipodal HKL pairs, and
+then used squared normalized structure-factor weights. The `0.22` gate is the
+effective catalog gate; the `0.03` value is retained provenance from the source
+master lineage. That yields a full axial catalog of 30 members; 15 satisfy the
+inclusive `0.08` eligibility floor.
 The recipe refers to the policy, rather than hard-coding a positional list of
-15 entries. A changed phase, energy, cutoff, strength, threshold, or tie rule
-therefore creates a new catalog and product identity.
+15 entries. A changed phase, energy, cutoff, strength, exponent, threshold, or
+tie rule therefore creates a new catalog and product identity.
 
 ## Analytic Raised-Band Field
 

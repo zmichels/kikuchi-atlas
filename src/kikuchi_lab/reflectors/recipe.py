@@ -17,11 +17,17 @@ _ALLOWED_KEYS = {
     "energy_kev",
     "min_dspacing_angstrom",
     "scattering_params",
+    "source_master_relative_factor",
+    "selection_relative_factor",
+    "weight_exponent",
     "eligibility_min_weight",
     "tie_policy",
     "cohort_count",
 }
 _APPROVED_ICE_WEIGHT = 0.08
+_APPROVED_ICE_SOURCE_MASTER_RELATIVE_FACTOR = 0.03
+_APPROVED_ICE_SELECTION_RELATIVE_FACTOR = 0.22
+_APPROVED_ICE_WEIGHT_EXPONENT = 2.0
 _TIE_POLICY = "keep_equal_weights_together"
 
 
@@ -76,6 +82,9 @@ class ReflectorRecipe:
     energy_kev: float
     min_dspacing_angstrom: float
     scattering_params: str
+    source_master_relative_factor: float
+    selection_relative_factor: float
+    weight_exponent: float
     eligibility_min_weight: float
     tie_policy: Literal["keep_equal_weights_together"]
     cohort_count: int
@@ -94,6 +103,48 @@ class ReflectorRecipe:
         )
         if not isinstance(self.scattering_params, str) or not self.scattering_params.strip():
             raise ValueError("scattering_params must be non-empty text")
+        if type(self.source_master_relative_factor) not in (
+            int,
+            float,
+        ) or not math.isclose(
+            float(self.source_master_relative_factor),
+            _APPROVED_ICE_SOURCE_MASTER_RELATIVE_FACTOR,
+            rel_tol=0.0,
+            abs_tol=0.0,
+        ):
+            raise ValueError(
+                "source_master_relative_factor must equal recovered Ice master gate 0.03"
+            )
+        object.__setattr__(
+            self,
+            "source_master_relative_factor",
+            _APPROVED_ICE_SOURCE_MASTER_RELATIVE_FACTOR,
+        )
+        if type(self.selection_relative_factor) not in (
+            int,
+            float,
+        ) or not math.isclose(
+            float(self.selection_relative_factor),
+            _APPROVED_ICE_SELECTION_RELATIVE_FACTOR,
+            rel_tol=0.0,
+            abs_tol=0.0,
+        ):
+            raise ValueError(
+                "selection_relative_factor must equal recovered Ice presentation gate 0.22"
+            )
+        object.__setattr__(
+            self,
+            "selection_relative_factor",
+            _APPROVED_ICE_SELECTION_RELATIVE_FACTOR,
+        )
+        if type(self.weight_exponent) not in (int, float) or not math.isclose(
+            float(self.weight_exponent),
+            _APPROVED_ICE_WEIGHT_EXPONENT,
+            rel_tol=0.0,
+            abs_tol=0.0,
+        ):
+            raise ValueError("weight_exponent must equal recovered Ice presentation value 2.0")
+        object.__setattr__(self, "weight_exponent", _APPROVED_ICE_WEIGHT_EXPONENT)
         if type(self.eligibility_min_weight) not in (int, float) or not math.isclose(
             float(self.eligibility_min_weight), _APPROVED_ICE_WEIGHT, rel_tol=0.0, abs_tol=0.0
         ):
@@ -115,6 +166,9 @@ class ReflectorRecipe:
                     "energy_kev": self.energy_kev,
                     "min_dspacing_angstrom": self.min_dspacing_angstrom,
                     "scattering_params": self.scattering_params,
+                    "source_master_relative_factor": self.source_master_relative_factor,
+                    "selection_relative_factor": self.selection_relative_factor,
+                    "weight_exponent": self.weight_exponent,
                     "eligibility_min_weight": self.eligibility_min_weight,
                     "tie_policy": self.tie_policy,
                     "cohort_count": self.cohort_count,

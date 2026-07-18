@@ -13,6 +13,9 @@ ROOT = Path(__file__).parents[2]
 def test_ice_catalog_recipe_is_closed_and_records_selection_policy() -> None:
     recipe = load_reflector_recipe(ROOT / "recipes/reflectors/ice-ih-catalog.yml")
 
+    assert recipe.source_master_relative_factor == 0.03
+    assert recipe.selection_relative_factor == 0.22
+    assert recipe.weight_exponent == 2.0
     assert recipe.eligibility_min_weight == 0.08
     assert recipe.tie_policy == "keep_equal_weights_together"
     assert recipe.cohort_count == 4
@@ -25,6 +28,9 @@ def test_ice_catalog_recipe_is_closed_and_records_selection_policy() -> None:
         ("source_record", "/tmp/ice.yml", "relative"),
         ("energy_kev", 0, "positive"),
         ("min_dspacing_angstrom", 0, "positive"),
+        ("source_master_relative_factor", 0.04, "0.03"),
+        ("selection_relative_factor", 0.21, "0.22"),
+        ("weight_exponent", 1.0, "2.0"),
         ("cohort_count", 3, "cohort_count"),
         ("eligibility_min_weight", 0.07, "0.08"),
     ],
@@ -81,6 +87,12 @@ def test_loader_rejects_duplicate_mapping_keys(tmp_path: Path, field: str) -> No
         ("energy_kev", "true"),
         ("min_dspacing_angstrom", "'1.0'"),
         ("min_dspacing_angstrom", "true"),
+        ("source_master_relative_factor", "'0.03'"),
+        ("source_master_relative_factor", "true"),
+        ("selection_relative_factor", "'0.22'"),
+        ("selection_relative_factor", "true"),
+        ("weight_exponent", "'2.0'"),
+        ("weight_exponent", "true"),
         ("eligibility_min_weight", "'0.08'"),
         ("eligibility_min_weight", "true"),
     ],

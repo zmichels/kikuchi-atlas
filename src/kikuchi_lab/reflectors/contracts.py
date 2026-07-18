@@ -53,6 +53,8 @@ class ReflectorMember:
     bragg_half_width_rad: float
     structure_factor_abs: float
     normalized_weight: float
+    eligible: bool = False
+    cohort: int | None = None
     member_id: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -87,6 +89,13 @@ class ReflectorMember:
         if weight > 1.0:
             raise ValueError("normalized_weight must be in [0, 1]")
         object.__setattr__(self, "normalized_weight", weight)
+        if type(self.eligible) is not bool:
+            raise ValueError("eligible must be a boolean")
+        if self.eligible:
+            if type(self.cohort) is not int or not 1 <= self.cohort <= 4:
+                raise ValueError("eligible members must have cohort in [1, 4]")
+        elif self.cohort is not None:
+            raise ValueError("ineligible members must not have a cohort")
         object.__setattr__(
             self,
             "member_id",

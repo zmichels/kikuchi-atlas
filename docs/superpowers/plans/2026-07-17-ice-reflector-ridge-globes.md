@@ -13,7 +13,7 @@
 - Preserve all existing forsterite intensity-relief recipe IDs, byte artifacts, and canonical `80.0 mm / 1.2 mm / subdivision-7` acceptance behavior.
 - Restore the exact Ice source identity `COD-1572233-O-sublattice`, SHA-256 `4327a279e414a62f861d143e18570e9d741bbbb7d04dd2fb471c930988f95b81`, setting `P 63/m m c`, and oxygen-sublattice-only claim boundary.
 - Keep `diffsims`, `orix`, and `kikuchipy` objects adapter-local; durable catalog, field, recipe, and mesh contracts are project-owned plain data.
-- The ridge product uses the catalog policy `eligibility_min_weight: 0.08`, `keep_equal_weights_together`, normalized structure-factor ranking, and four nonempty strength cohorts; membership must not be hard-coded by position.
+- The ridge product uses the recovered catalog policy `source_master_relative_factor: 0.03`, `selection_relative_factor: 0.22`, `weight_exponent: 2.0`, `eligibility_min_weight: 0.08`, `keep_equal_weights_together`, normalized structure-factor ranking, and four nonempty strength cohorts; membership must not be hard-coded by position.
 - Generate ridge geometry analytically from reflector normals and Bragg-width evidence. Never use pixels, SVG/PDF paths, image thresholding, blur, or a hybrid intensity term.
 - All physical dimensions are explicit millimetres. The first ridge recipe has an 80 mm base diameter and a positive maximum relief of about 3 mm; exact review defaults are recipe data.
 - Both product bundles are content-addressed, atomically published, deterministic on repeated execution, and independently labeled as intensity-derived versus reflector-defined science-art geometry.
@@ -39,7 +39,7 @@
 | `src/kikuchi_lab/reflector_globe/workflow.py` | Build/publish reflector-ridge STL bundle and manifest. |
 | `src/kikuchi_lab/ice_globe/workflow.py` | Build/publish the separate Ice intensity-relief STL bundle. |
 | `recipes/kinematical/ice-ih-oxygen-quiet-proof.yml` | Bounded Ice simulation recipe. |
-| `recipes/reflectors/ice-ih-catalog.yml` | Ice selection policy and source recipe linkage. |
+| `recipes/reflectors/ice-ih-catalog.yml` | Ice selection, weighting, eligibility, and source recipe linkage. |
 | `recipes/globes/ice-ih-intensity.yml` | Ice intensity-globe physical/mapping recipe. |
 | `recipes/globes/ice-ih-reflector-ridges.yml` | 15-family raised-ridge physical recipe. |
 | `tests/adapters/test_ice_ih_reflectors.py` | Source setting, public adapter, normals, and factor/angle parity. |
@@ -164,6 +164,9 @@ class ReflectorRecipe:
     energy_kev: float
     min_dspacing_angstrom: float
     scattering_params: str
+    source_master_relative_factor: float
+    selection_relative_factor: float
+    weight_exponent: float
     eligibility_min_weight: float
     tie_policy: Literal["keep_equal_weights_together"]
     cohort_count: int
@@ -198,7 +201,7 @@ git commit -m "feat: define reflector evidence contracts"
 
 - Consumes: `StructureRecord`, `ReflectorRecipe`.
 - Produces: `enumerate_reflector_members(source, recipe) -> tuple[ReflectorMember, ...]` and `build_reflector_catalog(source, recipe) -> ReflectorCatalog`.
-- Guarantees: collapsed axial members are canonically sorted by `(-normalized_weight, hkl, member_id)`; all equal normalized weights occupy one cohort; the Ice catalog contains 30 members total and 15 eligible members.
+- Guarantees: collapsed axial members are canonically sorted by `(-normalized_weight, hkl, member_id)`; all equal normalized weights occupy one cohort; the Ice catalog contains 30 members total, 15 eligible members, and 6 eligible equal-weight blocks; cohort 4 is strongest and cohort 1 is weakest.
 
 - [ ] **Step 1: Write failing adapter/scientific tests**
 
@@ -210,7 +213,10 @@ def test_ice_catalog_is_real_and_tie_preserving() -> None:
     eligible = [m for m in catalog.members if m.eligible]
     assert len(catalog.members) == 30
     assert len(eligible) == 15
+    assert len({m.normalized_weight for m in eligible}) == 6
     assert {m.cohort for m in eligible} == {1, 2, 3, 4}
+    assert eligible[0].cohort == 4
+    assert eligible[-1].cohort == 1
     for weight in {m.normalized_weight for m in eligible}:
         assert len({m.cohort for m in eligible if m.normalized_weight == weight}) == 1
 
@@ -238,6 +244,8 @@ vectors.calculate_theta(recipe.energy_kev * 1_000.0)
 ```
 
 For primitive hexagonal Ice, `_allowed_mask()` must retain the documented `P`-hexagonal fallback and still calculate structure factors so screw/glide extinction is represented by vanishing factors. Convert each retained axial family to a canonical signed HKL and unit reciprocal-plane normal in the named crystal frame. Normalize weights by the finite maximum absolute structure factor. Build tied blocks before assigning four cohorts; do not use list slicing to assign cohorts.
+
+Recovery note: the retained tattoo/art lineage did not catalog every `min_dspacing_angstrom` family. It came through a bounded master recipe with `source_master_relative_factor: 0.03`, selected signed reflectors with `abs(F) >= selection_relative_factor * max(abs(F))` using the recovered `0.22` near-depth presentation gate, collapsed exact antipodal HKL pairs, and computed catalog weights as `(abs(F) / max(abs(F))) ** weight_exponent` with recovered exponent `2.0`. The `0.22` gate is the effective catalog gate; the `0.03` gate is retained source-lineage provenance.
 
 - [ ] **Step 4: Run focused parity and regression tests**
 

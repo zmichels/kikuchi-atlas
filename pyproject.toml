@@ -9,6 +9,7 @@ description = "Reproducible, high-resolution EBSD Kikuchi pattern experiments."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "diffsims==0.7.0",
   "diffpy-structure>=3.3,<4",
   "ebsdsim==0.1.8",
   "imageio>=2.37,<3",
