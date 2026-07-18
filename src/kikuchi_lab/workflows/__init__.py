@@ -22,6 +22,7 @@ from .proof import (
     load_proof_recipe,
     render_proof,
 )
+from .ice_reflector_catalog import build_ice_reflector_catalog
 
 __all__ = [
     "FinalRecipe",
@@ -42,4 +43,5 @@ __all__ = [
     "render_final",
     "validate_final_selection",
     "reproduce_final",
+    "build_ice_reflector_catalog",
 ]

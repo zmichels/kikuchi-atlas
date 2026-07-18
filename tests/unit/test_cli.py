@@ -6,6 +6,7 @@ import pytest
 
 from kikuchi_lab.cli.main import main
 from kikuchi_lab.relief import ReliefGlobeBuildResult
+from kikuchi_lab.reflectors.bundle import ReflectorCatalogBuildResult
 
 
 ROOT = Path(__file__).parents[2]
@@ -151,6 +152,48 @@ def test_relief_globe_build_cli_reports_domain_failure(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == "kikuchi-lab: relief globe build failed: source mismatch\n"
+    assert "Traceback" not in captured.err
+
+
+def test_reflector_catalog_build_cli_routes_paths_and_prints_json(monkeypatch, capsys, tmp_path):
+    bundle = tmp_path / "reflector-catalog-build-abc"
+    result = ReflectorCatalogBuildResult(
+        run_id=bundle.name,
+        path=bundle,
+        catalog=bundle / "reflector-catalog.json",
+        recipe=bundle / "catalog-recipe.json",
+        ledger=bundle / "catalog-ledger.json",
+        manifest=bundle / "manifest.json",
+    )
+    calls = []
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.ice_reflector_catalog.build_ice_reflector_catalog",
+        lambda recipe, output: calls.append((recipe, output)) or result,
+    )
+
+    assert main(["reflectors", "build", "--recipe", "recipe.yml", "--output", "out"]) == 0
+    assert calls == [("recipe.yml", "out")]
+    assert json.loads(capsys.readouterr().out) == {
+        "catalog": str(result.catalog),
+        "ledger": str(result.ledger),
+        "manifest": str(result.manifest),
+        "path": str(result.path),
+        "recipe": str(result.recipe),
+        "run_id": result.run_id,
+    }
+
+
+def test_reflector_catalog_build_cli_reports_domain_failure(monkeypatch, capsys):
+    def fail(*_args):
+        raise ValueError("source mismatch")
+
+    monkeypatch.setattr(
+        "kikuchi_lab.workflows.ice_reflector_catalog.build_ice_reflector_catalog", fail
+    )
+    assert main(["reflectors", "build", "--recipe", "bad.yml", "--output", "out"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "kikuchi-lab: reflector catalog build failed: source mismatch\n"
     assert "Traceback" not in captured.err
 
 

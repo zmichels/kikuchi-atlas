@@ -94,6 +94,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     globe_build.add_argument("--master-pattern", required=True)
     globe_build.add_argument("--recipe", required=True)
     globe_build.add_argument("--output", required=True)
+    reflectors = subparsers.add_parser("reflectors", help="Build immutable reflector catalogs.")
+    reflector_commands = reflectors.add_subparsers(dest="reflector_command", required=True)
+    reflector_build = reflector_commands.add_parser(
+        "build", help="Build one immutable reflector catalog bundle."
+    )
+    reflector_build.add_argument("--recipe", required=True)
+    reflector_build.add_argument("--output", required=True)
     args = parser.parse_args(arguments)
 
     if args.command == "version":
@@ -150,6 +157,30 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "preview": str(result.preview),
                     "stl": str(result.stl),
                     "validation": str(result.validation),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "reflectors" and args.reflector_command == "build":
+        from kikuchi_lab.workflows.ice_reflector_catalog import build_ice_reflector_catalog
+
+        try:
+            result = build_ice_reflector_catalog(args.recipe, args.output)
+        except (OSError, ValueError, RuntimeError) as error:
+            print(f"kikuchi-lab: reflector catalog build failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "catalog": str(result.catalog),
+                    "recipe": str(result.recipe),
+                    "ledger": str(result.ledger),
+                    "manifest": str(result.manifest),
+                    "path": str(result.path),
                 },
                 indent=2,
                 sort_keys=True,
