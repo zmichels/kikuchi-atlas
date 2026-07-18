@@ -9,6 +9,7 @@ import platform
 import shutil
 import zipfile
 from dataclasses import asdict, dataclass, replace
+from functools import lru_cache
 from importlib.metadata import version
 from pathlib import Path
 
@@ -30,8 +31,10 @@ from kikuchi_lab.model import identity as identity_module
 from kikuchi_lab.model.identity import plain_data, stable_id
 from kikuchi_lab.reflectors.catalog import _cohorts
 from kikuchi_lab.reflectors.contracts import ReflectorCatalog, ReflectorMember
+from kikuchi_lab.reflectors import build_reflector_catalog, load_reflector_recipe
 from kikuchi_lab.relief.topology import build_icosphere
 from kikuchi_lab.relief.workflow import _fsync_tree, _publish_staging, _write_json
+from kikuchi_lab.sources.structure import load_structure_record
 
 from .field import RidgeField, evaluate_reflector_ridges
 from .recipes import load_reflector_ridge_recipe
@@ -56,6 +59,9 @@ _ICE_ENERGY_KEV = 20.0
 _ICE_ELIGIBILITY_MIN_WEIGHT = 0.08
 _ICE_TIE_POLICY = "keep_equal_weights_together"
 _ICE_COHORT_COUNT = 4
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_ICE_CATALOG_RECIPE = _PROJECT_ROOT / "recipes/reflectors/ice-ih-catalog.yml"
+_ICE_SOURCE_RECORD = _PROJECT_ROOT / "phases/ice-ih/source.yml"
 
 
 @dataclass(frozen=True)
@@ -187,6 +193,18 @@ def _expected_catalog_selection() -> dict[str, object]:
     }
 
 
+@lru_cache(maxsize=1)
+def _canonical_ice_catalog() -> ReflectorCatalog:
+    """Rebuild the trusted Ice reflector catalog from tracked source and recipe files."""
+    recipe = load_reflector_recipe(_ICE_CATALOG_RECIPE)
+    source = load_structure_record(_ICE_SOURCE_RECORD)
+    return build_reflector_catalog(source, recipe)
+
+
+def _catalog_evidence(catalog: ReflectorCatalog) -> tuple[dict[str, object], ...]:
+    return tuple(_member_evidence(member) for member in catalog.members)
+
+
 def _validate_catalog_recipe(catalog: ReflectorCatalog, recipe) -> _ValidatedCatalogSelection:
     """Authenticate and independently derive the bounded Ice catalog selection."""
     selection = recipe.selection
@@ -211,6 +229,11 @@ def _validate_catalog_recipe(catalog: ReflectorCatalog, recipe) -> _ValidatedCat
         raise ValueError("catalog reflection_recipe_id does not match canonical Ice recipe")
     if plain_data(catalog.selection) != _expected_catalog_selection():
         raise ValueError("catalog selection policy does not match canonical Ice policy")
+    canonical = _canonical_ice_catalog()
+    if catalog.catalog_id != canonical.catalog_id:
+        raise ValueError("catalog_id does not match canonical Ice reflector catalog")
+    if _catalog_evidence(catalog) != _catalog_evidence(canonical):
+        raise ValueError("catalog member evidence does not match canonical Ice reflector catalog")
 
     members = sorted(
         catalog.members,

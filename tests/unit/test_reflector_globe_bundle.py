@@ -17,8 +17,9 @@ RIDGE_RECIPE = ROOT / "recipes/globes/ice-ih-reflector-ridges.yml"
 
 
 def _recompute_catalog_id(payload: dict[str, object]) -> None:
-    members = tuple(
-        ReflectorMember(
+    rebuilt: list[ReflectorMember] = []
+    for item in payload["members"]:
+        member = ReflectorMember(
             hkl=tuple(item["hkl"]),
             normal_crystal=np.asarray(item["normal_crystal"], dtype=np.float64),
             dspacing_angstrom=item["dspacing_angstrom"],
@@ -28,15 +29,15 @@ def _recompute_catalog_id(payload: dict[str, object]) -> None:
             eligible=item["eligible"],
             cohort=item["cohort"],
         )
-        for item in payload["members"]
-    )
+        item["member_id"] = member.member_id
+        rebuilt.append(member)
     catalog = ReflectorCatalog(
         source_structure_id=payload["source_structure_id"],
         source_structure_sha256=payload["source_structure_sha256"],
         energy_kev=payload["energy_kev"],
         reflection_recipe_id=payload["reflection_recipe_id"],
         selection=payload["selection"],
-        members=members,
+        members=tuple(rebuilt),
     )
     payload["catalog_id"] = catalog.catalog_id
 
@@ -79,7 +80,22 @@ def test_recomputed_catalog_id_cannot_hide_selected_rejected_swap(tmp_path: Path
     invalid = tmp_path / "swapped-membership-catalog.json"
     invalid.write_text(json.dumps(payload), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="selected/rejected membership or cohort assignment"):
+    with pytest.raises(ValueError, match="catalog_id.*canonical Ice reflector catalog"):
+        build_reflector_globe(invalid, RIDGE_RECIPE, tmp_path / "globes")
+
+    assert not (tmp_path / "globes").exists()
+
+
+def test_recomputed_catalog_id_cannot_hide_member_evidence_change(tmp_path: Path) -> None:
+    catalog = build_ice_reflector_catalog(CATALOG_RECIPE, tmp_path / "catalog")
+    payload = json.loads(catalog.catalog.read_text())
+    selected = next(member for member in payload["members"] if member["eligible"])
+    selected["bragg_half_width_rad"] *= 1.25
+    _recompute_catalog_id(payload)
+    invalid = tmp_path / "mutated-member-evidence-catalog.json"
+    invalid.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="catalog_id.*canonical Ice reflector catalog"):
         build_reflector_globe(invalid, RIDGE_RECIPE, tmp_path / "globes")
 
     assert not (tmp_path / "globes").exists()
