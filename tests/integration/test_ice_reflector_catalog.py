@@ -4,6 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
 from kikuchi_lab.workflows.ice_reflector_catalog import build_ice_reflector_catalog
 
 
@@ -28,3 +30,17 @@ def test_ice_catalog_manifest_inventories_the_complete_immutable_bundle(tmp_path
             "bytes": len(payload),
             "sha256": hashlib.sha256(payload).hexdigest(),
         }
+
+
+def test_bounded_ice_workflow_rejects_a_phase_neutral_policy_variant(tmp_path: Path) -> None:
+    source = RECIPE.read_text(encoding="utf-8")
+    variant = tmp_path / "variant.yml"
+    variant.write_text(
+        source.replace("selection_relative_factor: 0.22", "selection_relative_factor: 0.5"),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="bounded Ice.*selection_relative_factor"):
+        build_ice_reflector_catalog(variant, tmp_path / "published")
+
+    assert not (tmp_path / "published").exists()

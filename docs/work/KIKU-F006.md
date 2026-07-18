@@ -28,9 +28,10 @@ eligible members used by the prior Ice science-art policy.
 
 ## Acceptance Criteria
 
-- [x] A project-owned, phase-neutral catalog preserves Ice source, reflector,
-  strength, Bragg-width, selection, and frame provenance without serializing
-  upstream simulator objects.
+- [x] Project-owned phase-neutral catalog and standalone globe ledgers preserve
+  Ice source/checksum, reflector, strength, Bragg-width, selection/rejection,
+  package-version, master, projection, sampling, seam, and frame provenance
+  without serializing upstream simulator objects.
 - [x] The reflector globe derives raised geometry analytically from the 15
   selected Ice bands and never from pixels or vector artwork.
 - [x] Intensity and reflector-ridge Ice products have distinct recipes,
@@ -44,10 +45,12 @@ eligible members used by the prior Ice science-art policy.
 
 ## Acceptance evidence and remaining gates
 
-Both published bundles have recorded source, catalog or master, build, field,
-topology, SHA-256 inventory, physical bounds, and post-serialization mesh
-validation evidence in their acceptance ledgers. The product boundaries are
-explicit: the reflector globe is analytic catalog-derived ridges, while the
-intensity globe samples the raw kinematical master. `KIKU-F006` remains
-`ready` solely for explicit user preview review and optional external slicer or
-physical-print gates; those gates are not claimed complete.
+Both published six-file bundles now carry standalone source-to-mesh evidence.
+The ridge ledger includes all 15 selected members with effective geometry and
+all 15 rejected members with reasons; the intensity ledger retains the master
+ID/checksum, tracked structure and setting, kinematical recipe, projection and
+reflector evidence, disk sampling contract, and seam diagnostics. The product
+boundaries remain explicit: the reflector globe is analytic catalog-derived
+ridges, while the intensity globe samples the raw kinematical master.
+`KIKU-F006` remains `ready` solely for explicit user preview review and optional
+external slicer or physical-print gates; those gates are not claimed complete.

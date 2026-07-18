@@ -24,10 +24,6 @@ _ALLOWED_KEYS = {
     "tie_policy",
     "cohort_count",
 }
-_APPROVED_ICE_WEIGHT = 0.08
-_APPROVED_ICE_SOURCE_MASTER_RELATIVE_FACTOR = 0.03
-_APPROVED_ICE_SELECTION_RELATIVE_FACTOR = 0.22
-_APPROVED_ICE_WEIGHT_EXPONENT = 2.0
 _TIE_POLICY = "keep_equal_weights_together"
 
 
@@ -63,6 +59,13 @@ def _positive(name: str, value: object) -> float:
     number = float(value)
     if not math.isfinite(number) or number <= 0.0:
         raise ValueError(f"{name} must be a positive finite number")
+    return number
+
+
+def _fraction(name: str, value: object) -> float:
+    number = _positive(name, value)
+    if number > 1.0:
+        raise ValueError(f"{name} must be in (0, 1]")
     return number
 
 
@@ -103,58 +106,30 @@ class ReflectorRecipe:
         )
         if not isinstance(self.scattering_params, str) or not self.scattering_params.strip():
             raise ValueError("scattering_params must be non-empty text")
-        if type(self.source_master_relative_factor) not in (
-            int,
-            float,
-        ) or not math.isclose(
-            float(self.source_master_relative_factor),
-            _APPROVED_ICE_SOURCE_MASTER_RELATIVE_FACTOR,
-            rel_tol=0.0,
-            abs_tol=0.0,
-        ):
-            raise ValueError(
-                "source_master_relative_factor must equal recovered Ice master gate 0.03"
-            )
         object.__setattr__(
             self,
             "source_master_relative_factor",
-            _APPROVED_ICE_SOURCE_MASTER_RELATIVE_FACTOR,
+            _positive("source_master_relative_factor", self.source_master_relative_factor),
         )
-        if type(self.selection_relative_factor) not in (
-            int,
-            float,
-        ) or not math.isclose(
-            float(self.selection_relative_factor),
-            _APPROVED_ICE_SELECTION_RELATIVE_FACTOR,
-            rel_tol=0.0,
-            abs_tol=0.0,
-        ):
-            raise ValueError(
-                "selection_relative_factor must equal recovered Ice presentation gate 0.22"
-            )
         object.__setattr__(
             self,
             "selection_relative_factor",
-            _APPROVED_ICE_SELECTION_RELATIVE_FACTOR,
+            _fraction("selection_relative_factor", self.selection_relative_factor),
         )
-        if type(self.weight_exponent) not in (int, float) or not math.isclose(
-            float(self.weight_exponent),
-            _APPROVED_ICE_WEIGHT_EXPONENT,
-            rel_tol=0.0,
-            abs_tol=0.0,
-        ):
-            raise ValueError("weight_exponent must equal recovered Ice presentation value 2.0")
-        object.__setattr__(self, "weight_exponent", _APPROVED_ICE_WEIGHT_EXPONENT)
-        if type(self.eligibility_min_weight) not in (int, float) or not math.isclose(
-            float(self.eligibility_min_weight), _APPROVED_ICE_WEIGHT, rel_tol=0.0, abs_tol=0.0
-        ):
-            raise ValueError("eligibility_min_weight must equal approved Ice threshold 0.08")
-        object.__setattr__(self, "eligibility_min_weight", _APPROVED_ICE_WEIGHT)
+        object.__setattr__(
+            self,
+            "weight_exponent",
+            _positive("weight_exponent", self.weight_exponent),
+        )
+        object.__setattr__(
+            self,
+            "eligibility_min_weight",
+            _fraction("eligibility_min_weight", self.eligibility_min_weight),
+        )
         if self.tie_policy != _TIE_POLICY:
             raise ValueError(f"tie_policy must equal {_TIE_POLICY}")
-        if type(self.cohort_count) is not int or self.cohort_count != 4:
-            raise ValueError("cohort_count must equal 4")
-        object.__setattr__(self, "cohort_count", 4)
+        if type(self.cohort_count) is not int or self.cohort_count < 1:
+            raise ValueError("cohort_count must be a positive integer")
         object.__setattr__(
             self,
             "recipe_id",

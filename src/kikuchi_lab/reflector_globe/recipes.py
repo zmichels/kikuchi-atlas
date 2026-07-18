@@ -239,9 +239,18 @@ def load_reflector_ridge_recipe(path: str | Path) -> ReflectorRidgeRecipe:
             field=f"tiers.{cohort}",
         )
         tiers[cohort] = RidgeTier(**tier)
+    loaded_geometry = ReflectorRidgeGeometry(**geometry)
+    if loaded_geometry.topology != "icosphere":
+        raise ValueError("topology must equal icosphere")
+    if loaded_geometry.base_diameter_mm != 80.0:
+        raise ValueError("base_diameter_mm must equal 80.0")
+    if loaded_geometry.maximum_relief_mm != 3.0:
+        raise ValueError("maximum_relief_mm must equal 3.0")
+    if loaded_geometry.subdivisions != 7:
+        raise ValueError("subdivisions must equal 7")
     return ReflectorRidgeRecipe(
         schema=root["schema"],
-        geometry=ReflectorRidgeGeometry(**geometry),
+        geometry=loaded_geometry,
         selection=ReflectorRidgeSelection(**selection),
         tiers=tiers,
         fdm_context=root.get("fdm_context"),

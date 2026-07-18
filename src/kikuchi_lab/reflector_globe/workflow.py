@@ -8,6 +8,7 @@ import json
 import platform
 import shutil
 import zipfile
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, replace
 from importlib.metadata import version
 from pathlib import Path
@@ -27,18 +28,19 @@ from kikuchi_lab.globe_mesh import (
     validate_globe_mesh,
 )
 from kikuchi_lab.model import identity as identity_module
-from kikuchi_lab.model.identity import stable_id
+from kikuchi_lab.model.identity import plain_data, stable_id
 from kikuchi_lab.reflectors.contracts import ReflectorCatalog, ReflectorMember
 from kikuchi_lab.relief.topology import build_icosphere
 from kikuchi_lab.relief.workflow import _fsync_tree, _publish_staging, _write_json
 
-from .field import evaluate_reflector_ridges
+from .field import RidgeField, evaluate_reflector_ridges
 from .recipes import load_reflector_ridge_recipe
 
 
 REFLECTOR_GLOBE_BUILD_SCHEMA = "kikuchi.reflector-ridge-globe-build/v1"
 REFLECTOR_GLOBE_MANIFEST_SCHEMA = "kikuchi.reflector-ridge-globe-manifest/v1"
 REFLECTOR_GLOBE_VALIDATION_SCHEMA = "kikuchi.reflector-ridge-mesh-validation/v1"
+REFLECTOR_GLOBE_LEDGER_SCHEMA = "kikuchi.reflector-ridge-ledger/v2"
 REFLECTOR_GLOBE_BUNDLE_LAYOUT_CONTRACT = "atomic-six-file-reflector-ridge-globe/v1"
 REFLECTOR_GLOBE_NPZ_CONTRACT = "zip-stored-npy/fixed-order-1980-epoch-mode-0600/v1"
 REFLECTOR_GLOBE_STL_CONTRACT = "trimesh-binary-stl/process-false/serialization-safe-radial-range/v2"
@@ -99,6 +101,7 @@ def _contracts() -> dict[str, str]:
         "field_npz": REFLECTOR_GLOBE_NPZ_CONTRACT,
         "preview": REFLECTOR_GLOBE_PREVIEW_CONTRACT,
         "validation": REFLECTOR_GLOBE_VALIDATION_SCHEMA,
+        "ledger": REFLECTOR_GLOBE_LEDGER_SCHEMA,
         "manifest": REFLECTOR_GLOBE_MANIFEST_SCHEMA,
         "layout": REFLECTOR_GLOBE_BUNDLE_LAYOUT_CONTRACT,
         "json": REFLECTOR_GLOBE_JSON_CONTRACT,
@@ -157,6 +160,9 @@ def _validate_catalog_recipe(catalog: ReflectorCatalog, recipe) -> None:
         raise ValueError("catalog energy_kev does not match ridge recipe")
     observed = catalog.selection
     for key, expected in (
+        ("source_master_relative_factor", 0.03),
+        ("selection_relative_factor", 0.22),
+        ("weight_exponent", 2.0),
         ("eligibility_min_weight", selection.eligibility_min_weight),
         ("tie_policy", selection.tie_policy),
         ("cohort_count", selection.cohort_count),
@@ -166,6 +172,84 @@ def _validate_catalog_recipe(catalog: ReflectorCatalog, recipe) -> None:
     eligible = [member for member in catalog.members if member.eligible]
     if not eligible or any(member.cohort is None for member in eligible):
         raise ValueError("catalog has no valid selected reflector members")
+    if len(eligible) != 15 or len(catalog.members) - len(eligible) != 15:
+        raise ValueError(
+            "Ice ridge catalog must contain exactly 15 selected and 15 rejected members"
+        )
+    versions = observed.get("package_versions")
+    if not isinstance(versions, Mapping) or set(versions) != {
+        "diffpy-structure",
+        "diffsims",
+        "orix",
+    }:
+        raise ValueError("catalog selection package_versions are incomplete")
+
+
+def _member_evidence(member: ReflectorMember) -> dict[str, object]:
+    return {
+        "member_id": member.member_id,
+        "hkl": list(member.hkl),
+        "normal_crystal": member.normal_crystal.tolist(),
+        "dspacing_angstrom": member.dspacing_angstrom,
+        "bragg_half_width_rad": member.bragg_half_width_rad,
+        "structure_factor_abs": member.structure_factor_abs,
+        "normalized_weight": member.normalized_weight,
+        "cohort": member.cohort,
+    }
+
+
+def _catalog_provenance(catalog: ReflectorCatalog, field: RidgeField) -> dict[str, object]:
+    """Materialize source-to-ridge evidence without retaining upstream objects."""
+    contributors = {item.member_id: item for item in field.ledger}
+    selected: list[dict[str, object]] = []
+    rejected: list[dict[str, object]] = []
+    threshold = float(catalog.selection["eligibility_min_weight"])
+    for member in catalog.members:
+        evidence = _member_evidence(member)
+        if member.eligible:
+            contributor = contributors[member.member_id]
+            evidence.update(
+                {
+                    "effective_half_width_rad": contributor.effective_half_width_rad,
+                    "height_mm": contributor.height_mm,
+                }
+            )
+            selected.append(evidence)
+        else:
+            code = (
+                "below_eligibility_min_weight"
+                if member.normalized_weight < threshold
+                else "not_selected_by_catalog"
+            )
+            evidence["rejection_reasons"] = [
+                {
+                    "code": code,
+                    "normalized_weight": member.normalized_weight,
+                    "eligibility_min_weight": threshold,
+                }
+            ]
+            rejected.append(evidence)
+    if set(contributors) != {item["member_id"] for item in selected}:
+        raise ValueError("ridge contributor ledger differs from selected catalog evidence")
+    return {
+        "source_structure": {
+            "structure_id": catalog.source_structure_id,
+            "checksum_sha256": catalog.source_structure_sha256,
+        },
+        "reflection_recipe_id": catalog.reflection_recipe_id,
+        "energy_kev": catalog.energy_kev,
+        "selection_policy": {
+            **plain_data(catalog.selection),
+            "source_master_relative_factor_provenance": ("recovered source-master reflector gate"),
+        },
+        "member_counts": {
+            "catalog": len(catalog.members),
+            "selected": len(selected),
+            "rejected": len(rejected),
+        },
+        "selected_members": selected,
+        "rejected_members": rejected,
+    }
 
 
 def _npz_bytes(arrays: dict[str, np.ndarray]) -> bytes:
@@ -257,7 +341,9 @@ def _validate_serialized_stl(payload: bytes, source: ReliefMeshValidation) -> Re
         failures.append("duplicate triangles")
     if degenerate_count:
         failures.append("degenerate triangles")
-    if not np.isfinite(certificate).all() or np.any(certificate <= source.radial_certificate_tolerance):
+    if not np.isfinite(certificate).all() or np.any(
+        certificate <= source.radial_certificate_tolerance
+    ):
         failures.append("radial projection")
     if radii.min() < 40.0 or radii.max() > 43.0:
         failures.append("serialized radial range")
@@ -314,14 +400,20 @@ def build_reflector_globe(
     )
     validation = validate_globe_mesh(geometry, topology, GlobeGeometrySpec(80.0, 3.0, 7))
     versions, contracts = _software_versions(), _contracts()
+    provenance = _catalog_provenance(catalog, field)
     selected_ids = [member.member_id for member in catalog.members if member.eligible]
+    rejected_ids = [member.member_id for member in catalog.members if not member.eligible]
     identity = {
         "schema": REFLECTOR_GLOBE_BUILD_SCHEMA,
         "contracts": contracts,
         "recipe": recipe.identity_dict(),
         "recipe_id": recipe.recipe_id,
         "catalog_id": catalog.catalog_id,
+        "source_structure": provenance["source_structure"],
+        "reflection_recipe_id": catalog.reflection_recipe_id,
+        "catalog_selection_policy": provenance["selection_policy"],
         "selected_member_ids": selected_ids,
+        "rejected_member_ids": rejected_ids,
         "field_id": field.field_id,
         "topology_id": topology.topology_id,
         "validation_contract": validation.self_intersection_contract,
@@ -359,12 +451,13 @@ def build_reflector_globe(
         }
         (partial / result.field.name).write_bytes(_npz_bytes(arrays))
         ledger = {
-            "schema": "kikuchi.reflector-ridge-ledger/v1",
+            "schema": REFLECTOR_GLOBE_LEDGER_SCHEMA,
             "catalog_id": catalog.catalog_id,
             "recipe_id": recipe.recipe_id,
             "field_id": field.field_id,
             "selected_member_ids": selected_ids,
             "contributors": [asdict(item) for item in field.ledger],
+            "source_to_mesh_provenance": provenance,
             "arrays": {name: _array_record(value) for name, value in arrays.items()},
         }
         _write_json(partial / result.ledger.name, ledger)
@@ -382,6 +475,14 @@ def build_reflector_globe(
             "identity": identity,
             "contracts": contracts,
             "catalog_id": catalog.catalog_id,
+            "source_provenance": {
+                "source_structure": provenance["source_structure"],
+                "reflection_recipe_id": catalog.reflection_recipe_id,
+                "selection_policy": provenance["selection_policy"],
+                "selected_member_count": provenance["member_counts"]["selected"],
+                "rejected_member_count": provenance["member_counts"]["rejected"],
+                "ledger": result.ledger.name,
+            },
             "recipe_id": recipe.recipe_id,
             "field_id": field.field_id,
             "topology": {

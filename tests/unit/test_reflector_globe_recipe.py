@@ -26,6 +26,10 @@ def test_ice_ridge_recipe_has_four_raised_physical_tiers() -> None:
 @pytest.mark.parametrize(
     ("text", "match"),
     [
+        ("topology: octasphere", "icosphere"),
+        ("base_diameter_mm: 60.0", "80.0"),
+        ("maximum_relief_mm: 2.5", "3.0"),
+        ("subdivisions: 6", "equal 7"),
         ("direction: groove_inward", "raised_outward"),
         ("maximum_relief_mm: 0", "positive"),
         ("height_mm: 3.1", "maximum_relief_mm"),

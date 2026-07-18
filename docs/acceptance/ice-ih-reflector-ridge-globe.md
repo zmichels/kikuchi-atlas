@@ -14,8 +14,8 @@ intensity master for its geometry.
 
 ## Accepted bundle
 
-- Build ID: `reflector-ridge-globe-build-cf6eb051b29a78f8`
-- Bundle: [published bundle](../../local/ice-reflector-globes/reflector-ridge-globe-build-cf6eb051b29a78f8)
+- Build ID: `reflector-ridge-globe-build-f07f822ff336b13e`
+- Bundle: [published bundle](../../local/ice-reflector-globes/reflector-ridge-globe-build-f07f822ff336b13e)
 - Source structure ID: `COD-1572233-O-sublattice`
 - Catalog ID: `reflector-catalog-2ca281743468ecab`
 - Recipe ID: `reflector-ridge-recipe-40e658077c46b698`
@@ -26,6 +26,13 @@ The source-compatible catalog retains 15 selected reflector members from
 `COD-1572233-O-sublattice` across four tie-preserving cohorts. The field is
 evaluated at all 163842 subdivision-7 icosphere directions and exported with
 327680 unchanged indexed triangles.
+
+The standalone ridge ledger records the source checksum, recovered 0.03
+source-master gate and its provenance, 0.22 presentation gate, exponent-2
+weighting, 0.08 eligibility gate, tie policy, and package versions. It includes
+HKL, normal, Bragg width, strength, normalized weight, cohort, effective width,
+and height for every selected member, plus all 15 rejected members and their
+threshold rejection reasons. No upstream simulator object is serialized.
 
 ## Generated geometry evidence
 
@@ -46,14 +53,14 @@ inspection.
 ## Inventory and reproducibility
 
 The bundle contains exactly six files. The manifest SHA-256 is
-`8157f45ad9efb91e5debf835af2e077b007403eb149c137100d4faa71fd901d1`.
+`b20abc92d2a2d4aa3b8c7d18d281070e199736265612bd7aaefeb8cf247f4bbe`.
 
 | File | SHA-256 |
 | --- | --- |
 | `ice-ih-reflector-ridges.stl` | `42a4b9dc7a779245a5f35cb5755988481ed1a689a84042427458049cbeb43a2d` |
 | `ice-ih-reflector-ridges-preview.png` | `3b0278a961d66e42a078a0aad4fa907668ec69ca1562f615959c323ca28d28a5` |
 | `ridge-field.npz` | `a5b3523a4bde96eb300cad4fd8bd2638b9b3fe298528296abefabcbf2722d6b8` |
-| `ridge-ledger.json` | `389fc209f898d61c541cb8528841823f25585d93901e4be8f79db659a413c5cf` |
+| `ridge-ledger.json` | `2d9f2d2513a89929bda7ab585b56c9590719ff73e857693f093a37c90680aea4` |
 | `mesh-validation.json` | `4a2015595baf0e22ccf158e3d725e92cb2c6cd9c451307bab83a4dc835309d45` |
 
 Focused red/green evidence: before implementation no reflector-globe workflow

@@ -94,8 +94,8 @@ class ReflectorMember:
         if type(self.eligible) is not bool:
             raise ValueError("eligible must be a boolean")
         if self.eligible:
-            if type(self.cohort) is not int or not 1 <= self.cohort <= 4:
-                raise ValueError("eligible members must have cohort in [1, 4]")
+            if type(self.cohort) is not int or self.cohort < 1:
+                raise ValueError("eligible members must have a positive integer cohort")
         elif self.cohort is not None:
             raise ValueError("ineligible members must not have a cohort")
         object.__setattr__(

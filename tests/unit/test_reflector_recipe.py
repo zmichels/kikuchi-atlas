@@ -28,11 +28,11 @@ def test_ice_catalog_recipe_is_closed_and_records_selection_policy() -> None:
         ("source_record", "/tmp/ice.yml", "relative"),
         ("energy_kev", 0, "positive"),
         ("min_dspacing_angstrom", 0, "positive"),
-        ("source_master_relative_factor", 0.04, "0.03"),
-        ("selection_relative_factor", 0.21, "0.22"),
-        ("weight_exponent", 1.0, "2.0"),
-        ("cohort_count", 3, "cohort_count"),
-        ("eligibility_min_weight", 0.07, "0.08"),
+        ("source_master_relative_factor", 0, "positive"),
+        ("selection_relative_factor", 1.01, r"\(0, 1]"),
+        ("weight_exponent", 0, "positive"),
+        ("cohort_count", 0, "positive integer"),
+        ("eligibility_min_weight", 1.01, r"\(0, 1]"),
     ],
 )
 def test_loader_rejects_invalid_policy_values(
@@ -47,6 +47,29 @@ def test_loader_rejects_invalid_policy_values(
 
     with pytest.raises(ValueError, match=match):
         load_reflector_recipe(path)
+
+
+def test_generic_policy_values_are_identity_bearing(tmp_path: Path) -> None:
+    source = (ROOT / "recipes/reflectors/ice-ih-catalog.yml").read_text(encoding="utf-8")
+    changed = (
+        source.replace("source_master_relative_factor: 0.03", "source_master_relative_factor: 1.25")
+        .replace("selection_relative_factor: 0.22", "selection_relative_factor: 0.75")
+        .replace("weight_exponent: 2.0", "weight_exponent: 1.5")
+        .replace("eligibility_min_weight: 0.08", "eligibility_min_weight: 0.2")
+        .replace("cohort_count: 4", "cohort_count: 5")
+    )
+    path = tmp_path / "generic.yml"
+    path.write_text(changed, encoding="utf-8")
+
+    ice = load_reflector_recipe(ROOT / "recipes/reflectors/ice-ih-catalog.yml")
+    generic = load_reflector_recipe(path)
+
+    assert generic.source_master_relative_factor == 1.25
+    assert generic.selection_relative_factor == 0.75
+    assert generic.weight_exponent == 1.5
+    assert generic.eligibility_min_weight == 0.2
+    assert generic.cohort_count == 5
+    assert generic.recipe_id != ice.recipe_id
 
 
 def test_loader_rejects_unknown_keys(tmp_path: Path) -> None:

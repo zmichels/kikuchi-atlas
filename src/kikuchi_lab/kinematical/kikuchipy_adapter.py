@@ -164,7 +164,10 @@ def simulate_kinematical_master(
     signal = _calculate_master(KikuchiPatternSimulator(reflectors), recipe)
     metadata = {
         "source_id": source.source_record.source_id,
+        "source_structure_id": source.identifier,
         "source_sha256": source.sha256,
+        "source_setting": source.setting,
+        "simulation_setting": source.simulation_setting["target_setting"],
         "recipe_id": recipe.recipe_id,
         "reflector_recipe_id": reflector_recipe.recipe_id,
         "reflector_catalog_id": catalog.catalog_id,
