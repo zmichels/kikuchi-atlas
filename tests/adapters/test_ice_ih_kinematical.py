@@ -38,6 +38,12 @@ def test_ice_master_records_identity_right_handed_frame_and_catalog_evidence() -
         0.0,
     )
     assert simulation.projection_ledger["frames"]["handedness"] == "right-handed"
+    handedness = simulation.projection_ledger["frames"]["active_frame_handedness_check"]
+    assert handedness["rotation_determinant"] == pytest.approx(1.0, abs=1e-12)
+    assert handedness["scalar_triple_product"] == pytest.approx(1.0, abs=1e-12)
+    assert np.asarray(handedness["active_crystal_to_sample_basis_vectors"]) == pytest.approx(
+        np.eye(3), abs=1e-12
+    )
     assert simulation.projection_ledger["known_axis_check"]["misalignment_deg"] == pytest.approx(
         0.0, abs=1e-10
     )

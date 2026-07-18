@@ -85,6 +85,32 @@ def _known_axis_check(source: StructureRecord, recipe: KinematicalRecipe) -> dic
     }
 
 
+def _active_frame_handedness_check(recipe: KinematicalRecipe) -> dict[str, object]:
+    """Numerically prove that the public active frame transform preserves handedness."""
+    crystal_basis = np.eye(3, dtype=float)
+    sample_basis = np.asarray(
+        [
+            transform_crystal_direction_to_sample(direction, recipe.orientation)
+            for direction in crystal_basis
+        ],
+        dtype=float,
+    )
+    rotation_determinant = float(np.linalg.det(sample_basis.T))
+    scalar_triple_product = float(
+        np.dot(sample_basis[0], np.cross(sample_basis[1], sample_basis[2]))
+    )
+    if not np.isclose(rotation_determinant, 1.0, rtol=0.0, atol=1e-12):
+        raise ValueError("active crystal-to-sample orientation must have determinant +1")
+    if not np.isclose(scalar_triple_product, 1.0, rtol=0.0, atol=1e-12):
+        raise ValueError("active crystal-to-sample orientation must preserve a right-handed basis")
+    return {
+        "crystal_basis_vectors": crystal_basis.tolist(),
+        "active_crystal_to_sample_basis_vectors": sample_basis.tolist(),
+        "rotation_determinant": rotation_determinant,
+        "scalar_triple_product": scalar_triple_product,
+    }
+
+
 def _projection_ledger(
     source: StructureRecord, recipe: KinematicalRecipe, reflector_recipe: ReflectorRecipe
 ) -> dict[str, object]:
@@ -101,6 +127,7 @@ def _projection_ledger(
             "orientation": recipe.orientation.to_dict(),
             "sample": "EDAX-TSL [RD, TD, ND]",
             "handedness": "right-handed",
+            "active_frame_handedness_check": _active_frame_handedness_check(recipe),
             "source_to_crystal": {
                 "source_setting": source.setting,
                 "target_setting": source.simulation_setting["target_setting"],
