@@ -53,3 +53,42 @@ def test_loader_rejects_unknown_keys(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="unknown keys"):
         load_reflector_recipe(path)
+
+
+@pytest.mark.parametrize("field", ["schema_version", "eligibility_min_weight"])
+def test_loader_rejects_duplicate_mapping_keys(tmp_path: Path, field: str) -> None:
+    path = tmp_path / "duplicate.yml"
+    path.write_text(
+        (ROOT / "recipes/reflectors/ice-ih-catalog.yml").read_text(encoding="utf-8")
+        + f"{field}: 1\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=f"duplicate key: {field}"):
+        load_reflector_recipe(path)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("schema_version", "'1'"),
+        ("schema_version", "1.0"),
+        ("schema_version", "true"),
+        ("cohort_count", "'4'"),
+        ("cohort_count", "4.0"),
+        ("cohort_count", "true"),
+        ("energy_kev", "'20.0'"),
+        ("energy_kev", "true"),
+        ("min_dspacing_angstrom", "'1.0'"),
+        ("min_dspacing_angstrom", "true"),
+        ("eligibility_min_weight", "'0.08'"),
+        ("eligibility_min_weight", "true"),
+    ],
+)
+def test_loader_rejects_scalar_type_coercion(tmp_path: Path, field: str, value: str) -> None:
+    recipe_text = (ROOT / "recipes/reflectors/ice-ih-catalog.yml").read_text(encoding="utf-8")
+    path = tmp_path / "invalid-type.yml"
+    path.write_text(recipe_text.replace(f"{field}: ", f"{field}: {value} # ", 1), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=field):
+        load_reflector_recipe(path)

@@ -31,6 +31,17 @@ def test_member_owns_an_immutable_little_endian_normal() -> None:
         member.normal_crystal[0] = 0.0
 
 
+def test_member_normal_cannot_be_made_writeable_without_changing_its_identity() -> None:
+    member = ReflectorMember((1, 0, 0), [1.0, 0.0, 0.0], 2.0, 0.01, 12.0, 1.0)
+    member_id = member.member_id
+
+    with pytest.raises(ValueError, match="WRITEABLE|read-only"):
+        member.normal_crystal.setflags(write=True)
+
+    assert member.normal_crystal.tolist() == [1.0, 0.0, 0.0]
+    assert member.member_id == member_id
+
+
 def test_catalog_identity_uses_content_not_local_paths() -> None:
     member = ReflectorMember((1, 0, 0), [1.0, 0.0, 0.0], 2.0, 0.01, 12.0, 1.0)
     catalog = ReflectorCatalog(

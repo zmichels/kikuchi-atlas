@@ -25,8 +25,34 @@ _APPROVED_ICE_WEIGHT = 0.08
 _TIE_POLICY = "keep_equal_weights_together"
 
 
+class _DuplicateKeyError(ValueError):
+    """Raised when a recipe mapping repeats a YAML key."""
+
+
+class _UniqueKeySafeLoader(yaml.SafeLoader):
+    """Safe YAML loader that preserves YAML's mapping-key uniqueness contract."""
+
+
+def _construct_unique_mapping(
+    loader: _UniqueKeySafeLoader, node: yaml.MappingNode, deep: bool = False
+) -> dict[object, object]:
+    loader.flatten_mapping(node)
+    mapping: dict[object, object] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in mapping:
+            raise _DuplicateKeyError(f"duplicate key: {key}")
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_UniqueKeySafeLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_unique_mapping
+)
+
+
 def _positive(name: str, value: object) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
+    if type(value) not in (int, float):
         raise ValueError(f"{name} must be a positive finite number")
     number = float(value)
     if not math.isfinite(number) or number <= 0.0:
@@ -56,7 +82,7 @@ class ReflectorRecipe:
     recipe_id: str = field(init=False)
 
     def __post_init__(self) -> None:
-        if isinstance(self.schema_version, bool) or self.schema_version != 1:
+        if type(self.schema_version) is not int or self.schema_version != 1:
             raise ValueError("schema_version must equal 1")
         object.__setattr__(self, "schema_version", 1)
         object.__setattr__(self, "source_record", _relative_source_record(self.source_record))
@@ -68,14 +94,14 @@ class ReflectorRecipe:
         )
         if not isinstance(self.scattering_params, str) or not self.scattering_params.strip():
             raise ValueError("scattering_params must be non-empty text")
-        if not math.isclose(
+        if type(self.eligibility_min_weight) not in (int, float) or not math.isclose(
             float(self.eligibility_min_weight), _APPROVED_ICE_WEIGHT, rel_tol=0.0, abs_tol=0.0
         ):
             raise ValueError("eligibility_min_weight must equal approved Ice threshold 0.08")
         object.__setattr__(self, "eligibility_min_weight", _APPROVED_ICE_WEIGHT)
         if self.tie_policy != _TIE_POLICY:
             raise ValueError(f"tie_policy must equal {_TIE_POLICY}")
-        if isinstance(self.cohort_count, bool) or self.cohort_count != 4:
+        if type(self.cohort_count) is not int or self.cohort_count != 4:
             raise ValueError("cohort_count must equal 4")
         object.__setattr__(self, "cohort_count", 4)
         object.__setattr__(
@@ -99,7 +125,7 @@ class ReflectorRecipe:
 
 def load_reflector_recipe(path: str | Path) -> ReflectorRecipe:
     """Load a closed-schema catalog recipe without incorporating *path* into identity."""
-    raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    raw = yaml.load(Path(path).read_text(encoding="utf-8"), Loader=_UniqueKeySafeLoader)
     if not isinstance(raw, dict):
         raise ValueError("reflector recipe root must be a mapping")
     unknown = sorted(set(raw) - _ALLOWED_KEYS)

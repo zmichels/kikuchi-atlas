@@ -67,7 +67,10 @@ class ReflectorMember:
             raise ValueError("normal_crystal must be a finite three-vector")
         if not math.isclose(float(np.linalg.vector_norm(normal)), 1.0, rel_tol=0.0, abs_tol=1e-12):
             raise ValueError("normal_crystal must be a unit normal")
-        normal.setflags(write=False)
+        # A NumPy-owned array merely marked read-only can be made writable again
+        # by a caller.  Rebuild it over immutable bytes so the public normal has
+        # an immutable backing buffer as well as a read-only flag.
+        normal = np.frombuffer(normal.astype("<f8", copy=False).tobytes(), dtype="<f8")
         object.__setattr__(self, "normal_crystal", normal)
         object.__setattr__(self, "dspacing_angstrom", _finite_positive("dspacing_angstrom", self.dspacing_angstrom))
         object.__setattr__(
