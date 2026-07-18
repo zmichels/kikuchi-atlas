@@ -7,28 +7,31 @@ manufacturability claim.
 
 ## Accepted bundle
 
-- Build ID: `ice-intensity-globe-build-f44fb9a91e5dad85`
-- Bundle: [published bundle](../../local/ice-intensity-globes/ice-intensity-globe-build-f44fb9a91e5dad85)
+- Build ID: `ice-intensity-globe-build-cbc3baa5d5b360bd`
+- Bundle: [published bundle](../../local/ice-intensity-globes/ice-intensity-globe-build-cbc3baa5d5b360bd)
 - Product kind: `intensity_relief`
 - Recipe ID: `ice-intensity-globe-recipe-769cc72ff0cb9891`
-- Field ID: `ice-intensity-field-fdb6652eb1dad347`
+- Field ID: `ice-intensity-field-9c93f457b44632fb`
 - Topology ID: `icosphere-b542bf2969717758`
 
 The field is sampled directly from the both-hemisphere Ice kinematical
-stereographic master with upper ownership of the equator; it is not a Lambert
-field and does not use reflector-defined ridge data. A single 1st–99th
-percentile, gamma-1.0 map is applied across both hemispheres. The bundle has
-163842 vertices and 327680 unchanged indexed triangles.
+stereographic master over its published `X^2 + Y^2 <= 1` disk, with upper
+ownership of the true equator; it is not a Lambert field and does not use
+reflector-defined ridge data. A single 1st–99th percentile, gamma-1.0 map is
+applied across both hemispheres using only disk samples. The true disk-equator
+diagnostic has upper ownership, four exact grid-boundary samples, and zero
+residual. The bundle has 163842 vertices and 327680 unchanged indexed
+triangles.
 
 ## Geometry and preview review
 
 Automated validation found one watertight, consistently wound, positive-volume
 body, with Euler characteristic 2 and no duplicate or degenerate triangles.
-The reloaded binary STL radii are `40.00010557700384`–`42.99999154763094` mm.
+The reloaded binary STL radii are `40.00011778863592`–`42.9999917465903` mm.
 Its reloaded bounds are `[-42.9999885559082, -42.9999885559082,
 -42.9999885559082]`–`[42.9999885559082, 42.9999885559082,
 42.9999885559082]` mm and the radial-certificate minimum is
-`4.5744198191033725`, above the `6.4e-08`
+`4.575064230158891`, above the `6.4e-08`
 tolerance.
 
 The fixed preview was visually reviewed: the intensity-derived relief is
@@ -43,12 +46,12 @@ same build and field IDs and identical file records.
 
 | File | SHA-256 |
 | --- | --- |
-| `ice-ih-intensity-relief-preview.png` | `e9190fb739eaa528c7f51ca29527d2e9c3ff96ddea50c9128ac41b4184a4722d` |
-| `ice-ih-intensity-relief.stl` | `57c6d1c45720180e2c6cfd2477347b884a8ba2fea92292c2ba6bd27f1ce656ff` |
-| `intensity-field.npz` | `754ade35e858aea12e31a2e29c84325f7b1f9865ae76ddd936f23c4fe971fabd` |
-| `intensity-ledger.json` | `afc470f7e631e72a4ffe9cd104fbd0d227cba4ad758d186bba9c7e376f2c2188` |
-| `mesh-validation.json` | `5d177914e610d3ba81bcf97f8fab78cc749be0d37747f95524971d3dd63028f6` |
-| `intensity-globe-manifest.json` | `54a901da9f6a4541fd7e7995854cb1ec80ab145b8a17dd27a79e72b848862c6d` |
+| `ice-ih-intensity-relief-preview.png` | `2d356aacc4f40d0906cbf8105173745cb45384602c0784557c0bb6de19f87f30` |
+| `ice-ih-intensity-relief.stl` | `7fe481b24402fa4b9a40422d6def6ddca74594bed4ff1b0393c4bb5d30c68bb7` |
+| `intensity-field.npz` | `ad64b5bd18f0c7ba2d151abcfc5ea0481e4d57ea0cc2fa1af37fcaef94ce8fea` |
+| `intensity-ledger.json` | `60653522188eb15ef0fb31c5bb9dc3b15fb0266b929725a16eda9bd03af0b0fa` |
+| `mesh-validation.json` | `884ca8f90a104ceaf72d9775036a44812109462a4e66ede752f2a16d5efb790b` |
+| `intensity-globe-manifest.json` | `7246f3fbd68a86af3cd88f479faf3e1a1783500c110d4311941c512a42d7e035` |
 
 Red/green evidence: the initial focused run failed at collection because
 `kikuchi_lab.ice_globe` did not exist. After implementation,

@@ -142,7 +142,7 @@ def _serialization_safe_values(values: np.ndarray, maximum_relief_mm: float) -> 
     return margin / maximum_relief_mm + (1.0 - 2.0 * margin / maximum_relief_mm) * values
 
 
-def _validate_serialized_stl(payload: bytes, source):
+def _validate_serialized_stl(payload: bytes, source, geometry):
     """Validate the exact float32 STL delivered to consumers."""
     loaded = trimesh.load_mesh(io.BytesIO(payload), file_type="stl", process=True)
     if not isinstance(loaded, trimesh.Trimesh):
@@ -170,7 +170,16 @@ def _validate_serialized_stl(payload: bytes, source):
         failures.append("degenerate triangles")
     if not np.isfinite(certificate).all() or np.any(certificate <= source.radial_certificate_tolerance):
         failures.append("radial projection")
-    if radii.min() < 40.0 or radii.max() > 43.0:
+    # The exact delivered STL is float32.  Values were deliberately mapped
+    # inward by _STL_RADIAL_SAFETY_MARGIN_MM before export, so permit only that
+    # tiny coordinate-rounding envelope around this recipe's physical range.
+    lower_bound = geometry.base_radius_mm - _STL_RADIAL_SAFETY_MARGIN_MM
+    upper_bound = (
+        geometry.base_radius_mm
+        + geometry.maximum_relief_mm
+        + _STL_RADIAL_SAFETY_MARGIN_MM
+    )
+    if radii.min() < lower_bound or radii.max() > upper_bound:
         failures.append("serialized radial range")
     if failures:
         raise ValueError("serialized STL validation failed: " + ", ".join(failures))
@@ -222,7 +231,7 @@ def build_ice_intensity_globe(kinematical_recipe: str | Path, globe_recipe: str 
         payload = mesh.export(file_type="stl")
         if not isinstance(payload, bytes):
             raise RuntimeError("STL export did not return bytes")
-        validation = _validate_serialized_stl(payload, validation)
+        validation = _validate_serialized_stl(payload, validation, geometry)
         (partial / result.stl.name).write_bytes(payload)
         _preview(partial / result.preview.name, geometry)
         arrays = {"directions": np.asarray(topology.directions, dtype="<f8"), "sampled_raw": np.asarray(sampled_raw, dtype="<f8"), "mapped_values": np.asarray(mapped, dtype="<f8"), "radii_mm": np.asarray(geometry.radii_mm, dtype="<f8"), "faces": np.asarray(topology.faces, dtype="<i8")}
