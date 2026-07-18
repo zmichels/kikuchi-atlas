@@ -51,6 +51,12 @@ from .phase_art_orientation_gallery import (
     PhaseArtOrientationGalleryResult,
     render_phase_art_orientation_gallery,
 )
+from .phase_art_templates import (
+    PhaseArtTemplateResult,
+    PhaseArtTemplateVariant,
+    composition_for_phase_template,
+    render_phase_art_templates,
+)
 
 __all__ = [
     "FinalRecipe",
@@ -69,6 +75,8 @@ __all__ = [
     "OrientedSphericalRunResult",
     "PhaseArtSeriesResult",
     "PhaseArtOrientationGalleryResult",
+    "PhaseArtTemplateResult",
+    "PhaseArtTemplateVariant",
     "PhaseParityReportError",
     "ReproductionComparison",
     "ReproductionMismatch",
@@ -91,7 +99,9 @@ __all__ = [
     "render_oriented_spherical_master",
     "render_phase_art_series",
     "render_phase_art_orientation_gallery",
+    "render_phase_art_templates",
     "render_ice_tattoo",
+    "composition_for_phase_template",
     "run_reflector_parity",
     "validate_final_selection",
     "reproduce_final",

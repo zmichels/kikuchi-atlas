@@ -25,6 +25,7 @@ PHASE_SOURCES = {
     "quartz": Path("local/phase-general-direct-reflector-art/series/quartz-hemisphere-standard-run-c8e68d027682d562"),
     "zircon": Path("local/phase-general-direct-reflector-art/series/zircon-hemisphere-standard-run-ad71aeef33302d99"),
     "titanite": Path("local/phase-general-direct-reflector-art/series/titanite-hemisphere-standard-run-7a58d5c09fe6273c"),
+    "diamond": Path("local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8"),
 }
 AXES = {"x": (1.0, 0.0, 0.0), "oblique": (2.0, 1.0, 1.0)}
 
