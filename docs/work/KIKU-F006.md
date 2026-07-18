@@ -10,6 +10,7 @@ priority: P1
 tags: [ice-ih, reflectors, relief, mesh, stl, science-art]
 links:
   - ../superpowers/specs/2026-07-17-ice-reflector-ridge-globes-design.md
+  - ../superpowers/plans/2026-07-17-ice-reflector-ridge-globes.md
 evidence:
   - ../superpowers/specs/2026-07-17-ice-reflector-ridge-globes-design.md
 ---
