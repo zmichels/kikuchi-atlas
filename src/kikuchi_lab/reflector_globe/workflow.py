@@ -19,7 +19,13 @@ from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from kikuchi_lab import __version__
-from kikuchi_lab.globe_mesh import GlobeGeometrySpec, build_radial_geometry, validate_globe_mesh
+from kikuchi_lab.globe_mesh import (
+    GlobeGeometrySpec,
+    ReliefMeshValidation,
+    build_radial_geometry,
+    duplicate_triangle_count,
+    validate_globe_mesh,
+)
 from kikuchi_lab.model import identity as identity_module
 from kikuchi_lab.model.identity import stable_id
 from kikuchi_lab.reflectors.contracts import ReflectorCatalog, ReflectorMember
@@ -35,11 +41,12 @@ REFLECTOR_GLOBE_MANIFEST_SCHEMA = "kikuchi.reflector-ridge-globe-manifest/v1"
 REFLECTOR_GLOBE_VALIDATION_SCHEMA = "kikuchi.reflector-ridge-mesh-validation/v1"
 REFLECTOR_GLOBE_BUNDLE_LAYOUT_CONTRACT = "atomic-six-file-reflector-ridge-globe/v1"
 REFLECTOR_GLOBE_NPZ_CONTRACT = "zip-stored-npy/fixed-order-1980-epoch-mode-0600/v1"
-REFLECTOR_GLOBE_STL_CONTRACT = "trimesh-binary-stl/process-false/v1"
+REFLECTOR_GLOBE_STL_CONTRACT = "trimesh-binary-stl/process-false/serialization-safe-radial-range/v2"
 REFLECTOR_GLOBE_PREVIEW_CONTRACT = "matplotlib-figure-canvas-agg/900x900-rgba/v1"
 REFLECTOR_GLOBE_JSON_CONTRACT = "json/sorted-indent-2-utf8-newline/v1"
 
 _FIELD_ARRAY_ORDER = ("directions", "ridge_values", "contributor_counts", "radii_mm", "faces")
+_STL_RADIAL_SAFETY_MARGIN_MM = 1e-5
 
 
 @dataclass(frozen=True)
@@ -208,6 +215,72 @@ def _write_preview(path: Path, geometry, validation) -> None:
     figure.clear()
 
 
+def _serialization_safe_values(values: np.ndarray, maximum_relief_mm: float) -> np.ndarray:
+    """Keep float32 STL coordinates inside the configured closed radial interval.
+
+    Binary STL stores coordinates as float32.  Reserving this minute inward
+    margin prevents component rounding from placing an otherwise exact 40 or
+    43 mm radial vertex outside the published contract.  The affine mapping
+    remains monotone, so the ridge field stays raised-outward.
+    """
+    margin = _STL_RADIAL_SAFETY_MARGIN_MM
+    if 2.0 * margin >= maximum_relief_mm:
+        raise ValueError("STL radial safety margin leaves no relief range")
+    return margin / maximum_relief_mm + (1.0 - 2.0 * margin / maximum_relief_mm) * values
+
+
+def _validate_serialized_stl(payload: bytes, source: ReliefMeshValidation) -> ReliefMeshValidation:
+    """Validate the exact binary STL consumers receive and report its measurements."""
+    loaded = trimesh.load_mesh(io.BytesIO(payload), file_type="stl", process=True)
+    if not isinstance(loaded, trimesh.Trimesh):
+        raise RuntimeError("binary STL did not load as one mesh")
+    vertices, faces = np.asarray(loaded.vertices), np.asarray(loaded.faces)
+    radii = np.linalg.norm(vertices, axis=1)
+    triangles = vertices[faces]
+    certificate = np.einsum(
+        "ij,ij->i",
+        np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0]),
+        triangles[:, 0],
+    )
+    duplicate_count = duplicate_triangle_count(faces)
+    degenerate_count = int(np.count_nonzero(loaded.area_faces <= 1e-12))
+    failures: list[str] = []
+    if not loaded.is_watertight:
+        failures.append("watertight")
+    if not loaded.is_winding_consistent:
+        failures.append("winding")
+    if loaded.body_count != 1:
+        failures.append("one connected body")
+    if not loaded.is_volume or not np.isfinite(loaded.volume) or loaded.volume <= 0.0:
+        failures.append("positive volume")
+    if duplicate_count:
+        failures.append("duplicate triangles")
+    if degenerate_count:
+        failures.append("degenerate triangles")
+    if not np.isfinite(certificate).all() or np.any(certificate <= source.radial_certificate_tolerance):
+        failures.append("radial projection")
+    if radii.min() < 40.0 or radii.max() > 43.0:
+        failures.append("serialized radial range")
+    if failures:
+        raise ValueError("serialized STL validation failed: " + ", ".join(failures))
+    return replace(
+        source,
+        watertight=True,
+        winding_consistent=True,
+        body_count=1,
+        euler_characteristic=int(loaded.euler_number),
+        positive_volume=True,
+        volume_mm3=float(loaded.volume),
+        surface_area_mm2=float(loaded.area),
+        bounds_mm=(tuple(loaded.bounds[0]), tuple(loaded.bounds[1])),
+        minimum_radius_mm=float(radii.min()),
+        maximum_radius_mm=float(radii.max()),
+        degenerate_triangle_count=degenerate_count,
+        duplicate_triangle_count=duplicate_count,
+        radial_certificate_minimum=float(certificate.min()),
+    )
+
+
 def _result(build_id: str, path: Path) -> ReflectorGlobeBuildResult:
     return ReflectorGlobeBuildResult(
         build_id,
@@ -232,7 +305,7 @@ def build_reflector_globe(
     field = evaluate_reflector_ridges(catalog, recipe, topology.directions)
     geometry = build_radial_geometry(
         topology,
-        field.values,
+        _serialization_safe_values(field.values, recipe.geometry.maximum_relief_mm),
         GlobeGeometrySpec(
             recipe.geometry.base_diameter_mm,
             recipe.geometry.maximum_relief_mm,
@@ -240,14 +313,6 @@ def build_reflector_globe(
         ),
     )
     validation = validate_globe_mesh(geometry, topology, GlobeGeometrySpec(80.0, 3.0, 7))
-    # The generic validator measures vertex norms after floating-point radial
-    # reconstruction.  Preserve its proof, while reporting the configured lower
-    # radial bound exactly rather than a one-ulp-under representation of 40 mm.
-    validation = replace(
-        validation,
-        minimum_radius_mm=max(40.0, validation.minimum_radius_mm),
-        maximum_radius_mm=min(43.0, validation.maximum_radius_mm),
-    )
     versions, contracts = _software_versions(), _contracts()
     selected_ids = [member.member_id for member in catalog.members if member.eligible]
     identity = {
@@ -282,6 +347,7 @@ def build_reflector_globe(
         payload = mesh.export(file_type="stl")
         if not isinstance(payload, bytes):
             raise RuntimeError("Trimesh STL export did not return bytes")
+        validation = _validate_serialized_stl(payload, validation)
         (partial / result.stl.name).write_bytes(payload)
         _write_preview(partial / result.preview.name, geometry, validation)
         arrays = {
