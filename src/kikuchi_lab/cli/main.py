@@ -61,9 +61,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     render_final_parser.add_argument("--proof-root", required=True)
     render_final_parser.add_argument("--master-product", required=True)
     render_final_parser.add_argument("--output", required=True)
-    render_final_parser.add_argument(
-        "--profile", choices=("final", "development"), default="final"
-    )
+    render_final_parser.add_argument("--profile", choices=("final", "development"), default="final")
     reproduce_final_parser = subparsers.add_parser(
         "reproduce-final",
         help="Rebuild a final run from its manifest recipe snapshot.",
@@ -101,6 +99,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     reflector_build.add_argument("--recipe", required=True)
     reflector_build.add_argument("--output", required=True)
+    reflector_globe = subparsers.add_parser(
+        "reflector-globe", help="Build printable analytic reflector-ridge globes."
+    )
+    reflector_globe_commands = reflector_globe.add_subparsers(
+        dest="reflector_globe_command", required=True
+    )
+    reflector_globe_build = reflector_globe_commands.add_parser(
+        "build", help="Build one validated reflector-ridge globe bundle."
+    )
+    reflector_globe_build.add_argument("--catalog", required=True)
+    reflector_globe_build.add_argument("--recipe", required=True)
+    reflector_globe_build.add_argument("--output", required=True)
     args = parser.parse_args(arguments)
 
     if args.command == "version":
@@ -111,9 +121,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         from kikuchi_lab.habit import build_habit
 
         try:
-            result = build_habit(
-                args.recipe, args.output, mtex_reference=args.mtex_reference
-            )
+            result = build_habit(args.recipe, args.output, mtex_reference=args.mtex_reference)
         except (OSError, ValueError, RuntimeError) as error:
             print(f"kikuchi-lab: habit build failed: {error}", file=sys.stderr)
             return 1
@@ -141,9 +149,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         from kikuchi_lab.relief import build_relief_globe
 
         try:
-            result = build_relief_globe(
-                args.master_pattern, args.recipe, args.output
-            )
+            result = build_relief_globe(args.master_pattern, args.recipe, args.output)
         except (OSError, ValueError, RuntimeError) as error:
             print(f"kikuchi-lab: relief globe build failed: {error}", file=sys.stderr)
             return 1
@@ -188,6 +194,32 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
+    if args.command == "reflector-globe" and args.reflector_globe_command == "build":
+        from kikuchi_lab.reflector_globe import build_reflector_globe
+
+        try:
+            result = build_reflector_globe(args.catalog, args.recipe, args.output)
+        except (OSError, ValueError, RuntimeError) as error:
+            print(f"kikuchi-lab: reflector globe build failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "build_id": result.build_id,
+                    "field": str(result.field),
+                    "ledger": str(result.ledger),
+                    "manifest": str(result.manifest),
+                    "path": str(result.path),
+                    "preview": str(result.preview),
+                    "stl": str(result.stl),
+                    "validation": str(result.validation),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
     if args.command == "doctor":
         report = collect_doctor_report(args.output_root)
         if args.as_json:
@@ -212,9 +244,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             source = load_structure_record(args.source)
             requested_structure = Path(args.structure).resolve()
             if requested_structure != source.cif_path:
-                raise ValueError(
-                    "--structure must resolve to the tracked CIF named by --source"
-                )
+                raise ValueError("--structure must resolve to the tracked CIF named by --source")
             recipe = load_simulation_recipe(args.recipe)
             output_root = Path(args.output).resolve()
             with TemporaryDirectory(prefix="kikuchi-plan-") as temporary:
