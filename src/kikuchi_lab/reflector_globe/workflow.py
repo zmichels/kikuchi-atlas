@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import platform
+import re
 import shutil
 import zipfile
 from dataclasses import asdict, dataclass, replace
@@ -62,6 +63,14 @@ _ICE_COHORT_COUNT = 4
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _ICE_CATALOG_RECIPE = _PROJECT_ROOT / "recipes/reflectors/ice-ih-catalog.yml"
 _ICE_SOURCE_RECORD = _PROJECT_ROOT / "phases/ice-ih/source.yml"
+_SOURCE_ARTIFACT_STEMS = {
+    "COD-9000775": "quartz",
+    "COD-9000319": "forsterite",
+    "COD-1011220": "titanite",
+    "COD-9000685": "zircon",
+    "COD-9008564": "diamond",
+    _ICE_SOURCE_STRUCTURE_ID: "ice-ih",
+}
 
 
 @dataclass(frozen=True)
@@ -205,7 +214,41 @@ def _catalog_evidence(catalog: ReflectorCatalog) -> tuple[dict[str, object], ...
     return tuple(_member_evidence(member) for member in catalog.members)
 
 
-def _validate_catalog_recipe(catalog: ReflectorCatalog, recipe) -> _ValidatedCatalogSelection:
+def _validated_threshold_selection(
+    catalog: ReflectorCatalog, *, cohort_count: int, eligibility_min_weight: float
+) -> _ValidatedCatalogSelection:
+    """Independently derive selected/rejected members from catalog weights."""
+    members = sorted(
+        catalog.members,
+        key=lambda member: (-member.normalized_weight, member.hkl, member.member_id),
+    )
+    member_ids = tuple(member.member_id for member in members)
+    if len(set(member_ids)) != len(member_ids):
+        raise ValueError("ridge catalog must contain unique members")
+    if tuple(member.member_id for member in catalog.members) != member_ids:
+        raise ValueError("ridge catalog members are not in canonical ranking order")
+
+    eligible = [member for member in members if member.normalized_weight >= eligibility_min_weight]
+    rejected = [member for member in members if member.normalized_weight < eligibility_min_weight]
+    if not eligible:
+        raise ValueError("ridge catalog must contain at least one selected member")
+
+    cohort_by_member = _cohorts(eligible, cohort_count)
+    for member in members:
+        expected_cohort = cohort_by_member.get(member.member_id)
+        expected_eligible = expected_cohort is not None
+        if member.eligible != expected_eligible or member.cohort != expected_cohort:
+            raise ValueError(
+                "catalog selected/rejected membership or cohort assignment does not match "
+                "threshold and tie policy"
+            )
+    return _ValidatedCatalogSelection(
+        selected_member_ids=tuple(member.member_id for member in eligible),
+        rejected_member_ids=tuple(member.member_id for member in rejected),
+    )
+
+
+def _validate_ice_catalog_recipe(catalog: ReflectorCatalog, recipe) -> _ValidatedCatalogSelection:
     """Authenticate and independently derive the bounded Ice catalog selection."""
     selection = recipe.selection
     if selection.source_structure_id != _ICE_SOURCE_STRUCTURE_ID:
@@ -235,10 +278,7 @@ def _validate_catalog_recipe(catalog: ReflectorCatalog, recipe) -> _ValidatedCat
     if _catalog_evidence(catalog) != _catalog_evidence(canonical):
         raise ValueError("catalog member evidence does not match canonical Ice reflector catalog")
 
-    members = sorted(
-        catalog.members,
-        key=lambda member: (-member.normalized_weight, member.hkl, member.member_id),
-    )
+    members = sorted(catalog.members, key=lambda member: (-member.normalized_weight, member.hkl, member.member_id))
     member_ids = tuple(member.member_id for member in members)
     if len(members) != 30 or len(set(member_ids)) != 30:
         raise ValueError("Ice ridge catalog must contain exactly 30 unique members")
@@ -288,6 +328,41 @@ def _validate_catalog_recipe(catalog: ReflectorCatalog, recipe) -> _ValidatedCat
         selected_member_ids=tuple(member.member_id for member in eligible),
         rejected_member_ids=tuple(member.member_id for member in rejected),
     )
+
+
+def _validate_phase_catalog_recipe(catalog: ReflectorCatalog, recipe) -> _ValidatedCatalogSelection:
+    """Validate a non-Ice reflector catalog against its ridge recipe."""
+    selection = recipe.selection
+    if catalog.source_structure_id != selection.source_structure_id:
+        raise ValueError("catalog source_structure_id does not match ridge recipe")
+    if catalog.energy_kev != selection.energy_kev:
+        raise ValueError("catalog energy_kev does not match ridge recipe")
+    catalog_selection = plain_data(catalog.selection)
+    expected = {
+        "eligibility_min_weight": selection.eligibility_min_weight,
+        "tie_policy": selection.tie_policy,
+        "cohort_count": selection.cohort_count,
+    }
+    for key, value in expected.items():
+        if catalog_selection.get(key) != value:
+            raise ValueError(f"catalog selection policy {key} does not match ridge recipe")
+    if "source_master_relative_factor" not in catalog_selection:
+        raise ValueError("catalog selection policy is missing source_master_relative_factor")
+    if "selection_relative_factor" not in catalog_selection:
+        raise ValueError("catalog selection policy is missing selection_relative_factor")
+    if "weight_exponent" not in catalog_selection:
+        raise ValueError("catalog selection policy is missing weight_exponent")
+    return _validated_threshold_selection(
+        catalog,
+        cohort_count=selection.cohort_count,
+        eligibility_min_weight=selection.eligibility_min_weight,
+    )
+
+
+def _validate_catalog_recipe(catalog: ReflectorCatalog, recipe) -> _ValidatedCatalogSelection:
+    if catalog.source_structure_id == _ICE_SOURCE_STRUCTURE_ID:
+        return _validate_ice_catalog_recipe(catalog, recipe)
+    return _validate_phase_catalog_recipe(catalog, recipe)
 
 
 def _member_evidence(member: ReflectorMember) -> dict[str, object]:
@@ -476,13 +551,23 @@ def _validate_serialized_stl(payload: bytes, source: ReliefMeshValidation) -> Re
     )
 
 
-def _result(build_id: str, path: Path) -> ReflectorGlobeBuildResult:
+def _artifact_stem(catalog: ReflectorCatalog) -> str:
+    stem = _SOURCE_ARTIFACT_STEMS.get(catalog.source_structure_id)
+    if stem is not None:
+        return f"{stem}-reflector-ridges"
+    stem = re.sub(r"[^a-z0-9]+", "-", catalog.source_structure_id.lower()).strip("-")
+    if stem.startswith("cod-"):
+        stem = stem[4:]
+    return f"{stem}-reflector-ridges"
+
+
+def _result(build_id: str, path: Path, artifact_stem: str) -> ReflectorGlobeBuildResult:
     return ReflectorGlobeBuildResult(
         build_id,
         path,
         path / "reflector-globe-manifest.json",
-        path / "ice-ih-reflector-ridges.stl",
-        path / "ice-ih-reflector-ridges-preview.png",
+        path / f"{artifact_stem}.stl",
+        path / f"{artifact_stem}-preview.png",
         path / "ridge-field.npz",
         path / "ridge-ledger.json",
         path / "mesh-validation.json",
@@ -531,7 +616,7 @@ def build_reflector_globe(
     build_id = stable_id("reflector-ridge-globe-build", identity)
     root, completed = Path(output_root).resolve(), Path(output_root).resolve() / build_id
     partial = root / f"{build_id}.partial"
-    result = _result(build_id, completed)
+    result = _result(build_id, completed, _artifact_stem(catalog))
     root.mkdir(parents=True, exist_ok=True)
     if completed.exists() or partial.exists():
         raise FileExistsError(

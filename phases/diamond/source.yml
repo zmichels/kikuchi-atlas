@@ -1,0 +1,41 @@
+schema_version: 1
+identifier: COD-9008564
+cif: COD-9008564.cif
+sha256: ba61fbf894db1bced1337192aa90298486845d200e1ae0aec2c6e9514fd95b16
+retrieved: 2026-07-18
+uri: https://www.crystallography.net/cod/9008564.cif
+page_uri: https://www.crystallography.net/cod/9008564.html
+license: CC0-1.0
+license_uri: https://creativecommons.org/publicdomain/zero/1.0/
+copying_policy: COD/AMCSD source header requests proper attribution to the original article.
+citation: >-
+  Wyckoff, R. W. G. (1963). Second edition. Crystal Structures 1, 7-83.
+phase:
+  name: diamond
+  formula: C
+  space_group_number: 227
+  setting: F d -3 m
+  lattice_angstrom: [3.56679, 3.56679, 3.56679, 90.0, 90.0, 90.0]
+sites:
+  - {label: C, element: C, fract: [0.00000, 0.00000, 0.00000], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
+thermal_factor_policy:
+  source_field: unavailable
+  source_units: not reported
+  simulation_field: U_iso
+  simulation_units: angstrom^2
+  missing: fallback
+  fallback_u_iso_angstrom_sq: 0.005
+  claim_boundary: >-
+    COD 9008564 does not report _atom_site_U_iso_or_equiv. The reflector-ridge
+    series uses a fixed U_iso fallback for deterministic printable band geometry,
+    not refined EBSD intensity.
+simulation_setting:
+  reason: >-
+    Ridge/band globe design uses the tracked diamond CIF in its reported
+    F d -3 m setting; site multiplicities are not used as an EBSD acceptance
+    gate for this print-only series.
+  source_setting: F d -3 m
+  target_setting: F d -3 m
+  target_lattice_from_source: [a, b, c]
+  target_fractional_from_source: [x, y, z]
+  target_site_multiplicities: unchecked

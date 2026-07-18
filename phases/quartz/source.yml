@@ -1,0 +1,43 @@
+schema_version: 1
+identifier: COD-9000775
+cif: COD-9000775.cif
+sha256: 10dd04655c03f6b152897a5e2d863e42892bd84561cb6dfc1febd86271e70b57
+retrieved: 2026-07-18
+uri: https://www.crystallography.net/cod/9000775.cif
+page_uri: https://www.crystallography.net/cod/9000775.html
+license: CC0-1.0
+license_uri: https://creativecommons.org/publicdomain/zero/1.0/
+copying_policy: Public-domain COD data; acknowledge the original structural-data authors.
+citation: >-
+  Levien, L., Prewitt, C. T., and Weidner, D. J. (1980). Structure and elastic
+  properties of quartz at pressure P = 1 atm. American Mineralogist 65, 920-930.
+phase:
+  name: quartz
+  formula: SiO2
+  space_group_number: 154
+  setting: P 32 2 1
+  lattice_angstrom: [4.916, 4.916, 5.4054, 90.0, 90.0, 120.0]
+sites:
+  - {label: Si, element: Si, fract: [0.46970, 0.00000, 0.00000], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
+  - {label: O, element: O, fract: [0.41350, 0.26690, 0.11910], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
+thermal_factor_policy:
+  source_field: unavailable
+  source_units: not reported
+  simulation_field: U_iso
+  simulation_units: angstrom^2
+  missing: fallback
+  fallback_u_iso_angstrom_sq: 0.005
+  claim_boundary: >-
+    COD 9000775 reports anisotropic terms but no _atom_site_U_iso_or_equiv.
+    The reflector-ridge series uses a fixed U_iso fallback for deterministic
+    printable band geometry, not refined EBSD intensity.
+simulation_setting:
+  reason: >-
+    Ridge/band globe design uses the tracked quartz CIF in its reported
+    P 32 2 1 setting; site multiplicities are not used as an EBSD acceptance
+    gate for this print-only series.
+  source_setting: P 32 2 1
+  target_setting: P 32 2 1
+  target_lattice_from_source: [a, b, c]
+  target_fractional_from_source: [x, y, z]
+  target_site_multiplicities: unchecked

@@ -181,10 +181,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "reflectors" and args.reflector_command == "build":
-        from kikuchi_lab.workflows.ice_reflector_catalog import build_ice_reflector_catalog
+        from kikuchi_lab.workflows.reflector_catalog import build_reflector_catalog_bundle
 
         try:
-            result = build_ice_reflector_catalog(args.recipe, args.output)
+            result = build_reflector_catalog_bundle(args.recipe, args.output)
         except (OSError, ValueError, RuntimeError) as error:
             print(f"kikuchi-lab: reflector catalog build failed: {error}", file=sys.stderr)
             return 1

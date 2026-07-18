@@ -24,6 +24,12 @@ _REQUIRED_THERMAL_FACTOR_POLICY = {
     "simulation_units": "angstrom^2",
     "missing": "reject",
 }
+_FALLBACK_THERMAL_FACTOR_POLICY = {
+    "source_units": "not reported",
+    "simulation_field": "U_iso",
+    "simulation_units": "angstrom^2",
+    "missing": "fallback",
+}
 
 
 @dataclass(frozen=True)
@@ -192,6 +198,25 @@ def _assert_close(label: str, actual: float, expected: float, tolerance: float =
 
 
 def _validate_thermal_factor_policy(policy: dict[str, Any]) -> None:
+    if policy.get("missing") == "fallback":
+        for key, expected in _FALLBACK_THERMAL_FACTOR_POLICY.items():
+            if policy.get(key) != expected:
+                raise ValueError(
+                    f"thermal factor policy {key} must be {expected!r}; got {policy.get(key)!r}"
+                )
+        fallback = policy.get("fallback_u_iso_angstrom_sq")
+        if (
+            isinstance(fallback, bool)
+            or not isinstance(fallback, (int, float))
+            or not math.isfinite(float(fallback))
+            or float(fallback) <= 0.0
+        ):
+            raise ValueError("fallback_u_iso_angstrom_sq must be a positive finite number")
+        if not isinstance(policy.get("claim_boundary"), str) or not policy[
+            "claim_boundary"
+        ].strip():
+            raise ValueError("fallback thermal factor policy requires a claim_boundary")
+        return
     for key, expected in _REQUIRED_THERMAL_FACTOR_POLICY.items():
         if policy.get(key) != expected:
             raise ValueError(
@@ -224,10 +249,28 @@ def verify_structure(record: StructureRecord) -> VerifiedStructure:
     block = cif[list(cif.keys())[0]]
     tags = _block_tags(block)
 
-    formula = re.sub(r"\s+", "", _scalar(block, tags, "_cod_original_formula_sum"))
+    formula = re.sub(
+        r"\s+",
+        "",
+        _scalar(
+            block,
+            tags,
+            "_cod_original_formula_sum"
+            if "_cod_original_formula_sum" in tags
+            else "_chemical_formula_sum",
+        ),
+    )
     if formula != record.formula:
         raise ValueError(f"formula mismatch: CIF {formula!r}, catalog {record.formula!r}")
-    space_group = int(_number(_scalar(block, tags, "_space_group_IT_number")))
+    if "_space_group_it_number" in tags:
+        space_group = int(_number(_scalar(block, tags, "_space_group_IT_number")))
+    elif "_symmetry_int_tables_number" in tags:
+        space_group = int(_number(_scalar(block, tags, "_symmetry_Int_Tables_number")))
+    else:
+        hm_symbol = _scalar(block, tags, "_symmetry_space_group_name_H-M")
+        if hm_symbol != "P 32 2 1":
+            raise ValueError("CIF is missing space-group IT number")
+        space_group = 154
     if space_group != record.space_group_number:
         raise ValueError(
             f"space group mismatch: CIF {space_group}, catalog {record.space_group_number}"
@@ -270,7 +313,16 @@ def verify_structure(record: StructureRecord) -> VerifiedStructure:
     )
     if missing_thermal and record.thermal_factor_policy.get("missing") == "reject":
         raise ValueError(f"missing thermal factors for sites: {', '.join(missing_thermal)}")
-    parsed_u_iso = tuple(_number(value) for value in (u_iso or []))
+    if record.thermal_factor_policy.get("missing") == "fallback":
+        fallback_u_iso = float(record.thermal_factor_policy["fallback_u_iso_angstrom_sq"])
+        parsed_u_iso = tuple(
+            fallback_u_iso
+            if u_iso is None or str(value).strip() in {"", ".", "?"}
+            else _number(value)
+            for value in (u_iso or ["?"] * len(parsed_labels))
+        )
+    else:
+        parsed_u_iso = tuple(_number(value) for value in (u_iso or []))
 
     if len(record.sites) != len(parsed_labels):
         raise ValueError("site count mismatch")

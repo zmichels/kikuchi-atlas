@@ -167,7 +167,7 @@ def test_reflector_catalog_build_cli_routes_paths_and_prints_json(monkeypatch, c
     )
     calls = []
     monkeypatch.setattr(
-        "kikuchi_lab.workflows.ice_reflector_catalog.build_ice_reflector_catalog",
+        "kikuchi_lab.workflows.reflector_catalog.build_reflector_catalog_bundle",
         lambda recipe, output: calls.append((recipe, output)) or result,
     )
 
@@ -187,9 +187,7 @@ def test_reflector_catalog_build_cli_reports_domain_failure(monkeypatch, capsys)
     def fail(*_args):
         raise ValueError("source mismatch")
 
-    monkeypatch.setattr(
-        "kikuchi_lab.workflows.ice_reflector_catalog.build_ice_reflector_catalog", fail
-    )
+    monkeypatch.setattr("kikuchi_lab.workflows.reflector_catalog.build_reflector_catalog_bundle", fail)
     assert main(["reflectors", "build", "--recipe", "bad.yml", "--output", "out"]) == 1
     captured = capsys.readouterr()
     assert captured.out == ""

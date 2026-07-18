@@ -88,6 +88,25 @@ def catalog_ledger(
         str(cohort): sum(member.cohort == cohort for member in eligible)
         for cohort in range(1, recipe.cohort_count + 1)
     }
+    if source.identifier == "COD-1572233-O-sublattice":
+        claim_boundary = (
+            "This catalog characterizes only the COD-1572233 oxygen sublattice "
+            "derivative: hydrogen sites are intentionally omitted. It makes no claim "
+            "about proton ordering or the complete molecular ice-Ih structure."
+        )
+    elif source.thermal_factor_policy.get("missing") == "fallback":
+        claim_boundary = (
+            "This catalog is a deterministic reflector-ridge design source for "
+            f"{source.name}. The source lacks explicit isotropic thermal factors; "
+            "the recorded fallback U_iso is used for printable band geometry and "
+            "should not be interpreted as a refined EBSD simulation parameter."
+        )
+    else:
+        claim_boundary = (
+            f"This catalog is a deterministic reflector-ridge design source for {source.name}; "
+            "source coordinates, occupancies, and thermal factors are verified from the tracked "
+            "CIF record."
+        )
     return {
         "schema": "kikuchi.reflector-catalog-ledger/v1",
         "catalog_id": catalog.catalog_id,
@@ -106,11 +125,7 @@ def catalog_ledger(
         "threshold": recipe.eligibility_min_weight,
         "tie_policy": recipe.tie_policy,
         "public_package_versions": plain_data(catalog.selection["package_versions"]),
-        "claim_boundary": (
-            "This catalog characterizes only the COD-1572233 oxygen sublattice "
-            "derivative: hydrogen sites are intentionally omitted. It makes no claim "
-            "about proton ordering or the complete molecular ice-Ih structure."
-        ),
+        "claim_boundary": claim_boundary,
     }
 
 

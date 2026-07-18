@@ -1,0 +1,45 @@
+schema_version: 1
+identifier: COD-9000685
+cif: COD-9000685.cif
+sha256: 5a20b650bc9638631e93c4a39a5ce45b25d629949dd1d9495d84a889f3fad7cd
+retrieved: 2026-07-18
+uri: https://www.crystallography.net/cod/9000685.cif
+page_uri: https://www.crystallography.net/cod/9000685.html
+license: CC0-1.0
+license_uri: https://creativecommons.org/publicdomain/zero/1.0/
+copying_policy: COD/AMCSD source header requests proper attribution to the original article.
+citation: >-
+  Hazen, R. M. and Finger, L. W. (1979). Crystal structure and compressibility
+  of zircon at high pressure crystal No. 1, P = 9.8 kbar. American Mineralogist
+  64, 196-201.
+phase:
+  name: zircon
+  formula: ZrSiO4
+  space_group_number: 141
+  setting: I 41/a m d
+  lattice_angstrom: [6.5927, 6.5927, 5.9742, 90.0, 90.0, 90.0]
+sites:
+  - {label: Zr, element: Zr, fract: [0.00000, 0.75000, 0.12500], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
+  - {label: Si, element: Si, fract: [0.00000, 0.25000, 0.37500], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
+  - {label: O, element: O, fract: [0.00000, 0.06610, 0.19620], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
+thermal_factor_policy:
+  source_field: unavailable
+  source_units: not reported
+  simulation_field: U_iso
+  simulation_units: angstrom^2
+  missing: fallback
+  fallback_u_iso_angstrom_sq: 0.005
+  claim_boundary: >-
+    COD 9000685 does not report _atom_site_U_iso_or_equiv. The reflector-ridge
+    series uses a fixed U_iso fallback for deterministic printable band geometry,
+    not refined EBSD intensity.
+simulation_setting:
+  reason: >-
+    Ridge/band globe design uses the tracked zircon CIF in its reported
+    I 41/a m d setting; site multiplicities are not used as an EBSD acceptance
+    gate for this print-only series.
+  source_setting: I 41/a m d
+  target_setting: I 41/a m d
+  target_lattice_from_source: [a, b, c]
+  target_fractional_from_source: [x, y, z]
+  target_site_multiplicities: unchecked

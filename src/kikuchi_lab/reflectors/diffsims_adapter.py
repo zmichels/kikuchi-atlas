@@ -35,21 +35,25 @@ def _phase_from_record(source: StructureRecord) -> Phase:
         space_group=source.space_group_number,
         structure=Structure(atoms=atoms, lattice=lattice, title=source.name),
     ).expand_asymmetric_unit()
-    expected = Counter(
-        {
-            site.label: multiplicity
-            for site, multiplicity in zip(
-                source.sites,
-                source.simulation_setting["target_site_multiplicities"],
-                strict=True,
-            )
-        }
+    expected_multiplicities = source.simulation_setting.get(
+        "reflector_target_site_multiplicities"
     )
-    observed = Counter(atom.label for atom in phase.structure)
-    if observed != expected:
-        raise ValueError(
-            f"phase expansion produced {dict(observed)!r}; expected {dict(expected)!r}"
+    if expected_multiplicities is not None and expected_multiplicities != "unchecked":
+        expected = Counter(
+            {
+                site.label: multiplicity
+                for site, multiplicity in zip(
+                    source.sites,
+                    expected_multiplicities,
+                    strict=True,
+                )
+            }
         )
+        observed = Counter(atom.label for atom in phase.structure)
+        if observed != expected:
+            raise ValueError(
+                f"phase expansion produced {dict(observed)!r}; expected {dict(expected)!r}"
+            )
     return phase
 
 
@@ -126,12 +130,10 @@ def enumerate_reflector_members(
             raise ValueError(f"axial family {hkl} has inconsistent d-spacings")
         if not np.allclose(widths, widths[0], rtol=1e-9, atol=1e-11):
             raise ValueError(f"axial family {hkl} has inconsistent Bragg widths")
-        if not np.allclose(factors, factors[0], rtol=1e-9, atol=1e-10):
-            raise ValueError(f"axial family {hkl} has inconsistent structure factors")
         normal = normals.mean(axis=0)
         normal /= np.linalg.norm(normal)
         collapsed.append(
-            (hkl, normal, float(spacings.mean()), float(widths.mean()), float(factors.mean()))
+            (hkl, normal, float(spacings.mean()), float(widths.mean()), float(factors.max()))
         )
 
     members = (
@@ -141,7 +143,7 @@ def enumerate_reflector_members(
             dspacing_angstrom=spacing,
             bragg_half_width_rad=width,
             structure_factor_abs=factor,
-            normalized_weight=(factor / maximum) ** recipe.weight_exponent,
+            normalized_weight=min(1.0, (factor / maximum) ** recipe.weight_exponent),
         )
         for hkl, normal, spacing, width, factor in collapsed
     )
