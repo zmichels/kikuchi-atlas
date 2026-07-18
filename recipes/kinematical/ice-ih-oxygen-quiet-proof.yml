@@ -1,0 +1,13 @@
+schema_version: 1
+name: ice-ih-001-oxygen-quiet-proof
+source_record: ../../phases/ice-ih/source.yml
+reflector_recipe: ../reflectors/ice-ih-catalog.yml
+energy_kev: 20.0
+orientation:
+  euler_bunge_deg: [0.0, 0.0, 0.0]
+  frame: crystal_to_sample
+  zone_axis_uvw: [0, 0, 1]
+master:
+  half_size: 32
+  hemisphere: both
+  scaling: square
