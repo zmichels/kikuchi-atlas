@@ -8,7 +8,6 @@ import json
 import platform
 import shutil
 import zipfile
-from collections.abc import Mapping
 from dataclasses import asdict, dataclass, replace
 from importlib.metadata import version
 from pathlib import Path
@@ -29,6 +28,7 @@ from kikuchi_lab.globe_mesh import (
 )
 from kikuchi_lab.model import identity as identity_module
 from kikuchi_lab.model.identity import plain_data, stable_id
+from kikuchi_lab.reflectors.catalog import _cohorts
 from kikuchi_lab.reflectors.contracts import ReflectorCatalog, ReflectorMember
 from kikuchi_lab.relief.topology import build_icosphere
 from kikuchi_lab.relief.workflow import _fsync_tree, _publish_staging, _write_json
@@ -49,6 +49,13 @@ REFLECTOR_GLOBE_JSON_CONTRACT = "json/sorted-indent-2-utf8-newline/v1"
 
 _FIELD_ARRAY_ORDER = ("directions", "ridge_values", "contributor_counts", "radii_mm", "faces")
 _STL_RADIAL_SAFETY_MARGIN_MM = 1e-5
+_ICE_SOURCE_STRUCTURE_ID = "COD-1572233-O-sublattice"
+_ICE_SOURCE_STRUCTURE_SHA256 = "4327a279e414a62f861d143e18570e9d741bbbb7d04dd2fb471c930988f95b81"
+_ICE_REFLECTION_RECIPE_ID = "reflector-recipe-ea20e740ed0ebfef"
+_ICE_ENERGY_KEV = 20.0
+_ICE_ELIGIBILITY_MIN_WEIGHT = 0.08
+_ICE_TIE_POLICY = "keep_equal_weights_together"
+_ICE_COHORT_COUNT = 4
 
 
 @dataclass(frozen=True)
@@ -61,6 +68,12 @@ class ReflectorGlobeBuildResult:
     field: Path
     ledger: Path
     validation: Path
+
+
+@dataclass(frozen=True)
+class _ValidatedCatalogSelection:
+    selected_member_ids: tuple[str, ...]
+    rejected_member_ids: tuple[str, ...]
 
 
 def _sha256_file(path: Path) -> str:
@@ -152,37 +165,106 @@ def _catalog_from_payload(path: str | Path) -> ReflectorCatalog:
     return catalog
 
 
-def _validate_catalog_recipe(catalog: ReflectorCatalog, recipe) -> None:
+def _expected_catalog_selection() -> dict[str, object]:
+    return {
+        "frame": "crystal reciprocal Cartesian",
+        "eligibility_min_weight": _ICE_ELIGIBILITY_MIN_WEIGHT,
+        "tie_policy": _ICE_TIE_POLICY,
+        "cohort_count": _ICE_COHORT_COUNT,
+        "source_master_relative_factor": 0.03,
+        "selection_relative_factor": 0.22,
+        "weight_exponent": 2.0,
+        "selection_rule": (
+            "retain signed reflectors with abs(F) >= "
+            "selection_relative_factor * max(abs(F)); then collapse axial pairs"
+        ),
+        "weight_normalization": (
+            "(abs(structure_factor) / max(abs(structure_factor))) ** weight_exponent"
+        ),
+        "package_versions": {
+            package: version(package) for package in ("diffpy-structure", "diffsims", "orix")
+        },
+    }
+
+
+def _validate_catalog_recipe(catalog: ReflectorCatalog, recipe) -> _ValidatedCatalogSelection:
+    """Authenticate and independently derive the bounded Ice catalog selection."""
     selection = recipe.selection
-    if catalog.source_structure_id != selection.source_structure_id:
-        raise ValueError("catalog source_structure_id does not match ridge recipe")
-    if catalog.energy_kev != selection.energy_kev:
-        raise ValueError("catalog energy_kev does not match ridge recipe")
-    observed = catalog.selection
-    for key, expected in (
-        ("source_master_relative_factor", 0.03),
-        ("selection_relative_factor", 0.22),
-        ("weight_exponent", 2.0),
-        ("eligibility_min_weight", selection.eligibility_min_weight),
-        ("tie_policy", selection.tie_policy),
-        ("cohort_count", selection.cohort_count),
-    ):
-        if observed.get(key) != expected:
-            raise ValueError(f"catalog selection {key} does not match ridge recipe")
-    eligible = [member for member in catalog.members if member.eligible]
-    if not eligible or any(member.cohort is None for member in eligible):
-        raise ValueError("catalog has no valid selected reflector members")
-    if len(eligible) != 15 or len(catalog.members) - len(eligible) != 15:
+    if selection.source_structure_id != _ICE_SOURCE_STRUCTURE_ID:
+        raise ValueError("ridge recipe source_structure_id does not match canonical Ice source")
+    if selection.energy_kev != _ICE_ENERGY_KEV:
+        raise ValueError("ridge recipe energy_kev does not match canonical Ice energy")
+    if selection.eligibility_min_weight != _ICE_ELIGIBILITY_MIN_WEIGHT:
+        raise ValueError("ridge recipe eligibility_min_weight does not match canonical Ice policy")
+    if selection.tie_policy != _ICE_TIE_POLICY:
+        raise ValueError("ridge recipe tie_policy does not match canonical Ice policy")
+    if selection.cohort_count != _ICE_COHORT_COUNT:
+        raise ValueError("ridge recipe cohort_count does not match canonical Ice policy")
+
+    if catalog.source_structure_id != _ICE_SOURCE_STRUCTURE_ID:
+        raise ValueError("catalog source_structure_id does not match canonical Ice source")
+    if catalog.source_structure_sha256 != _ICE_SOURCE_STRUCTURE_SHA256:
+        raise ValueError("catalog source_structure_sha256 does not match canonical Ice source")
+    if catalog.energy_kev != _ICE_ENERGY_KEV:
+        raise ValueError("catalog energy_kev does not match canonical Ice energy")
+    if catalog.reflection_recipe_id != _ICE_REFLECTION_RECIPE_ID:
+        raise ValueError("catalog reflection_recipe_id does not match canonical Ice recipe")
+    if plain_data(catalog.selection) != _expected_catalog_selection():
+        raise ValueError("catalog selection policy does not match canonical Ice policy")
+
+    members = sorted(
+        catalog.members,
+        key=lambda member: (-member.normalized_weight, member.hkl, member.member_id),
+    )
+    member_ids = tuple(member.member_id for member in members)
+    if len(members) != 30 or len(set(member_ids)) != 30:
+        raise ValueError("Ice ridge catalog must contain exactly 30 unique members")
+    if tuple(member.member_id for member in catalog.members) != member_ids:
+        raise ValueError("Ice ridge catalog members are not in canonical ranking order")
+
+    eligible = [
+        member for member in members if member.normalized_weight >= _ICE_ELIGIBILITY_MIN_WEIGHT
+    ]
+    rejected = [
+        member for member in members if member.normalized_weight < _ICE_ELIGIBILITY_MIN_WEIGHT
+    ]
+    if len(eligible) != 15 or len(rejected) != 15:
         raise ValueError(
             "Ice ridge catalog must contain exactly 15 selected and 15 rejected members"
         )
-    versions = observed.get("package_versions")
-    if not isinstance(versions, Mapping) or set(versions) != {
-        "diffpy-structure",
-        "diffsims",
-        "orix",
-    }:
-        raise ValueError("catalog selection package_versions are incomplete")
+    eligible_weight_blocks = {member.normalized_weight for member in eligible}
+    if len(eligible_weight_blocks) != 6:
+        raise ValueError("Ice ridge catalog must contain exactly 6 eligible weight blocks")
+
+    cohort_by_member = _cohorts(eligible, _ICE_COHORT_COUNT)
+    strongest_weight = max(eligible_weight_blocks)
+    weakest_weight = min(eligible_weight_blocks)
+    if {
+        cohort_by_member[member.member_id]
+        for member in eligible
+        if member.normalized_weight == strongest_weight
+    } != {4}:
+        raise ValueError("Ice ridge catalog strongest eligible block must be cohort 4")
+    if {
+        cohort_by_member[member.member_id]
+        for member in eligible
+        if member.normalized_weight == weakest_weight
+    } != {1}:
+        raise ValueError("Ice ridge catalog weakest eligible block must be cohort 1")
+
+    for member in members:
+        expected_cohort = cohort_by_member.get(member.member_id)
+        expected_eligible = expected_cohort is not None
+        if member.eligible != expected_eligible or member.cohort != expected_cohort:
+            raise ValueError(
+                "catalog selected/rejected membership or cohort assignment does not match "
+                "canonical Ice threshold and tie policy"
+            )
+
+    return _ValidatedCatalogSelection(
+        selected_member_ids=tuple(member.member_id for member in eligible),
+        rejected_member_ids=tuple(member.member_id for member in rejected),
+    )
 
 
 def _member_evidence(member: ReflectorMember) -> dict[str, object]:
@@ -198,15 +280,20 @@ def _member_evidence(member: ReflectorMember) -> dict[str, object]:
     }
 
 
-def _catalog_provenance(catalog: ReflectorCatalog, field: RidgeField) -> dict[str, object]:
+def _catalog_provenance(
+    catalog: ReflectorCatalog,
+    field: RidgeField,
+    selection: _ValidatedCatalogSelection,
+) -> dict[str, object]:
     """Materialize source-to-ridge evidence without retaining upstream objects."""
     contributors = {item.member_id: item for item in field.ledger}
+    selected_ids = set(selection.selected_member_ids)
     selected: list[dict[str, object]] = []
     rejected: list[dict[str, object]] = []
     threshold = float(catalog.selection["eligibility_min_weight"])
     for member in catalog.members:
         evidence = _member_evidence(member)
-        if member.eligible:
+        if member.member_id in selected_ids:
             contributor = contributors[member.member_id]
             evidence.update(
                 {
@@ -216,14 +303,9 @@ def _catalog_provenance(catalog: ReflectorCatalog, field: RidgeField) -> dict[st
             )
             selected.append(evidence)
         else:
-            code = (
-                "below_eligibility_min_weight"
-                if member.normalized_weight < threshold
-                else "not_selected_by_catalog"
-            )
             evidence["rejection_reasons"] = [
                 {
-                    "code": code,
+                    "code": "below_eligibility_min_weight",
                     "normalized_weight": member.normalized_weight,
                     "eligibility_min_weight": threshold,
                 }
@@ -231,6 +313,10 @@ def _catalog_provenance(catalog: ReflectorCatalog, field: RidgeField) -> dict[st
             rejected.append(evidence)
     if set(contributors) != {item["member_id"] for item in selected}:
         raise ValueError("ridge contributor ledger differs from selected catalog evidence")
+    if tuple(item["member_id"] for item in selected) != selection.selected_member_ids:
+        raise ValueError("selected catalog evidence differs from validated Ice selection")
+    if tuple(item["member_id"] for item in rejected) != selection.rejected_member_ids:
+        raise ValueError("rejected catalog evidence differs from validated Ice selection")
     return {
         "source_structure": {
             "structure_id": catalog.source_structure_id,
@@ -386,7 +472,7 @@ def build_reflector_globe(
     """Build one fully validated, no-clobber Ice reflector-ridge globe bundle."""
     recipe = load_reflector_ridge_recipe(recipe_path)
     catalog = _catalog_from_payload(catalog_path)
-    _validate_catalog_recipe(catalog, recipe)
+    validated_selection = _validate_catalog_recipe(catalog, recipe)
     topology = build_icosphere(recipe.geometry.subdivisions)
     field = evaluate_reflector_ridges(catalog, recipe, topology.directions)
     geometry = build_radial_geometry(
@@ -400,9 +486,9 @@ def build_reflector_globe(
     )
     validation = validate_globe_mesh(geometry, topology, GlobeGeometrySpec(80.0, 3.0, 7))
     versions, contracts = _software_versions(), _contracts()
-    provenance = _catalog_provenance(catalog, field)
-    selected_ids = [member.member_id for member in catalog.members if member.eligible]
-    rejected_ids = [member.member_id for member in catalog.members if not member.eligible]
+    provenance = _catalog_provenance(catalog, field, validated_selection)
+    selected_ids = list(validated_selection.selected_member_ids)
+    rejected_ids = list(validated_selection.rejected_member_ids)
     identity = {
         "schema": REFLECTOR_GLOBE_BUILD_SCHEMA,
         "contracts": contracts,
