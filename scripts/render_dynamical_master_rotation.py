@@ -45,6 +45,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--frames", type=int, default=24)
     parser.add_argument("--fps", type=int, default=3)
     parser.add_argument("--size", type=int, default=512)
+    parser.add_argument("--gif-size", type=int, default=512)
+    parser.add_argument(
+        "--product-kind",
+        default="proof-grade dynamical-master spherical animation",
+    )
     return parser.parse_args()
 
 
@@ -66,6 +71,8 @@ def main() -> None:
     args = parse_args()
     if args.fps <= 0:
         raise ValueError("fps must be positive")
+    if args.gif_size <= 0:
+        raise ValueError("gif-size must be positive")
     master_path = args.master.resolve()
     output = args.output.resolve()
     if output.exists():
@@ -115,14 +122,15 @@ def main() -> None:
     subprocess.run(
         [
             ffmpeg, "-y", "-loglevel", "error", "-framerate", str(args.fps),
-            "-i", str(frames / "frame-%04d.png"), "-loop", "0", str(gif),
+            "-i", str(frames / "frame-%04d.png"),
+            "-vf", f"scale={args.gif_size}:{args.gif_size}:flags=lanczos", "-loop", "0", str(gif),
         ],
         check=True,
     )
     black, white = tone.limits(field)
     manifest = {
         "schema_version": 1,
-        "product_kind": "proof-grade dynamical-master spherical animation",
+        "product_kind": args.product_kind,
         "scientific_boundary": (
             "Frames are active x-axis resamples of a retained raw dynamical master. "
             "They are not simulated detector acquisitions and no diffraction calculation ran per frame."

@@ -12,16 +12,18 @@ tags: [forsterite, dynamical, master-pattern, rotation, grayscale, animation]
 evidence:
   - ../../local/master-patterns/forsterite-proof/COD-9000319-ebsdsim.bundle/COD-9000319-ebsdsim.manifest.json
   - ../../local/dynamical-master-rotation/forsterite-x-axis-proof-v1/manifest.json
+  - ../../local/benchmarks/forsterite-resolution-501/COD-9000319-ebsdsim.bundle/COD-9000319-ebsdsim.manifest.json
+  - ../../local/dynamical-master-rotation/forsterite-x-axis-gold-v1/manifest.json
 ---
 
 # KIKU-T038: Render a bounded dynamical-master rotation proof
 
 ## Description
 
-Reuse the retained proof-grade forsterite dynamical master as a spherical
-intensity field. Render a small active x-axis rotation proof by resampling the
+Reuse retained proof- and high-resolution forsterite dynamical masters as
+spherical intensity fields. Render active x-axis rotations by resampling the
 field—not by rotating pixels—and preserve fixed display mapping and source
-provenance for visual review before any higher-resolution master run.
+provenance from the 24-frame review proof through a 144-frame final.
 
 ## Acceptance Criteria
 
@@ -29,4 +31,6 @@ provenance for visual review before any higher-resolution master run.
 - [x] A 24-frame, 512-pixel x-axis MP4/GIF and contact sheet retain the master identity, source checksums, rotation contract, and fixed grayscale mapping.
 - [x] The proof is labeled as proof-grade dynamical-master art, not a detector acquisition or a new final-quality master.
 - [x] Focused tests, lint, source-manifest validation, and tracker validation pass before visual review.
-- [ ] User visually reviews the retained proof and decides whether a new higher-resolution master is justified.
+- [x] User approved an existing fully converged 501-grid retained dynamical master for a final-resolution rotation rather than a new GPU master calculation.
+- [x] A 144-frame, 1024-pixel, 12-second x-axis MP4 plus 512-pixel GIF preview preserve the 501-grid master identity and decode after encoding.
+- [ ] User visually reviews the retained high-resolution loop.
