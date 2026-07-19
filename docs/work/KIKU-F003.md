@@ -2,7 +2,7 @@
 id: KIKU-F003
 type: feature
 title: Spherical intensity and MTEX density bridge
-status: ready
+status: active
 parent: KIKU-E001
 children:
   - KIKU-T019
@@ -11,6 +11,7 @@ children:
   - KIKU-T022
   - KIKU-T023
   - KIKU-T024
+  - KIKU-T038
 created: 2026-07-13
 priority: P1
 tags: [spherical-intensity, mtex, density, forsterite]
