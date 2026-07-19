@@ -24,6 +24,9 @@ _OUTER_DIAMETER_MM = 132.0
 _BOUNDARY_WIDTH_MM = 2.2
 _CROP_RADIUS = 0.90
 _NUMERIC_TOLERANCE = 1e-12
+_DEPTH_BACKGROUND = (16, 21, 25)
+_DEPTH_BAND_COLOR = (224, 231, 234)
+_DEPTH_RIM_COLOR = (210, 220, 226)
 
 
 @dataclass(frozen=True)
@@ -257,10 +260,109 @@ def render_direct_reflector_frame(
     return image
 
 
+def render_direct_reflector_depth_frame(
+    bands: Sequence[DirectReflectorBand],
+    base_orientation: Orientation,
+    spec: RotationAnimationSpec,
+    frame_index: int,
+) -> Image.Image:
+    """Render a dark additive-ribbon treatment of actively rotated reflectors.
+
+    This is a deliberately idealized presentation layer: each exact projected
+    reflector trace is composited as a translucent ribbon, so crossings become
+    brighter while all geometric positions and widths remain catalog-derived.
+    """
+    pixel_size = spec.frame_size_px * spec.supersampling
+    scale_px_per_mm = pixel_size / _ARTBOARD_MM
+    center_mm = _ARTBOARD_MM / 2.0
+    inner_radius_mm = _OUTER_DIAMETER_MM / 2.0 - _BOUNDARY_WIDTH_MM
+    center_px = center_mm * scale_px_per_mm
+    inner_radius_px = inner_radius_mm * scale_px_per_mm
+    rotation = axis_angle_matrix(spec.unit_axis_sample, spec.angle_deg(frame_index))
+    base_matrix = orientation_matrix(base_orientation)
+    width_min = min(band.width_mm for band in bands)
+    width_max = max(band.width_mm for band in bands)
+    width_span = max(width_max - width_min, 1e-12)
+
+    interior = Image.new("L", (pixel_size, pixel_size), 0)
+    ImageDraw.Draw(interior).ellipse(
+        (
+            center_px - inner_radius_px,
+            center_px - inner_radius_px,
+            center_px + inner_radius_px,
+            center_px + inner_radius_px,
+        ),
+        fill=255,
+    )
+    image = Image.new("RGBA", (pixel_size, pixel_size), (*_DEPTH_BACKGROUND, 255))
+    for band in sorted(bands, key=lambda item: (item.width_mm, item.member_id)):
+        normal_sample = rotation @ base_matrix @ np.asarray(band.normal_crystal)
+        trace = _projected_upper_trace(normal_sample, spec.great_circle_samples)
+        ribbon = Image.new("L", (pixel_size, pixel_size), 0)
+        draw_ribbon = ImageDraw.Draw(ribbon)
+        width_px = max(1, round(band.width_mm * scale_px_per_mm))
+        for fragment in _clip_trace(trace, _CROP_RADIUS):
+            points_mm = center_mm + (inner_radius_mm / _CROP_RADIUS) * fragment
+            points_px = [tuple((point * scale_px_per_mm).tolist()) for point in points_mm]
+            envelope_width = max(width_px, round(width_px * 1.35))
+            draw_ribbon.line(points_px, fill=255, width=envelope_width, joint="curve")
+            cap = envelope_width / 2.0
+            for point in (points_px[0], points_px[-1]):
+                draw_ribbon.ellipse(
+                    (point[0] - cap, point[1] - cap, point[0] + cap, point[1] + cap),
+                    fill=255,
+                )
+        normalized_width = (band.width_mm - width_min) / width_span
+        envelope_alpha = int(round(255.0 * (0.025 + 0.055 * normalized_width)))
+        envelope = ImageChops.multiply(ribbon, interior).point(
+            lambda value: value * envelope_alpha // 255
+        )
+        colored_envelope = Image.new("RGBA", (pixel_size, pixel_size), _DEPTH_BAND_COLOR)
+        colored_envelope.putalpha(envelope)
+        image.alpha_composite(colored_envelope)
+
+        core = Image.new("L", (pixel_size, pixel_size), 0)
+        draw_core = ImageDraw.Draw(core)
+        for fragment in _clip_trace(trace, _CROP_RADIUS):
+            points_mm = center_mm + (inner_radius_mm / _CROP_RADIUS) * fragment
+            points_px = [tuple((point * scale_px_per_mm).tolist()) for point in points_mm]
+            draw_core.line(points_px, fill=255, width=width_px, joint="curve")
+            cap = width_px / 2.0
+            for point in (points_px[0], points_px[-1]):
+                draw_core.ellipse(
+                    (point[0] - cap, point[1] - cap, point[0] + cap, point[1] + cap),
+                    fill=255,
+                )
+        core_alpha = int(round(255.0 * (0.10 + 0.34 * normalized_width**0.75)))
+        core_mask = ImageChops.multiply(core, interior).point(
+            lambda value: value * core_alpha // 255
+        )
+        colored_core = Image.new("RGBA", (pixel_size, pixel_size), _DEPTH_BAND_COLOR)
+        colored_core.putalpha(core_mask)
+        image.alpha_composite(colored_core)
+
+    outer_radius_px = (_OUTER_DIAMETER_MM / 2.0) * scale_px_per_mm
+    ImageDraw.Draw(image).ellipse(
+        (
+            center_px - outer_radius_px,
+            center_px - outer_radius_px,
+            center_px + outer_radius_px,
+            center_px + outer_radius_px,
+        ),
+        outline=(*_DEPTH_RIM_COLOR, 255),
+        width=max(1, round(_BOUNDARY_WIDTH_MM * scale_px_per_mm / 2.0)),
+    )
+    result = image.convert("RGB")
+    if spec.supersampling > 1:
+        result = result.resize((spec.frame_size_px, spec.frame_size_px), Image.Resampling.LANCZOS)
+    return result
+
+
 __all__ = [
     "DirectReflectorBand",
     "RotationAnimationSpec",
     "axis_angle_matrix",
+    "render_direct_reflector_depth_frame",
     "render_direct_reflector_frame",
     "selected_bands_from_snapshots",
 ]

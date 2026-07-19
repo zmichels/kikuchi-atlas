@@ -6,6 +6,7 @@ from kikuchi_lab.art_products.rotation_animation import (
     DirectReflectorBand,
     RotationAnimationSpec,
     axis_angle_matrix,
+    render_direct_reflector_depth_frame,
     render_direct_reflector_frame,
 )
 from kikuchi_lab.model.recipes import Orientation
@@ -26,3 +27,22 @@ def test_rotation_frame_is_square_rgb_and_seam_angles_match() -> None:
     assert first.mode == "RGB"
     assert first.size == (128, 128)
     np.testing.assert_array_equal(np.asarray(first), np.asarray(closure))
+
+
+def test_depth_frame_is_dark_and_uses_the_same_rotation_seam() -> None:
+    bands = (
+        DirectReflectorBand("narrow", (1.0, 0.0, 0.0), 1.0),
+        DirectReflectorBand("wide", (0.0, 1.0, 0.0), 4.0),
+    )
+    spec = RotationAnimationSpec((2.0, 1.0, 1.0), frame_count=24, frame_size_px=128)
+    first = render_direct_reflector_depth_frame(
+        bands, Orientation((17.0, 31.0, 43.0)), spec, 0
+    )
+    closure = render_direct_reflector_depth_frame(
+        bands, Orientation((17.0, 31.0, 43.0)), spec, spec.frame_count
+    )
+    pixels = np.asarray(first)
+    assert first.mode == "RGB"
+    assert tuple(pixels[0, 0]) == (16, 21, 25)
+    assert int(pixels.max()) > 100
+    np.testing.assert_array_equal(pixels, np.asarray(closure))
