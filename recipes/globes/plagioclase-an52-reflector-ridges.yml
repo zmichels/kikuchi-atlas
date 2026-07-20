@@ -8,7 +8,7 @@ geometry:
 selection:
   source_structure_id: COD-8103560
   energy_kev: 20.0
-  eligibility_min_weight: 0.03
+  eligibility_min_weight: 0.10
   tie_policy: keep_equal_weights_together
   cohort_count: 4
 tiers:

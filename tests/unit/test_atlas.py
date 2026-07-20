@@ -47,6 +47,14 @@ def test_product_registry_models_individual_products_and_common_core_families() 
     assert all("tattoo" not in product.identifier.lower() for product in products)
     assert all("tattoo" not in product.title.lower() for product in products)
     assert all("tattoo" not in family_id for product in products for family_id in product.family_ids)
+    direct_reflector_products = [
+        product
+        for product in products
+        if "direct-reflector-template" in product.family_ids
+        and "orientation-variation" in product.family_ids
+    ]
+    assert all(product.preview_path is not None for product in direct_reflector_products)
+    assert all(product.preview_path.suffix == ".png" for product in direct_reflector_products)
     assert {
         product.identifier for product in products if product.hero
     } == {

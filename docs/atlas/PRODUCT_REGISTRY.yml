@@ -372,6 +372,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/diamond-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/diamond-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8
     provenance_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/manifest.json
     recipe: recipes/reflectors/diamond-art-bands.yml
@@ -387,6 +388,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-39a97f264166fc57/diamond-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-39a97f264166fc57/diamond-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-39a97f264166fc57
     provenance_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-39a97f264166fc57/manifest.json
     recipe: recipes/reflectors/diamond-art-bands.yml
@@ -402,6 +404,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c/diamond-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c/diamond-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c
     provenance_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c/manifest.json
     recipe: recipes/reflectors/diamond-art-bands.yml
@@ -417,6 +420,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-f409677400a5071d/diamond-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-f409677400a5071d/diamond-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-f409677400a5071d
     provenance_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-f409677400a5071d/manifest.json
     recipe: recipes/reflectors/diamond-art-bands.yml
@@ -433,6 +437,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/plagioclase-an52-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/plagioclase-an52-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1
     provenance_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/manifest.json
     recipe: recipes/reflectors/plagioclase-an52-art-bands.yml
@@ -448,6 +453,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-e793c6fa4b7ee342/plagioclase-an52-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-e793c6fa4b7ee342/plagioclase-an52-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-e793c6fa4b7ee342
     provenance_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-e793c6fa4b7ee342/manifest.json
     recipe: recipes/reflectors/plagioclase-an52-art-bands.yml
@@ -463,6 +469,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-0ce8ace920d36e2e/plagioclase-an52-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-0ce8ace920d36e2e/plagioclase-an52-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-0ce8ace920d36e2e
     provenance_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-0ce8ace920d36e2e/manifest.json
     recipe: recipes/reflectors/plagioclase-an52-art-bands.yml
@@ -478,6 +485,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-a46c8a515aec3b36/plagioclase-an52-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-a46c8a515aec3b36/plagioclase-an52-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-a46c8a515aec3b36
     provenance_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-a46c8a515aec3b36/manifest.json
     recipe: recipes/reflectors/plagioclase-an52-art-bands.yml
@@ -493,6 +501,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-7e2c8f3668dda50f/muscovite-2m1-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-7e2c8f3668dda50f/muscovite-2m1-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-7e2c8f3668dda50f
     provenance_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-7e2c8f3668dda50f/manifest.json
     recipe: recipes/reflectors/muscovite-2m1-art-bands.yml
@@ -508,6 +517,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-a05d8fc7a22afc92/muscovite-2m1-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-a05d8fc7a22afc92/muscovite-2m1-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-a05d8fc7a22afc92
     provenance_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-a05d8fc7a22afc92/manifest.json
     recipe: recipes/reflectors/muscovite-2m1-art-bands.yml
@@ -523,6 +533,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-b3032e6d2fdac309/muscovite-2m1-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-b3032e6d2fdac309/muscovite-2m1-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-b3032e6d2fdac309
     provenance_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-b3032e6d2fdac309/manifest.json
     recipe: recipes/reflectors/muscovite-2m1-art-bands.yml
@@ -538,6 +549,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/muscovite-2m1-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/muscovite-2m1-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e
     provenance_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/manifest.json
     recipe: recipes/reflectors/muscovite-2m1-art-bands.yml
@@ -553,6 +565,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/diopside-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/diopside-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef
     provenance_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/manifest.json
     recipe: recipes/reflectors/diopside-art-bands.yml
@@ -568,6 +581,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-1fb6ac8481d07e39/diopside-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-1fb6ac8481d07e39/diopside-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-1fb6ac8481d07e39
     provenance_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-1fb6ac8481d07e39/manifest.json
     recipe: recipes/reflectors/diopside-art-bands.yml
@@ -583,6 +597,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-bcc6c9458d731924/diopside-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-bcc6c9458d731924/diopside-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-bcc6c9458d731924
     provenance_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-bcc6c9458d731924/manifest.json
     recipe: recipes/reflectors/diopside-art-bands.yml
@@ -598,6 +613,7 @@ products:
     families: [direct-reflector-template, orientation-variation]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-b276f7d1dadd63b7/diopside-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-b276f7d1dadd63b7/diopside-hemisphere-standard-stencil.png
     bundle_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-b276f7d1dadd63b7
     provenance_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-b276f7d1dadd63b7/manifest.json
     recipe: recipes/reflectors/diopside-art-bands.yml
@@ -940,10 +956,10 @@ products:
     phase_slugs: [plagioclase-an52]
     families: [reflector-ridge-globe]
     format: stl
-    media_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-7178b0cc383d65e2/8103560-reflector-ridges.stl
-    preview_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-7178b0cc383d65e2/8103560-reflector-ridges-preview.png
-    bundle_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-7178b0cc383d65e2
-    provenance_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-7178b0cc383d65e2/reflector-globe-manifest.json
+    media_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-26dd21025f5d067c/8103560-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-26dd21025f5d067c/8103560-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-26dd21025f5d067c
+    provenance_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-26dd21025f5d067c/reflector-globe-manifest.json
     recipe: recipes/globes/plagioclase-an52-reflector-ridges.yml
     entrypoint: kikuchi-lab reflector-globe build
     tier: printable-geometry
@@ -956,10 +972,10 @@ products:
     phase_slugs: [muscovite-2m1]
     families: [reflector-ridge-globe]
     format: stl
-    media_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-60d1d4e8b5e28147/9014960-reflector-ridges.stl
-    preview_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-60d1d4e8b5e28147/9014960-reflector-ridges-preview.png
-    bundle_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-60d1d4e8b5e28147
-    provenance_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-60d1d4e8b5e28147/reflector-globe-manifest.json
+    media_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-da82fd2df2bf898a/9014960-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-da82fd2df2bf898a/9014960-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-da82fd2df2bf898a
+    provenance_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-da82fd2df2bf898a/reflector-globe-manifest.json
     recipe: recipes/globes/muscovite-2m1-reflector-ridges.yml
     entrypoint: kikuchi-lab reflector-globe build
     tier: printable-geometry
@@ -972,10 +988,10 @@ products:
     phase_slugs: [diopside]
     families: [reflector-ridge-globe]
     format: stl
-    media_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-b28ffed562420f30/1000007-reflector-ridges.stl
-    preview_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-b28ffed562420f30/1000007-reflector-ridges-preview.png
-    bundle_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-b28ffed562420f30
-    provenance_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-b28ffed562420f30/reflector-globe-manifest.json
+    media_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-52b1e27bc0e3c048/1000007-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-52b1e27bc0e3c048/1000007-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-52b1e27bc0e3c048
+    provenance_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-52b1e27bc0e3c048/reflector-globe-manifest.json
     recipe: recipes/globes/diopside-reflector-ridges.yml
     entrypoint: kikuchi-lab reflector-globe build
     tier: printable-geometry
