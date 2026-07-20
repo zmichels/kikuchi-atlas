@@ -384,7 +384,7 @@ def _page_shell(title: str, body: str) -> str:
 :root {{ color-scheme: dark; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; background: #0d1217; color: #edf2f6; }}
 body {{ max-width: 1280px; margin: 0 auto; padding: 2.2rem 1.5rem 4rem; background: radial-gradient(circle at 20% -10%, #243749, #0d1217 48rem); }} a {{ color: #a9d7ff; }}
 nav {{ display: flex; flex-wrap: wrap; gap: .7rem 1.2rem; margin-bottom: 2rem; font-size: .93rem; }} h1 {{ font-size: clamp(2rem, 4vw, 3.4rem); margin: 0 0 .35rem; letter-spacing: -.045em; }} h2 {{ margin-top: 2.4rem; }} h3 {{ margin: .1rem 0 .5rem; font-size: 1.08rem; }}
-.lede {{ max-width: 70rem; color: #c2ccd4; font-size: 1.08rem; line-height: 1.55; }} .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1.05rem; }} .visual-highlights {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.05rem; }} .product-matrix {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.05rem; }}
+.lede {{ max-width: 70rem; color: #c2ccd4; font-size: 1.08rem; line-height: 1.55; }} .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1.05rem; }} .visual-highlights {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.05rem; }} .product-matrix {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.05rem; }}
 .card {{ overflow: hidden; border: 1px solid #2e3d48; border-radius: 16px; background: rgba(17,25,32,.88); box-shadow: 0 18px 40px rgba(0,0,0,.18); }} .card img, .card video, .placeholder {{ display: block; aspect-ratio: 1/.72; width: 100%; object-fit: cover; background: linear-gradient(135deg,#26343f,#111a20); }}
 .placeholder {{ display: grid; place-items: center; color: #8798a5; font-size: .86rem; letter-spacing: .04em; text-transform: uppercase; }} .pad {{ padding: 1rem 1.05rem 1.1rem; }} .highlight-card .pad {{ min-height: 7.4rem; }} .highlight-card a.visual-link {{ display: block; color: inherit; }} .kicker {{ margin: 0 0 .45rem; color: #8fa7b8; font-size: .75rem; letter-spacing: .09em; text-transform: uppercase; }}
 .matrix-group + .matrix-group, .product-group + .product-group {{ margin-top: 2.5rem; padding-top: 2.1rem; border-top: 1px solid #3b4d5a; }} .matrix-group-heading, .product-group-heading {{ margin: 1.5rem 0 .95rem; }} .matrix-group-heading h3, .product-group-heading h3 {{ margin: 0; font-size: 1.4rem; }} .matrix-group-heading p:last-child, .product-group-heading p:last-child {{ max-width: 58rem; margin: .4rem 0 0; color: #b9c4cb; line-height: 1.45; }} .matrix-card {{ display: flex; flex-direction: column; min-height: 19rem; }} .matrix-card[data-state="planned"] {{ border-style: dashed; border-color: #6c6250; }} .matrix-thumbnails {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; background: #27343d; }} .matrix-thumbnails.single {{ grid-template-columns: 1fr; }} .matrix-thumb {{ display: block; overflow: hidden; background: #101a21; }} .matrix-thumb img {{ display: block; width: 100%; aspect-ratio: 1; object-fit: cover; transition: transform .2s ease; }} .matrix-thumb:hover img {{ transform: scale(1.035); }} .matrix-empty {{ display: grid; place-items: center; min-height: 9rem; padding: 1rem; color: #a9a18f; text-align: center; font-size: .88rem; line-height: 1.45; background: linear-gradient(135deg, #25251f, #161a1b); }} .matrix-body {{ display: flex; flex: 1; flex-direction: column; padding: .9rem 1rem 1rem; }} .matrix-body h3 {{ margin: 0; }} .matrix-count {{ margin: auto 0 0; color: #95a7b4; font-size: .86rem; line-height: 1.45; }}
@@ -392,7 +392,7 @@ nav {{ display: flex; flex-wrap: wrap; gap: .7rem 1.2rem; margin-bottom: 2rem; f
 .candidate {{ border-color: #755f3d; }} .candidate .badge {{ border-color: #977a46; color: #f0d290; }} .product {{ padding: 1rem 1.05rem 1.1rem; }} .product strong {{ display: block; }} .product small {{ color: #95a7b4; }} .callout {{ margin-top: 2rem; padding: 1rem 1.1rem; border-left: 3px solid #6fa7d1; background: rgba(31,51,67,.5); line-height: 1.5; }} code {{ color: #d8e6ef; }}
 .actions {{ display: flex; flex-wrap: wrap; gap: .65rem; margin-top: .85rem; }} .actions a {{ padding: .35rem .58rem; border: 1px solid #405b6d; border-radius: .45rem; text-decoration: none; }} .matrix {{ width: 100%; border-collapse: collapse; margin-top: 1rem; }} .matrix th, .matrix td {{ border-bottom: 1px solid #2e3d48; padding: .7rem; text-align: left; vertical-align: top; }} .matrix th {{ color: #b9c4cb; font-size: .79rem; text-transform: uppercase; letter-spacing: .06em; }} .matrix-section th {{ padding-top: 1.5rem; color: #a9d7ff; border-bottom-color: #4a6477; }}
 .coverage {{ color: #b9c4cb; }} .status-live {{ color: #b9e5ca; }} .status-plan {{ color: #e5c98a; }} .filters {{ display: grid; grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(160px, 1fr)); gap: .75rem; margin: 1.5rem 0; }} .filters input, .filters select {{ padding: .62rem .7rem; border: 1px solid #465b6b; border-radius: .45rem; background: #101a21; color: #edf2f6; font: inherit; }} .hidden {{ display: none; }} .muted {{ color: #95a7b4; }}
-@media (max-width: 620px) {{ body {{ padding: 1.5rem 1rem 3rem; }} .filters {{ grid-template-columns: 1fr; }} .matrix {{ font-size: .9rem; }} }}
+@media (max-width: 900px) {{ .product-matrix {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} }} @media (max-width: 620px) {{ body {{ padding: 1.5rem 1rem 3rem; }} .filters, .product-matrix {{ grid-template-columns: 1fr; }} .matrix {{ font-size: .9rem; }} }}
 </style></head><body>{body}</body></html>"""
 
 
@@ -505,7 +505,73 @@ def _visual_product_matrix_html(
 ) -> str:
     """Show one visual, status-honest cell for each registered product family."""
     tiles_by_coverage: dict[str, list[str]] = {coverage: [] for coverage in _COVERAGE_PRESENTATION}
+    direct_family = next(
+        (family for family in families if family.identifier == "direct-reflector-template"), None
+    )
+    orientation_family = next(
+        (family for family in families if family.identifier == "orientation-variation"), None
+    )
+    if direct_family is not None and orientation_family is not None:
+        direct_members = tuple(
+            product
+            for product in products
+            if phase.slug in product.phase_slugs and direct_family.identifier in product.family_ids
+        )
+        orientation_members = tuple(
+            product
+            for product in products
+            if phase.slug in product.phase_slugs and orientation_family.identifier in product.family_ids
+        )
+        combined_by_id = {
+            product.identifier: product for product in (*direct_members, *orientation_members)
+        }
+        combined_available = tuple(
+            product for product in combined_by_id.values() if product.is_available()
+        )
+        if combined_available:
+            representatives = tuple(
+                sorted(combined_available, key=lambda product: (not product.hero, product.identifier))[:4]
+            )
+            thumbnails = "".join(_matrix_thumbnail_html(product, page) for product in representatives)
+            visual = f'<div class="matrix-thumbnails">{thumbnails}</div>'
+            state = "available"
+            remaining_note = (
+                " The remaining direct-template variation is available in the library below."
+                if len(combined_available) > len(representatives)
+                else ""
+            )
+            count = (
+                f'<span class="status-live">{sum(product.is_available() for product in direct_members)}/{len(direct_members)} '
+                f'direct templates · {sum(product.is_available() for product in orientation_members)}/{len(orientation_members)} '
+                f'orientation variants available</span><br>{len(representatives)} canonical orientations shown.'
+                f'{remaining_note}'
+            )
+        else:
+            state = "planned"
+            blocked = phase.source_status == "candidate-reference"
+            visual = (
+                '<div class="matrix-empty">Source promotion required</div>'
+                if blocked
+                else '<div class="matrix-empty">Planned for this phase</div>'
+            )
+            count = (
+                '<span class="status-plan">blocked by source promotion</span>'
+                if blocked
+                else '<span class="status-plan">planned for this phase</span>'
+            )
+            representatives = ()
+        tiles_by_coverage[direct_family.coverage].append(
+            '<article class="card matrix-card" data-family="direct-reflector-orientation-set" '
+            'data-families="direct-reflector-template orientation-variation" '
+            f'data-state="{state}" data-thumbnail-count="{len(representatives)}">{visual}'
+            '<div class="matrix-body"><p class="kicker">core product set</p>'
+            '<h3>Direct-reflector orientation set</h3>'
+            '<p class="meta">Standard direct-reflector view plus deliberate crystal-to-sample orientations.</p>'
+            f'<p class="matrix-count">{count}</p></div></article>'
+        )
     for family in families:
+        if family.identifier in {"direct-reflector-template", "orientation-variation"}:
+            continue
         members = tuple(
             product
             for product in products

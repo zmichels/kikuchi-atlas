@@ -99,18 +99,19 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert forsterite.count('class="card product-card"') == 10
     assert "Visual product matrix" in forsterite
     assert "Coverage table" in forsterite
-    assert forsterite.count('class="card matrix-card"') == 7
+    assert forsterite.count('class="card matrix-card"') == 6
     assert forsterite.count('class="matrix-thumb"') >= 7
     assert forsterite.count('class="matrix-group"') == 2
     assert 'class="matrix-group" data-coverage="core"' in forsterite
     assert 'class="matrix-group" data-coverage="extension"' in forsterite
+    assert 'data-family="direct-reflector-orientation-set"' in forsterite
+    assert 'data-thumbnail-count="4"' in forsterite
     assert 'class="product-group" data-coverage="core"' in forsterite
     assert 'class="product-group" data-coverage="extension"' in forsterite
     assert '<div class="grid"><section class="product-group"' not in forsterite
     assert 'class="matrix-section" data-coverage="core"' in forsterite
     assert 'class="matrix-section" data-coverage="extension"' in forsterite
-    assert 'data-family="direct-reflector-template"' in forsterite
-    assert 'data-family="orientation-variation"' in forsterite
+    assert forsterite.count('data-family="orientation-variation"') == 0
     for source_backed_phase in (
         "forsterite",
         "ice-ih",
@@ -127,7 +128,7 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert "COD 1000007, diopside at 1 atm" in diopside
     assert "blocked by source promotion" in diopside
     assert "Visual product matrix" in diopside
-    assert diopside.count('class="card matrix-card"') == 7
+    assert diopside.count('class="card matrix-card"') == 6
     assert diopside.count('class="matrix-group"') == 2
     assert 'data-state="planned"' in diopside
     assert "No individual product published yet" in diopside

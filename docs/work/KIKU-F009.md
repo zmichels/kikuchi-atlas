@@ -11,6 +11,7 @@ children:
   - KIKU-T044
   - KIKU-T045
   - KIKU-T046
+  - KIKU-T047
 created: 2026-07-20
 priority: P1
 tags: [atlas, phase-catalog, provenance, local-publication]
