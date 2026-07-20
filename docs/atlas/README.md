@@ -13,13 +13,17 @@ uv run python scripts/build_atlas.py
 open docs/atlas/site/index.html
 ```
 
-The generated site has two entry points:
+The generated site has three complementary routes:
 
-- `index.html` is phase-first. Each phase divides its visual product-family
-  matrix, coverage table, and individual-product library into core and
-  extension products before presenting the individual artifacts.
-- `products.html` is product-first. It filters the curated release set by phase,
-  product family, medium, and free text.
+- `index.html` is the intentional front door. It pairs a compact, no-thumbnail
+  phase directory with a visual matrix of product types. The directory leads to
+  phase-organized product matrices; each type card leads to a curated
+  cross-phase page.
+- `phases/<slug>.html` presents one material's products as a matrix of product
+  types, with core and extension products deliberately separated.
+- `product-types/<type>.html` presents a curated set of the available phases
+  for one product type. `products.html` remains the complete filterable
+  individual-product library by phase, family, medium, and free text.
 
 Every card opens its actual SVG, PNG, MP4, or STL first. Its local bundle and
 provenance record are secondary links for reproduction and audit. A missing

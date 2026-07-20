@@ -114,6 +114,18 @@ class ProductFamily:
 
 
 @dataclass(frozen=True)
+class ProductType:
+    """One curated browse route that can combine closely related product families."""
+
+    identifier: str
+    label: str
+    coverage: str
+    description: str
+    claim_boundary: str
+    family_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class AtlasProduct:
     """One individually browsable local product with many-to-many phase/type tags."""
 
@@ -145,6 +157,7 @@ class AtlasBuildResult:
     index_path: Path
     products_path: Path
     phase_pages: tuple[Path, ...]
+    product_type_pages: tuple[Path, ...]
     phase_count: int
     product_count: int
 
@@ -350,6 +363,42 @@ def load_product_registry(
     return families, products
 
 
+def _product_types(families: tuple[ProductFamily, ...]) -> tuple[ProductType, ...]:
+    """Return the deliberate top-level browse routes for the static Atlas."""
+    family_by_id = {family.identifier: family for family in families}
+    direct = family_by_id["direct-reflector-template"]
+    orientation = family_by_id["orientation-variation"]
+    types = [
+        ProductType(
+            identifier="direct-reflector-orientation-set",
+            label="Direct-reflector orientation set",
+            coverage="core",
+            description=(
+                "Crisp direct-reflector hemisphere templates with their deliberate "
+                "crystal-to-sample orientation variants."
+            ),
+            claim_boundary=(
+                "An idealized direct-reflector presentation, not a detector-calibrated "
+                "Kikuchi pattern."
+            ),
+            family_ids=(direct.identifier, orientation.identifier),
+        )
+    ]
+    types.extend(
+        ProductType(
+            identifier=family.identifier,
+            label=family.label,
+            coverage=family.coverage,
+            description=family.description,
+            claim_boundary=family.claim_boundary,
+            family_ids=(family.identifier,),
+        )
+        for family in families
+        if family.identifier not in {direct.identifier, orientation.identifier}
+    )
+    return tuple(types)
+
+
 def _validate_anchor_catalog(path: Path, phase_slugs: set[str]) -> None:
     """Keep the older publication-anchor catalog tied to the same phase universe."""
     try:
@@ -384,7 +433,7 @@ def _page_shell(title: str, body: str) -> str:
 :root {{ color-scheme: dark; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; background: #0d1217; color: #edf2f6; }}
 body {{ max-width: 1280px; margin: 0 auto; padding: 2.2rem 1.5rem 4rem; background: radial-gradient(circle at 20% -10%, #243749, #0d1217 48rem); }} a {{ color: #a9d7ff; }}
 nav {{ display: flex; flex-wrap: wrap; gap: .7rem 1.2rem; margin-bottom: 2rem; font-size: .93rem; }} h1 {{ font-size: clamp(2rem, 4vw, 3.4rem); margin: 0 0 .35rem; letter-spacing: -.045em; }} h2 {{ margin-top: 2.4rem; }} h3 {{ margin: .1rem 0 .5rem; font-size: 1.08rem; }}
-.lede {{ max-width: 70rem; color: #c2ccd4; font-size: 1.08rem; line-height: 1.55; }} .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1.05rem; }} .visual-highlights {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.05rem; }} .product-matrix {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.05rem; }}
+.lede {{ max-width: 70rem; color: #c2ccd4; font-size: 1.08rem; line-height: 1.55; }} .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1.05rem; }} .visual-highlights {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.05rem; }} .product-matrix {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.05rem; }} .atlas-entry-grid {{ display: grid; grid-template-columns: minmax(300px, .9fr) minmax(0, 1.45fr); gap: 2.5rem; align-items: start; margin-top: 2.1rem; }} .entry-section + .entry-section {{ border-top: 1px solid #3b4d5a; padding-top: 2.1rem; margin-top: 2.1rem; }} .atlas-entry-grid .entry-section + .entry-section {{ border-top: 0; padding-top: 0; margin-top: 0; }} .phase-directory {{ list-style: none; padding: 0; margin: 1.1rem 0 0; border-top: 1px solid #31414d; }} .phase-directory li {{ border-bottom: 1px solid #31414d; }} .phase-directory a {{ display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem 1rem; padding: .78rem .12rem; color: inherit; text-decoration: none; }} .phase-directory a:hover {{ color: #d7ecff; background: rgba(79,119,151,.12); }} .phase-directory strong {{ font-size: 1rem; }} .phase-directory .phase-detail {{ color: #aab9c3; font-size: .84rem; text-align: right; }} .product-type-matrix {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.05rem; }} .product-type-card {{ display: flex; flex-direction: column; min-height: 18rem; }} .product-type-card h3 a {{ color: inherit; text-decoration: none; }} .product-type-card h3 a:hover {{ color: #a9d7ff; }} .type-card-link {{ display: block; overflow: hidden; background: #101a21; }} .type-card-link img {{ display: block; width: 100%; aspect-ratio: 1.45; object-fit: cover; transition: transform .2s ease; }} .type-card-link:hover img {{ transform: scale(1.03); }} .type-phase-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.05rem; }} .type-phase-card {{ display: flex; flex-direction: column; min-height: 16rem; }} .type-phase-card .matrix-thumbnails {{ margin-top: 0; }}
 .card {{ overflow: hidden; border: 1px solid #2e3d48; border-radius: 16px; background: rgba(17,25,32,.88); box-shadow: 0 18px 40px rgba(0,0,0,.18); }} .card img, .card video, .placeholder {{ display: block; aspect-ratio: 1/.72; width: 100%; object-fit: cover; background: linear-gradient(135deg,#26343f,#111a20); }}
 .placeholder {{ display: grid; place-items: center; color: #8798a5; font-size: .86rem; letter-spacing: .04em; text-transform: uppercase; }} .pad {{ padding: 1rem 1.05rem 1.1rem; }} .highlight-card .pad {{ min-height: 7.4rem; }} .highlight-card a.visual-link {{ display: block; color: inherit; }} .kicker {{ margin: 0 0 .45rem; color: #8fa7b8; font-size: .75rem; letter-spacing: .09em; text-transform: uppercase; }}
 .matrix-group + .matrix-group, .product-group + .product-group {{ margin-top: 2.5rem; padding-top: 2.1rem; border-top: 1px solid #3b4d5a; }} .matrix-group-heading, .product-group-heading {{ margin: 1.5rem 0 .95rem; }} .matrix-group-heading h3, .product-group-heading h3 {{ margin: 0; font-size: 1.4rem; }} .matrix-group-heading p:last-child, .product-group-heading p:last-child {{ max-width: 58rem; margin: .4rem 0 0; color: #b9c4cb; line-height: 1.45; }} .matrix-card {{ display: flex; flex-direction: column; min-height: 19rem; }} .matrix-card[data-state="planned"] {{ border-style: dashed; border-color: #6c6250; }} .matrix-thumbnails {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; background: #27343d; }} .matrix-thumbnails.single {{ grid-template-columns: 1fr; }} .matrix-thumb {{ display: block; overflow: hidden; background: #101a21; }} .matrix-thumb img {{ display: block; width: 100%; aspect-ratio: 1; object-fit: cover; transition: transform .2s ease; }} .matrix-thumb:hover img {{ transform: scale(1.035); }} .matrix-empty {{ display: grid; place-items: center; min-height: 9rem; padding: 1rem; color: #a9a18f; text-align: center; font-size: .88rem; line-height: 1.45; background: linear-gradient(135deg, #25251f, #161a1b); }} .matrix-body {{ display: flex; flex: 1; flex-direction: column; padding: .9rem 1rem 1rem; }} .matrix-body h3 {{ margin: 0; }} .matrix-count {{ margin: auto 0 0; color: #95a7b4; font-size: .86rem; line-height: 1.45; }}
@@ -392,7 +441,7 @@ nav {{ display: flex; flex-wrap: wrap; gap: .7rem 1.2rem; margin-bottom: 2rem; f
 .candidate {{ border-color: #755f3d; }} .candidate .badge {{ border-color: #977a46; color: #f0d290; }} .product {{ padding: 1rem 1.05rem 1.1rem; }} .product strong {{ display: block; }} .product small {{ color: #95a7b4; }} .callout {{ margin-top: 2rem; padding: 1rem 1.1rem; border-left: 3px solid #6fa7d1; background: rgba(31,51,67,.5); line-height: 1.5; }} code {{ color: #d8e6ef; }}
 .actions {{ display: flex; flex-wrap: wrap; gap: .65rem; margin-top: .85rem; }} .actions a {{ padding: .35rem .58rem; border: 1px solid #405b6d; border-radius: .45rem; text-decoration: none; }} .matrix {{ width: 100%; border-collapse: collapse; margin-top: 1rem; }} .matrix th, .matrix td {{ border-bottom: 1px solid #2e3d48; padding: .7rem; text-align: left; vertical-align: top; }} .matrix th {{ color: #b9c4cb; font-size: .79rem; text-transform: uppercase; letter-spacing: .06em; }} .matrix-section th {{ padding-top: 1.5rem; color: #a9d7ff; border-bottom-color: #4a6477; }}
 .coverage {{ color: #b9c4cb; }} .status-live {{ color: #b9e5ca; }} .status-plan {{ color: #e5c98a; }} .filters {{ display: grid; grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(160px, 1fr)); gap: .75rem; margin: 1.5rem 0; }} .filters input, .filters select {{ padding: .62rem .7rem; border: 1px solid #465b6b; border-radius: .45rem; background: #101a21; color: #edf2f6; font: inherit; }} .hidden {{ display: none; }} .muted {{ color: #95a7b4; }}
-@media (max-width: 900px) {{ .product-matrix {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} }} @media (max-width: 620px) {{ body {{ padding: 1.5rem 1rem 3rem; }} .filters, .product-matrix {{ grid-template-columns: 1fr; }} .matrix {{ font-size: .9rem; }} }}
+@media (max-width: 900px) {{ .atlas-entry-grid {{ grid-template-columns: 1fr; }} .atlas-entry-grid .entry-section + .entry-section {{ border-top: 1px solid #3b4d5a; padding-top: 2.1rem; margin-top: 2.1rem; }} .product-matrix {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} }} @media (max-width: 620px) {{ body {{ padding: 1.5rem 1rem 3rem; }} .filters, .product-matrix, .product-type-matrix {{ grid-template-columns: 1fr; }} .phase-directory a {{ grid-template-columns: 1fr; }} .phase-directory .phase-detail {{ text-align: left; }} .matrix {{ font-size: .9rem; }} }}
 </style></head><body>{body}</body></html>"""
 
 
@@ -401,8 +450,14 @@ def _navigation(page: Path, output_root: Path) -> str:
     products = output_root / "products.html"
     return (
         f'<nav><a href="{escape(_relative_href(page, index))}">Kikuchi Atlas</a>'
+        f'<a href="{escape(_relative_href(page, index))}#phases">Browse phases</a>'
+        f'<a href="{escape(_relative_href(page, index))}#product-types">Browse product types</a>'
         f'<a href="{escape(_relative_href(page, products))}">Browse all products</a></nav>'
     )
+
+
+def _product_type_href(page: Path, output_root: Path, product_type: ProductType) -> str:
+    return _relative_href(page, output_root / "product-types" / f"{product_type.identifier}.html")
 
 
 def _product_visual(product: AtlasProduct, page: Path) -> str:
@@ -497,11 +552,151 @@ def _matrix_thumbnail_html(product: AtlasProduct, page: Path) -> str:
     )
 
 
+def _type_products(
+    product_type: ProductType, products: tuple[AtlasProduct, ...]
+) -> tuple[AtlasProduct, ...]:
+    return tuple(
+        product for product in products if set(product.family_ids) & set(product_type.family_ids)
+    )
+
+
+def _type_representatives(
+    product_type: ProductType,
+    products: tuple[AtlasProduct, ...],
+    phases: tuple[AtlasPhase, ...],
+) -> tuple[AtlasProduct, ...]:
+    """Choose a phase-diverse visual sample for a top-level product-type tile."""
+    members = _type_products(product_type, products)
+    representatives: list[AtlasProduct] = []
+    for phase in phases:
+        candidates = sorted(
+            (
+                product
+                for product in members
+                if phase.slug in product.phase_slugs and product.is_available()
+            ),
+            key=lambda product: (not product.hero, product.identifier),
+        )
+        if candidates:
+            representatives.append(candidates[0])
+        if len(representatives) == 4:
+            break
+    return tuple(representatives)
+
+
+def _product_type_card_html(
+    product_type: ProductType,
+    *,
+    products: tuple[AtlasProduct, ...],
+    phases: tuple[AtlasPhase, ...],
+    page: Path,
+    output_root: Path,
+) -> str:
+    members = _type_products(product_type, products)
+    available = tuple(product for product in members if product.is_available())
+    representatives = _type_representatives(product_type, products, phases)
+    target = _product_type_href(page, output_root, product_type)
+    thumbnails = "".join(
+        f'<span class="matrix-thumb">{_highlight_visual(product, page)}</span>'
+        for product in representatives
+    )
+    visual = (
+        f'<div class="matrix-thumbnails {"single" if len(representatives) == 1 else ""}">{thumbnails}</div>'
+        if representatives
+        else '<div class="matrix-empty">No local example yet</div>'
+    )
+    phase_count = sum(
+        any(phase.slug in product.phase_slugs and product.is_available() for product in members)
+        for phase in phases
+    )
+    return (
+        f'<article class="card product-type-card" data-product-type="{escape(product_type.identifier)}">'
+        f'<a class="type-card-link" href="{escape(target)}">{visual}</a><div class="matrix-body">'
+        f'<p class="kicker">{escape(product_type.coverage)} product type</p>'
+        f'<h3><a href="{escape(target)}">{escape(product_type.label)}</a></h3>'
+        f'<p class="meta">{escape(product_type.description)}</p>'
+        f'<p class="matrix-count"><span class="status-live">{phase_count}/{len(phases)} phases · '
+        f'{len(available)} individual products</span><br>Browse phases by this product type.</p></div></article>'
+    )
+
+
+def _phase_directory_html(
+    phases: tuple[AtlasPhase, ...], *, page: Path, output_root: Path
+) -> str:
+    rows = "".join(
+        f'<li><a href="{escape(_relative_href(page, output_root / "phases" / f"{phase.slug}.html"))}">'
+        f'<strong>{escape(phase.display_name)}</strong>'
+        f'<span class="phase-detail">{escape(phase.family)} · {escape(phase.formula)}</span></a></li>'
+        for phase in phases
+    )
+    return f'<ul class="phase-directory">{rows}</ul>'
+
+
+def _product_type_phase_card_html(
+    phase: AtlasPhase,
+    *,
+    product_type: ProductType,
+    products: tuple[AtlasProduct, ...],
+    page: Path,
+    output_root: Path,
+) -> str:
+    members = tuple(
+        product
+        for product in _type_products(product_type, products)
+        if phase.slug in product.phase_slugs and product.is_available()
+    )
+    representatives = tuple(sorted(members, key=lambda product: (not product.hero, product.identifier))[:4])
+    thumbnails = "".join(_matrix_thumbnail_html(product, page) for product in representatives)
+    visual = f'<div class="matrix-thumbnails {"single" if len(representatives) == 1 else ""}">{thumbnails}</div>'
+    phase_page = output_root / "phases" / f"{phase.slug}.html"
+    return (
+        f'<article class="card type-phase-card" data-phase="{escape(phase.slug)}">{visual}'
+        f'<div class="matrix-body"><p class="kicker">{escape(phase.family)} · '
+        f'{escape(phase.crystal_system)}</p><h3><a href="{escape(_relative_href(page, phase_page))}">'
+        f'{escape(phase.display_name)}</a></h3><p class="meta">{escape(phase.formula)}</p>'
+        f'<p class="matrix-count"><span class="status-live">{len(members)} individual products available</span><br>'
+        f'<a href="{escape(_relative_href(page, phase_page))}">Open phase matrix →</a></p></div></article>'
+    )
+
+
+def _product_type_page_html(
+    product_type: ProductType,
+    *,
+    products: tuple[AtlasProduct, ...],
+    phases: tuple[AtlasPhase, ...],
+    page: Path,
+    output_root: Path,
+) -> str:
+    cards = "".join(
+        _product_type_phase_card_html(
+            phase,
+            product_type=product_type,
+            products=products,
+            page=page,
+            output_root=output_root,
+        )
+        for phase in phases
+        if any(
+            phase.slug in product.phase_slugs and product.is_available()
+            for product in _type_products(product_type, products)
+        )
+    )
+    return _page_shell(
+        f"Kikuchi Atlas — {product_type.label}",
+        f'''{_navigation(page, output_root)}<h1>{escape(product_type.label)}</h1>
+<p class="lede">{escape(product_type.description)}</p>
+<div class="callout"><strong>Product boundary:</strong> {escape(product_type.claim_boundary)}</div>
+<h2>Available phases</h2><p class="lede">Each phase card groups the available local products of this type. Open a phase matrix for its complete cross-type set, or a thumbnail for the actual individual media.</p>
+<div class="type-phase-grid">{cards}</div>''',
+    )
+
+
 def _visual_product_matrix_html(
     phase: AtlasPhase,
     families: tuple[ProductFamily, ...],
     products: tuple[AtlasProduct, ...],
     page: Path,
+    output_root: Path,
 ) -> str:
     """Show one visual, status-honest cell for each registered product family."""
     tiles_by_coverage: dict[str, list[str]] = {coverage: [] for coverage in _COVERAGE_PRESENTATION}
@@ -567,7 +762,7 @@ def _visual_product_matrix_html(
             '<div class="matrix-body"><p class="kicker">core product set</p>'
             '<h3>Direct-reflector orientation set</h3>'
             '<p class="meta">Standard direct-reflector view plus deliberate crystal-to-sample orientations.</p>'
-            f'<p class="matrix-count">{count}</p></div></article>'
+            f'<p class="matrix-count">{count}<br><a href="{escape(_relative_href(page, output_root / "product-types" / "direct-reflector-orientation-set.html"))}">Browse phases by type →</a></p></div></article>'
         )
     for family in families:
         if family.identifier in {"direct-reflector-template", "orientation-variation"}:
@@ -607,7 +802,7 @@ def _visual_product_matrix_html(
             f'data-state="{state}">{visual}<div class="matrix-body">'
             f'<p class="kicker">{escape(family.coverage)} product family</p>'
             f'<h3>{escape(family.label)}</h3><p class="meta">{escape(family.description)}</p>'
-            f'<p class="matrix-count">{count}</p></div></article>'
+            f'<p class="matrix-count">{count}<br><a href="{escape(_relative_href(page, output_root / "product-types" / f"{family.identifier}.html"))}">Browse phases by type →</a></p></div></article>'
         )
     groups = "".join(
         f'<section class="matrix-group" data-coverage="{coverage}">'
@@ -769,7 +964,7 @@ def _phase_page_html(
 <p class="lede">{escape(phase.family)} · {escape(phase.formula)} · {escape(phase.crystal_system)}</p>
 <div class="callout"><strong>Atlas scope:</strong> {escape(phase.scope_note)}</div>{_source_block(phase)}
 {_visual_highlights_html(related, page)}
-{_visual_product_matrix_html(phase, families, products, page)}
+{_visual_product_matrix_html(phase, families, products, page, output_root)}
 <h2>Coverage table</h2><p class="lede">Every phase is measured against the same named product families. A blank slot is a transparent production state, not a different kind of plot.</p>
 {_matrix_html(phase, families, products)}
 <h2>Individual products</h2><p class="lede">Each card opens its actual SVG, PNG, MP4, or STL first. The bundle and provenance record are secondary links for reproduction and audit.</p>{product_html}''',
@@ -851,10 +1046,13 @@ def build_atlas(
     phases = load_phase_registry(registry)
     phase_slugs = {phase.slug for phase in phases}
     families, products = load_product_registry(product_registry_path, phase_slugs=phase_slugs)
+    product_types = _product_types(families)
     _validate_anchor_catalog(Path(anchor_catalog_path).resolve(), phase_slugs)
     output = Path(output_root).resolve()
     phase_directory = output / "phases"
+    product_type_directory = output / "product-types"
     phase_directory.mkdir(parents=True, exist_ok=True)
+    product_type_directory.mkdir(parents=True, exist_ok=True)
     phase_by_slug = {phase.slug: phase for phase in phases}
     phase_pages: list[Path] = []
     for phase in phases:
@@ -871,6 +1069,20 @@ def build_atlas(
             encoding="utf-8",
         )
         phase_pages.append(page)
+    product_type_pages: list[Path] = []
+    for product_type in product_types:
+        page = product_type_directory / f"{product_type.identifier}.html"
+        page.write_text(
+            _product_type_page_html(
+                product_type,
+                products=products,
+                phases=phases,
+                page=page,
+                output_root=output,
+            ),
+            encoding="utf-8",
+        )
+        product_type_pages.append(page)
     products_page = output / "products.html"
     products_page.write_text(
         _products_page_html(
@@ -879,18 +1091,37 @@ def build_atlas(
         encoding="utf-8",
     )
     index = output / "index.html"
-    cards = "".join(_phase_card(phase, products=products, output_root=output) for phase in phases)
+    type_cards = "".join(
+        _product_type_card_html(
+            product_type,
+            products=products,
+            phases=phases,
+            page=index,
+            output_root=output,
+        )
+        for product_type in product_types
+    )
     index.write_text(
         _page_shell(
             "Kikuchi Atlas",
             f'''{_navigation(index, output)}<h1>Kikuchi Atlas</h1>
-<p class="lede">A local, provenance-first library of individual Kikuchi visualizations, motion studies, and printable products. Browse phase-first or product-first; every card preserves its visual family and scientific tier.</p>
-<p><a href="products.html">Browse all {len(products)} individual products →</a></p><div class="grid">{cards}</div>
-<div class="callout"><strong>Current scope:</strong> {len(phases)} phase entries and {len(products)} curated individual products across {len(families)} named product families. The phase-card leads deliberately use comparable direct-reflector hemisphere templates when available, rather than mixing an intensity master with an idealized band plot. Candidate references remain visible for planning but cannot be represented as rendered or dictionary-ready until their source and simulation contracts are accepted.</div>''',
+<p class="lede">A local, provenance-first library of individual Kikuchi visualizations, motion studies, and printable products. Enter by mineral/phase when you want one phase's full product matrix, or by product type when you want the cross-phase comparison.</p>
+<div class="atlas-entry-grid"><section id="phases" class="entry-section"><h2>Browse by mineral or phase</h2>
+<p class="lede">A compact directory: each phase opens its own product matrix and individual products.</p>{_phase_directory_html(phases, page=index, output_root=output)}</section>
+<section id="product-types" class="entry-section"><h2>Browse by product type</h2>
+<p class="lede">Each example tile opens a phase-organized view of every available product in that type.</p><div class="product-type-matrix">{type_cards}</div></section></div>
+<div class="callout"><strong>Current scope:</strong> {len(phases)} phase entries and {len(products)} curated individual products across {len(product_types)} top-level product types. <a href="products.html">Browse all individual products →</a></div>''',
         ),
         encoding="utf-8",
     )
-    return AtlasBuildResult(index, products_page, tuple(phase_pages), len(phases), len(products))
+    return AtlasBuildResult(
+        index,
+        products_page,
+        tuple(phase_pages),
+        tuple(product_type_pages),
+        len(phases),
+        len(products),
+    )
 
 
 __all__ = [

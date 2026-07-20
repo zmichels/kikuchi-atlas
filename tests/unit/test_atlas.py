@@ -83,10 +83,33 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert result.index_path.is_file()
     index = result.index_path.read_text(encoding="utf-8")
     assert "Kikuchi Atlas" in index
-    assert "Browse all 68 individual products" in index
-    assert "Lead: Forsterite — standard hemisphere" in index
+    assert "Browse by mineral or phase" in index
+    assert "Browse by product type" in index
+    assert 'class="phase-directory"' in index
+    assert 'class="product-type-matrix"' in index
+    phase_directory = index.split('<ul class="phase-directory">', 1)[1].split("</ul>", 1)[0]
+    assert "<img" not in phase_directory
     assert "Plagioclase (An52 reference)" in index
     assert "candidate-reference" not in index
+    assert 'href="phases/forsterite.html"' in index
+    assert 'href="product-types/direct-reflector-orientation-set.html"' in index
+    assert {path.stem for path in result.product_type_pages} == {
+        "direct-reflector-orientation-set",
+        "x-axis-motion",
+        "reflector-ridge-globe",
+        "intensity-master",
+        "depth-field-motion",
+        "intensity-relief-globe",
+    }
+    direct_type = tmp_path / "site/product-types/direct-reflector-orientation-set.html"
+    assert direct_type.is_file()
+    direct_type_html = direct_type.read_text(encoding="utf-8")
+    assert "Direct-reflector orientation set" in direct_type_html
+    assert "Available phases" in direct_type_html
+    assert direct_type_html.count('class="card type-phase-card"') == 9
+    globe_type = tmp_path / "site/product-types/reflector-ridge-globe.html"
+    assert globe_type.is_file()
+    assert globe_type.read_text(encoding="utf-8").count('class="card type-phase-card"') == 9
     assert result.products_path.is_file()
     product_page = result.products_path.read_text(encoding="utf-8")
     assert 'id="product-search"' in product_page
@@ -121,6 +144,7 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert 'class="matrix-section" data-coverage="core"' in forsterite
     assert 'class="matrix-section" data-coverage="extension"' in forsterite
     assert forsterite.count('data-family="orientation-variation"') == 0
+    assert '../product-types/direct-reflector-orientation-set.html' in forsterite
     for source_backed_phase in (
         "forsterite",
         "ice-ih",
