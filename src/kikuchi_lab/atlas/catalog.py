@@ -2,9 +2,8 @@
 
 The Atlas is a publication layer over checked-in phase records and a curated
 product registry. It deliberately separates a product's visual family from
-its scientific tier: a direct-reflector illustration, print mesh, or tattoo
-template is never silently promoted into an EBSD acquisition or dictionary
-claim.
+its scientific tier: a direct-reflector illustration or print mesh is never
+silently promoted into an EBSD acquisition or dictionary claim.
 """
 
 from __future__ import annotations
@@ -68,6 +67,14 @@ _SOURCE_STATUSES = {"tracked-source", "candidate-reference"}
 _PRODUCT_STATES = {"local-published", "tracked-review-proof"}
 _COVERAGE = {"core", "extension"}
 _FORMATS = {"png", "svg", "mp4", "stl"}
+_HIGHLIGHT_FAMILY_ORDER = (
+    "direct-reflector-template",
+    "intensity-master",
+    "depth-field-motion",
+    "x-axis-motion",
+    "intensity-relief-globe",
+    "reflector-ridge-globe",
+)
 
 
 @dataclass(frozen=True)
@@ -367,9 +374,9 @@ def _page_shell(title: str, body: str) -> str:
 :root {{ color-scheme: dark; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; background: #0d1217; color: #edf2f6; }}
 body {{ max-width: 1280px; margin: 0 auto; padding: 2.2rem 1.5rem 4rem; background: radial-gradient(circle at 20% -10%, #243749, #0d1217 48rem); }} a {{ color: #a9d7ff; }}
 nav {{ display: flex; flex-wrap: wrap; gap: .7rem 1.2rem; margin-bottom: 2rem; font-size: .93rem; }} h1 {{ font-size: clamp(2rem, 4vw, 3.4rem); margin: 0 0 .35rem; letter-spacing: -.045em; }} h2 {{ margin-top: 2.4rem; }} h3 {{ margin: .1rem 0 .5rem; font-size: 1.08rem; }}
-.lede {{ max-width: 70rem; color: #c2ccd4; font-size: 1.08rem; line-height: 1.55; }} .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1.05rem; }}
+.lede {{ max-width: 70rem; color: #c2ccd4; font-size: 1.08rem; line-height: 1.55; }} .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1.05rem; }} .visual-highlights {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.05rem; }}
 .card {{ overflow: hidden; border: 1px solid #2e3d48; border-radius: 16px; background: rgba(17,25,32,.88); box-shadow: 0 18px 40px rgba(0,0,0,.18); }} .card img, .card video, .placeholder {{ display: block; aspect-ratio: 1/.72; width: 100%; object-fit: cover; background: linear-gradient(135deg,#26343f,#111a20); }}
-.placeholder {{ display: grid; place-items: center; color: #8798a5; font-size: .86rem; letter-spacing: .04em; text-transform: uppercase; }} .pad {{ padding: 1rem 1.05rem 1.1rem; }} .kicker {{ margin: 0 0 .45rem; color: #8fa7b8; font-size: .75rem; letter-spacing: .09em; text-transform: uppercase; }}
+.placeholder {{ display: grid; place-items: center; color: #8798a5; font-size: .86rem; letter-spacing: .04em; text-transform: uppercase; }} .pad {{ padding: 1rem 1.05rem 1.1rem; }} .highlight-card .pad {{ min-height: 7.4rem; }} .highlight-card a.visual-link {{ display: block; color: inherit; }} .kicker {{ margin: 0 0 .45rem; color: #8fa7b8; font-size: .75rem; letter-spacing: .09em; text-transform: uppercase; }}
 .title {{ margin: 0; font-size: 1.3rem; }} .meta {{ margin: .7rem 0 0; color: #b9c4cb; line-height: 1.45; font-size: .91rem; }} .badge, .tag {{ display: inline-block; margin: .65rem .25rem 0 0; padding: .22rem .5rem; border: 1px solid #4f697b; border-radius: 999px; color: #cce7fa; font-size: .75rem; }}
 .candidate {{ border-color: #755f3d; }} .candidate .badge {{ border-color: #977a46; color: #f0d290; }} .product {{ padding: 1rem 1.05rem 1.1rem; }} .product strong {{ display: block; }} .product small {{ color: #95a7b4; }} .callout {{ margin-top: 2rem; padding: 1rem 1.1rem; border-left: 3px solid #6fa7d1; background: rgba(31,51,67,.5); line-height: 1.5; }} code {{ color: #d8e6ef; }}
 .actions {{ display: flex; flex-wrap: wrap; gap: .65rem; margin-top: .85rem; }} .actions a {{ padding: .35rem .58rem; border: 1px solid #405b6d; border-radius: .45rem; text-decoration: none; }} .matrix {{ width: 100%; border-collapse: collapse; margin-top: 1rem; }} .matrix th, .matrix td {{ border-bottom: 1px solid #2e3d48; padding: .7rem; text-align: left; vertical-align: top; }} .matrix th {{ color: #b9c4cb; font-size: .79rem; text-transform: uppercase; letter-spacing: .06em; }}
@@ -401,6 +408,53 @@ def _product_visual(product: AtlasProduct, page: Path) -> str:
         return f'<img src="{escape(_relative_href(page, display_path))}" alt="{escape(product.title)}">'
     noun = "STL mesh" if product.media_format == "stl" else "Local product unavailable"
     return f'<div class="placeholder">{noun}</div>'
+
+
+def _highlight_visual(product: AtlasProduct, page: Path) -> str:
+    """Return a lightweight still visual for a phase-page highlight card."""
+    preview = product.preview_path if product.preview_path and product.preview_path.is_file() else None
+    display_path = preview or (product.media_path if product.is_available() else None)
+    if display_path is not None and display_path.suffix.lower() in {".png", ".svg", ".jpg", ".jpeg"}:
+        return f'<img src="{escape(_relative_href(page, display_path))}" alt="{escape(product.title)}">'
+    return f'<div class="placeholder">{escape(product.media_format.upper())} preview unavailable</div>'
+
+
+def _phase_highlights(products: tuple[AtlasProduct, ...]) -> tuple[AtlasProduct, ...]:
+    """Choose up to three distinct, available visuals with a stable family order."""
+    available = tuple(product for product in products if product.is_available())
+    chosen: list[AtlasProduct] = []
+    for family_id in _HIGHLIGHT_FAMILY_ORDER:
+        candidates = [product for product in available if family_id in product.family_ids]
+        candidates.sort(key=lambda product: (not product.hero, product.identifier))
+        if candidates and candidates[0] not in chosen:
+            chosen.append(candidates[0])
+        if len(chosen) == 3:
+            return tuple(chosen)
+    for product in available:
+        if product not in chosen:
+            chosen.append(product)
+        if len(chosen) == 3:
+            break
+    return tuple(chosen)
+
+
+def _visual_highlights_html(products: tuple[AtlasProduct, ...], page: Path) -> str:
+    highlights = _phase_highlights(products)
+    if not highlights:
+        return ""
+    cards = "".join(
+        f'<article class="card highlight-card"><a class="visual-link" '
+        f'href="{escape(_relative_href(page, product.media_path))}">{_highlight_visual(product, page)}</a>'
+        f'<div class="pad"><p class="kicker">{escape(product.media_format)} · '
+        f'{escape(product.tier)}</p><h3>{escape(product.title)}</h3>'
+        f'<p class="meta">{escape(product.caption)}</p></div></article>'
+        for product in highlights
+    )
+    return (
+        '<h2>Visual highlights</h2><p class="lede">A small, phase-specific visual cross-section: '
+        'open any image to inspect its actual local product.</p>'
+        f'<div class="visual-highlights">{cards}</div>'
+    )
 
 
 def _product_html(
@@ -502,6 +556,7 @@ def _phase_page_html(
         f'''{_navigation(page, output_root)}<h1>{escape(phase.display_name)}</h1>
 <p class="lede">{escape(phase.family)} · {escape(phase.formula)} · {escape(phase.crystal_system)}</p>
 <div class="callout"><strong>Atlas scope:</strong> {escape(phase.scope_note)}</div>{_source_block(phase)}
+{_visual_highlights_html(related, page)}
 <h2>Common product matrix</h2><p class="lede">Every phase is measured against the same named product families. A blank slot is a transparent production state, not a different kind of plot.</p>
 {_matrix_html(phase, families, products)}
 <h2>Individual products</h2><p class="lede">Each card opens its actual SVG, PNG, MP4, or STL first. The bundle and provenance record are secondary links for reproduction and audit.</p><div class="grid">{product_html}</div>''',

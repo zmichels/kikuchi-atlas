@@ -42,11 +42,6 @@ product_families:
     coverage: extension
     description: An STL mapped from a modeled spherical intensity field.
     claim_boundary: Print geometry derived from a stated field model; physical print acceptance remains separate.
-  - id: tattoo-template
-    label: Tattoo template
-    coverage: extension
-    description: A simplified, stroke-clearance-conscious direct-reflector design.
-    claim_boundary: A design reference only; final tattoo feasibility belongs to the artist and placement context.
 products:
   # Standard and orientation-gallery direct-reflector templates (five-phase release)
   - id: forsterite-direct-standard
@@ -452,72 +447,6 @@ products:
     orientation: standard
     hero: false
 
-  # Diamond has four tattoo-ready direct-reflector orientations; the selected lead is also its phase-card hero.
-  - id: diamond-tattoo-rotation-a
-    title: Diamond — tattoo template rotation A
-    phase_slugs: [diamond]
-    families: [direct-reflector-template, orientation-variation, tattoo-template]
-    format: svg
-    media_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-39a97f264166fc57/diamond-hemisphere-standard.svg
-    preview_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-39a97f264166fc57/diamond-hemisphere-standard-mockup.png
-    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-39a97f264166fc57
-    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-39a97f264166fc57/manifest.json
-    recipe: recipes/reflectors/diamond-art-bands.yml
-    entrypoint: scripts/render_phase_art_templates.py
-    tier: direct-reflector-art
-    state: local-published
-    caption: Rotated direct-reflector tattoo proof with a single-stroke hierarchy.
-    orientation: rotation A
-    hero: false
-  - id: diamond-tattoo-rotation-b
-    title: Diamond — tattoo template rotation B
-    phase_slugs: [diamond]
-    families: [direct-reflector-template, orientation-variation, tattoo-template]
-    format: svg
-    media_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/diamond-hemisphere-standard.svg
-    preview_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/diamond-hemisphere-standard-mockup.png
-    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8
-    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/manifest.json
-    recipe: recipes/reflectors/diamond-art-bands.yml
-    entrypoint: scripts/render_phase_art_templates.py
-    tier: direct-reflector-art
-    state: local-published
-    caption: Rotated direct-reflector tattoo proof with a single-stroke hierarchy.
-    orientation: rotation B
-    hero: true
-  - id: diamond-tattoo-rotation-c
-    title: Diamond — tattoo template rotation C
-    phase_slugs: [diamond]
-    families: [direct-reflector-template, orientation-variation, tattoo-template]
-    format: svg
-    media_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c/diamond-hemisphere-standard.svg
-    preview_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c/diamond-hemisphere-standard-mockup.png
-    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c
-    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c/manifest.json
-    recipe: recipes/reflectors/diamond-art-bands.yml
-    entrypoint: scripts/render_phase_art_templates.py
-    tier: direct-reflector-art
-    state: local-published
-    caption: Rotated direct-reflector tattoo proof with a single-stroke hierarchy.
-    orientation: rotation C
-    hero: false
-  - id: diamond-tattoo-rotation-d
-    title: Diamond — tattoo template rotation D
-    phase_slugs: [diamond]
-    families: [direct-reflector-template, orientation-variation, tattoo-template]
-    format: svg
-    media_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-f409677400a5071d/diamond-hemisphere-standard.svg
-    preview_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-f409677400a5071d/diamond-hemisphere-standard-mockup.png
-    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-f409677400a5071d
-    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-f409677400a5071d/manifest.json
-    recipe: recipes/reflectors/diamond-art-bands.yml
-    entrypoint: scripts/render_phase_art_templates.py
-    tier: direct-reflector-art
-    state: local-published
-    caption: Rotated direct-reflector tattoo proof with a single-stroke hierarchy.
-    orientation: rotation D
-    hero: false
-
   # Common x-axis direct-reflector rotations.
   - id: forsterite-x-axis-rotation
     title: Forsterite — x-axis rotation
@@ -614,7 +543,7 @@ products:
     state: local-published
     caption: Full direct-reflector rotation about the horizontal sample axis.
     orientation: active x-axis rotation
-    hero: false
+    hero: true
 
   # Common printable reflector-ridge globes.
   - id: forsterite-reflector-ridge-globe
@@ -858,20 +787,4 @@ products:
     state: local-published
     caption: Intensity-derived spherical relief geometry.
     orientation: canonical sphere
-    hero: false
-  - id: ice-ih-primary-tattoo-template
-    title: Ice Ih — primary tattoo template
-    phase_slugs: [ice-ih]
-    families: [direct-reflector-template, tattoo-template]
-    format: svg
-    media_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980/ice-ih-tattoo-primary.svg
-    preview_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980/ice-ih-tattoo-mockup.png
-    bundle_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980
-    provenance_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980/manifest.json
-    recipe: recipes/art/ice-ih-tattoo.yml
-    entrypoint: scripts/render_phase_art_templates.py
-    tier: direct-reflector-art
-    state: local-published
-    caption: Primary black-ink direct-reflector tattoo template.
-    orientation: selected tattoo orientation
     hero: false

@@ -43,8 +43,12 @@ def test_product_registry_models_individual_products_and_common_core_families() 
         "x-axis-motion",
         "reflector-ridge-globe",
     }
-    assert len(products) == 51
+    assert "tattoo-template" not in {family.identifier for family in families}
+    assert len(products) == 46
     assert all(product.is_available() for product in products)
+    assert all("tattoo" not in product.identifier.lower() for product in products)
+    assert all("tattoo" not in product.title.lower() for product in products)
+    assert all("tattoo" not in family_id for product in products for family_id in product.family_ids)
     assert {
         product.identifier for product in products if product.hero
     } == {
@@ -53,7 +57,7 @@ def test_product_registry_models_individual_products_and_common_core_families() 
         "quartz-direct-standard",
         "zircon-direct-standard",
         "titanite-direct-standard",
-        "diamond-tattoo-rotation-b",
+        "diamond-x-axis-rotation",
     }
 
 
@@ -66,11 +70,11 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     )
 
     assert result.phase_count == 9
-    assert result.product_count == 51
+    assert result.product_count == 46
     assert result.index_path.is_file()
     index = result.index_path.read_text(encoding="utf-8")
     assert "Kikuchi Atlas" in index
-    assert "Browse all 51 individual products" in index
+    assert "Browse all 46 individual products" in index
     assert "Lead: Forsterite — standard hemisphere" in index
     assert "Plagioclase (An52 reference)" in index
     assert "candidate-reference" in index
@@ -79,15 +83,32 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert 'id="product-search"' in product_page
     assert 'id="phase-filter"' in product_page
     assert 'id="family-filter"' in product_page
-    assert product_page.count('class="card product-card"') == 51
+    assert product_page.count('class="card product-card"') == 46
+    assert "tattoo" not in index.lower()
+    assert "tattoo" not in product_page.lower()
     assert (tmp_path / "site/phases/forsterite.html").is_file()
     forsterite = (tmp_path / "site/phases/forsterite.html").read_text(encoding="utf-8")
     assert "Common product matrix" in forsterite
     assert "open SVG" in forsterite
     assert "open MP4" in forsterite
     assert "open STL" in forsterite
+    assert "Visual highlights" in forsterite
+    assert forsterite.count('class="card highlight-card"') == 3
+    assert "tattoo" not in forsterite.lower()
     assert "phases/phases/" not in forsterite
     assert forsterite.count('class="card product-card"') == 10
+    for source_backed_phase in (
+        "forsterite",
+        "ice-ih",
+        "quartz",
+        "zircon",
+        "titanite",
+        "diamond",
+    ):
+        phase_html = (tmp_path / f"site/phases/{source_backed_phase}.html").read_text(encoding="utf-8")
+        assert "Visual highlights" in phase_html
+        assert 'class="card highlight-card"' in phase_html
+        assert "tattoo" not in phase_html.lower()
     diopside = (tmp_path / "site/phases/diopside.html").read_text(encoding="utf-8")
     assert "COD 1000007, diopside at 1 atm" in diopside
     assert "blocked by source promotion" in diopside

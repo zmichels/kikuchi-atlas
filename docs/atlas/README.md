@@ -36,8 +36,8 @@ release treats these as common core families for every source-backed phase:
 - x-axis rotation study; and
 - printable reflector-ridge globe.
 
-Richer intensity-master, depth-field, intensity-relief, and tattoo products
-are explicit extensions. They may be incomplete for a phase, but they cannot
+Richer intensity-master, depth-field, and intensity-relief products are
+explicit extensions. They may be incomplete for a phase, but they cannot
 masquerade as a different core product type. Candidate phase references show
 the same matrix as `blocked by source promotion` until their source contract is
 accepted.
