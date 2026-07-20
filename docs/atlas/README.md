@@ -13,9 +13,34 @@ uv run python scripts/build_atlas.py
 open docs/atlas/site/index.html
 ```
 
-The generated pages link to the ignored `local/` product store when the media
-are available on this machine. A missing local artifact is shown as unavailable;
-it never means the tracked source, recipe, or phase record has disappeared.
+The generated site has two entry points:
+
+- `index.html` is phase-first. Each phase has the same named product matrix
+  before its individual products.
+- `products.html` is product-first. It filters the curated release set by phase,
+  product family, medium, and free text.
+
+Every card opens its actual SVG, PNG, MP4, or STL first. Its local bundle and
+provenance record are secondary links for reproduction and audit. A missing
+ignored `local/` artifact is shown as unavailable; it never means the tracked
+source, recipe, or phase record has disappeared.
+
+## Product model
+
+`PRODUCT_REGISTRY.yml` is the relational, curated product table. A product can
+belong to more than one phase and more than one product family. The current
+release treats these as common core families for every source-backed phase:
+
+- direct-reflector hemisphere template;
+- orientation variation;
+- x-axis rotation study; and
+- printable reflector-ridge globe.
+
+Richer intensity-master, depth-field, intensity-relief, and tattoo products
+are explicit extensions. They may be incomplete for a phase, but they cannot
+masquerade as a different core product type. Candidate phase references show
+the same matrix as `blocked by source promotion` until their source contract is
+accepted.
 
 ## Atlas states
 
@@ -29,5 +54,8 @@ The initial candidate set adds an An52 plagioclase reference, 2M1 muscovite,
 and ambient diopside. The exact named materials matter: plagioclase and
 clinopyroxene are families, not one universal structure apiece.
 
-`PHASE_REGISTRY.yml` is the data source. The local artifact catalog remains at
-[`../products/ARTIFACT_CATALOG.yml`](../products/ARTIFACT_CATALOG.yml).
+`PHASE_REGISTRY.yml` names exact phases and source state.
+`PRODUCT_REGISTRY.yml` names individual curated products and their relations.
+The older [`../products/ARTIFACT_CATALOG.yml`](../products/ARTIFACT_CATALOG.yml)
+remains a compact publication-anchor list and is cross-checked during the
+Atlas build; it is not the browse database.

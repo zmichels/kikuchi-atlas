@@ -1,0 +1,877 @@
+schema_version: 1
+title: Kikuchi Atlas curated individual-product registry
+claim_boundary: >-
+  This is a curated release registry, not a dump of every intermediate local
+  file. Each entry names the actual media first, its product families, and
+  provenance links. Product family describes presentation; it does not make an
+  illustration, mesh, or motion study an EBSD acquisition or indexable
+  dictionary pattern.
+product_families:
+  - id: direct-reflector-template
+    label: Direct-reflector hemisphere template
+    coverage: core
+    description: Crisp, vector-led hemisphere of selected reflector traces and bands.
+    claim_boundary: An idealized direct-reflector presentation, not a detector-calibrated Kikuchi pattern.
+  - id: orientation-variation
+    label: Orientation variation
+    coverage: core
+    description: A deliberate alternative crystal-to-sample orientation of the same presentation family.
+    claim_boundary: A view/orientation study; its composition remains presentation-specific.
+  - id: x-axis-motion
+    label: X-axis rotation study
+    coverage: core
+    description: A full rotation about the sample horizontal axis.
+    claim_boundary: Motion communicates orientation change and is not a time-resolved EBSD measurement.
+  - id: reflector-ridge-globe
+    label: Printable reflector-ridge globe
+    coverage: core
+    description: A spherical STL whose relief follows selected direct-reflector bands.
+    claim_boundary: A canonical geometry product, not a printer-qualified or detector-intensity surface.
+  - id: intensity-master
+    label: Intensity-bearing master study
+    coverage: extension
+    description: A high-detail simulated intensity-field presentation.
+    claim_boundary: The named simulation tier and source govern any scientific claim; it is not an acquired pattern.
+  - id: depth-field-motion
+    label: Depth-field motion study
+    coverage: extension
+    description: Additive or near-depth band treatment with staged depth cues.
+    claim_boundary: An intentionally idealized visual treatment, not a physical depth reconstruction.
+  - id: intensity-relief-globe
+    label: Printable intensity-relief globe
+    coverage: extension
+    description: An STL mapped from a modeled spherical intensity field.
+    claim_boundary: Print geometry derived from a stated field model; physical print acceptance remains separate.
+  - id: tattoo-template
+    label: Tattoo template
+    coverage: extension
+    description: A simplified, stroke-clearance-conscious direct-reflector design.
+    claim_boundary: A design reference only; final tattoo feasibility belongs to the artist and placement context.
+products:
+  # Standard and orientation-gallery direct-reflector templates (five-phase release)
+  - id: forsterite-direct-standard
+    title: Forsterite — standard hemisphere
+    phase_slugs: [forsterite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/forsterite/standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/forsterite/standard.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere from the five-phase gallery.
+    orientation: standard
+    hero: true
+  - id: forsterite-direct-azimuthal-60
+    title: Forsterite — azimuthal 60
+    phase_slugs: [forsterite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/forsterite/azimuthal-60.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/forsterite/azimuthal-60.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: forsterite-direct-oblique-high
+    title: Forsterite — oblique high
+    phase_slugs: [forsterite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/forsterite/oblique-high.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/forsterite/oblique-high.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: forsterite-direct-tilt-plus-20
+    title: Forsterite — tilt +20
+    phase_slugs: [forsterite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/forsterite/tilt-plus-20.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/forsterite/tilt-plus-20.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+  - id: ice-ih-direct-standard
+    title: Ice Ih — standard hemisphere
+    phase_slugs: [ice-ih]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/ice-ih/standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/ice-ih/standard.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere from the five-phase gallery.
+    orientation: standard
+    hero: true
+  - id: ice-ih-direct-azimuthal-60
+    title: Ice Ih — azimuthal 60
+    phase_slugs: [ice-ih]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/ice-ih/azimuthal-60.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/ice-ih/azimuthal-60.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: ice-ih-direct-oblique-high
+    title: Ice Ih — oblique high
+    phase_slugs: [ice-ih]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/ice-ih/oblique-high.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/ice-ih/oblique-high.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: ice-ih-direct-tilt-plus-20
+    title: Ice Ih — tilt +20
+    phase_slugs: [ice-ih]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/ice-ih/tilt-plus-20.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/ice-ih/tilt-plus-20.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+  - id: quartz-direct-standard
+    title: Alpha quartz — standard hemisphere
+    phase_slugs: [quartz]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/quartz/standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/quartz/standard.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere from the five-phase gallery.
+    orientation: standard
+    hero: true
+  - id: quartz-direct-azimuthal-60
+    title: Alpha quartz — azimuthal 60
+    phase_slugs: [quartz]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/quartz/azimuthal-60.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/quartz/azimuthal-60.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: quartz-direct-oblique-high
+    title: Alpha quartz — oblique high
+    phase_slugs: [quartz]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/quartz/oblique-high.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/quartz/oblique-high.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: quartz-direct-tilt-plus-20
+    title: Alpha quartz — tilt +20
+    phase_slugs: [quartz]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/quartz/tilt-plus-20.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/quartz/tilt-plus-20.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+  - id: zircon-direct-standard
+    title: Zircon — standard hemisphere
+    phase_slugs: [zircon]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/zircon/standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/zircon/standard.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere from the five-phase gallery.
+    orientation: standard
+    hero: true
+  - id: zircon-direct-azimuthal-60
+    title: Zircon — azimuthal 60
+    phase_slugs: [zircon]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/zircon/azimuthal-60.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/zircon/azimuthal-60.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: zircon-direct-oblique-high
+    title: Zircon — oblique high
+    phase_slugs: [zircon]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/zircon/oblique-high.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/zircon/oblique-high.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: zircon-direct-tilt-plus-20
+    title: Zircon — tilt +20
+    phase_slugs: [zircon]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/zircon/tilt-plus-20.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/zircon/tilt-plus-20.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+  - id: titanite-direct-standard
+    title: Titanite — standard hemisphere
+    phase_slugs: [titanite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/titanite/standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/titanite/standard.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere from the five-phase gallery.
+    orientation: standard
+    hero: true
+  - id: titanite-direct-azimuthal-60
+    title: Titanite — azimuthal 60
+    phase_slugs: [titanite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/titanite/azimuthal-60.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/titanite/azimuthal-60.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: titanite-direct-oblique-high
+    title: Titanite — oblique high
+    phase_slugs: [titanite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/titanite/oblique-high.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/titanite/oblique-high.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: titanite-direct-tilt-plus-20
+    title: Titanite — tilt +20
+    phase_slugs: [titanite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/titanite/tilt-plus-20.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/titanite/tilt-plus-20.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/five-phase-standard-plus-orientation-gallery-v1/README.md
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+
+  # The five wider-band variants remain directly browsable as individual assets.
+  - id: forsterite-direct-wide
+    title: Forsterite — wide hemisphere
+    phase_slugs: [forsterite]
+    families: [direct-reflector-template]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/forsterite/forsterite-wide.svg
+    preview_path:
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
+    provenance_path:
+    recipe: recipes/art/five-phase-hemisphere-series.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Wide-band direct-reflector hemisphere.
+    orientation: standard
+    hero: false
+  - id: ice-ih-direct-wide
+    title: Ice Ih — wide hemisphere
+    phase_slugs: [ice-ih]
+    families: [direct-reflector-template]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/ice-ih/ice-ih-wide.svg
+    preview_path:
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
+    provenance_path:
+    recipe: recipes/art/five-phase-hemisphere-series.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Wide-band direct-reflector hemisphere.
+    orientation: standard
+    hero: false
+  - id: quartz-direct-wide
+    title: Alpha quartz — wide hemisphere
+    phase_slugs: [quartz]
+    families: [direct-reflector-template]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/quartz/quartz-wide.svg
+    preview_path:
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
+    provenance_path:
+    recipe: recipes/art/five-phase-hemisphere-series.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Wide-band direct-reflector hemisphere.
+    orientation: standard
+    hero: false
+  - id: zircon-direct-wide
+    title: Zircon — wide hemisphere
+    phase_slugs: [zircon]
+    families: [direct-reflector-template]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/zircon/zircon-wide.svg
+    preview_path:
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
+    provenance_path:
+    recipe: recipes/art/five-phase-hemisphere-series.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Wide-band direct-reflector hemisphere.
+    orientation: standard
+    hero: false
+  - id: titanite-direct-wide
+    title: Titanite — wide hemisphere
+    phase_slugs: [titanite]
+    families: [direct-reflector-template]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/titanite/titanite-wide.svg
+    preview_path:
+    bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
+    provenance_path:
+    recipe: recipes/art/five-phase-hemisphere-series.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Wide-band direct-reflector hemisphere.
+    orientation: standard
+    hero: false
+
+  # Diamond has four tattoo-ready direct-reflector orientations; the selected lead is also its phase-card hero.
+  - id: diamond-tattoo-rotation-a
+    title: Diamond — tattoo template rotation A
+    phase_slugs: [diamond]
+    families: [direct-reflector-template, orientation-variation, tattoo-template]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-39a97f264166fc57/diamond-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-39a97f264166fc57/diamond-hemisphere-standard-mockup.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-39a97f264166fc57
+    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-39a97f264166fc57/manifest.json
+    recipe: recipes/reflectors/diamond-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Rotated direct-reflector tattoo proof with a single-stroke hierarchy.
+    orientation: rotation A
+    hero: false
+  - id: diamond-tattoo-rotation-b
+    title: Diamond — tattoo template rotation B
+    phase_slugs: [diamond]
+    families: [direct-reflector-template, orientation-variation, tattoo-template]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/diamond-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/diamond-hemisphere-standard-mockup.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8
+    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/manifest.json
+    recipe: recipes/reflectors/diamond-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Rotated direct-reflector tattoo proof with a single-stroke hierarchy.
+    orientation: rotation B
+    hero: true
+  - id: diamond-tattoo-rotation-c
+    title: Diamond — tattoo template rotation C
+    phase_slugs: [diamond]
+    families: [direct-reflector-template, orientation-variation, tattoo-template]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c/diamond-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c/diamond-hemisphere-standard-mockup.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c
+    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c/manifest.json
+    recipe: recipes/reflectors/diamond-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Rotated direct-reflector tattoo proof with a single-stroke hierarchy.
+    orientation: rotation C
+    hero: false
+  - id: diamond-tattoo-rotation-d
+    title: Diamond — tattoo template rotation D
+    phase_slugs: [diamond]
+    families: [direct-reflector-template, orientation-variation, tattoo-template]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-f409677400a5071d/diamond-hemisphere-standard.svg
+    preview_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-f409677400a5071d/diamond-hemisphere-standard-mockup.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-f409677400a5071d
+    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-f409677400a5071d/manifest.json
+    recipe: recipes/reflectors/diamond-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Rotated direct-reflector tattoo proof with a single-stroke hierarchy.
+    orientation: rotation D
+    hero: false
+
+  # Common x-axis direct-reflector rotations.
+  - id: forsterite-x-axis-rotation
+    title: Forsterite — x-axis rotation
+    phase_slugs: [forsterite]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/phase-general-direct-reflector-art/exports/forsterite-x-axis-rotation-v1/forsterite-x-axis-rotation.mp4
+    preview_path: local/phase-general-direct-reflector-art/exports/forsterite-x-axis-rotation-v1/preview.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/forsterite-x-axis-rotation-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/forsterite-x-axis-rotation-v1/manifest.json
+    recipe: recipes/reflectors/forsterite-art-bands.yml
+    entrypoint: scripts/render_phase_art_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: ice-ih-x-axis-rotation
+    title: Ice Ih — x-axis rotation
+    phase_slugs: [ice-ih]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/phase-general-direct-reflector-art/exports/ice-ih-x-axis-rotation-v1/ice-ih-x-axis-rotation.mp4
+    preview_path: local/phase-general-direct-reflector-art/exports/ice-ih-x-axis-rotation-v1/preview.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/ice-ih-x-axis-rotation-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/ice-ih-x-axis-rotation-v1/manifest.json
+    recipe: recipes/reflectors/ice-ih-art-bands.yml
+    entrypoint: scripts/render_phase_art_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: quartz-x-axis-rotation
+    title: Alpha quartz — x-axis rotation
+    phase_slugs: [quartz]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-v1/quartz-x-axis-rotation.mp4
+    preview_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-v1/preview.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-v1/manifest.json
+    recipe: recipes/reflectors/quartz-art-bands.yml
+    entrypoint: scripts/render_phase_art_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: zircon-x-axis-rotation
+    title: Zircon — x-axis rotation
+    phase_slugs: [zircon]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/phase-general-direct-reflector-art/exports/zircon-x-axis-rotation-v1/zircon-x-axis-rotation.mp4
+    preview_path: local/phase-general-direct-reflector-art/exports/zircon-x-axis-rotation-v1/preview.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/zircon-x-axis-rotation-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/zircon-x-axis-rotation-v1/manifest.json
+    recipe: recipes/reflectors/zircon-art-bands.yml
+    entrypoint: scripts/render_phase_art_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: titanite-x-axis-rotation
+    title: Titanite — x-axis rotation
+    phase_slugs: [titanite]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/phase-general-direct-reflector-art/exports/titanite-x-axis-rotation-v1/titanite-x-axis-rotation.mp4
+    preview_path: local/phase-general-direct-reflector-art/exports/titanite-x-axis-rotation-v1/preview.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/titanite-x-axis-rotation-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/titanite-x-axis-rotation-v1/manifest.json
+    recipe: recipes/reflectors/titanite-art-bands.yml
+    entrypoint: scripts/render_phase_art_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: diamond-x-axis-rotation
+    title: Diamond — x-axis rotation
+    phase_slugs: [diamond]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/phase-general-direct-reflector-art/exports/diamond-x-axis-rotation-v1/diamond-x-axis-rotation.mp4
+    preview_path: local/phase-general-direct-reflector-art/exports/diamond-x-axis-rotation-v1/preview.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-x-axis-rotation-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-x-axis-rotation-v1/manifest.json
+    recipe: recipes/reflectors/diamond-art-bands.yml
+    entrypoint: scripts/render_phase_art_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
+
+  # Common printable reflector-ridge globes.
+  - id: forsterite-reflector-ridge-globe
+    title: Forsterite — reflector-ridge globe
+    phase_slugs: [forsterite]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/reflector-ridge-series/forsterite/reflector-ridge-globe-build-1c2dad85f3d06ae1/forsterite-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/forsterite/reflector-ridge-globe-build-1c2dad85f3d06ae1/forsterite-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/forsterite/reflector-ridge-globe-build-1c2dad85f3d06ae1
+    provenance_path: local/reflector-ridge-series/forsterite/reflector-ridge-globe-build-1c2dad85f3d06ae1/reflector-globe-manifest.json
+    recipe: recipes/globes/forsterite-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+  - id: ice-ih-reflector-ridge-globe
+    title: Ice Ih — reflector-ridge globe
+    phase_slugs: [ice-ih]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/ice-reflector-globes/reflector-ridge-globe-build-f07f822ff336b13e/ice-ih-reflector-ridges.stl
+    preview_path: local/ice-reflector-globes/reflector-ridge-globe-build-f07f822ff336b13e/ice-ih-reflector-ridges-preview.png
+    bundle_path: local/ice-reflector-globes/reflector-ridge-globe-build-f07f822ff336b13e
+    provenance_path: local/ice-reflector-globes/reflector-ridge-globe-build-f07f822ff336b13e/reflector-globe-manifest.json
+    recipe: recipes/globes/ice-ih-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+  - id: quartz-reflector-ridge-globe
+    title: Alpha quartz — reflector-ridge globe
+    phase_slugs: [quartz]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/reflector-ridge-series/quartz/reflector-ridge-globe-build-5631d275ba61abb6/quartz-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/quartz/reflector-ridge-globe-build-5631d275ba61abb6/quartz-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/quartz/reflector-ridge-globe-build-5631d275ba61abb6
+    provenance_path: local/reflector-ridge-series/quartz/reflector-ridge-globe-build-5631d275ba61abb6/reflector-globe-manifest.json
+    recipe: recipes/globes/quartz-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+  - id: zircon-reflector-ridge-globe
+    title: Zircon — reflector-ridge globe
+    phase_slugs: [zircon]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/reflector-ridge-series/zircon/reflector-ridge-globe-build-d050d0e211300849/zircon-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/zircon/reflector-ridge-globe-build-d050d0e211300849/zircon-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/zircon/reflector-ridge-globe-build-d050d0e211300849
+    provenance_path: local/reflector-ridge-series/zircon/reflector-ridge-globe-build-d050d0e211300849/reflector-globe-manifest.json
+    recipe: recipes/globes/zircon-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+  - id: titanite-reflector-ridge-globe
+    title: Titanite — reflector-ridge globe
+    phase_slugs: [titanite]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-33d65b9fc8b6d7b4/titanite-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-33d65b9fc8b6d7b4/titanite-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-33d65b9fc8b6d7b4
+    provenance_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-33d65b9fc8b6d7b4/reflector-globe-manifest.json
+    recipe: recipes/globes/titanite-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+  - id: diamond-reflector-ridge-globe
+    title: Diamond — reflector-ridge globe
+    phase_slugs: [diamond]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-e074ffdc8c058002/diamond-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-e074ffdc8c058002/diamond-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-e074ffdc8c058002
+    provenance_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-e074ffdc8c058002/reflector-globe-manifest.json
+    recipe: recipes/globes/diamond-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+
+  # Detail-rich and intensity-derived extensions.
+  - id: forsterite-dynamical-master-x-axis
+    title: Forsterite — dynamical master x-axis rotation
+    phase_slugs: [forsterite]
+    families: [intensity-master]
+    format: mp4
+    media_path: local/dynamical-master-rotation/forsterite-x-axis-gold-v1/forsterite-dynamical-master-x-axis-proof.mp4
+    preview_path: local/dynamical-master-rotation/forsterite-x-axis-gold-v1/preview.png
+    bundle_path: local/dynamical-master-rotation/forsterite-x-axis-gold-v1
+    provenance_path: local/dynamical-master-rotation/forsterite-x-axis-gold-v1/manifest.json
+    recipe: recipes/production/forsterite-simulation.yml
+    entrypoint: scripts/render_dynamical_master_rotation.py
+    tier: dynamical-reference
+    state: local-published
+    caption: Intensity-bearing forsterite dynamical-master rotation proof.
+    orientation: active x-axis rotation
+    hero: false
+  - id: forsterite-depth-field-x-axis
+    title: Forsterite — direct-reflector depth-field rotation
+    phase_slugs: [forsterite]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/idealized-direct-reflector-depth-rotation/forsterite-x-axis-v1/forsterite-direct-reflector-depth-x-axis-rotation.mp4
+    preview_path: local/idealized-direct-reflector-depth-rotation/forsterite-x-axis-v1/preview.png
+    bundle_path: local/idealized-direct-reflector-depth-rotation/forsterite-x-axis-v1
+    provenance_path: local/idealized-direct-reflector-depth-rotation/forsterite-x-axis-v1/manifest.json
+    recipe: recipes/reflectors/forsterite-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_depth_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Additive direct-reflector depth treatment in x-axis motion.
+    orientation: active x-axis rotation
+    hero: false
+  - id: ice-ih-depth-field-x-axis
+    title: Ice Ih — direct-reflector depth-field rotation
+    phase_slugs: [ice-ih]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/idealized-direct-reflector-depth-rotation/ice-ih-x-axis-v1/ice-ih-direct-reflector-depth-x-axis-rotation.mp4
+    preview_path: local/idealized-direct-reflector-depth-rotation/ice-ih-x-axis-v1/preview.png
+    bundle_path: local/idealized-direct-reflector-depth-rotation/ice-ih-x-axis-v1
+    provenance_path: local/idealized-direct-reflector-depth-rotation/ice-ih-x-axis-v1/manifest.json
+    recipe: recipes/reflectors/ice-ih-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_depth_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Additive direct-reflector depth treatment in x-axis motion.
+    orientation: active x-axis rotation
+    hero: false
+  - id: ice-ih-near-depth-x-axis
+    title: Ice Ih — near-depth band-led rotation
+    phase_slugs: [ice-ih]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/idealized-near-depth-rotation/ice-ih-x-axis-band-led-v1/ice-ih-near-depth-x-axis-rotation.mp4
+    preview_path: local/idealized-near-depth-rotation/ice-ih-x-axis-band-led-v1/preview.png
+    bundle_path: local/idealized-near-depth-rotation/ice-ih-x-axis-band-led-v1
+    provenance_path: local/idealized-near-depth-rotation/ice-ih-x-axis-band-led-v1/manifest.json
+    recipe: recipes/presentation/ice-ih-near-depth-stepped-band-led.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: Retained near-depth field with band-led emphasis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: titanite-depth-field-x-axis
+    title: Titanite — direct-reflector depth-field rotation
+    phase_slugs: [titanite]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/idealized-direct-reflector-depth-rotation/titanite-x-axis-v1/titanite-direct-reflector-depth-x-axis-rotation.mp4
+    preview_path: local/idealized-direct-reflector-depth-rotation/titanite-x-axis-v1/preview.png
+    bundle_path: local/idealized-direct-reflector-depth-rotation/titanite-x-axis-v1
+    provenance_path: local/idealized-direct-reflector-depth-rotation/titanite-x-axis-v1/manifest.json
+    recipe: recipes/reflectors/titanite-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_depth_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Additive direct-reflector depth treatment in x-axis motion.
+    orientation: active x-axis rotation
+    hero: false
+  - id: titanite-near-depth-x-axis
+    title: Titanite — near-depth band-led rotation
+    phase_slugs: [titanite]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/idealized-near-depth-rotation/titanite-x-axis-band-led-v1/titanite-near-depth-x-axis-rotation.mp4
+    preview_path: local/idealized-near-depth-rotation/titanite-x-axis-band-led-v1/preview.png
+    bundle_path: local/idealized-near-depth-rotation/titanite-x-axis-band-led-v1
+    provenance_path: local/idealized-near-depth-rotation/titanite-x-axis-band-led-v1/manifest.json
+    recipe: recipes/presentation/titanite-near-depth-stepped-band-led.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: Retained near-depth field with band-led emphasis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: zircon-near-depth-x-axis
+    title: Zircon — near-depth band-led rotation
+    phase_slugs: [zircon]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/idealized-near-depth-rotation/zircon-x-axis-band-led-v1/zircon-near-depth-x-axis-rotation.mp4
+    preview_path: local/idealized-near-depth-rotation/zircon-x-axis-band-led-v1/preview.png
+    bundle_path: local/idealized-near-depth-rotation/zircon-x-axis-band-led-v1
+    provenance_path: local/idealized-near-depth-rotation/zircon-x-axis-band-led-v1/manifest.json
+    recipe: recipes/presentation/zircon-near-depth-stepped-band-led.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: Retained near-depth field with band-led emphasis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: forsterite-intensity-relief-globe
+    title: Forsterite — intensity-relief globe
+    phase_slugs: [forsterite]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/relief-globes/forsterite-501/relief-globe-build-41742681d599409a/forsterite-intensity-relief-globe.stl
+    preview_path: local/relief-globes/forsterite-501/relief-globe-build-41742681d599409a/forsterite-intensity-relief-preview.png
+    bundle_path: local/relief-globes/forsterite-501/relief-globe-build-41742681d599409a
+    provenance_path: local/relief-globes/forsterite-501/relief-globe-build-41742681d599409a/relief-manifest.json
+    recipe: recipes/relief/forsterite-intensity-globe.yml
+    entrypoint: kikuchi-lab relief-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Intensity-derived spherical relief geometry.
+    orientation: canonical sphere
+    hero: false
+  - id: ice-ih-intensity-relief-globe
+    title: Ice Ih — intensity-relief globe
+    phase_slugs: [ice-ih]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/ice-intensity-globes-fixed/ice-intensity-globe-build-dfcf0bd0c7f4a5bd/ice-ih-intensity-relief.stl
+    preview_path: local/ice-intensity-globes-fixed/ice-intensity-globe-build-dfcf0bd0c7f4a5bd/ice-ih-intensity-relief-preview.png
+    bundle_path: local/ice-intensity-globes-fixed/ice-intensity-globe-build-dfcf0bd0c7f4a5bd
+    provenance_path: local/ice-intensity-globes-fixed/ice-intensity-globe-build-dfcf0bd0c7f4a5bd/intensity-globe-manifest.json
+    recipe: recipes/globes/ice-ih-intensity.yml
+    entrypoint: kikuchi-lab relief-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Intensity-derived spherical relief geometry.
+    orientation: canonical sphere
+    hero: false
+  - id: ice-ih-primary-tattoo-template
+    title: Ice Ih — primary tattoo template
+    phase_slugs: [ice-ih]
+    families: [direct-reflector-template, tattoo-template]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980/ice-ih-tattoo-primary.svg
+    preview_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980/ice-ih-tattoo-mockup.png
+    bundle_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980
+    provenance_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980/manifest.json
+    recipe: recipes/art/ice-ih-tattoo.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Primary black-ink direct-reflector tattoo template.
+    orientation: selected tattoo orientation
+    hero: false

@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from kikuchi_lab.atlas import build_atlas, load_phase_registry
+from kikuchi_lab.atlas import build_atlas, load_phase_registry, load_product_registry
 
 
 ROOT = Path(__file__).parents[2]
 REGISTRY = ROOT / "docs/atlas/PHASE_REGISTRY.yml"
-PRODUCTS = ROOT / "docs/products/ARTIFACT_CATALOG.yml"
+PRODUCTS = ROOT / "docs/atlas/PRODUCT_REGISTRY.yml"
+ANCHORS = ROOT / "docs/products/ARTIFACT_CATALOG.yml"
 
 
 def test_atlas_registry_has_exact_family_references_not_ambiguous_family_labels() -> None:
@@ -32,23 +33,62 @@ def test_atlas_registry_has_exact_family_references_not_ambiguous_family_labels(
     assert phases["diopside"].family == "clinopyroxene"
 
 
+def test_product_registry_models_individual_products_and_common_core_families() -> None:
+    phases = load_phase_registry(REGISTRY)
+    families, products = load_product_registry(PRODUCTS, phase_slugs={phase.slug for phase in phases})
+
+    assert {family.identifier for family in families if family.coverage == "core"} == {
+        "direct-reflector-template",
+        "orientation-variation",
+        "x-axis-motion",
+        "reflector-ridge-globe",
+    }
+    assert len(products) == 51
+    assert all(product.is_available() for product in products)
+    assert {
+        product.identifier for product in products if product.hero
+    } == {
+        "forsterite-direct-standard",
+        "ice-ih-direct-standard",
+        "quartz-direct-standard",
+        "zircon-direct-standard",
+        "titanite-direct-standard",
+        "diamond-tattoo-rotation-b",
+    }
+
+
 def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     result = build_atlas(
         registry_path=REGISTRY,
-        product_catalog_path=PRODUCTS,
+        product_registry_path=PRODUCTS,
+        anchor_catalog_path=ANCHORS,
         output_root=tmp_path / "site",
     )
 
     assert result.phase_count == 9
-    assert result.product_count == 17
+    assert result.product_count == 51
     assert result.index_path.is_file()
     index = result.index_path.read_text(encoding="utf-8")
     assert "Kikuchi Atlas" in index
+    assert "Browse all 51 individual products" in index
+    assert "Lead: Forsterite — standard hemisphere" in index
     assert "Plagioclase (An52 reference)" in index
     assert "candidate-reference" in index
+    assert result.products_path.is_file()
+    product_page = result.products_path.read_text(encoding="utf-8")
+    assert 'id="product-search"' in product_page
+    assert 'id="phase-filter"' in product_page
+    assert 'id="family-filter"' in product_page
+    assert product_page.count('class="card product-card"') == 51
     assert (tmp_path / "site/phases/forsterite.html").is_file()
     forsterite = (tmp_path / "site/phases/forsterite.html").read_text(encoding="utf-8")
-    assert forsterite.count('<article class="card">') == 6
+    assert "Common product matrix" in forsterite
+    assert "open SVG" in forsterite
+    assert "open MP4" in forsterite
+    assert "open STL" in forsterite
+    assert "phases/phases/" not in forsterite
+    assert forsterite.count('class="card product-card"') == 10
     diopside = (tmp_path / "site/phases/diopside.html").read_text(encoding="utf-8")
     assert "COD 1000007, diopside at 1 atm" in diopside
-    assert "No product published yet" in diopside
+    assert "blocked by source promotion" in diopside
+    assert "No individual product published yet" in diopside

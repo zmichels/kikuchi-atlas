@@ -7,12 +7,14 @@ parent: KIKU-E001
 children:
   - KIKU-T040
   - KIKU-T041
+  - KIKU-T042
 created: 2026-07-20
 priority: P1
 tags: [atlas, phase-catalog, provenance, local-publication]
 links:
   - ../atlas/README.md
   - ../atlas/PHASE_REGISTRY.yml
+  - ../atlas/PRODUCT_REGISTRY.yml
   - ../products/ARTIFACT_CATALOG.yml
 evidence:
   - ../../scripts/build_atlas.py
@@ -35,4 +37,5 @@ master-pattern and dictionary products.
 - [x] A deterministic local command renders an index and one self-explanatory page per phase from the registry and product catalog.
 - [x] Missing ignored `local/` media are reported as unavailable instead of being mistaken for a missing source or recipe.
 - [x] Existing artifact-catalog phases are cross-checked against the Atlas registry.
+- [x] The Atlas has a curated individual-product registry, phase-first product matrix, and a product-first searchable browse page.
 - [ ] The first three candidate structures are promoted to tracked source records and receive accepted direct-reflector products.
