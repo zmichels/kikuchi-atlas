@@ -30,4 +30,9 @@ making dense master-pattern rasters a routine rendering dependency.
 `KIKU-F007` deliberately adds dense retained-field companions for Titanite and
 Zircon: one stored kinematical master and one presentation-only overlap field
 per phase, then active x-axis rotations derived without rerunning diffraction.
+`KIKU-F008` unifies the mature dynamical and spherical/direct-reflector source
+lineages, catalogs their local media, and keeps the unaccepted MTEX/S2
+workbench as an explicit separate branch. See
+`docs/architecture/INTEGRATION_HISTORY.md` for the historic identifier
+collision and preservation boundary.
 Parent/child links remain symmetric, and only accepted work is marked `done`.

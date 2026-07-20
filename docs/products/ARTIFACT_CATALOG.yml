@@ -1,0 +1,88 @@
+schema_version: 1
+title: Kikuchi Lab local product catalog
+claim_boundary: >-
+  Entries are locally rendered scientific-art products. Their tier controls
+  the appropriate caption and claim boundary; none is an EBSD acquisition,
+  indexing result, or calibrated detector-performance claim unless its own
+  manifest says so.
+entries:
+  - id: forsterite-dynamical-master-x-axis
+    tier: dynamical-reference
+    phase: forsterite
+    artifact_path: local/dynamical-master-rotation/forsterite-x-axis-gold-v1
+    files: [manifest.json, preview.png, forsterite-dynamical-master-x-axis-proof.mp4]
+    recipe: recipes/production/forsterite-simulation.yml
+    entrypoint: scripts/render_dynamical_master_rotation.py
+    state: local-published
+
+  - id: forsterite-direct-reflector-depth-x-axis
+    tier: direct-reflector-art
+    phase: forsterite
+    artifact_path: local/idealized-direct-reflector-depth-rotation/forsterite-x-axis-v1
+    files: [manifest.json, preview.png, forsterite-direct-reflector-depth-x-axis-rotation.mp4]
+    recipe: recipes/reflectors/forsterite-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_depth_rotation.py
+    state: local-published
+
+  - id: ice-ih-direct-reflector-depth-x-axis
+    tier: direct-reflector-art
+    phase: ice-ih
+    artifact_path: local/idealized-direct-reflector-depth-rotation/ice-ih-x-axis-v1
+    files: [manifest.json, preview.png, ice-ih-direct-reflector-depth-x-axis-rotation.mp4]
+    recipe: recipes/reflectors/ice-ih-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_depth_rotation.py
+    state: local-published
+
+  - id: titanite-retained-near-depth-x-axis
+    tier: retained-near-depth-field
+    phase: titanite
+    artifact_path: local/idealized-near-depth-rotation/titanite-x-axis-band-led-v1
+    files: [manifest.json, preview.png, titanite-near-depth-x-axis-rotation.mp4]
+    recipe: recipes/presentation/titanite-near-depth-stepped-band-led.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    state: local-published
+
+  - id: zircon-retained-near-depth-x-axis
+    tier: retained-near-depth-field
+    phase: zircon
+    artifact_path: local/idealized-near-depth-rotation/zircon-x-axis-band-led-v1
+    files: [manifest.json, preview.png, zircon-near-depth-x-axis-rotation.mp4]
+    recipe: recipes/presentation/zircon-near-depth-stepped-band-led.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    state: local-published
+
+  - id: forsterite-reflector-ridge-globe
+    tier: printable-geometry
+    phase: forsterite
+    artifact_path: local/reflector-ridge-series/forsterite/reflector-ridge-globe-build-1c2dad85f3d06ae1
+    files: [reflector-globe-manifest.json, forsterite-reflector-ridges.stl, mesh-validation.json]
+    recipe: recipes/globes/forsterite-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    state: local-published
+
+  - id: forsterite-intensity-relief-globe
+    tier: printable-geometry
+    phase: forsterite
+    artifact_path: local/relief-globes/forsterite-501/relief-globe-build-41742681d599409a
+    files: [relief-manifest.json, forsterite-intensity-relief-globe.stl, mesh-validation.json]
+    recipe: recipes/relief/forsterite-intensity-globe.yml
+    entrypoint: kikuchi-lab relief globe build
+    state: local-published
+
+  - id: five-phase-standard-vector-family
+    tier: direct-reflector-art
+    phase: [forsterite, ice-ih, quartz, zircon, titanite]
+    artifact_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
+    files: [forsterite/forsterite-standard.svg, ice-ih/ice-ih-standard.svg, quartz/quartz-standard.svg, zircon/zircon-standard.svg, titanite/titanite-standard.svg]
+    recipe: recipes/art/five-phase-hemisphere-series.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    state: local-published
+
+  - id: five-phase-orientation-gallery
+    tier: direct-reflector-art
+    phase: [forsterite, ice-ih, quartz, zircon, titanite]
+    artifact_path: local/phase-general-direct-reflector-art/orientation-gallery/orientation-gallery-sheet-2e035fcbc2398433
+    files: [manifest.json, orientation-gallery-comparison.png]
+    recipe: recipes/art/five-phase-standard-orientation-gallery.yml
+    entrypoint: scripts/verify_orientation_gallery.py
+    state: tracked-review-proof

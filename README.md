@@ -9,6 +9,11 @@ The approved design and executable implementation plan live under
 `docs/superpowers/`. Repo-native work state lives in `docs/work/`. Large or
 machine-specific products belong in the ignored `local/` directory.
 
+Start with [the repository map](docs/architecture/REPO_MAP.md) and the
+[local product catalog](docs/products/ARTIFACT_CATALOG.yml). The catalog keeps
+the selected science-art, animation, and printable products discoverable while
+keeping generated media out of source control.
+
 ## Development
 
 Use uv's managed arm64 Python 3.12 runtime:
@@ -25,6 +30,7 @@ Inspect the current package version:
 
 ```bash
 uv run kikuchi-lab version
+uv run python scripts/product_status.py
 ```
 
 Build the canonical spherical intensity-relief globe from a verified master product:
