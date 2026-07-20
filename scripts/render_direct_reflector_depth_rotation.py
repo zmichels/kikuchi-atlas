@@ -20,6 +20,7 @@ from kikuchi_lab.model.recipes import Orientation
 
 ROOT = Path(__file__).resolve().parents[1]
 PHASE_SOURCES = {
+    "forsterite": Path("local/phase-general-direct-reflector-art/series/forsterite-hemisphere-standard-run-1c34e517644729c5"),
     "ice-ih": Path("local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980"),
     "titanite": Path("local/phase-general-direct-reflector-art/series/titanite-hemisphere-standard-run-7a58d5c09fe6273c"),
 }
