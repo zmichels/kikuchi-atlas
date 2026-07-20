@@ -1,0 +1,114 @@
+schema_version: 1
+title: Kikuchi Atlas phase registry
+claim_boundary: >-
+  This registry names exact structures and candidate references. A card is not
+  a detector-calibrated pattern, dictionary entry, or indexing validation
+  merely because it is present in the Atlas.
+phases:
+  - slug: forsterite
+    display_name: Forsterite
+    family: olivine
+    formula: Mg2SiO4
+    crystal_system: orthorhombic
+    source_status: tracked-source
+    source_record: phases/forsterite/source.yml
+    candidate_reference:
+    scope_note: Ambient Pbnm source, transformed explicitly to the simulator setting.
+
+  - slug: ice-ih
+    display_name: Ice Ih
+    family: ice polymorph
+    formula: O sublattice model
+    crystal_system: hexagonal
+    source_status: tracked-source
+    source_record: phases/ice-ih/source.yml
+    candidate_reference:
+    scope_note: Average oxygen-sublattice model; hydrogen disorder is intentionally out of scope.
+
+  - slug: quartz
+    display_name: Alpha quartz
+    family: silica polymorph
+    formula: SiO2
+    crystal_system: trigonal
+    source_status: tracked-source
+    source_record: phases/quartz/source.yml
+    candidate_reference:
+    scope_note: Right-handed ambient alpha-quartz reference.
+
+  - slug: zircon
+    display_name: Zircon
+    family: nesosilicate
+    formula: ZrSiO4
+    crystal_system: tetragonal
+    source_status: tracked-source
+    source_record: phases/zircon/source.yml
+    candidate_reference:
+    scope_note: Origin-choice conversion and isotropic displacement derivation are recorded.
+
+  - slug: titanite
+    display_name: Titanite
+    family: titanosilicate
+    formula: CaTiSiO5
+    crystal_system: monoclinic
+    source_status: tracked-source
+    source_record: phases/titanite/source.yml
+    candidate_reference:
+    scope_note: Synthetic, stoichiometric 25 C P21/a reference; not the high-temperature polymorph.
+
+  - slug: diamond
+    display_name: Diamond
+    family: native element
+    formula: C
+    crystal_system: cubic
+    source_status: tracked-source
+    source_record: phases/diamond/source.yml
+    candidate_reference:
+    scope_note: Cubic Fd-3m reference with a recorded source-origin correction.
+
+  - slug: plagioclase-an52
+    display_name: Plagioclase (An52 reference)
+    family: plagioclase feldspar
+    formula: Na0.685Ca0.347Al1.46Si2.54O8
+    crystal_system: triclinic
+    source_status: candidate-reference
+    source_record:
+    candidate_reference:
+      label: COD 8103560, intermediate plagioclase An52
+      source_url: https://www.crystallography.net/cod/8103560.html
+      cif_url: https://www.crystallography.net/cod/8103560.cif
+      license: CC0-1.0
+      rationale: A concrete intermediate-composition plagioclase avoids falsely treating an endmember as the whole solid solution.
+      promotion_trigger: Preserve the C-centered triclinic source through a tested primitive-cell or centering-aware structure adapter.
+    scope_note: A family entry represented by one explicit An52 candidate, not a universal plagioclase pattern.
+
+  - slug: muscovite-2m1
+    display_name: Muscovite (2M1 reference)
+    family: mica
+    formula: K0.86Na0.10Al2.9Fe0.04Mg0.06Si3O12H2
+    crystal_system: monoclinic
+    source_status: candidate-reference
+    source_record:
+    candidate_reference:
+      label: COD 9014960, natural 2M1 muscovite
+      source_url: https://www.crystallography.net/cod/9014960.html
+      cif_url: https://www.crystallography.net/cod/9014960.cif
+      license: CC0-1.0
+      rationale: The documented 2M1 specimen preserves measured mixed occupancies rather than substituting an invented ideal mica.
+      promotion_trigger: Verify the mixed-occupancy structure against the source CIF and accept its direct-reflector evidence.
+    scope_note: Natural 2M1 composition reference; it is not a claim about every mica polytype or composition.
+
+  - slug: diopside
+    display_name: Diopside (clinopyroxene reference)
+    family: clinopyroxene
+    formula: CaMgSi2O6
+    crystal_system: monoclinic
+    source_status: candidate-reference
+    source_record:
+    candidate_reference:
+      label: COD 1000007, diopside at 1 atm
+      source_url: https://www.crystallography.net/cod/1000007.html
+      cif_url: https://www.crystallography.net/cod/1000007.cif
+      license: CC0-1.0
+      rationale: Stoichiometric ambient diopside is a clear first clinopyroxene reference before augite, jadeite, and compositional-series work.
+      promotion_trigger: Verify the ambient C2/c source record and accept its direct-reflector evidence.
+    scope_note: Diopside is the first clinopyroxene reference, not a proxy for the full clinopyroxene compositional field.

@@ -14,6 +14,10 @@ Start with [the repository map](docs/architecture/REPO_MAP.md) and the
 the selected science-art, animation, and printable products discoverable while
 keeping generated media out of source control.
 
+The [Kikuchi Atlas](docs/atlas/README.md) turns the phase registry and local
+product catalog into a browsable local publication surface without erasing the
+scientific distinction between a visual derivative and an indexing reference.
+
 ## Development
 
 Use uv's managed arm64 Python 3.12 runtime:
