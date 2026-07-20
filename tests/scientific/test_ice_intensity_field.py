@@ -21,11 +21,18 @@ KINEMATICAL_RECIPE = ROOT / "recipes/kinematical/ice-ih-oxygen-quiet-proof.yml"
 
 
 def _simulation(master: np.ndarray) -> KinematicalSimulation:
+    metadata = {"projection": "stereographic", "hemisphere": "both"}
     return KinematicalSimulation(
-        KinematicalArrayProduct.from_array(
+        master_stereographic=KinematicalArrayProduct.from_array(
             "test stereographic master",
             master,
-            metadata={"projection": "stereographic", "hemisphere": "both"},
+            metadata=metadata,
+        ),
+        master_lambert=KinematicalArrayProduct.from_array(
+            "test Lambert master", master, metadata=metadata
+        ),
+        detector=KinematicalArrayProduct.from_array(
+            "test detector", master[0], metadata=metadata
         ),
         reflector_catalog={},
         projection_ledger={},

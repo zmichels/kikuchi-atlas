@@ -16,12 +16,12 @@ def test_ice_kinematical_source_product_has_recipe_and_source_identity() -> None
     metadata = simulation.master_stereographic.metadata
 
     assert metadata["source_id"].startswith("source-")
-    assert metadata["recipe_id"].startswith("kinematical-recipe-")
+    assert metadata["recipe_id"].startswith("recipe-")
     assert metadata["source_id"] in metadata["provenance_links"]
     assert metadata["recipe_id"] in metadata["provenance_links"]
 
 
-def test_ice_kinematical_rejects_a_non_ice_source_even_with_ice_reflector_recipe(
+def test_ice_kinematical_rejects_a_non_ice_source(
     tmp_path: Path,
 ) -> None:
     altered = tmp_path / "kinematical.yml"

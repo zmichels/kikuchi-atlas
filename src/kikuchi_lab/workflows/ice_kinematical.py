@@ -5,12 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from kikuchi_lab.kinematical.contracts import KinematicalSimulation
-from kikuchi_lab.kinematical.kikuchipy_adapter import simulate_kinematical_master
+from kikuchi_lab.kinematical.kikuchipy_adapter import simulate_kinematical_arrays
 from kikuchi_lab.kinematical.recipe import load_kinematical_recipe
-from kikuchi_lab.reflectors.recipe import load_reflector_recipe
 from kikuchi_lab.sources.structure import StructureRecord, load_structure_record
-
-from .ice_reflector_catalog import _require_recovered_ice_policy
 
 
 _REPOSITORY_ROOT = Path(__file__).parents[3]
@@ -44,10 +41,5 @@ def simulate_ice_kinematical(recipe_path: str | Path) -> KinematicalSimulation:
     recipe = load_kinematical_recipe(recipe_file)
     source = load_structure_record((recipe_file.parent / recipe.source_record).resolve())
     _require_tracked_ice_source(source)
-    reflector_recipe = load_reflector_recipe(
-        (recipe_file.parent / recipe.reflector_recipe).resolve()
-    )
-    _require_recovered_ice_policy(reflector_recipe)
-    if Path(reflector_recipe.source_record).as_posix() != "phases/ice-ih/source.yml":
-        raise ValueError("bounded Ice kinematical master requires the tracked Ice source")
-    return simulate_kinematical_master(source, recipe, reflector_recipe)
+    simulation, _context = simulate_kinematical_arrays(source, recipe)
+    return simulation

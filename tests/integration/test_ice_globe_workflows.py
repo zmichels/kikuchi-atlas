@@ -40,7 +40,9 @@ def test_intensity_and_ridge_bundles_have_distinct_product_kinds(tmp_path: Path)
     assert provenance["projection_ledger"]["projections"]["stereographic"]["valid_domain"] == (
         "X^2 + Y^2 <= 1"
     )
-    assert provenance["reflector_catalog_evidence"]["catalog_id"].startswith("reflector-catalog-")
+    assert provenance["reflector_catalog_evidence"]["catalog_id"].startswith(
+        "kinematical-reflection-catalog-"
+    )
     assert provenance["sampling"]["contract"] == intensity_ledger["sampling_contract"]
     assert provenance["sampling"]["valid_disk_domain"] == "X^2 + Y^2 <= 1"
     assert provenance["seam_diagnostics"]["equator_owner"] == "upper"

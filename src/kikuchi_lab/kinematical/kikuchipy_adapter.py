@@ -23,6 +23,7 @@ from kikuchi_lab.projection.kikuchipy_adapter import (
     _to_kikuchipy_rotation,
     transform_crystal_direction_to_sample,
 )
+from kikuchi_lab.model.identity import stable_id
 from kikuchi_lab.sources.structure import StructureRecord, verify_structure
 
 from .contracts import (
@@ -596,7 +597,10 @@ def _product_metadata(
     source_id = record.source_record.source_id
     return {
         "source_id": source_id,
+        "source_structure_id": record.identifier,
         "source_sha256": record.sha256,
+        "source_setting": record.setting,
+        "simulation_setting": record.simulation_setting["target_setting"],
         "recipe_id": recipe.recipe_id,
         "generators": {
             "reflection": {"name": "diffsims", "version": version("diffsims")},
@@ -674,10 +678,21 @@ def simulate_kinematical_arrays(
     detector_array = np.asarray(detector_signal.data, dtype=np.float32).squeeze()
     detector_geometry = master_simulator.on_detector(detector, rotation)
 
+    master_catalog = _catalog_with_threshold(
+        master_reflectors, recipe, recipe.master_relative_factor
+    )
     catalog = {
-        "master": _catalog_with_threshold(
-            master_reflectors, recipe, recipe.master_relative_factor
+        "catalog_id": stable_id(
+            "kinematical-reflection-catalog",
+            {
+                "source_structure_id": record.identifier,
+                "source_sha256": record.sha256,
+                "recipe_id": recipe.recipe_id,
+                "master": master_catalog,
+            },
         ),
+        "source_structure_id": record.identifier,
+        "master": master_catalog,
         "overlays": {
             style.name: _catalog_with_threshold(
                 overlay_reflectors[style.name], recipe, style.overlay_relative_factor
