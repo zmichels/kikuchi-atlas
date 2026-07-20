@@ -15,8 +15,9 @@ open docs/atlas/site/index.html
 
 The generated site has two entry points:
 
-- `index.html` is phase-first. Each phase pairs a visual product-family matrix
-  with the same named coverage table before its individual products.
+- `index.html` is phase-first. Each phase divides its visual product-family
+  matrix, coverage table, and individual-product library into core and
+  extension products before presenting the individual artifacts.
 - `products.html` is product-first. It filters the curated release set by phase,
   product family, medium, and free text.
 

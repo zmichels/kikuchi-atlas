@@ -75,6 +75,16 @@ _HIGHLIGHT_FAMILY_ORDER = (
     "intensity-relief-globe",
     "reflector-ridge-globe",
 )
+_COVERAGE_PRESENTATION = {
+    "core": (
+        "Core products",
+        "Comparable phase products intended as the common Atlas release set.",
+    ),
+    "extension": (
+        "Extension products",
+        "Additional intensity, depth, or relief studies that expand rather than replace the core set.",
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -377,10 +387,10 @@ nav {{ display: flex; flex-wrap: wrap; gap: .7rem 1.2rem; margin-bottom: 2rem; f
 .lede {{ max-width: 70rem; color: #c2ccd4; font-size: 1.08rem; line-height: 1.55; }} .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1.05rem; }} .visual-highlights {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.05rem; }} .product-matrix {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.05rem; }}
 .card {{ overflow: hidden; border: 1px solid #2e3d48; border-radius: 16px; background: rgba(17,25,32,.88); box-shadow: 0 18px 40px rgba(0,0,0,.18); }} .card img, .card video, .placeholder {{ display: block; aspect-ratio: 1/.72; width: 100%; object-fit: cover; background: linear-gradient(135deg,#26343f,#111a20); }}
 .placeholder {{ display: grid; place-items: center; color: #8798a5; font-size: .86rem; letter-spacing: .04em; text-transform: uppercase; }} .pad {{ padding: 1rem 1.05rem 1.1rem; }} .highlight-card .pad {{ min-height: 7.4rem; }} .highlight-card a.visual-link {{ display: block; color: inherit; }} .kicker {{ margin: 0 0 .45rem; color: #8fa7b8; font-size: .75rem; letter-spacing: .09em; text-transform: uppercase; }}
-.matrix-card {{ display: flex; flex-direction: column; min-height: 19rem; }} .matrix-card[data-state="planned"] {{ border-style: dashed; border-color: #6c6250; }} .matrix-thumbnails {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; background: #27343d; }} .matrix-thumbnails.single {{ grid-template-columns: 1fr; }} .matrix-thumb {{ display: block; overflow: hidden; background: #101a21; }} .matrix-thumb img {{ display: block; width: 100%; aspect-ratio: 1; object-fit: cover; transition: transform .2s ease; }} .matrix-thumb:hover img {{ transform: scale(1.035); }} .matrix-empty {{ display: grid; place-items: center; min-height: 9rem; padding: 1rem; color: #a9a18f; text-align: center; font-size: .88rem; line-height: 1.45; background: linear-gradient(135deg, #25251f, #161a1b); }} .matrix-body {{ display: flex; flex: 1; flex-direction: column; padding: .9rem 1rem 1rem; }} .matrix-body h3 {{ margin: 0; }} .matrix-count {{ margin: auto 0 0; color: #95a7b4; font-size: .86rem; line-height: 1.45; }}
+.matrix-group + .matrix-group, .product-group + .product-group {{ margin-top: 2.5rem; padding-top: 2.1rem; border-top: 1px solid #3b4d5a; }} .matrix-group-heading, .product-group-heading {{ margin: 1.5rem 0 .95rem; }} .matrix-group-heading h3, .product-group-heading h3 {{ margin: 0; font-size: 1.4rem; }} .matrix-group-heading p:last-child, .product-group-heading p:last-child {{ max-width: 58rem; margin: .4rem 0 0; color: #b9c4cb; line-height: 1.45; }} .matrix-card {{ display: flex; flex-direction: column; min-height: 19rem; }} .matrix-card[data-state="planned"] {{ border-style: dashed; border-color: #6c6250; }} .matrix-thumbnails {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; background: #27343d; }} .matrix-thumbnails.single {{ grid-template-columns: 1fr; }} .matrix-thumb {{ display: block; overflow: hidden; background: #101a21; }} .matrix-thumb img {{ display: block; width: 100%; aspect-ratio: 1; object-fit: cover; transition: transform .2s ease; }} .matrix-thumb:hover img {{ transform: scale(1.035); }} .matrix-empty {{ display: grid; place-items: center; min-height: 9rem; padding: 1rem; color: #a9a18f; text-align: center; font-size: .88rem; line-height: 1.45; background: linear-gradient(135deg, #25251f, #161a1b); }} .matrix-body {{ display: flex; flex: 1; flex-direction: column; padding: .9rem 1rem 1rem; }} .matrix-body h3 {{ margin: 0; }} .matrix-count {{ margin: auto 0 0; color: #95a7b4; font-size: .86rem; line-height: 1.45; }}
 .title {{ margin: 0; font-size: 1.3rem; }} .meta {{ margin: .7rem 0 0; color: #b9c4cb; line-height: 1.45; font-size: .91rem; }} .badge, .tag {{ display: inline-block; margin: .65rem .25rem 0 0; padding: .22rem .5rem; border: 1px solid #4f697b; border-radius: 999px; color: #cce7fa; font-size: .75rem; }}
 .candidate {{ border-color: #755f3d; }} .candidate .badge {{ border-color: #977a46; color: #f0d290; }} .product {{ padding: 1rem 1.05rem 1.1rem; }} .product strong {{ display: block; }} .product small {{ color: #95a7b4; }} .callout {{ margin-top: 2rem; padding: 1rem 1.1rem; border-left: 3px solid #6fa7d1; background: rgba(31,51,67,.5); line-height: 1.5; }} code {{ color: #d8e6ef; }}
-.actions {{ display: flex; flex-wrap: wrap; gap: .65rem; margin-top: .85rem; }} .actions a {{ padding: .35rem .58rem; border: 1px solid #405b6d; border-radius: .45rem; text-decoration: none; }} .matrix {{ width: 100%; border-collapse: collapse; margin-top: 1rem; }} .matrix th, .matrix td {{ border-bottom: 1px solid #2e3d48; padding: .7rem; text-align: left; vertical-align: top; }} .matrix th {{ color: #b9c4cb; font-size: .79rem; text-transform: uppercase; letter-spacing: .06em; }}
+.actions {{ display: flex; flex-wrap: wrap; gap: .65rem; margin-top: .85rem; }} .actions a {{ padding: .35rem .58rem; border: 1px solid #405b6d; border-radius: .45rem; text-decoration: none; }} .matrix {{ width: 100%; border-collapse: collapse; margin-top: 1rem; }} .matrix th, .matrix td {{ border-bottom: 1px solid #2e3d48; padding: .7rem; text-align: left; vertical-align: top; }} .matrix th {{ color: #b9c4cb; font-size: .79rem; text-transform: uppercase; letter-spacing: .06em; }} .matrix-section th {{ padding-top: 1.5rem; color: #a9d7ff; border-bottom-color: #4a6477; }}
 .coverage {{ color: #b9c4cb; }} .status-live {{ color: #b9e5ca; }} .status-plan {{ color: #e5c98a; }} .filters {{ display: grid; grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(160px, 1fr)); gap: .75rem; margin: 1.5rem 0; }} .filters input, .filters select {{ padding: .62rem .7rem; border: 1px solid #465b6b; border-radius: .45rem; background: #101a21; color: #edf2f6; font: inherit; }} .hidden {{ display: none; }} .muted {{ color: #95a7b4; }}
 @media (max-width: 620px) {{ body {{ padding: 1.5rem 1rem 3rem; }} .filters {{ grid-template-columns: 1fr; }} .matrix {{ font-size: .9rem; }} }}
 </style></head><body>{body}</body></html>"""
@@ -494,7 +504,7 @@ def _visual_product_matrix_html(
     page: Path,
 ) -> str:
     """Show one visual, status-honest cell for each registered product family."""
-    tiles: list[str] = []
+    tiles_by_coverage: dict[str, list[str]] = {coverage: [] for coverage in _COVERAGE_PRESENTATION}
     for family in families:
         members = tuple(
             product
@@ -526,17 +536,25 @@ def _visual_product_matrix_html(
                 if blocked
                 else '<span class="status-plan">planned for this phase</span>'
             )
-        tiles.append(
+        tiles_by_coverage[family.coverage].append(
             f'<article class="card matrix-card" data-family="{escape(family.identifier)}" '
             f'data-state="{state}">{visual}<div class="matrix-body">'
             f'<p class="kicker">{escape(family.coverage)} product family</p>'
             f'<h3>{escape(family.label)}</h3><p class="meta">{escape(family.description)}</p>'
             f'<p class="matrix-count">{count}</p></div></article>'
         )
+    groups = "".join(
+        f'<section class="matrix-group" data-coverage="{coverage}">'
+        f'<div class="matrix-group-heading"><p class="kicker">{coverage} release</p>'
+        f'<h3>{escape(label)}</h3><p>{escape(description)}</p></div>'
+        f'<div class="product-matrix">{"".join(tiles_by_coverage[coverage])}</div></section>'
+        for coverage, (label, description) in _COVERAGE_PRESENTATION.items()
+        if tiles_by_coverage[coverage]
+    )
     return (
         '<h2>Visual product matrix</h2><p class="lede">One compact cell per named product family. '
         'Available thumbnails open the actual local product; empty cells state production status rather than imitating one.</p>'
-        f'<div class="product-matrix">{"".join(tiles)}</div>'
+        f'{groups}'
     )
 
 
@@ -599,23 +617,64 @@ def _source_block(phase: AtlasPhase) -> str:
 def _matrix_html(
     phase: AtlasPhase, families: tuple[ProductFamily, ...], products: tuple[AtlasProduct, ...]
 ) -> str:
-    rows: list[str] = []
-    for family in families:
-        members = [product for product in products if phase.slug in product.phase_slugs and family.identifier in product.family_ids]
-        if members:
-            available = sum(product.is_available() for product in members)
-            status = f'<span class="status-live">{available}/{len(members)} individual products available</span>'
-        elif phase.source_status == "candidate-reference":
-            status = '<span class="status-plan">blocked by source promotion</span>'
-        else:
-            status = '<span class="status-plan">planned for this phase</span>'
-        rows.append(
-            f'<tr><td><strong>{escape(family.label)}</strong><br><span class="muted">{escape(family.coverage)}</span></td>'
-            f'<td>{escape(family.description)}</td><td>{status}</td></tr>'
-        )
+    sections: list[str] = []
+    for coverage, (label, _) in _COVERAGE_PRESENTATION.items():
+        rows: list[str] = []
+        for family in families:
+            if family.coverage != coverage:
+                continue
+            members = [
+                product
+                for product in products
+                if phase.slug in product.phase_slugs and family.identifier in product.family_ids
+            ]
+            if members:
+                available = sum(product.is_available() for product in members)
+                status = f'<span class="status-live">{available}/{len(members)} individual products available</span>'
+            elif phase.source_status == "candidate-reference":
+                status = '<span class="status-plan">blocked by source promotion</span>'
+            else:
+                status = '<span class="status-plan">planned for this phase</span>'
+            rows.append(
+                f'<tr><td><strong>{escape(family.label)}</strong><br><span class="muted">{escape(family.coverage)}</span></td>'
+                f'<td>{escape(family.description)}</td><td>{status}</td></tr>'
+            )
+        if rows:
+            sections.append(
+                f'<tbody><tr class="matrix-section" data-coverage="{coverage}">'
+                f'<th colspan="3">{escape(label)}</th></tr>{"".join(rows)}</tbody>'
+            )
     return (
         '<table class="matrix"><thead><tr><th>Product family</th><th>What it is</th><th>Coverage</th>'
-        f'</tr></thead><tbody>{"".join(rows)}</tbody></table>'
+        f'</tr></thead>{"".join(sections)}</table>'
+    )
+
+
+def _individual_product_groups_html(
+    products: tuple[AtlasProduct, ...],
+    families: tuple[ProductFamily, ...],
+    page: Path,
+    output_root: Path,
+    phase_by_slug: dict[str, AtlasPhase],
+) -> str:
+    """Render product cards once, grouped by their authoritative coverage family."""
+    coverage_by_family = {family.identifier: family.coverage for family in families}
+    grouped: dict[str, list[AtlasProduct]] = {coverage: [] for coverage in _COVERAGE_PRESENTATION}
+    for product in products:
+        coverage = (
+            "core"
+            if any(coverage_by_family[family_id] == "core" for family_id in product.family_ids)
+            else "extension"
+        )
+        grouped[coverage].append(product)
+    return "".join(
+        f'<section class="product-group" data-coverage="{coverage}">'
+        f'<div class="product-group-heading"><p class="kicker">{coverage} release</p>'
+        f'<h3>{escape(label)}</h3><p>{escape(description)}</p></div>'
+        f'<div class="grid">{"".join(_product_html(product, page, output_root, phase_by_slug) for product in grouped[coverage])}</div>'
+        '</section>'
+        for coverage, (label, description) in _COVERAGE_PRESENTATION.items()
+        if grouped[coverage]
     )
 
 
@@ -629,8 +688,12 @@ def _phase_page_html(
     phase_by_slug: dict[str, AtlasPhase],
 ) -> str:
     related = tuple(product for product in products if phase.slug in product.phase_slugs)
-    product_html = "".join(
-        _product_html(product, page, output_root, phase_by_slug) for product in related
+    product_html = _individual_product_groups_html(
+        related,
+        families,
+        page,
+        output_root,
+        phase_by_slug,
     )
     if not product_html:
         product_html = '<div class="placeholder">No individual product published yet</div>'
@@ -643,7 +706,7 @@ def _phase_page_html(
 {_visual_product_matrix_html(phase, families, products, page)}
 <h2>Coverage table</h2><p class="lede">Every phase is measured against the same named product families. A blank slot is a transparent production state, not a different kind of plot.</p>
 {_matrix_html(phase, families, products)}
-<h2>Individual products</h2><p class="lede">Each card opens its actual SVG, PNG, MP4, or STL first. The bundle and provenance record are secondary links for reproduction and audit.</p><div class="grid">{product_html}</div>''',
+<h2>Individual products</h2><p class="lede">Each card opens its actual SVG, PNG, MP4, or STL first. The bundle and provenance record are secondary links for reproduction and audit.</p>{product_html}''',
     )
 
 
