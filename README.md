@@ -18,6 +18,11 @@ The [Kikuchi Atlas](docs/atlas/README.md) turns the phase registry and local
 product catalog into a browsable local publication surface without erasing the
 scientific distinction between a visual derivative and an indexing reference.
 
+[Spherical dictionary resources](docs/dictionaries/README.md) are a separate,
+machine-readable line with an explicit non-validation boundary; the initial
+forsterite fixture proves the resource contract and is not an experimental
+EBSD-indexing claim.
+
 ## Development
 
 Use uv's managed arm64 Python 3.12 runtime:

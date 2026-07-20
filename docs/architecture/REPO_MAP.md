@@ -16,6 +16,8 @@ recipes/ ───────────────► src/kikuchi_lab/
                              │   scientific inputs and bounded simulations
                              ├── spherical_intensity/, near_depth/
                              │   saved scalar fields and presentation layers
+                             ├── dictionary/
+                             │   portable S2 dictionary resources and validators
                              ├── art_products/, reflector_globe/, relief/
                              │   vector art, animation, and printable geometry
                              └── workflows/, cli/
@@ -42,6 +44,7 @@ missing local render with a missing recipe or source record.
 | Direct-reflector art | `reflectors/`, `art_products/` | crisp, crystallographically sourced plane traces and bands | an EBSD pattern acquisition |
 | Retained near-depth field | `near_depth/` | additive, no-blur presentation of a saved simulated field | an independent physical simulation |
 | Printable geometry | `habit/`, `relief/`, `reflector_globe/` | source-tied STL products with mesh checks | a material/process acceptance claim |
+| Spherical dictionary fixture | `dictionary/`, `recipes/dictionaries/` | explicit-orientation contract and ranking interoperability proof | a calibrated detector library or indexing performance result |
 
 Keep the tier in a product's manifest and public caption. A visually
 compelling presentation derivative must not silently inherit a stronger
@@ -58,6 +61,10 @@ scientific claim from its source product.
   renderers.
 - `scripts/validate_work_items.py` validates planning links;
   `scripts/product_status.py` validates the product catalog's static contract.
+- `scripts/build_forsterite_spherical_dictionary_fixture.py` and
+  `scripts/verify_spherical_dictionary.py` build and independently validate
+  the first portable S2 resource. See `docs/dictionaries/README.md` for the
+  strict claim boundary.
 - `local/` is deliberately ignored: it contains generated pixels, video,
   meshes, arrays, and manifests that are reproducible from tracked inputs but
   are not assumed to exist in every clone.

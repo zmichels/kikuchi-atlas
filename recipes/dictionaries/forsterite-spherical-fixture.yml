@@ -1,0 +1,32 @@
+schema_version: 1
+name: forsterite-spherical-fixture
+dictionary_version: 0.1.0-fixture
+created_at: "2026-07-20T00:00:00Z"
+authors:
+  - Kikuchi Lab local project
+phase_source: ../../phases/forsterite/source.yml
+source_spherical_field:
+  npz: ../../local/runs/spherical-intensity/s2-run-08c2915aa6178407/forsterite-s2-intensity.npz
+  npz_sha256: d2de9d3a147b0eece79cef680bd2a96c72c075a5d55c0224c5dcfbedd3661b71
+  ledger: ../../local/runs/spherical-intensity/s2-run-08c2915aa6178407/forsterite-s2-intensity.json
+  ledger_sha256: 37a18a4c86f4dd2e2c1c04cc5ddbf92baf68d2d8a5744c0d0f6fcd43dffa2830
+  field_id: s2-field-1bf1ba60063fbdcf
+  intensity_channel: intensity_raw
+sampling:
+  topology: normalized-cube-shell-26
+  method: nearest-direction
+  interpolation: none
+  spatial_filter: none
+orientations:
+  convention: active-wxyz-crystal-to-sample
+  entries:
+    - {id: FST-0000-identity, quaternion_wxyz: [1.0, 0.0, 0.0, 0.0]}
+    - {id: FST-0001-z-plus-90, quaternion_wxyz: [0.7071067811865476, 0.0, 0.0, 0.7071067811865476]}
+    - {id: FST-0002-x-plus-90, quaternion_wxyz: [0.7071067811865476, 0.7071067811865476, 0.0, 0.0]}
+validation:
+  observed_entry_id: FST-0001-z-plus-90
+license: CC0-1.0
+claim_boundary: >-
+  A contract and convention fixture only: not a detector-projected library,
+  not experimentally EBSD-calibrated, and not a dictionary-indexing
+  performance claim.

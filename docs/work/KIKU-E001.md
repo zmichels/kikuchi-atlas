@@ -14,6 +14,7 @@ children:
   - KIKU-F007
   - KIKU-F008
   - KIKU-F009
+  - KIKU-F010
 created: 2026-07-12
 priority: P0
 tags: [forsterite, milestone]

@@ -35,4 +35,7 @@ lineages, catalogs their local media, and keeps the unaccepted MTEX/S2
 workbench as an explicit separate branch. See
 `docs/architecture/INTEGRATION_HISTORY.md` for the historic identifier
 collision and preservation boundary.
+`KIKU-F009` publishes the provenance-first Atlas as a phase-first and
+product-first local catalog. `KIKU-F010` adds a separate portable S2 dictionary
+fixture with an explicit non-validation boundary and a consumer-side verifier.
 Parent/child links remain symmetric, and only accepted work is marked `done`.
