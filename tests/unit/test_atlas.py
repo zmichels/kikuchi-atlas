@@ -88,7 +88,7 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert "tattoo" not in product_page.lower()
     assert (tmp_path / "site/phases/forsterite.html").is_file()
     forsterite = (tmp_path / "site/phases/forsterite.html").read_text(encoding="utf-8")
-    assert "Common product matrix" in forsterite
+    assert "Coverage table" in forsterite
     assert "open SVG" in forsterite
     assert "open MP4" in forsterite
     assert "open STL" in forsterite
@@ -97,6 +97,12 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert "tattoo" not in forsterite.lower()
     assert "phases/phases/" not in forsterite
     assert forsterite.count('class="card product-card"') == 10
+    assert "Visual product matrix" in forsterite
+    assert "Coverage table" in forsterite
+    assert forsterite.count('class="card matrix-card"') == 7
+    assert forsterite.count('class="matrix-thumb"') >= 7
+    assert 'data-family="direct-reflector-template"' in forsterite
+    assert 'data-family="orientation-variation"' in forsterite
     for source_backed_phase in (
         "forsterite",
         "ice-ih",
@@ -112,4 +118,7 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     diopside = (tmp_path / "site/phases/diopside.html").read_text(encoding="utf-8")
     assert "COD 1000007, diopside at 1 atm" in diopside
     assert "blocked by source promotion" in diopside
+    assert "Visual product matrix" in diopside
+    assert diopside.count('class="card matrix-card"') == 7
+    assert 'data-state="planned"' in diopside
     assert "No individual product published yet" in diopside
