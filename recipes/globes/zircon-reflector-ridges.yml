@@ -6,7 +6,7 @@ geometry:
   subdivisions: 7
   direction: raised_outward
 selection:
-  source_structure_id: COD-9000685
+  source_structure_id: COD-9000684-isotropic-U
   energy_kev: 20.0
   eligibility_min_weight: 0.25
   tie_policy: keep_equal_weights_together

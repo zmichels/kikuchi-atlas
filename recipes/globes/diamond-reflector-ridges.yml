@@ -6,7 +6,7 @@ geometry:
   subdivisions: 7
   direction: raised_outward
 selection:
-  source_structure_id: COD-9008564
+  source_structure_id: COD-2101499-diamond-derived
   energy_kev: 20.0
   eligibility_min_weight: 0.08
   tie_policy: keep_equal_weights_together

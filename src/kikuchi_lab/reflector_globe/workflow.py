@@ -64,11 +64,11 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _ICE_CATALOG_RECIPE = _PROJECT_ROOT / "recipes/reflectors/ice-ih-catalog.yml"
 _ICE_SOURCE_RECORD = _PROJECT_ROOT / "phases/ice-ih/source.yml"
 _SOURCE_ARTIFACT_STEMS = {
-    "COD-9000775": "quartz",
+    "COD-9012600": "quartz",
     "COD-9000319": "forsterite",
-    "COD-1011220": "titanite",
-    "COD-9000685": "zircon",
-    "COD-9008564": "diamond",
+    "COD-9000509": "titanite",
+    "COD-9000684-isotropic-U": "zircon",
+    "COD-2101499-diamond-derived": "diamond",
     _ICE_SOURCE_STRUCTURE_ID: "ice-ih",
 }
 

@@ -36,7 +36,7 @@ def test_intensity_and_ridge_bundles_have_distinct_product_kinds(tmp_path: Path)
         "4327a279e414a62f861d143e18570e9d741bbbb7d04dd2fb471c930988f95b81"
     )
     assert provenance["source_structure"]["source_setting"] == "P 63/m m c"
-    assert provenance["kinematical_recipe_id"].startswith("kinematical-recipe-")
+    assert provenance["kinematical_recipe_id"].startswith("recipe-")
     assert provenance["projection_ledger"]["projections"]["stereographic"]["valid_domain"] == (
         "X^2 + Y^2 <= 1"
     )
