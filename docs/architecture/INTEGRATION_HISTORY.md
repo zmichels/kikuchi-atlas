@@ -41,7 +41,8 @@ MTEX recovery behavior, and scientific acceptance evidence are reviewed.
 
 The source tree is merged by Git. Generated media remain in the ignored
 `local/` store and are indexed by `docs/products/ARTIFACT_CATALOG.yml`.
-Existing product directories should be moved into the primary checkout's
-`local/` tree only after the primary checkout is on `master`; do not make a
-worktree-relative symlink. This keeps the product store portable across later
-worktree cleanup.
+The primary checkout is now on `master`, and the selected published media have
+been moved into its `local/` tree. `scripts/product_status.py --require-present`
+verifies the nine catalog anchors there. The old fully merged spherical
+checkout was removed; its MTEX scratch data remains only with the explicitly
+experimental workbench. No worktree-relative symlinks are used.
