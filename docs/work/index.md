@@ -27,4 +27,7 @@ acceptance of the primary tattoo geometry.
 `KIKU-F006` extracts a phase-general direct-reflector seam and applies one
 configurable orientation to a five-phase standard/wide vector-art family without
 making dense master-pattern rasters a routine rendering dependency.
+`KIKU-F007` deliberately adds dense retained-field companions for Titanite and
+Zircon: one stored kinematical master and one presentation-only overlap field
+per phase, then active x-axis rotations derived without rerunning diffraction.
 Parent/child links remain symmetric, and only accepted work is marked `done`.
