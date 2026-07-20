@@ -1,9 +1,30 @@
 # Forsterite Milestone Acceptance Ledger
 
 - Status: In progress
-- Work item: [KIKU-T011](../work/KIKU-T011.md)
-- Orientation selection: `orientation-selection-0903bbee65fa3896`
-- Current user acceptance: Pending
+- Dynamical work item: [KIKU-T011](../work/KIKU-T011.md)
+- Dynamical orientation selection: `orientation-selection-0903bbee65fa3896`
+- Dynamical user acceptance: Pending
+- Kinematical native-scale acceptance: Accepted
+
+## Kinematical native-scale gate
+
+The half-size 1024 production bundle
+`kinematical-run-d1dab780ec480f72` is retained locally with its manifest and
+native-scale review inventory. The promoted/default style remains `quiet` with
+its parameters approved unchanged, while `balanced` remains the denser density
+diagnostic. Machine evidence and the completed human review checklist are
+recorded in the
+[forsterite kinematical acceptance record](kinematical-forsterite.md).
+
+The grayscale hierarchy is strong with genuinely dark quiet regions, and major
+and secondary bands remain sharply differentiated. Quiet trace density
+preserves substantially more breathing room while retaining fine structure.
+Nodes are luminous and deliberately hot but not blurred; the circular rim
+stays crisp, cardinal intersections are intensely bright, and quiet regions
+are sufficient.
+
+Human visual decision: **approved**. The next-slice decision is exactly
+`plan-evidence-guided-hybrid`.
 
 ## Resolution-only source experiment
 
@@ -80,7 +101,7 @@ therefore the promoted default gallery recipe.
 
 ![Balanced idealized gallery treatment](../../local/runs/run-5d91b13abae36c22/products/gallery-crisp.png)
 
-## Pending decision
+## Dynamical treatment pending decision
 
 User review should decide whether the balanced idealized treatment closes the
 first-pattern aesthetic gate. The 501 source is retained as the spatial

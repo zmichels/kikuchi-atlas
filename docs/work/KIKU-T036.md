@@ -1,37 +1,42 @@
 ---
 id: KIKU-T036
 type: task
-title: Build and accept atomic relief globe bundles
-status: ready
-parent: KIKU-F005
-created: '2026-07-17'
+title: Publish five-phase standard-width orientation gallery
+status: active
+parent: KIKU-F006
+depends_on:
+  - KIKU-T032
+  - KIKU-T034
+created: 2026-07-17
 priority: P1
-tags:
-- relief
-- workflow
-- acceptance
+tags: [orientation, great-circle, vector, gallery, direct-reflector]
+links:
+  - ../superpowers/specs/2026-07-17-five-phase-standard-orientation-gallery-design.md
+  - ../superpowers/plans/2026-07-17-five-phase-standard-orientation-gallery.md
 evidence:
-- ../superpowers/plans/2026-07-17-spherical-intensity-relief-globe.md
-- ../../tests/integration/test_relief_globe_workflow.py
-- ../acceptance/spherical-intensity-relief-globe.md
+  - ../superpowers/specs/2026-07-17-five-phase-standard-orientation-gallery-design.md
+  - ../acceptance/five-phase-standard-orientation-gallery.md
+  - ../../local/phase-general-direct-reflector-art/orientation-gallery/orientation-gallery-sheet-2e035fcbc2398433/orientation-gallery-comparison-ledger.json
 ---
 
-# KIKU-T036: Build and accept atomic relief globe bundles
+# KIKU-T036: Publish five-phase standard-width orientation gallery
 
 ## Description
 
-Compose source verification, spherical mapping, canonical topology, filtering,
-geometry, validation, and export into one content-addressed atomic build and
-record real forsterite acceptance without claiming an unperformed print.
+Use retained zero-master direct-reflector evidence and passing parity reports
+to publish three physically rotated, standard-width hemisphere views for each
+of five phases. Each orientation must resolve a real geometry-valid selection;
+no output may be a camera or raster-only rotation.
 
 ## Acceptance Criteria
 
-- [x] The nested CLI produces exactly one five-file atomic bundle or removes partial output and returns a concise failure without traceback.
-- [x] Build identity and manifest inventory include recipe, source, mapping, topology, filter, validation, runtime versions, file hashes, byte sizes, and millimetre units.
-- [x] Two independent full-resolution builds are identical, the retained `501 x 501` forsterite source passes canonical and processed-round-trip mesh inspection, and all repository gates remain green.
-- [ ] Human Flash Studio GUI inspection records the retained STL as one unmodified solid without repair warnings.
-
-The reproducibility, retained-source mesh inspection, and repository gates passed. Flash Studio
-1.7.11 exposes no discovered safe noninteractive slicer seam, so slicer-native inspection remains
-unobserved and is recorded as the sole concern in the acceptance report. `KIKU-T036` remains open
-only for that external GUI inspection.
+- [x] A tracked recipe records exactly three distinct active
+  crystal-to-sample Bunge orientations and all fifteen phase-orientation cells.
+- [x] Each cell passes deterministic bounded standard-width selection and
+  geometry feasibility against its real direct-reflector catalog.
+- [x] Fifteen white-background PNG/SVG products and a labeled comparison sheet
+  publish atomically with zero master-pattern simulations.
+- [x] Every output retains selection, geometry, orientation, source catalog,
+  parity, command, and checksum provenance for independent reproduction.
+- [ ] Focused and full verification pass, then the retained comparison is
+  presented for user visual review.

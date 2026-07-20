@@ -1,38 +1,37 @@
 ---
 id: KIKU-T029
 type: task
-title: Build atomic habit bundles through the CLI
-status: done
-parent: KIKU-F004
-created: '2026-07-17'
+title: Publish primary Ice Ih tattoo geometry
+status: active
+parent: KIKU-F005
+created: 2026-07-16
 priority: P1
-tags:
-- workflow
-- cli
-- artifacts
+tags: [ice-ih, science-art, tattoo, vector, visual-review]
+links:
+  - ../superpowers/specs/2026-07-16-ice-art-globe-and-tattoo-design.md
+  - ../superpowers/plans/2026-07-16-ice-art-catalog-and-tattoo.md
+  - ../superpowers/specs/2026-07-16-ice-tattoo-hemisphere-boundary-design.md
+  - ../superpowers/plans/2026-07-16-ice-tattoo-hemisphere-boundary.md
 evidence:
-- ../superpowers/plans/2026-07-17-crystal-habit-mesh-generator.md
+  - ../superpowers/plans/2026-07-16-ice-art-catalog-and-tattoo.md
+  - ../superpowers/plans/2026-07-16-ice-tattoo-hemisphere-boundary.md
+  - ../acceptance/ice-ih-tattoo-primary.md
 ---
 
-# KIKU-T029: Build atomic habit bundles through the CLI
+# KIKU-T029: Publish primary Ice Ih tattoo geometry
 
 ## Description
 
-Orchestrate recipe, crystallography, solver, mesh, preview, validation, inventory,
-and hashes into one atomic content-addressed bundle exposed by `habit build`.
+Select and publish the deterministic 145 mm black/skin Ice Ih tattoo geometry
+from actively rotated catalog normals and projected great-circle center traces,
+within a complete stereographic hemisphere boundary and with no image-derived
+edges or node embellishments.
 
 ## Acceptance Criteria
 
-- [x] Identical recipe/CIF inputs produce identical bundle IDs and file hashes in separate output roots.
-- [x] The CLI publishes a complete four-file quartz bundle or reports one concise failure without a traceback.
-- [x] The canonical STL has a maximum axis-aligned dimension of `60.0 mm` within `1e-8 mm`.
-
-## Accepted Evidence
-
-- `src/kikuchi_lab/habit/workflow.py`, `src/kikuchi_lab/cli/main.py`,
-  `tests/integration/test_habit_workflow.py`, and `tests/unit/test_cli.py`.
-- Runtime software versions are part of immutable build identity and are
-  covered by a regression proving version drift changes the bundle ID.
-- [Crystal habit acceptance ledger](../acceptance/crystal-habit-mesh.md) links
-  the optional-parity five-file bundle; the no-reference four-file contract
-  remains covered by the reproducibility regression.
+- [x] The approved orientation deterministically selects 11 unique catalog members in the fixed dominant, secondary, and fine allocation.
+- [x] Physical vector geometry satisfies the prescribed widths, crop, noncrossing gap, endpoint-clearance, and black/skin-only constraints.
+- [x] The complete 132.0 mm stereographic hemisphere boundary is serialized and identified separately as a noncrystallographic projection primitive, never as a twelfth reflector.
+- [x] The full-disc SVG, PDF, mockup, and stencil clip the complete crystallographic stroke layer to the exact 63.8 mm inner disc, draw the 132.0 mm outer boundary last, and retain every black pixel within the outer radius plus raster tolerance.
+- [x] SVG, PDF, mockup, stencil, ledgers, diagnostics, disclaimer, and manifest publish atomically with reproducible identities.
+- [ ] The user explicitly accepts the primary geometry before this task is marked done or any secondary treatment begins.

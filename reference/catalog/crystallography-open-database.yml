@@ -21,3 +21,61 @@ entries:
       volume: 58
       pages: 588-593
       article_uri: https://rruff.info/uploads/AM58_588.pdf
+  COD-9012600:
+    record: ../../phases/quartz/source.yml
+    page_uri: https://www.crystallography.net/cod/9012600.html
+    cif_uri: https://www.crystallography.net/cod/9012600.cif
+    retrieved: 2026-07-16
+    sha256: 29176db9b50e42972646a43bd171e4cff1d6bc47cc2f93e265ff809ecadd85ef
+    license: CC0-1.0
+    setting: P 31 2 1
+    handedness: right-handed
+    ambient_pressure: 1 bar
+    original_publication:
+      authors: [R. M. Hazen, L. W. Finger, R. J. Hemley, H. K. Mao]
+      title: High-pressure crystal chemistry and amorphization of alpha-quartz
+      journal: Solid State Communications
+      year: 1989
+      volume: 72
+      pages: 507-511
+      article_uri: https://doi.org/10.1016/0038-1098(89)90607-8
+  COD-9000684-isotropic-U:
+    record: ../../phases/zircon/source.yml
+    page_uri: https://www.crystallography.net/cod/9000684.html
+    original_cif_uri: https://www.crystallography.net/cod/9000684.cif
+    retrieved: 2026-07-16
+    original_sha256: e461a480345cbb60af43cff99a8f6783cf8a3c41530fcb686c506de97b79c44f
+    derivative_sha256: ff30c03e88588a8d1a54a9a2a22b3b4e73a0230bf444120dc6eb236d4391739d
+    derivative_policy: U_iso = (U_11 + U_22 + U_33) / 3 for orthogonal tetragonal axes
+    unchanged: [coordinates, occupancies, cell_values, symmetry_operations]
+    simulation_origin_transform: "choice 2 to choice 1: x,y,z + [0, 1/4, -1/8]"
+    origin_choice_reference_uri: https://onlinelibrary.wiley.com/iucr/itc/Ac/ch2o3v0001/sgtable2o3o141/
+    license: CC0-1.0
+    setting: "I 41/a m d :2"
+    ambient_pressure: 1 atm
+    original_publication:
+      authors: [R. M. Hazen, L. W. Finger]
+      title: Crystal structure and compressibility of zircon at high pressure
+      journal: American Mineralogist
+      year: 1979
+      volume: 64
+      pages: 196-201
+  COD-9000509:
+    record: ../../phases/titanite/source.yml
+    page_uri: https://www.crystallography.net/cod/9000509.html
+    cif_uri: https://www.crystallography.net/cod/9000509.cif
+    retrieved: 2026-07-16
+    sha256: ed45563f6621488f165373f2847c65acef197744322e0937d985518a3437be42
+    license: CC0-1.0
+    source_setting: P 1 21/a 1
+    simulation_setting: "P 1 21/c 1 via a,c and x,z swap"
+    temperature_kelvin: 298.15
+    specimen: synthetic stoichiometric CaTiSiO5
+    excluded_polymorph: high-temperature A2/a
+    original_publication:
+      authors: [M. Taylor, G. E. Brown]
+      title: High-temperature structural study of the P2_1/a - A2/a phase transition in synthetic titanite, CaTiSiO5
+      journal: American Mineralogist
+      year: 1976
+      volume: 61
+      pages: 435-447

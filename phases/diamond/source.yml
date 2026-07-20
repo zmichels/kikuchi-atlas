@@ -1,41 +1,50 @@
 schema_version: 1
-identifier: COD-9008564
-cif: COD-9008564.cif
-sha256: ba61fbf894db1bced1337192aa90298486845d200e1ae0aec2c6e9514fd95b16
+identifier: COD-2101499-diamond-derived
+cif: COD-2101499-diamond-derived.cif
+sha256: 1f3d704031993dfa08759dfee83dbf16ae5c1a7bc22bd4e2e924577d48a12841
 retrieved: 2026-07-18
-uri: https://www.crystallography.net/cod/9008564.cif
-page_uri: https://www.crystallography.net/cod/9008564.html
+uri: https://www.crystallography.net/cod/2101499.cif
+page_uri: https://www.crystallography.net/cod/2101499.html
 license: CC0-1.0
 license_uri: https://creativecommons.org/publicdomain/zero/1.0/
-copying_policy: COD/AMCSD source header requests proper attribution to the original article.
+copying_policy: >-
+  Public-domain COD data; acknowledge the original structural-data authors and
+  this deterministic derivative.
 citation: >-
-  Wyckoff, R. W. G. (1963). Second edition. Crystal Structures 1, 7-83.
+  Yamanaka, T. and Morimoto, S. (1996). Isotope effect on anharmonic thermal
+  atomic vibration and k refinement of 12C and 13C diamond. Acta
+  Crystallographica Section B 52, 232-238. DOI: 10.1107/S0108768195010810.
 phase:
   name: diamond
-  formula: C
+  formula: C1
   space_group_number: 227
   setting: F d -3 m
-  lattice_angstrom: [3.56679, 3.56679, 3.56679, 90.0, 90.0, 90.0]
+  lattice_angstrom: [3.56658, 3.56658, 3.56658, 90.0, 90.0, 90.0]
 sites:
-  - {label: C, element: C, fract: [0.00000, 0.00000, 0.00000], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
+  - {label: C, element: C, fract: [0.375, 0.375, 0.375], occupancy: 1.0, u_iso_angstrom_sq: 0.01}
 thermal_factor_policy:
-  source_field: unavailable
-  source_units: not reported
-  simulation_field: U_iso
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
   simulation_units: angstrom^2
-  missing: fallback
-  fallback_u_iso_angstrom_sq: 0.005
-  claim_boundary: >-
-    COD 9008564 does not report _atom_site_U_iso_or_equiv. The reflector-ridge
-    series uses a fixed U_iso fallback for deterministic printable band geometry,
-    not refined EBSD intensity.
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
 simulation_setting:
   reason: >-
-    Ridge/band globe design uses the tracked diamond CIF in its reported
-    F d -3 m setting; site multiplicities are not used as an EBSD acceptance
-    gate for this print-only series.
-  source_setting: F d -3 m
+    COD 2101499 is cubic F d -3 m and includes the carbon isotropic
+    displacement parameter. This derivative adds only the International Tables
+    number 227 required by the project source verifier. COD's 3/8,3/8,3/8
+    special position uses an origin convention that diffpy does not share;
+    translate it by -1/8,-1/8,-1/8 to the equivalent 1/4,1/4,1/4 site so its
+    diamond orbit expands to eight atoms, not a 32-site general position.
+  source_setting: F d -3 m, COD origin convention
   target_setting: F d -3 m
+  target_origin_convention: diffpy
   target_lattice_from_source: [a, b, c]
   target_fractional_from_source: [x, y, z]
-  target_site_multiplicities: unchecked
+  target_fractional_origin_shift: [-0.125, -0.125, -0.125]
+  target_site_multiplicities: [8]
+  original_cod_identifier: COD-2101499
+  original_cod_sha256: d6be73a0b0c170dcc6e8ab629598739b603a24d2cfb668a72383ad723ab972ed
+  derivative_added_tag: _space_group_IT_number 227

@@ -11,6 +11,7 @@ children:
   - KIKU-F004
   - KIKU-F005
   - KIKU-F006
+  - KIKU-F007
 created: 2026-07-12
 priority: P0
 tags: [forsterite, milestone]
@@ -21,14 +22,14 @@ links:
   - ../superpowers/plans/2026-07-13-kikuchipy-kinematical-reference-products.md
   - ../superpowers/specs/2026-07-13-spherical-intensity-and-mtex-density-design.md
   - ../superpowers/plans/2026-07-13-spherical-intensity-and-mtex-density-bridge.md
-  - ../superpowers/specs/2026-07-17-crystal-habit-mesh-generator-design.md
-  - ../superpowers/specs/2026-07-17-spherical-intensity-relief-globe-design.md
-  - ../superpowers/specs/2026-07-17-ice-reflector-ridge-globes-design.md
+  - ../superpowers/specs/2026-07-16-ice-art-globe-and-tattoo-design.md
+  - ../superpowers/plans/2026-07-16-ice-art-catalog-and-tattoo.md
+  - ../superpowers/plans/2026-07-16-ice-relief-globe.md
+  - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
+  - ../superpowers/plans/2026-07-16-phase-general-direct-reflector-art-series.md
 evidence:
   - ../superpowers/specs/2026-07-12-kikuchi-companion-design.md
   - ../acceptance/forsterite-milestone.md
-  - ../acceptance/ice-ih-reflector-ridge-globe.md
-  - ../acceptance/ice-ih-intensity-relief-globe.md
 ---
 
 # KIKU-E001: Dynamical Kikuchi companion

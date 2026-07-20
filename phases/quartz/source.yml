@@ -1,43 +1,41 @@
 schema_version: 1
-identifier: COD-9000775
-cif: COD-9000775.cif
-sha256: 10dd04655c03f6b152897a5e2d863e42892bd84561cb6dfc1febd86271e70b57
-retrieved: 2026-07-18
-uri: https://www.crystallography.net/cod/9000775.cif
-page_uri: https://www.crystallography.net/cod/9000775.html
+identifier: COD-9012600
+cif: COD-9012600.cif
+sha256: 29176db9b50e42972646a43bd171e4cff1d6bc47cc2f93e265ff809ecadd85ef
+retrieved: 2026-07-16
+uri: https://www.crystallography.net/cod/9012600.cif
+page_uri: https://www.crystallography.net/cod/9012600.html
 license: CC0-1.0
 license_uri: https://creativecommons.org/publicdomain/zero/1.0/
 copying_policy: Public-domain COD data; acknowledge the original structural-data authors.
 citation: >-
-  Levien, L., Prewitt, C. T., and Weidner, D. J. (1980). Structure and elastic
-  properties of quartz at pressure P = 1 atm. American Mineralogist 65, 920-930.
+  Hazen, R. M., Finger, L. W., Hemley, R. J., and Mao, H. K. (1989).
+  High-pressure crystal chemistry and amorphization of alpha-quartz.
+  Solid State Communications 72, 507-511.
 phase:
-  name: quartz
+  name: alpha-quartz
   formula: SiO2
-  space_group_number: 154
-  setting: P 32 2 1
-  lattice_angstrom: [4.916, 4.916, 5.4054, 90.0, 90.0, 120.0]
+  space_group_number: 152
+  setting: P 31 2 1
+  lattice_angstrom: [4.914, 4.914, 5.406, 90.0, 90.0, 120.0]
 sites:
-  - {label: Si, element: Si, fract: [0.46970, 0.00000, 0.00000], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
-  - {label: O, element: O, fract: [0.41350, 0.26690, 0.11910], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
+  - {label: Si1, element: Si, fract: [0.46990, 0.00000, 0.33333], occupancy: 1.0, u_iso_angstrom_sq: 0.00646}
+  - {label: O1, element: O, fract: [0.41300, 0.26680, 0.21400], occupancy: 1.0, u_iso_angstrom_sq: 0.01089}
 thermal_factor_policy:
-  source_field: unavailable
-  source_units: not reported
-  simulation_field: U_iso
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
   simulation_units: angstrom^2
-  missing: fallback
-  fallback_u_iso_angstrom_sq: 0.005
-  claim_boundary: >-
-    COD 9000775 reports anisotropic terms but no _atom_site_U_iso_or_equiv.
-    The reflector-ridge series uses a fixed U_iso fallback for deterministic
-    printable band geometry, not refined EBSD intensity.
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
 simulation_setting:
   reason: >-
-    Ridge/band globe design uses the tracked quartz CIF in its reported
-    P 32 2 1 setting; site multiplicities are not used as an EBSD acceptance
-    gate for this print-only series.
-  source_setting: P 32 2 1
-  target_setting: P 32 2 1
+    COD 9012600 is already in the right-handed ambient alpha-quartz setting
+    P 31 2 1, so the simulation uses the source axes without transformation.
+  source_setting: P 31 2 1
+  target_setting: P 31 2 1
   target_lattice_from_source: [a, b, c]
   target_fractional_from_source: [x, y, z]
-  target_site_multiplicities: unchecked
+  target_site_multiplicities: [3, 6]
+  handedness: right-handed P 31 2 1

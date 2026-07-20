@@ -1,54 +1,37 @@
 ---
 id: KIKU-F005
 type: feature
-title: Spherical intensity relief globe
+title: Ice Ih science-art products
 status: ready
 parent: KIKU-E001
 children:
-- KIKU-T031
-- KIKU-T032
-- KIKU-T033
-- KIKU-T034
-- KIKU-T035
-- KIKU-T036
-created: 2026-07-17
+  - KIKU-T028
+  - KIKU-T029
+  - KIKU-T030
+  - KIKU-T031
+created: 2026-07-16
 priority: P1
-tags:
-- spherical-intensity
-- relief
-- mesh
-- stl
-- print-geometry
+tags: [ice-ih, science-art, catalog, tattoo, globe]
 links:
-- ../superpowers/specs/2026-07-17-spherical-intensity-relief-globe-design.md
-- ../superpowers/plans/2026-07-17-spherical-intensity-relief-globe.md
+  - ../superpowers/specs/2026-07-16-ice-art-globe-and-tattoo-design.md
+  - ../superpowers/plans/2026-07-16-ice-art-catalog-and-tattoo.md
+  - ../superpowers/plans/2026-07-16-ice-relief-globe.md
 evidence:
-- ../incubator/print-geometry.md
-- ../acceptance/forsterite-milestone.md
-- ../acceptance/spherical-intensity-relief-globe.md
+  - ../superpowers/specs/2026-07-16-ice-art-globe-and-tattoo-design.md
 ---
 
-# KIKU-F005: Spherical intensity relief globe
+# KIKU-F005: Ice Ih science-art products
 
 ## Description
 
-Generate a deterministic, watertight, star-shaped globe whose outward radial
-relief derives from a validated raw both-hemisphere Kikuchi master pattern,
-with an `80.0 mm` base diameter, `1.2 mm` maximum relief, explicit spherical
-filtering, and complete source-to-mesh provenance.
+Create two independently validated Ice Ih art products from one immutable,
+provenance-bearing band catalog: a rotated open-silhouette tattoo composition
+and a canonical crystal-frame relief globe. Keep geometry, physical dimensions,
+selection policy, and later tonal treatment explicit and content identified.
 
 ## Acceptance Criteria
 
-- [x] Any conforming canonical both-hemisphere master product can enter the relief pipeline without forsterite-specific geometry code.
-- [x] The retained `501 x 501` forsterite master produces a reproducible five-file bundle with the reviewed source, mapping, filter, topology, and runtime identities.
-- [x] The canonical mesh contains exactly `163842` vertices and `327680` triangles, preserves subdivision-7 connectivity, and passes the reviewed radial-projection certificate.
-- [x] The STL is one watertight, consistently wound, positive-volume body with radii in `[40.0, 41.2] mm`, no duplicate or degenerate triangles, and no silent repair.
-- [ ] Slicer inspection records one unmodified solid while keeping physical printing, orientation, supports, infill, and material as operator decisions.
-- [x] Existing crystal-habit and forsterite milestone products remain unchanged.
-
-The unchanged-product criterion is supported by the tracked
-[forsterite milestone acceptance](../acceptance/forsterite-milestone.md), the relief acceptance's
-processed one-volume STL round trip, and the full fast regression gate recorded in
-[spherical relief acceptance](../acceptance/spherical-intensity-relief-globe.md). The sole open
-boundary is human Flash Studio GUI inspection of the retained STL; `KIKU-F005` remains open only
-for that inspection.
+- [ ] One shared catalog records source identity, intrinsic band evidence, deterministic eligibility, and tie-aware globe cohorts.
+- [ ] The primary tattoo publishes accepted physical center-trace geometry before any gray-wash or dotwork derivative begins.
+- [ ] The relief globe publishes bounded, watertight reference and fine meshes from catalog cohorts without raster-derived geometry.
+- [ ] Every product bundle preserves the approved science-art claim boundaries, physical constraints, provenance, and deterministic identities.

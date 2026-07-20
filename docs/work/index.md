@@ -16,8 +16,18 @@ uv run python scripts/work_status.py --root .
 the twelve review-sized implementation tasks for the dynamical exceptional-
 forsterite pattern. `KIKU-F002` adds six tasks for a deliberately separate,
 kikuchipy-native kinematical reference bundle and its visual decision gate.
-`KIKU-F003` adds six dependent tasks for an exact spherical scalar field,
-validated axial derivative, and bounded MTEX density/3D bridge. Parent/child
-links remain symmetric, and only accepted work is marked `done`. `KIKU-F004`
-promotes a post-milestone, Python-native crystal-habit mesh generator with an
-MTEX-referenced quartz proof and shared print-geometry validation spine.
+`KIKU-F003` adds seven dependent tasks for an exact spherical scalar field,
+validated axial derivative, and bounded MTEX density/3D bridge. `KIKU-F004`
+promotes the phase-general incubator into deliberately bounded additional-phase
+proofs, beginning with an Ice Ih oxygen-sublattice review candidate.
+`KIKU-F005` adds a shared Ice Ih art-band catalog and two independently
+validated science-art products: an open-silhouette tattoo and a canonical-frame
+relief globe. Its secondary gray-wash/dotwork task depends explicitly on user
+acceptance of the primary tattoo geometry.
+`KIKU-F006` extracts a phase-general direct-reflector seam and applies one
+configurable orientation to a five-phase standard/wide vector-art family without
+making dense master-pattern rasters a routine rendering dependency.
+`KIKU-F007` deliberately adds dense retained-field companions for Titanite and
+Zircon: one stored kinematical master and one presentation-only overlap field
+per phase, then active x-axis rotations derived without rerunning diffraction.
+Parent/child links remain symmetric, and only accepted work is marked `done`.

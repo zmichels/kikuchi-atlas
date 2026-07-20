@@ -1,31 +1,41 @@
 ---
 id: KIKU-T034
 type: task
-title: Map and filter radial relief geometry
-status: done
-parent: KIKU-F005
-created: '2026-07-17'
+title: Publish five-phase standard and wide art family
+status: active
+parent: KIKU-F006
+depends_on:
+  - KIKU-T032
+  - KIKU-T033
+created: 2026-07-16
 priority: P1
-tags:
-- relief
-- filtering
-- radial-geometry
+tags: [orientation, great-circle, vector, tattoo, gallery]
+links:
+  - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
+  - ../superpowers/plans/2026-07-16-phase-general-direct-reflector-art-series.md
 evidence:
-- ../superpowers/plans/2026-07-17-spherical-intensity-relief-globe.md
-- ../../tests/scientific/relief/test_relief_mapping.py
-- ../acceptance/spherical-intensity-relief-globe.md
+  - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
+  - ../acceptance/phase-general-direct-reflector-art-series.md
 ---
 
-# KIKU-T034: Map and filter radial relief geometry
+# KIKU-T034: Publish five-phase standard and wide art family
 
 ## Description
 
-Map raw both-hemisphere intensity through one robust global range, sample it
-onto canonical topology, apply a deterministic physical-scale spherical
-Gaussian filter, and displace vertices outward without changing connectivity.
+Apply one configurable active crystal-to-sample Bunge orientation to the five
+phase catalogs, freeze deterministic 11-band selections, and publish four new
+standard plus five new 15-percent-wider complete hemisphere-art bundles and a
+ten-cell comparison sheet.
 
 ## Acceptance Criteria
 
-- [x] Mapping uses one global `1st` to `99th` percentile range, clamp, and positive gamma before directional interpolation; per-hemisphere normalization is impossible.
-- [x] The `0.8 mm` FWHM, `3 sigma` filter preserves constants, is rotationally invariant, attenuates sub-resolution features, and records deterministic diagnostics.
-- [x] Radial geometry preserves canonical faces and directions exactly and keeps every radius within `[40.0, 41.2] mm` for the canonical recipe.
+- [x] All first-series compositions use active crystal-to-sample Bunge ZXZ `(17, 31, 43)` degrees through recipe data rather than phase-specific code.
+- [x] Each phase pair shares exactly the same selected reflector IDs and centerline coordinates, with only crystallographic widths scaled by `1.15` and the 2.20 mm boundary unchanged.
+- [x] Nine new SVG, PDF, PNG, geometry, recipe, catalog, provenance, validation, and manifest bundles publish atomically and deterministically.
+- [x] The reviewed Ice Ih standard-reference bundle is referenced without modification, and the labeled ten-cell comparison sheet is retained for user review.
+
+## Review State
+
+Scientific, computational, retention, and native-resolution inspection gates
+are complete. The work item remains active only for the user's aesthetic
+preference review of the standard/wide comparison.

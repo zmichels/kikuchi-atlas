@@ -14,6 +14,7 @@ dependencies = [
   "ebsdsim==0.1.8",
   "imageio>=2.37,<3",
   "kikuchipy==0.13.0",
+  "matplotlib>=3.11,<3.12",
   "numpy>=2.0,<3",
   "orix>=0.14,<0.15",
   "pillow>=12.0,<13",
@@ -23,7 +24,6 @@ dependencies = [
   "scikit-image>=0.25,<0.26",
   "tifffile>=2025.6,<2026",
   "trimesh>=4.12.2,<5",
-  "matplotlib>=3.11,<4",
 ]
 
 [project.scripts]

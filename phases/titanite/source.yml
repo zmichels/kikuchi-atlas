@@ -1,47 +1,52 @@
 schema_version: 1
-identifier: COD-1011220
-cif: COD-1011220.cif
-sha256: f8facd98461c4280553f335971b67bb87f8e7152287b812874ef88c056598eb6
-retrieved: 2026-07-18
-uri: https://www.crystallography.net/cod/1011220.cif
-page_uri: https://www.crystallography.net/cod/1011220.html
+identifier: COD-9000509
+cif: COD-9000509.cif
+sha256: ed45563f6621488f165373f2847c65acef197744322e0937d985518a3437be42
+retrieved: 2026-07-16
+uri: https://www.crystallography.net/cod/9000509.cif
+page_uri: https://www.crystallography.net/cod/9000509.html
 license: CC0-1.0
 license_uri: https://creativecommons.org/publicdomain/zero/1.0/
 copying_policy: Public-domain COD data; acknowledge the original structural-data authors.
 citation: >-
-  Zachariasen, W. H. (1930). The crystal structure of titanite. Zeitschrift
-  fuer Kristallographie, Kristallgeometrie, Kristallphysik, Kristallchemie 73, 7-16.
+  Taylor, M. and Brown, G. E. (1976). High-temperature structural study of
+  the P2_1/a - A2/a phase transition in synthetic titanite, CaTiSiO5.
+  American Mineralogist 61, 435-447. Structure measured at 25 degrees C.
 phase:
-  name: titanite
-  formula: CaO5SiTi
-  space_group_number: 15
-  setting: C 1 2/c 1
-  lattice_angstrom: [6.55, 8.70, 7.43, 90.0, 119.72, 90.0]
+  name: synthetic-titanite-25C
+  formula: CaTiSiO5
+  space_group_number: 14
+  setting: P 1 21/a 1
+  lattice_angstrom: [7.068, 8.714, 6.562, 90.0, 113.82, 90.0]
 sites:
-  - {label: Ca1, element: Ca, fract: [0.0, -0.0833, 0.0], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
-  - {label: Ti1, element: Ti, fract: [0.25, 0.25, 0.25], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
-  - {label: Si1, element: Si, fract: [0.0, -0.431, 0.0], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
-  - {label: O1, element: O, fract: [0.0, 0.1875, 0.0], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
-  - {label: O2, element: O, fract: [0.25, 0.461, 0.15], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
-  - {label: O3, element: O, fract: [-0.0278, -0.322, 0.15], occupancy: 1.0, u_iso_angstrom_sq: 0.005}
+  - {label: Ca, element: Ca, fract: [0.24390, 0.41840, 0.25130], occupancy: 1.0, u_iso_angstrom_sq: 0.01596}
+  - {label: Ti, element: Ti, fract: [0.51240, 0.25570, 0.74980], occupancy: 1.0, u_iso_angstrom_sq: 0.00760}
+  - {label: Si, element: Si, fract: [0.74940, 0.43270, 0.24930], occupancy: 1.0, u_iso_angstrom_sq: 0.00507}
+  - {label: O1, element: O, fract: [0.74970, 0.32120, 0.74980], occupancy: 1.0, u_iso_angstrom_sq: 0.00887}
+  - {label: O2, element: O, fract: [0.90950, 0.31750, 0.43290], occupancy: 1.0, u_iso_angstrom_sq: 0.00950}
+  - {label: O3, element: O, fract: [0.08700, 0.18510, 0.06260], occupancy: 1.0, u_iso_angstrom_sq: 0.00760}
+  - {label: O4, element: O, fract: [0.38130, 0.45860, 0.64480], occupancy: 1.0, u_iso_angstrom_sq: 0.00659}
+  - {label: O5, element: O, fract: [0.61780, 0.03810, 0.85200], occupancy: 1.0, u_iso_angstrom_sq: 0.00925}
 thermal_factor_policy:
-  source_field: unavailable
-  source_units: not reported
-  simulation_field: U_iso
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
   simulation_units: angstrom^2
-  missing: fallback
-  fallback_u_iso_angstrom_sq: 0.005
-  claim_boundary: >-
-    COD 1011220 does not report _atom_site_U_iso_or_equiv. The reflector-ridge
-    series uses a fixed U_iso fallback for deterministic printable band geometry,
-    not refined EBSD intensity.
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
 simulation_setting:
   reason: >-
-    Ridge/band globe design uses the tracked titanite CIF in its reported
-    monoclinic setting; site multiplicities are not used as an EBSD acceptance
-    gate for this print-only series.
-  source_setting: C 1 2/c 1
-  target_setting: C 1 2/c 1
-  target_lattice_from_source: [a, b, c]
-  target_fractional_from_source: [x, y, z]
-  target_site_multiplicities: unchecked
+    The source is the 298.15 K synthetic P21/a structure. diffpy exposes
+    space-group 14 in the standard P21/c setting, so swap source a/c axes and
+    x/z fractional coordinates; the explicit symmetry translations then match
+    exactly. This is neither the high-temperature A2/a polymorph nor a
+    compositionally substituted natural titanite.
+  source_setting: P 1 21/a 1
+  target_setting: P 1 21/c 1
+  target_lattice_from_source: [c, b, a]
+  target_fractional_from_source: [z, y, x]
+  target_site_multiplicities: [4, 4, 4, 4, 4, 4, 4, 4]
+  temperature_kelvin: 298.15
+  specimen: synthetic stoichiometric CaTiSiO5
+  excluded_polymorph: high-temperature A2/a

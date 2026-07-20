@@ -1,36 +1,42 @@
 ---
 id: KIKU-T038
 type: task
-title: Render a bounded dynamical-master rotation proof
+title: Build dense Titanite and Zircon retained fields and rotations
 status: active
-parent: KIKU-F003
+parent: KIKU-F007
 depends_on:
-  - KIKU-T003
+  - KIKU-T026
+  - KIKU-T036
 created: 2026-07-19
 priority: P1
-tags: [forsterite, dynamical, master-pattern, rotation, grayscale, animation]
+tags: [titanite, zircon, kinematical, intensity, near-depth, rotation]
+links:
+  - ../acceptance/ice-ih-near-depth-stepped.md
+  - ../acceptance/titanite-zircon-retained-near-depth.md
 evidence:
-  - ../../local/master-patterns/forsterite-proof/COD-9000319-ebsdsim.bundle/COD-9000319-ebsdsim.manifest.json
-  - ../../local/dynamical-master-rotation/forsterite-x-axis-proof-v1/manifest.json
-  - ../../local/benchmarks/forsterite-resolution-501/COD-9000319-ebsdsim.bundle/COD-9000319-ebsdsim.manifest.json
-  - ../../local/dynamical-master-rotation/forsterite-x-axis-gold-v1/manifest.json
+  - ../../local/runs/kinematical-titanite/kinematical-run-630cf9676428842e/manifest.json
+  - ../../local/runs/kinematical-zircon/kinematical-run-fe9afb8f5d8f4ba9/manifest.json
+  - ../../local/runs/kinematical-depth-titanite-band-led/near-depth-run-f01977d809458364/manifest.json
+  - ../../local/runs/kinematical-depth-zircon-band-led/near-depth-run-b3faf10a1a53d610/manifest.json
+  - ../../local/idealized-near-depth-rotation/titanite-x-axis-band-led-v1/manifest.json
+  - ../../local/idealized-near-depth-rotation/zircon-x-axis-band-led-v1/manifest.json
+  - ../acceptance/titanite-zircon-retained-near-depth.md
 ---
 
-# KIKU-T038: Render a bounded dynamical-master rotation proof
+# KIKU-T038: Build dense Titanite and Zircon retained fields and rotations
 
 ## Description
 
-Reuse retained proof- and high-resolution forsterite dynamical masters as
-spherical intensity fields. Render active x-axis rotations by resampling the
-field—not by rotating pixels—and preserve fixed display mapping and source
-provenance from the 24-frame review proof through a 144-frame final.
+Reuse the established Ice Ih field-led/near-depth method for the existing
+Titanite and Zircon source records. Keep their already-published sparse
+direct-reflector pieces intact as a separate aesthetic product; this task
+adds one denser kinematical field foundation per phase and renders active
+sample-frame x-axis rotations from those retained arrays.
 
 ## Acceptance Criteria
 
-- [x] A tested renderer inverse-rotates fixed sample-screen directions and samples the stored Lambert master with no diffraction reruns.
-- [x] A 24-frame, 512-pixel x-axis MP4/GIF and contact sheet retain the master identity, source checksums, rotation contract, and fixed grayscale mapping.
-- [x] The proof is labeled as proof-grade dynamical-master art, not a detector acquisition or a new final-quality master.
-- [x] Focused tests, lint, source-manifest validation, and tracker validation pass before visual review.
-- [x] User approved an existing fully converged 501-grid retained dynamical master for a final-resolution rotation rather than a new GPU master calculation.
-- [x] A 144-frame, 1024-pixel, 12-second x-axis MP4 plus 512-pixel GIF preview preserve the 501-grid master identity and decode after encoding.
-- [ ] User visually reviews the retained high-resolution loop.
+- [x] Version-controlled base and presentation recipes parse with exact source and recipe identities.
+- [x] Titanite and zircon master bundles retain raw stereographic arrays, reflection catalogs, source snapshots, and manifests.
+- [x] Near-depth products reuse saved master arrays, retain overlap diagnostics, and preserve the no-spatial-filter contract.
+- [x] Each animation has 144 distinct active-field frames at 1024 square pixels, 12 fps, and validates as a 12-second MP4/GIF pair.
+- [ ] The dense products are visually reviewed against the Ice Ih near-depth lineage before promotion.

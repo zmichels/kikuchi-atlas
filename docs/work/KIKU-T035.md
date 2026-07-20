@@ -1,31 +1,37 @@
 ---
 id: KIKU-T035
 type: task
-title: Validate and export relief globe meshes
+title: Correct non-orthogonal reflector frames and migrate reviewed Ice selection
 status: done
-parent: KIKU-F005
-created: '2026-07-17'
+parent: KIKU-F006
+depends_on:
+  - KIKU-T032
+created: 2026-07-17
 priority: P1
-tags:
-- relief
-- mesh-validation
-- export
+tags: [crystallography, friedel, ice, migration, selection-manifest]
+links:
+  - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
+  - ../superpowers/plans/2026-07-16-phase-general-direct-reflector-art-series.md
 evidence:
-- ../superpowers/plans/2026-07-17-spherical-intensity-relief-globe.md
-- ../../tests/unit/relief/test_relief_mesh.py
-- ../acceptance/spherical-intensity-relief-globe.md
+  - ../../.superpowers/sdd/task-6-debug-report.md
+  - ../../.superpowers/sdd/task-6-frame-repair-report.md
+  - ../acceptance/ice-ih-corrected-reviewed-v2.md
 ---
 
-# KIKU-T035: Validate and export relief globe meshes
+# KIKU-T035: Correct non-orthogonal reflector frames and migrate reviewed Ice selection
 
 ## Description
 
-Validate the unchanged indexed radial mesh with a relief-specific star-shaped
-certificate and emit deterministic STL, field-ledger NPZ, validation JSON,
-and fixed visual preview artifacts without silent repair.
+Replace the unsafe orix-to-diffsims expansion handoff with alignment-aware
+unit-cell expansion and exact symmetry/Friedel magnitude ownership, then retain
+the reviewed Ice artifact as immutable legacy evidence while rebinding its same
+11 canonical HKLs to corrected content identities without automatic reselection.
 
 ## Acceptance Criteria
 
-- [x] Validation proves one watertight, consistently wound, positive-volume Euler-2 body with no duplicate or degenerate faces and a positive radial certificate for every triangle.
-- [x] Invalid topology, radius, winding, degeneracy, and radial-projection cases fail without mutating or repairing inputs; FDM metrics remain advisory data only.
-- [x] STL, timestamp-fixed uncompressed NPZ, validation data, and the fixed full-mesh PNG preview are reproducible and preserve exact units and array contracts.
+- [x] Quartz expands to `Si3O6`, Ice Ih to four oxygen sites, and forsterite to its verified 28-atom cell before structure-factor calculation.
+- [x] Symmetry-equivalent magnitudes are exact ties and `hkl/-hkl` partners cross thresholds together.
+- [x] The reviewed Ice catalog/tattoo artifacts remain unchanged and loadable as legacy products.
+- [x] A strict versioned manifest records the reviewed ordered HKLs, orientation, tiers, widths, and legacy identity links.
+- [x] Corrected Ice generation rebinds all 11 HKLs, records the manifest in the new bundle, passes containment, and publishes under new IDs.
+- [x] Focused and full regression suites, Ruff, tracker validation, and retained-product checks pass.

@@ -14,6 +14,28 @@ from kikuchi_lab import __version__
 from kikuchi_lab.doctor import collect_doctor_report
 
 
+def _reflector_parity_acceptance_timeout(value: str) -> int:
+    try:
+        timeout = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            "reflector parity timeout must be an integer"
+        ) from None
+    if str(timeout) != value:
+        raise argparse.ArgumentTypeError(
+            "reflector parity timeout must be an integer"
+        )
+    if not 1 <= timeout <= 90:
+        raise argparse.ArgumentTypeError(
+            "reflector parity timeout must be in the range 1..90"
+        )
+    if timeout != 90:
+        raise argparse.ArgumentTypeError(
+            "version-controlled reflector parity acceptance requires timeout 90"
+        )
+    return timeout
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI with an optional explicit argument sequence."""
     arguments = list(sys.argv[1:] if argv is None else argv)
@@ -40,6 +62,80 @@ def main(argv: Sequence[str] | None = None) -> int:
     proof.add_argument("--master-product", required=True)
     proof.add_argument("--source", required=True)
     proof.add_argument("--output", required=True)
+    render_kinematical_parser = subparsers.add_parser(
+        "render-kinematical",
+        help="Render a standalone kinematical reference bundle.",
+    )
+    render_kinematical_parser.add_argument("--recipe", required=True)
+    render_kinematical_parser.add_argument("--output", required=True)
+    render_depth_parser = subparsers.add_parser(
+        "render-kinematical-depth",
+        help="Render a crisp presentation-only near-depth derivative.",
+    )
+    render_depth_parser.add_argument("--recipe", required=True)
+    render_depth_parser.add_argument("--output", required=True)
+    render_depth_parser.add_argument("--figure-size-px", type=int)
+    render_oriented = subparsers.add_parser(
+        "render-oriented-spherical",
+        help="Rotate an exact spherical master and render fixed specimen views.",
+    )
+    render_oriented.add_argument("--recipe", required=True)
+    render_oriented.add_argument("--output", required=True)
+    render_oriented.add_argument("--profile", choices=("smoke", "review"), default="smoke")
+    build_art_catalog = subparsers.add_parser(
+        "build-ice-art-catalog",
+        help="Build and publish the bounded shared Ice science-art band catalog.",
+    )
+    build_art_catalog.add_argument("--recipe", required=True)
+    build_art_catalog.add_argument("--output", required=True)
+    build_direct_art_catalog_parser = subparsers.add_parser(
+        "build-direct-art-catalog",
+        help="Build and atomically publish a zero-master direct reflector catalog.",
+    )
+    build_direct_art_catalog_parser.add_argument("--recipe", required=True)
+    build_direct_art_catalog_parser.add_argument("--output", required=True)
+    validate_reflector_parity_parser = subparsers.add_parser(
+        "validate-reflector-parity",
+        help="Run one killable master smoke and publish passing reflector parity.",
+    )
+    validate_reflector_parity_parser.add_argument("--recipe", required=True)
+    validate_reflector_parity_parser.add_argument("--output", required=True)
+    validate_reflector_parity_parser.add_argument(
+        "--timeout-seconds",
+        required=True,
+        type=_reflector_parity_acceptance_timeout,
+    )
+    render_phase_art_series_parser = subparsers.add_parser(
+        "render-phase-art-series",
+        help="Publish the parity-gated five-phase hemisphere art series.",
+    )
+    render_phase_art_series_parser.add_argument("--recipe", required=True)
+    render_phase_art_series_parser.add_argument("--parity-root", required=True)
+    render_phase_art_series_parser.add_argument(
+        "--ice-standard-reference", required=True
+    )
+    render_phase_art_series_parser.add_argument("--output", required=True)
+    render_phase_art_orientation_gallery_parser = subparsers.add_parser(
+        "render-phase-art-orientation-gallery",
+        help="Publish the parity-gated fifteen-cell phase orientation gallery.",
+        description="Publish the parity-gated fifteen-cell phase orientation gallery.",
+    )
+    render_phase_art_orientation_gallery_parser.add_argument("--recipe", required=True)
+    render_phase_art_orientation_gallery_parser.add_argument("--parity-root", required=True)
+    render_phase_art_orientation_gallery_parser.add_argument("--output", required=True)
+    render_ice_tattoo_parser = subparsers.add_parser(
+        "render-ice-tattoo",
+        help="Publish the primary Ice tattoo from a retained strict catalog.",
+    )
+    render_ice_tattoo_parser.add_argument("--catalog", required=True)
+    render_ice_tattoo_parser.add_argument("--recipe", required=True)
+    render_ice_tattoo_parser.add_argument("--selection-manifest")
+    render_ice_tattoo_parser.add_argument("--output", required=True)
+    render_ice_tattoo_parser.add_argument(
+        "--treatment",
+        choices=("primary", "graywash"),
+        required=True,
+    )
     select_orientation = subparsers.add_parser(
         "select-orientation",
         help="Record an immutable human orientation decision for a sealed proof.",
@@ -355,6 +451,318 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "contact_sheet": str(result.contact_sheet),
                     "candidate_count": len(result.candidate_ids),
                     "elapsed_seconds": result.elapsed_seconds,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "render-kinematical":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_kinematical
+
+        try:
+            result = render_kinematical(
+                recipe_path=args.recipe,
+                output_root=args.output,
+            )
+        except (BundleExistsError, PartialBundleError, OSError, ValueError) as error:
+            print(f"kinematical render failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "path": str(result.path),
+                    "recipe_id": result.recipe_id,
+                    "master_reflector_count": result.master_reflector_count,
+                    "figures": result.figure_names,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "render-kinematical-depth":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_kinematical_depth
+
+        try:
+            result = render_kinematical_depth(
+                recipe_path=args.recipe,
+                output_root=args.output,
+                figure_size_px=args.figure_size_px,
+            )
+        except (BundleExistsError, PartialBundleError, OSError, ValueError) as error:
+            print(f"kinematical depth render failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "path": str(result.path),
+                    "treatment_recipe_id": result.treatment_recipe_id,
+                    "base_recipe_id": result.base_recipe_id,
+                    "figures": result.figure_names,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "render-oriented-spherical":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_oriented_spherical_master
+
+        try:
+            result = render_oriented_spherical_master(
+                recipe_path=args.recipe,
+                output_root=args.output,
+                profile=args.profile,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(f"oriented spherical render failed: {error}", file=sys.stderr)
+            return 1
+
+        def payload(item):
+            if item is None:
+                return None
+            return {
+                "profile": item.profile,
+                "run_id": item.run_id,
+                "path": str(item.path),
+                "source_half_size": item.source_half_size,
+                "figures": list(item.figure_names),
+                "manifest_sha256": item.manifest_sha256,
+                "elapsed_seconds": item.elapsed_seconds,
+            }
+
+        print(
+            json.dumps(
+                {"smoke": payload(result.smoke), "review": payload(result.review)},
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "build-ice-art-catalog":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import build_ice_art_catalog
+
+        try:
+            result = build_ice_art_catalog(
+                recipe_path=args.recipe,
+                output_root=args.output,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(f"ice art catalog build failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "path": str(result.path),
+                    "catalog_id": result.catalog_id,
+                    "member_count": result.member_count,
+                    "manifest_sha256": result.manifest_sha256,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "build-direct-art-catalog":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import build_direct_art_catalog
+
+        try:
+            result = build_direct_art_catalog(
+                recipe_path=args.recipe,
+                output_root=args.output,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(f"direct art catalog build failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "path": str(result.path),
+                    "catalog_id": result.catalog_id,
+                    "evidence_id": result.evidence_id,
+                    "member_count": result.member_count,
+                    "eligible_member_count": result.eligible_member_count,
+                    "simulation_count": result.simulation_count,
+                    "manifest_sha256": result.manifest_sha256,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "validate-reflector-parity":
+        from kikuchi_lab.workflows import run_reflector_parity
+
+        try:
+            result = run_reflector_parity(
+                recipe_path=args.recipe,
+                output_root=args.output,
+                timeout_seconds=args.timeout_seconds,
+            )
+        except (OSError, ValueError, RuntimeError) as error:
+            print(f"reflector parity validation failed: {error}", file=sys.stderr)
+            return 1
+        payload = result.to_dict()
+        payload["path"] = str(result.path)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "render-phase-art-series":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_phase_art_series
+
+        print(
+            "phase-art-series finite-work phases=5 new_bundle_count=9 "
+            "comparison_cells=10 simulation_count=0 "
+            "orientation_bunge_deg=17,31,43",
+            file=sys.stderr,
+            flush=True,
+        )
+        try:
+            result = render_phase_art_series(
+                recipe_path=args.recipe,
+                parity_root=args.parity_root,
+                ice_standard_reference=args.ice_standard_reference,
+                output_root=args.output,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(f"phase art series render failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "series_id": result.series_id,
+                    "path": str(result.path),
+                    "new_bundle_count": len(result.new_bundles),
+                    "comparison_sheet": str(result.comparison_sheet),
+                    "simulation_count": result.simulation_count,
+                    "bundle_ids": [
+                        bundle.run_id for bundle in result.new_bundles
+                    ],
+                    "manifest_sha256": result.manifest_sha256,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "render-phase-art-orientation-gallery":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_phase_art_orientation_gallery
+
+        print(
+            "phase-art-orientation-gallery finite-work phases=5 orientations=3 cells=15 "
+            "simulation_count=0",
+            file=sys.stderr,
+            flush=True,
+        )
+        try:
+            result = render_phase_art_orientation_gallery(
+                recipe_path=args.recipe,
+                parity_root=args.parity_root,
+                output_root=args.output,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(
+                f"phase art orientation gallery render failed: {error}",
+                file=sys.stderr,
+            )
+            return 1
+        print(
+            json.dumps(
+                {
+                    "path": str(result.path),
+                    "cell_count": len(result.cell_bundles),
+                    "comparison_id": result.comparison_id,
+                    "comparison_sheet": str(result.comparison_sheet),
+                    "ledger_path": str(result.ledger_path),
+                    "simulation_count": result.simulation_count,
+                    "manifest_sha256": result.manifest_sha256,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "render-ice-tattoo":
+        from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
+        from kikuchi_lab.workflows import render_ice_tattoo
+
+        try:
+            result = render_ice_tattoo(
+                catalog_path=args.catalog,
+                recipe_path=args.recipe,
+                selection_manifest_path=args.selection_manifest,
+                output_root=args.output,
+                treatment=args.treatment,
+            )
+        except (
+            BundleExistsError,
+            PartialBundleError,
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as error:
+            print(f"ice tattoo render failed: {error}", file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "path": str(result.path),
+                    "catalog_id": result.catalog_id,
+                    "selection_id": result.selection_id,
+                    "geometry_id": result.geometry_id,
+                    "treatment": result.treatment,
+                    "manifest_sha256": result.manifest_sha256,
                 },
                 indent=2,
                 sort_keys=True,

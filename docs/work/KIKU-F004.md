@@ -1,52 +1,30 @@
 ---
 id: KIKU-F004
 type: feature
-title: Crystal habit mesh generator
-status: done
+title: Phase-extension kinematical proofs
+status: active
 parent: KIKU-E001
 children:
-- KIKU-T025
-- KIKU-T026
-- KIKU-T027
-- KIKU-T028
-- KIKU-T029
-- KIKU-T030
-created: 2026-07-17
+  - KIKU-T025
+  - KIKU-T026
+created: 2026-07-14
 priority: P1
-tags:
-- crystal-habit
-- mesh
-- stl
-- mtex
-- print-geometry
-links:
-- ../superpowers/specs/2026-07-17-crystal-habit-mesh-generator-design.md
-- ../superpowers/plans/2026-07-17-crystal-habit-mesh-generator.md
+tags: [phase-general, kinematical, provenance]
 evidence:
-- ../incubator/print-geometry.md
+  - ../incubator/phase-general-simulation.md
+  - ../acceptance/ice-ih-oxygen-sublattice.md
 ---
 
-# KIKU-F004: Crystal habit mesh generator
+# KIKU-F004: Phase-extension kinematical proofs
 
 ## Description
 
-Generate arbitrary convex crystal-habit meshes from a CIF and explicit Miller
-face-family support distances through a Python-native, unit-aware, validated
-pipeline, with quartz as the first MTEX-referenced watertight STL proof.
+Exercise the source-neutral kinematical contracts with deliberately chosen
+additional phases while retaining phase-specific provenance, setting changes,
+approximations, simulator limitations, and visual review gates.
 
 ## Acceptance Criteria
 
-- [x] An arbitrary conforming CIF and habit recipe can enter the Python-native pipeline without quartz-specific geometry code.
-- [x] The quartz reference produces a reproducible, watertight, single-solid STL with a `60.0 mm` maximum dimension and complete provenance.
-- [x] Quartz polygon geometry passes the reviewed MTEX parity contract.
-- [x] Canonical validation rejects invalid solids and reports inactive faces and FDM observations without silently modifying geometry.
-- [x] Existing milestone products and acceptance criteria remain unchanged.
-
-## Accepted Evidence
-
-- Child tasks [KIKU-T025](KIKU-T025.md) through
-  [KIKU-T030](KIKU-T030.md) are complete against tests and generated evidence.
-- [Crystal habit acceptance ledger](../acceptance/crystal-habit-mesh.md) links
-  bundle `habit-build-4a38bc559c829536`, validation, parity, preview, STL, and
-  the FlashForge AD5X-oriented slicer observation.
-- `KIKU-F001` through `KIKU-F003` were not changed by this feature closure.
+- [ ] At least two non-forsterite structures exercise meaningfully different crystal systems or source-setting pathways.
+- [ ] Every phase proof identifies its source license, exact structure scope, unsupported physics, and validated reflection behavior.
+- [ ] A reviewed gallery contract separates crystallographic coverage from aesthetic curation without claiming universal CIF support.

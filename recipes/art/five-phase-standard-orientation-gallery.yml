@@ -1,0 +1,17 @@
+schema_version: 1
+name: five-phase-standard-orientation-gallery
+source_series_recipe: five-phase-hemisphere-series.yml
+treatment: standard
+variants:
+  - slug: azimuthal-60
+    orientation:
+      euler_bunge_deg: [77.0, 31.0, 43.0]
+      frame: crystal_to_sample
+  - slug: tilt-plus-20
+    orientation:
+      euler_bunge_deg: [17.0, 51.0, 43.0]
+      frame: crystal_to_sample
+  - slug: oblique-high
+    orientation:
+      euler_bunge_deg: [97.0, 71.0, 83.0]
+      frame: crystal_to_sample

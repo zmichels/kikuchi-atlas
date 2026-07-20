@@ -1,35 +1,31 @@
 ---
 id: KIKU-T028
 type: task
-title: Validate and export printable triangle meshes
+title: Publish shared Ice Ih art band catalog
 status: done
-parent: KIKU-F004
-created: '2026-07-17'
+parent: KIKU-F005
+created: 2026-07-16
 priority: P1
-tags:
-- mesh
-- stl
-- validation
+tags: [ice-ih, science-art, catalog, provenance]
+links:
+  - ../superpowers/specs/2026-07-16-ice-art-globe-and-tattoo-design.md
+  - ../superpowers/plans/2026-07-16-ice-art-catalog-and-tattoo.md
 evidence:
-- ../superpowers/plans/2026-07-17-crystal-habit-mesh-generator.md
+  - ../superpowers/plans/2026-07-16-ice-art-catalog-and-tattoo.md
+  - ../acceptance/ice-ih-tattoo-primary.md
 ---
 
-# KIKU-T028: Validate and export printable triangle meshes
+# KIKU-T028: Publish shared Ice Ih art band catalog
 
 ## Description
 
-Validate the derived triangle mesh without repair, emit deterministic binary
-STL bytes and a fixed labeled preview, and report advisory FDM observations.
+Build and publish the source-location-independent catalog that ranks validated
+Ice Ih axial bands, records globe and tattoo eligibility, and partitions globe
+members into four nonempty tie-aware strength cohorts.
 
 ## Acceptance Criteria
 
-- [x] Validation proves one convex watertight consistently wound positive-volume body with no duplicate or degenerate triangles.
-- [x] Trimesh runs with `process=False`, and a deliberately broken mesh is rejected without mutation.
-- [x] STL bytes and the fixed 900-by-900 PNG preview reproduce exactly from identical geometry.
-
-## Accepted Evidence
-
-- `src/kikuchi_lab/habit/mesh.py` and
-  `tests/unit/habit/test_habit_mesh.py`.
-- [Crystal habit acceptance ledger](../acceptance/crystal-habit-mesh.md) links
-  the immutable validation report, STL, and labeled preview.
+- [x] Immutable member and catalog contracts validate numeric evidence, policy fields, provenance, and content-derived identities.
+- [x] Equal weights remain together while deterministic ranking produces four nonempty globe cohorts and inclusive tattoo eligibility.
+- [x] A strict catalog snapshot and bounded bundle reject forged or incomplete content before atomic publication.
+- [x] The real Ice catalog records all source, recipe, threshold, member, cohort, and claim-boundary evidence.

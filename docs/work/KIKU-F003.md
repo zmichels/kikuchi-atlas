@@ -2,7 +2,7 @@
 id: KIKU-F003
 type: feature
 title: Spherical intensity and MTEX density bridge
-status: active
+status: ready
 parent: KIKU-E001
 children:
   - KIKU-T019
@@ -11,7 +11,7 @@ children:
   - KIKU-T022
   - KIKU-T023
   - KIKU-T024
-  - KIKU-T038
+  - KIKU-T027
 created: 2026-07-13
 priority: P1
 tags: [spherical-intensity, mtex, density, forsterite]
@@ -33,6 +33,6 @@ a bounded MTEX 6.1.1 density/3D visualization bundle.
 
 ## Acceptance Criteria
 
-- [ ] All six implementation tasks have accepted evidence and `KIKU-F002` is complete.
+- [ ] All seven implementation tasks have accepted evidence and `KIKU-F002` is complete.
 - [ ] The forsterite field preserves exact source-node geometry and raw intensity with explicit seam, antipodal, and no-blur semantics.
 - [ ] One bounded MTEX acceptance run reproduces source nodes within tolerance and emits a reviewed density cloud and 3D preview.

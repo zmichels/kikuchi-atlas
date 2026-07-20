@@ -1,0 +1,21 @@
+schema_version: 1
+name: titanite-near-depth-stepped-band-led
+source_kinematical_recipe: ../kinematical/titanite-quiet-master.yml
+expected_kinematical_recipe_id: recipe-aaa9221a7b89936d
+overlap:
+  relative_factor: 0.22
+  weight_exponent: 2.0
+  normalization_percentile: 99.5
+optical_depth:
+  gain: 0.38
+  luminance_ceiling: 0.985
+center:
+  enabled: false
+boundary:
+  relative_factor: 0.55
+  width_pt: 0.38
+  alpha: 0.50
+  casing_width_pt: 0.98
+  casing_alpha: 0.36
+figure_size_px: 2400
+background_color: "#101519"
