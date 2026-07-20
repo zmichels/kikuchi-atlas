@@ -114,8 +114,8 @@ class ReflectorRidgeSelection:
         object.__setattr__(self, "eligibility_min_weight", threshold)
         if self.tie_policy != _TIE_POLICY:
             raise ValueError(f"tie_policy must equal {_TIE_POLICY}")
-        if type(self.cohort_count) is not int or self.cohort_count != 4:
-            raise ValueError("cohort_count must equal 4")
+        if type(self.cohort_count) is not int or not 2 <= self.cohort_count <= 4:
+            raise ValueError("cohort_count must be an integer between 2 and 4")
 
 
 @dataclass(frozen=True)
@@ -164,14 +164,15 @@ class ReflectorRidgeRecipe:
         if not isinstance(self.selection, ReflectorRidgeSelection):
             raise ValueError("selection must be a ReflectorRidgeSelection")
         tiers = dict(self.tiers)
-        if set(tiers) != {1, 2, 3, 4} or not all(
+        expected_cohorts = set(range(1, self.selection.cohort_count + 1))
+        if set(tiers) != expected_cohorts or not all(
             isinstance(tier, RidgeTier) for tier in tiers.values()
         ):
-            raise ValueError("tiers must contain RidgeTier records for cohorts 1 through 4")
+            raise ValueError("tiers must contain RidgeTier records for every selected cohort")
         if any(tier.height_mm > self.geometry.maximum_relief_mm for tier in tiers.values()):
             raise ValueError("tier height_mm must not exceed geometry maximum_relief_mm")
-        if tiers[4].height_mm != self.geometry.maximum_relief_mm:
-            raise ValueError("cohort 4 height_mm must equal geometry maximum_relief_mm")
+        if tiers[self.selection.cohort_count].height_mm != self.geometry.maximum_relief_mm:
+            raise ValueError("strongest cohort height_mm must equal geometry maximum_relief_mm")
         if self.fdm_context is not None and self.fdm_context != "filament_fdm":
             raise ValueError("fdm_context must equal filament_fdm when provided")
         frozen_tiers = MappingProxyType({cohort: tiers[cohort] for cohort in sorted(tiers)})

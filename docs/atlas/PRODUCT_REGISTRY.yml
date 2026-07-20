@@ -923,10 +923,10 @@ products:
     phase_slugs: [titanite]
     families: [reflector-ridge-globe]
     format: stl
-    media_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-33d65b9fc8b6d7b4/titanite-reflector-ridges.stl
-    preview_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-33d65b9fc8b6d7b4/titanite-reflector-ridges-preview.png
-    bundle_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-33d65b9fc8b6d7b4
-    provenance_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-33d65b9fc8b6d7b4/reflector-globe-manifest.json
+    media_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-a786a35bbb9f57db/titanite-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-a786a35bbb9f57db/titanite-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-a786a35bbb9f57db
+    provenance_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-a786a35bbb9f57db/reflector-globe-manifest.json
     recipe: recipes/globes/titanite-reflector-ridges.yml
     entrypoint: kikuchi-lab reflector-globe build
     tier: printable-geometry
@@ -939,10 +939,10 @@ products:
     phase_slugs: [diamond]
     families: [reflector-ridge-globe]
     format: stl
-    media_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-e074ffdc8c058002/diamond-reflector-ridges.stl
-    preview_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-e074ffdc8c058002/diamond-reflector-ridges-preview.png
-    bundle_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-e074ffdc8c058002
-    provenance_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-e074ffdc8c058002/reflector-globe-manifest.json
+    media_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-368e3cf8d2cf2bbe/diamond-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-368e3cf8d2cf2bbe/diamond-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-368e3cf8d2cf2bbe
+    provenance_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-368e3cf8d2cf2bbe/reflector-globe-manifest.json
     recipe: recipes/globes/diamond-reflector-ridges.yml
     entrypoint: kikuchi-lab reflector-globe build
     tier: printable-geometry

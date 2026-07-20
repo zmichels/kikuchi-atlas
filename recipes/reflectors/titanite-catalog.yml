@@ -6,6 +6,8 @@ scattering_params: xtables
 source_master_relative_factor: 0.03
 selection_relative_factor: 0.18
 weight_exponent: 2.0
-eligibility_min_weight: 0.03
+# Globe-facing core selection: retain the 16 strongest families from the
+# tracked room-temperature titanite structure for a legible physical surface.
+eligibility_min_weight: 0.20
 tie_policy: keep_equal_weights_together
 cohort_count: 4

@@ -34,7 +34,7 @@ def test_ice_ridge_recipe_has_four_raised_physical_tiers() -> None:
         ("maximum_relief_mm: 0", "positive"),
         ("height_mm: 3.1", "maximum_relief_mm"),
         ("edge_fillet_fraction: 0", "edge_fillet_fraction"),
-        ("cohort_count: 3", "cohort_count"),
+        ("cohort_count: 5", "between 2 and 4"),
     ],
 )
 def test_loader_rejects_nonphysical_or_noncanonical_recipe(
@@ -56,3 +56,11 @@ def test_loader_rejects_unknown_keys(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="unknown keys"):
         load_reflector_ridge_recipe(path)
+
+
+def test_diamond_ridge_recipe_keeps_two_tied_strong_family_tiers() -> None:
+    recipe = load_reflector_ridge_recipe(ROOT / "recipes/globes/diamond-reflector-ridges.yml")
+
+    assert recipe.selection.cohort_count == 2
+    assert tuple(recipe.tiers) == (1, 2)
+    assert recipe.tiers[2].height_mm == recipe.geometry.maximum_relief_mm

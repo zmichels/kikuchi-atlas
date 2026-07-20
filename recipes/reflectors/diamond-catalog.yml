@@ -6,6 +6,8 @@ scattering_params: xtables
 source_master_relative_factor: 0.03
 selection_relative_factor: 0.22
 weight_exponent: 2.0
-eligibility_min_weight: 0.08
+# Diamond's strong cubic families form only two symmetry-preserving intensity
+# blocks at the readable 10-family cut.  Retain both blocks intact.
+eligibility_min_weight: 0.16
 tie_policy: keep_equal_weights_together
-cohort_count: 4
+cohort_count: 2
