@@ -24,7 +24,7 @@ from kikuchi_lab.projection.kikuchipy_adapter import (
     transform_crystal_direction_to_sample,
 )
 from kikuchi_lab.model.identity import stable_id
-from kikuchi_lab.sources.structure import StructureRecord, verify_structure
+from kikuchi_lab.sources.structure import SiteRecord, StructureRecord, verify_structure
 
 from .contracts import (
     KinematicalArrayProduct,
@@ -118,6 +118,63 @@ def _permuted_lattice(
     )
 
 
+def _source_direct_basis(record: StructureRecord) -> np.ndarray:
+    """Return Cartesian source-cell basis vectors as columns."""
+    a, b, c, alpha_deg, beta_deg, gamma_deg = record.lattice_angstrom
+    alpha, beta, gamma = np.deg2rad((alpha_deg, beta_deg, gamma_deg))
+    a_vector = np.array((a, 0.0, 0.0), dtype=np.float64)
+    b_vector = np.array((b * np.cos(gamma), b * np.sin(gamma), 0.0), dtype=np.float64)
+    c_x = c * np.cos(beta)
+    c_y = c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
+    c_z_sq = c * c - c_x * c_x - c_y * c_y
+    if c_z_sq <= 0.0:
+        raise ValueError("source lattice basis is degenerate")
+    c_vector = np.array((c_x, c_y, np.sqrt(c_z_sq)), dtype=np.float64)
+    return np.column_stack((a_vector, b_vector, c_vector))
+
+
+def _lattice_from_direct_basis(basis: np.ndarray) -> Lattice:
+    """Create a diffpy lattice from three Cartesian direct-basis columns."""
+    if basis.shape != (3, 3) or not np.isfinite(basis).all():
+        raise ValueError("direct basis must be a finite 3 by 3 matrix")
+    vectors = tuple(basis[:, index] for index in range(3))
+    lengths = tuple(float(np.linalg.norm(vector)) for vector in vectors)
+    if any(length <= 0.0 for length in lengths):
+        raise ValueError("direct basis vectors must have positive lengths")
+
+    def angle_degrees(left: np.ndarray, right: np.ndarray) -> float:
+        cosine = float(np.dot(left, right) / (np.linalg.norm(left) * np.linalg.norm(right)))
+        return float(np.rad2deg(np.arccos(np.clip(cosine, -1.0, 1.0))))
+
+    alpha = angle_degrees(vectors[1], vectors[2])
+    beta = angle_degrees(vectors[0], vectors[2])
+    gamma = angle_degrees(vectors[0], vectors[1])
+    return Lattice(*lengths, alpha, beta, gamma)
+
+
+def _direct_basis_columns_transform(value: object) -> np.ndarray:
+    """Validate target direct-basis columns written in source fractional axes."""
+    if not isinstance(value, list) or len(value) != 3:
+        raise ValueError(
+            "target_direct_basis_from_source_columns must contain three columns"
+        )
+    try:
+        columns = np.asarray(value, dtype=np.float64)
+    except (TypeError, ValueError):
+        raise ValueError(
+            "target_direct_basis_from_source_columns must contain finite numbers"
+        ) from None
+    if columns.shape != (3, 3) or not np.isfinite(columns).all():
+        raise ValueError(
+            "target_direct_basis_from_source_columns must be a finite 3 by 3 matrix"
+        )
+    transform = columns.T
+    determinant = float(np.linalg.det(transform))
+    if not np.isfinite(determinant) or abs(determinant) <= 1e-12:
+        raise ValueError("target direct-basis transform must be invertible")
+    return transform
+
+
 def _calculate_master_pattern_single_worker(
     simulator: KikuchiPatternSimulator,
     *,
@@ -157,32 +214,59 @@ class _KikuchipyContext:
 
 def _phase_from_record(record: StructureRecord) -> Phase:
     verify_structure(record)
-    lattice_permutation = _axis_permutation(
-        record.simulation_setting["target_lattice_from_source"],
-        indices=_DIRECT_AXIS_INDEX,
-        field_name="target_lattice_from_source",
-    )
-    coordinate_permutation = _axis_permutation(
-        record.simulation_setting["target_fractional_from_source"],
-        indices=_FRACTIONAL_AXIS_INDEX,
-        field_name="target_fractional_from_source",
-    )
-    if coordinate_permutation != lattice_permutation:
-        raise ValueError(
-            "fractional-coordinate permutation must match the direct-lattice "
-            "permutation"
+    setting = record.simulation_setting
+    basis_columns = setting.get("target_direct_basis_from_source_columns")
+    if basis_columns is None:
+        lattice_permutation = _axis_permutation(
+            setting["target_lattice_from_source"],
+            indices=_DIRECT_AXIS_INDEX,
+            field_name="target_lattice_from_source",
         )
-    origin_shift = _fractional_origin_shift(
-        record.simulation_setting.get("target_fractional_origin_shift")
-    )
-    lattice = _permuted_lattice(record, lattice_permutation)
+        coordinate_permutation = _axis_permutation(
+            setting["target_fractional_from_source"],
+            indices=_FRACTIONAL_AXIS_INDEX,
+            field_name="target_fractional_from_source",
+        )
+        if coordinate_permutation != lattice_permutation:
+            raise ValueError(
+                "fractional-coordinate permutation must match the direct-lattice "
+                "permutation"
+            )
+        origin_shift = _fractional_origin_shift(
+            setting.get("target_fractional_origin_shift")
+        )
+        lattice = _permuted_lattice(record, lattice_permutation)
+
+        def target_coordinates(site: SiteRecord) -> tuple[float, float, float]:
+            return tuple(
+                (site.fract[source_index] + origin_shift[target_index]) % 1.0
+                for target_index, source_index in enumerate(coordinate_permutation)
+            )
+
+    else:
+        if (
+            "target_lattice_from_source" in setting
+            or "target_fractional_from_source" in setting
+        ):
+            raise ValueError(
+                "basis-transform simulation settings must not mix axis permutations"
+            )
+        direct_basis_transform = _direct_basis_columns_transform(basis_columns)
+        lattice = _lattice_from_direct_basis(
+            _source_direct_basis(record) @ direct_basis_transform
+        )
+        source_to_target = np.linalg.inv(direct_basis_transform)
+
+        def target_coordinates(site: SiteRecord) -> tuple[float, float, float]:
+            return tuple(
+                float(value % 1.0)
+                for value in source_to_target @ np.asarray(site.fract, dtype=np.float64)
+            )
+
     atoms = [
         Atom(
             site.element,
-            xyz=tuple(
-                (site.fract[source_index] + origin_shift[target_index]) % 1.0
-                for target_index, source_index in enumerate(coordinate_permutation)
-            ),
+            xyz=target_coordinates(site),
             label=site.label,
             occupancy=site.occupancy,
             Uisoequiv=site.u_iso_angstrom_sq,

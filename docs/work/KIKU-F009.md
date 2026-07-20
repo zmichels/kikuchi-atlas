@@ -2,7 +2,7 @@
 id: KIKU-F009
 type: feature
 title: Publish a provenance-first Kikuchi Atlas v0
-status: active
+status: done
 parent: KIKU-E001
 children:
   - KIKU-T040
@@ -42,4 +42,10 @@ master-pattern and dictionary products.
 - [x] Missing ignored `local/` media are reported as unavailable instead of being mistaken for a missing source or recipe.
 - [x] Existing artifact-catalog phases are cross-checked against the Atlas registry.
 - [x] The Atlas has a curated individual-product registry, phase-first product matrix, and a product-first searchable browse page.
-- [ ] The first three candidate structures are promoted to tracked source records and receive accepted direct-reflector products.
+- [x] The first three candidate structures are promoted to tracked source records and receive accepted direct-reflector products.
+
+## Completion Evidence
+
+- An52 plagioclase, 2M1 muscovite, and ambient diopside now have checked-in
+  source records, source verification tests, direct-reflector orientation
+  products, x-axis motion studies, and reflector-ridge globes.

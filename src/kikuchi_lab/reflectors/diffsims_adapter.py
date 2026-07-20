@@ -9,6 +9,7 @@ from diffpy.structure import Atom, Lattice, Structure
 from diffsims.crystallography import ReciprocalLatticeVector
 from orix.crystal_map import Phase
 
+from kikuchi_lab.kinematical.kikuchipy_adapter import _symmetrise_exact_integer_hkls
 from kikuchi_lab.sources.structure import StructureRecord, verify_structure
 
 from .contracts import ReflectorMember
@@ -18,6 +19,15 @@ from .recipe import ReflectorRecipe
 def _phase_from_record(source: StructureRecord) -> Phase:
     """Build a public orix phase in the tracked source crystal frame."""
     verify_structure(source)
+    if "target_direct_basis_from_source_columns" in source.simulation_setting:
+        # A centered triclinic source has no standard centered setting in
+        # space-group 2. Reuse the source-verified primitive-basis adapter so
+        # this public reflector path cannot silently discard its centering.
+        from kikuchi_lab.kinematical.kikuchipy_adapter import (
+            _phase_from_record as _phase_from_simulation_record,
+        )
+
+        return _phase_from_simulation_record(source)
     a, b, c, alpha, beta, gamma = source.lattice_angstrom
     lattice = Lattice(a, b, c, alpha, beta, gamma)
     atoms = [
@@ -87,7 +97,16 @@ def enumerate_reflector_members(
     vectors = ReciprocalLatticeVector.from_min_dspacing(
         phase, min_dspacing=recipe.min_dspacing_angstrom
     )
-    vectors = vectors[_allowed_mask(vectors)].unique(use_symmetry=True).symmetrise()
+    vectors = vectors[_allowed_mask(vectors)]
+    upstream_symmetrised = vectors.unique(use_symmetry=True).symmetrise()
+    upstream_hkl = np.asarray(upstream_symmetrised.hkl, dtype=np.float64)
+    if np.allclose(upstream_hkl, np.rint(upstream_hkl), rtol=0.0, atol=1e-8):
+        vectors = upstream_symmetrised
+    else:
+        # Monoclinic 2/m can acquire Cartesian pseudo-HKLs during the
+        # upstream symmetry operation. Preserve its exact integer reciprocal
+        # orbits instead of serialising a rounded, nonphysical index.
+        vectors = _symmetrise_exact_integer_hkls(vectors)
     vectors.sanitise_phase()
     vectors.calculate_structure_factor(scattering_params=recipe.scattering_params)
     vectors.calculate_theta(recipe.energy_kev * 1_000.0)

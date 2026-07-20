@@ -25,11 +25,9 @@ def test_atlas_registry_has_exact_family_references_not_ambiguous_family_labels(
         "muscovite-2m1",
         "diopside",
     }
-    assert phases["plagioclase-an52"].source_status == "candidate-reference"
-    assert phases["plagioclase-an52"].candidate_reference["label"] == (
-        "COD 8103560, intermediate plagioclase An52"
-    )
-    assert phases["muscovite-2m1"].candidate_reference["promotion_trigger"]
+    assert phases["plagioclase-an52"].source_status == "tracked-source"
+    assert phases["plagioclase-an52"].source_record == "phases/plagioclase-an52/source.yml"
+    assert phases["muscovite-2m1"].source_record == "phases/muscovite-2m1/source.yml"
     assert phases["diopside"].family == "clinopyroxene"
 
 
@@ -44,7 +42,7 @@ def test_product_registry_models_individual_products_and_common_core_families() 
         "reflector-ridge-globe",
     }
     assert "tattoo-template" not in {family.identifier for family in families}
-    assert len(products) == 46
+    assert len(products) == 68
     assert all(product.is_available() for product in products)
     assert all("tattoo" not in product.identifier.lower() for product in products)
     assert all("tattoo" not in product.title.lower() for product in products)
@@ -57,7 +55,10 @@ def test_product_registry_models_individual_products_and_common_core_families() 
         "quartz-direct-standard",
         "zircon-direct-standard",
         "titanite-direct-standard",
-        "diamond-x-axis-rotation",
+        "diamond-direct-standard",
+        "plagioclase-an52-direct-standard",
+        "muscovite-2m1-direct-standard",
+        "diopside-direct-standard",
     }
 
 
@@ -70,20 +71,20 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     )
 
     assert result.phase_count == 9
-    assert result.product_count == 46
+    assert result.product_count == 68
     assert result.index_path.is_file()
     index = result.index_path.read_text(encoding="utf-8")
     assert "Kikuchi Atlas" in index
-    assert "Browse all 46 individual products" in index
+    assert "Browse all 68 individual products" in index
     assert "Lead: Forsterite — standard hemisphere" in index
     assert "Plagioclase (An52 reference)" in index
-    assert "candidate-reference" in index
+    assert "candidate-reference" not in index
     assert result.products_path.is_file()
     product_page = result.products_path.read_text(encoding="utf-8")
     assert 'id="product-search"' in product_page
     assert 'id="phase-filter"' in product_page
     assert 'id="family-filter"' in product_page
-    assert product_page.count('class="card product-card"') == 46
+    assert product_page.count('class="card product-card"') == 68
     assert "tattoo" not in index.lower()
     assert "tattoo" not in product_page.lower()
     assert (tmp_path / "site/phases/forsterite.html").is_file()
@@ -119,16 +120,23 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
         "zircon",
         "titanite",
         "diamond",
+        "plagioclase-an52",
+        "muscovite-2m1",
+        "diopside",
     ):
         phase_html = (tmp_path / f"site/phases/{source_backed_phase}.html").read_text(encoding="utf-8")
         assert "Visual highlights" in phase_html
         assert 'class="card highlight-card"' in phase_html
         assert "tattoo" not in phase_html.lower()
     diopside = (tmp_path / "site/phases/diopside.html").read_text(encoding="utf-8")
-    assert "COD 1000007, diopside at 1 atm" in diopside
-    assert "blocked by source promotion" in diopside
+    assert "phases/diopside/source.yml" in diopside
+    assert "blocked by source promotion" not in diopside
     assert "Visual product matrix" in diopside
     assert diopside.count('class="card matrix-card"') == 6
     assert diopside.count('class="matrix-group"') == 2
-    assert 'data-state="planned"' in diopside
-    assert "No individual product published yet" in diopside
+    assert 'data-state="available" data-thumbnail-count="4"' in diopside
+    assert diopside.count('class="card product-card"') == 6
+    diamond = (tmp_path / "site/phases/diamond.html").read_text(encoding="utf-8")
+    assert diamond.count('class="card product-card"') == 6
+    assert 'data-family="direct-reflector-orientation-set"' in diamond
+    assert 'data-state="available" data-thumbnail-count="4"' in diamond

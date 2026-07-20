@@ -70,45 +70,27 @@ phases:
     family: plagioclase feldspar
     formula: Na0.685Ca0.347Al1.46Si2.54O8
     crystal_system: triclinic
-    source_status: candidate-reference
-    source_record:
+    source_status: tracked-source
+    source_record: phases/plagioclase-an52/source.yml
     candidate_reference:
-      label: COD 8103560, intermediate plagioclase An52
-      source_url: https://www.crystallography.net/cod/8103560.html
-      cif_url: https://www.crystallography.net/cod/8103560.cif
-      license: CC0-1.0
-      rationale: A concrete intermediate-composition plagioclase avoids falsely treating an endmember as the whole solid solution.
-      promotion_trigger: Preserve the C-centered triclinic source through a tested primitive-cell or centering-aware structure adapter.
-    scope_note: A family entry represented by one explicit An52 candidate, not a universal plagioclase pattern.
+    scope_note: One exact An52 reference, converted from its C-centered triclinic source to a tested primitive basis; not a universal plagioclase pattern.
 
   - slug: muscovite-2m1
     display_name: Muscovite (2M1 reference)
     family: mica
     formula: K0.86Na0.10Al2.9Fe0.04Mg0.06Si3O12H2
     crystal_system: monoclinic
-    source_status: candidate-reference
-    source_record:
+    source_status: tracked-source
+    source_record: phases/muscovite-2m1/source.yml
     candidate_reference:
-      label: COD 9014960, natural 2M1 muscovite
-      source_url: https://www.crystallography.net/cod/9014960.html
-      cif_url: https://www.crystallography.net/cod/9014960.cif
-      license: CC0-1.0
-      rationale: The documented 2M1 specimen preserves measured mixed occupancies rather than substituting an invented ideal mica.
-      promotion_trigger: Verify the mixed-occupancy structure against the source CIF and accept its direct-reflector evidence.
-    scope_note: Natural 2M1 composition reference; it is not a claim about every mica polytype or composition.
+    scope_note: Natural 2M1 composition with its measured mixed occupancies retained; it is not a claim about every mica polytype or composition.
 
   - slug: diopside
     display_name: Diopside (clinopyroxene reference)
     family: clinopyroxene
     formula: CaMgSi2O6
     crystal_system: monoclinic
-    source_status: candidate-reference
-    source_record:
+    source_status: tracked-source
+    source_record: phases/diopside/source.yml
     candidate_reference:
-      label: COD 1000007, diopside at 1 atm
-      source_url: https://www.crystallography.net/cod/1000007.html
-      cif_url: https://www.crystallography.net/cod/1000007.cif
-      license: CC0-1.0
-      rationale: Stoichiometric ambient diopside is a clear first clinopyroxene reference before augite, jadeite, and compositional-series work.
-      promotion_trigger: Verify the ambient C2/c source record and accept its direct-reflector evidence.
-    scope_note: Diopside is the first clinopyroxene reference, not a proxy for the full clinopyroxene compositional field.
+    scope_note: Ambient C2/c diopside is the first clinopyroxene reference, not a proxy for the full clinopyroxene compositional field.

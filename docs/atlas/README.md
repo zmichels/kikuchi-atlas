@@ -39,9 +39,9 @@ release treats these as common core families for every source-backed phase:
 
 Richer intensity-master, depth-field, and intensity-relief products are
 explicit extensions. They may be incomplete for a phase, but they cannot
-masquerade as a different core product type. Candidate phase references show
-the same matrix as `blocked by source promotion` until their source contract is
-accepted.
+masquerade as a different core product type. A future candidate phase reference
+will show the same matrix as `blocked by source promotion` until its source
+contract is accepted.
 
 ## Atlas states
 
@@ -51,9 +51,9 @@ accepted.
   It is visible for planning but cannot be captioned as a rendered,
   dictionary-ready, or indexing-validated phase.
 
-The initial candidate set adds an An52 plagioclase reference, 2M1 muscovite,
-and ambient diopside. The exact named materials matter: plagioclase and
-clinopyroxene are families, not one universal structure apiece.
+The initial Atlas release now includes promoted An52 plagioclase, 2M1
+muscovite, and ambient diopside references. The exact named materials matter:
+plagioclase and clinopyroxene are families, not one universal structure apiece.
 
 `PHASE_REGISTRY.yml` names exact phases and source state.
 `PRODUCT_REGISTRY.yml` names individual curated products and their relations.

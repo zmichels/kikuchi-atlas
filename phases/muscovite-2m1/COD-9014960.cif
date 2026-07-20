@@ -1,0 +1,123 @@
+#------------------------------------------------------------------------------
+#$Date: 2023-05-18 10:14:51 +0300 (Thu, 18 May 2023) $
+#$Revision: 283850 $
+#$URL: file:///home/coder/svn-repositories/_RELOADED_COD/cod-reloaded/cif/9/01/49/9014960.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/. The original data for this entry
+# were provided the American Mineralogist Crystal Structure Database,
+# http://rruff.geo.arizona.edu/AMS/amcsd.php
+#
+# The file may be used within the scientific community so long as
+# proper attribution is given to the journal article from which the
+# data were obtained.
+#
+data_9014960
+loop_
+_publ_author_name
+'Guven, N.'
+_publ_section_title
+;
+ The crystal structures of 2M1 phengite and 2M1 muscovite
+ Note: sample 2M1 muscovite
+;
+_journal_name_full               'Zeitschrift fur Kristallographie'
+_journal_page_first              196
+_journal_page_last               212
+_journal_volume                  134
+_journal_year                    1971
+_chemical_compound_source        'pegmatite in Georgia, USA'
+_chemical_formula_sum            'Al2.9 Fe0.04 H2 K0.86 Mg0.06 Na0.1 O12 Si3'
+_chemical_name_mineral           Muscovite
+_space_group_IT_number           15
+_symmetry_space_group_name_Hall  '-C 2yc'
+_symmetry_space_group_name_H-M   'C 1 2/c 1'
+_cell_angle_alpha                90
+_cell_angle_beta                 95.757
+_cell_angle_gamma                90
+_cell_formula_units_Z            4
+_cell_length_a                   5.1906
+_cell_length_b                   9.0080
+_cell_length_c                   20.0470
+_cell_volume                     932.608
+_database_code_amcsd             0019602
+_exptl_crystal_density_diffrn    2.821
+_cod_original_formula_sum        'K.86 Na.1 Al2.9 Fe.04 Mg.06 Si3 O12 H2'
+_cod_database_code               9014960
+loop_
+_space_group_symop_operation_xyz
+x,y,z
+1/2+x,1/2+y,z
+x,-y,1/2+z
+1/2+x,1/2-y,1/2+z
+-x,y,1/2-z
+1/2-x,1/2+y,1/2-z
+-x,-y,-z
+1/2-x,1/2-y,-z
+loop_
+_atom_site_aniso_label
+_atom_site_aniso_U_11
+_atom_site_aniso_U_22
+_atom_site_aniso_U_33
+_atom_site_aniso_U_12
+_atom_site_aniso_U_13
+_atom_site_aniso_U_23
+K 0.02175 0.02055 0.01814 0.00000 0.00209 0.00000
+Na 0.02175 0.02055 0.01814 0.00000 0.00209 0.00000
+Al 0.00595 0.00370 0.00746 -0.00007 0.00104 0.00127
+Fe 0.00595 0.00370 0.00746 -0.00007 0.00104 0.00127
+Mg 0.00595 0.00370 0.00746 -0.00007 0.00104 0.00127
+AlT1 0.00635 0.00617 0.00746 0.00047 0.00052 0.00000
+SiT1 0.00635 0.00617 0.00746 0.00047 0.00052 0.00000
+AlT2 0.00662 0.00617 0.00826 -0.00024 0.00104 0.00000
+SiT2 0.00662 0.00617 0.00826 -0.00024 0.00104 0.00000
+Oa 0.00811 0.01110 0.01209 0.00094 0.00052 0.00273
+Ob 0.00946 0.00822 0.01209 0.00047 0.00052 0.00000
+Oc 0.01621 0.01274 0.01411 0.00141 0.00261 0.00000
+Od 0.01757 0.02014 0.01411 0.00236 0.00417 0.00273
+Oe 0.01757 0.01398 0.01209 0.00094 -0.00104 -0.00455
+O-H 0.01081 0.00822 0.00806 0.00047 -0.00104 -0.00273
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+_atom_site_U_iso_or_equiv
+_atom_site_type_symbol
+_atom_site_attached_hydrogens
+K 0.00000 0.09850 0.25000 0.86000 0.02026 K 0
+Na 0.00000 0.09850 0.25000 0.10000 0.02026 Na 0
+Al 0.24960 0.08340 0.99990 0.95000 0.00595 Al 0
+Fe 0.24960 0.08340 0.99990 0.02000 0.00595 Fe 0
+Mg 0.24960 0.08340 0.99990 0.03000 0.00595 Mg 0
+AlT1 0.96480 0.42950 0.13550 0.25000 0.00684 Al 0
+SiT1 0.96480 0.42950 0.13550 0.75000 0.00684 Si 0
+AlT2 0.45100 0.25840 0.13550 0.25000 0.00684 Al 0
+SiT2 0.45100 0.25840 0.13550 0.75000 0.00684 Si 0
+Oa 0.96130 0.44350 0.05400 1.00000 0.01064 O 0
+Ob 0.38500 0.25190 0.05370 1.00000 0.00975 O 0
+Oc 0.41740 0.09300 0.16850 1.00000 0.01355 O 0
+Od 0.75130 0.31100 0.15750 1.00000 0.01697 O 0
+Oe 0.25220 0.37050 0.16890 1.00000 0.01482 O 0
+O-H 0.95640 0.06300 0.05050 1.00000 0.00950 O 1
+loop_
+_cod_changelog_entry_id
+_cod_changelog_entry_author
+_cod_changelog_entry_date
+_cod_changelog_entry_text
+1
+;cod-tools version 3.8.0
+Id: cif_guess_AMCSD_atom_types 9581 2023-05-17 12:35:41Z saulius
+;
+2023-05-18T08:45:31+03:00
+;Derived atom types and hydrogen counts
+from atom names that follow the AMCSD naming convention
+(Wat == water, O-H == hydroxyl).
+;
+loop_
+_cod_related_entry_id
+_cod_related_entry_database
+_cod_related_entry_code
+1 AMCSD 0019602

@@ -1,0 +1,53 @@
+schema_version: 1
+identifier: COD-9014960
+cif: COD-9014960.cif
+sha256: 089aed29c3d2e5437e087312223048fbb0196fd8b92d6a07217a7ee528a06b6f
+retrieved: 2026-07-20
+uri: https://www.crystallography.net/cod/9014960.cif
+page_uri: https://www.crystallography.net/cod/9014960.html
+license: COD attribution-use notice
+license_uri: https://www.crystallography.net/cod/9014960.html
+copying_policy: Source CIF permits scientific-community use with attribution to the journal article.
+citation: >-
+  Guven, N. (1971). The crystal structures of 2M1 phengite and 2M1 muscovite.
+  Zeitschrift fuer Kristallographie 134, 196-212. Sample: 2M1 muscovite.
+phase:
+  name: muscovite-2M1
+  formula: K.86Na.1Al2.9Fe.04Mg.06Si3O12H2
+  space_group_number: 15
+  setting: C 1 2/c 1
+  lattice_angstrom: [5.1906, 9.008, 20.047, 90.0, 95.757, 90.0]
+sites:
+  - {label: K, element: K, fract: [0.0, 0.0985, 0.25], occupancy: 0.86, u_iso_angstrom_sq: 0.02026}
+  - {label: Na, element: Na, fract: [0.0, 0.0985, 0.25], occupancy: 0.1, u_iso_angstrom_sq: 0.02026}
+  - {label: Al, element: Al, fract: [0.2496, 0.0834, 0.9999], occupancy: 0.95, u_iso_angstrom_sq: 0.00595}
+  - {label: Fe, element: Fe, fract: [0.2496, 0.0834, 0.9999], occupancy: 0.02, u_iso_angstrom_sq: 0.00595}
+  - {label: Mg, element: Mg, fract: [0.2496, 0.0834, 0.9999], occupancy: 0.03, u_iso_angstrom_sq: 0.00595}
+  - {label: AlT1, element: Al, fract: [0.9648, 0.4295, 0.1355], occupancy: 0.25, u_iso_angstrom_sq: 0.00684}
+  - {label: SiT1, element: Si, fract: [0.9648, 0.4295, 0.1355], occupancy: 0.75, u_iso_angstrom_sq: 0.00684}
+  - {label: AlT2, element: Al, fract: [0.451, 0.2584, 0.1355], occupancy: 0.25, u_iso_angstrom_sq: 0.00684}
+  - {label: SiT2, element: Si, fract: [0.451, 0.2584, 0.1355], occupancy: 0.75, u_iso_angstrom_sq: 0.00684}
+  - {label: Oa, element: O, fract: [0.9613, 0.4435, 0.054], occupancy: 1.0, u_iso_angstrom_sq: 0.01064}
+  - {label: Ob, element: O, fract: [0.385, 0.2519, 0.0537], occupancy: 1.0, u_iso_angstrom_sq: 0.00975}
+  - {label: Oc, element: O, fract: [0.4174, 0.093, 0.1685], occupancy: 1.0, u_iso_angstrom_sq: 0.01355}
+  - {label: Od, element: O, fract: [0.7513, 0.311, 0.1575], occupancy: 1.0, u_iso_angstrom_sq: 0.01697}
+  - {label: Oe, element: O, fract: [0.2522, 0.3705, 0.1689], occupancy: 1.0, u_iso_angstrom_sq: 0.01482}
+  - {label: O-H, element: O, fract: [0.9564, 0.063, 0.0505], occupancy: 1.0, u_iso_angstrom_sq: 0.0095}
+thermal_factor_policy:
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
+  simulation_units: angstrom^2
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
+simulation_setting:
+  reason: >-
+    COD 9014960 uses the conventional C 1 2/c 1 setting represented directly
+    by space group 15. Mixed K/Na, octahedral Al/Fe/Mg, and tetrahedral
+    Al/Si occupancies remain explicit.
+  source_setting: C 1 2/c 1
+  target_setting: C 1 2/c 1
+  target_lattice_from_source: [a, b, c]
+  target_fractional_from_source: [x, y, z]
+  target_site_multiplicities: [4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]

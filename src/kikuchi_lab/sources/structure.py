@@ -296,7 +296,13 @@ def verify_structure(record: StructureRecord) -> VerifiedStructure:
     occupancies = _loop_column(block, tags, "_atom_site_occupancy")
     u_iso = _loop_column(block, tags, "_atom_site_U_iso_or_equiv")
     parsed_labels = tuple(str(value) for value in labels)
-    parsed_elements = tuple(_symbol(label) for label in parsed_labels)
+    type_symbols = _loop_column(block, tags, "_atom_site_type_symbol")
+    if type_symbols is not None and len(type_symbols) != len(parsed_labels):
+        raise ValueError("atom-site type-symbol count differs from label count")
+    parsed_elements = tuple(
+        _symbol(str(value))
+        for value in (type_symbols if type_symbols is not None else parsed_labels)
+    )
     parsed_occupancies = (
         tuple(1.0 for _ in labels)
         if occupancies is None

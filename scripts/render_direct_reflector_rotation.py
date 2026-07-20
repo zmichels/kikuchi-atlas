@@ -26,6 +26,9 @@ PHASE_SOURCES = {
     "zircon": Path("local/phase-general-direct-reflector-art/series/zircon-hemisphere-standard-run-ad71aeef33302d99"),
     "titanite": Path("local/phase-general-direct-reflector-art/series/titanite-hemisphere-standard-run-7a58d5c09fe6273c"),
     "diamond": Path("local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8"),
+    "plagioclase-an52": Path("local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1"),
+    "muscovite-2m1": Path("local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e"),
+    "diopside": Path("local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef"),
 }
 AXES = {"x": (1.0, 0.0, 0.0), "oblique": (2.0, 1.0, 1.0)}
 

@@ -365,6 +365,249 @@ products:
     orientation: tilt-plus-20
     hero: false
 
+  # Diamond uses the same standard direct-reflector orientation set as the five-phase gallery.
+  - id: diamond-direct-standard
+    title: Diamond — standard hemisphere
+    phase_slugs: [diamond]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/diamond-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8
+    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/manifest.json
+    recipe: recipes/reflectors/diamond-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere from the common orientation set.
+    orientation: standard
+    hero: true
+  - id: diamond-direct-azimuthal-60
+    title: Diamond — azimuthal 60
+    phase_slugs: [diamond]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-39a97f264166fc57/diamond-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-39a97f264166fc57
+    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-39a97f264166fc57/manifest.json
+    recipe: recipes/reflectors/diamond-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: diamond-direct-oblique-high
+    title: Diamond — oblique high
+    phase_slugs: [diamond]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c/diamond-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c
+    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-cd660e2fc67d856c/manifest.json
+    recipe: recipes/reflectors/diamond-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: diamond-direct-tilt-plus-20
+    title: Diamond — tilt +20
+    phase_slugs: [diamond]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-f409677400a5071d/diamond-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-f409677400a5071d
+    provenance_path: local/phase-general-direct-reflector-art/exports/diamond-standard-plus-orientation-gallery-v1/diamond-hemisphere-standard-run-f409677400a5071d/manifest.json
+    recipe: recipes/reflectors/diamond-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+
+  - id: plagioclase-an52-direct-standard
+    title: Plagioclase An52 — standard hemisphere
+    phase_slugs: [plagioclase-an52]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/plagioclase-an52-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1
+    provenance_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/manifest.json
+    recipe: recipes/reflectors/plagioclase-an52-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere.
+    orientation: standard
+    hero: true
+  - id: plagioclase-an52-direct-azimuthal-60
+    title: Plagioclase An52 — azimuthal 60
+    phase_slugs: [plagioclase-an52]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-e793c6fa4b7ee342/plagioclase-an52-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-e793c6fa4b7ee342
+    provenance_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-e793c6fa4b7ee342/manifest.json
+    recipe: recipes/reflectors/plagioclase-an52-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: plagioclase-an52-direct-oblique-high
+    title: Plagioclase An52 — oblique high
+    phase_slugs: [plagioclase-an52]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-0ce8ace920d36e2e/plagioclase-an52-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-0ce8ace920d36e2e
+    provenance_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-0ce8ace920d36e2e/manifest.json
+    recipe: recipes/reflectors/plagioclase-an52-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: plagioclase-an52-direct-tilt-plus-20
+    title: Plagioclase An52 — tilt +20
+    phase_slugs: [plagioclase-an52]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-a46c8a515aec3b36/plagioclase-an52-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-a46c8a515aec3b36
+    provenance_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-a46c8a515aec3b36/manifest.json
+    recipe: recipes/reflectors/plagioclase-an52-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+  - id: muscovite-2m1-direct-standard
+    title: Muscovite 2M1 — standard hemisphere
+    phase_slugs: [muscovite-2m1]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-7e2c8f3668dda50f/muscovite-2m1-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-7e2c8f3668dda50f
+    provenance_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-7e2c8f3668dda50f/manifest.json
+    recipe: recipes/reflectors/muscovite-2m1-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere.
+    orientation: standard
+    hero: true
+  - id: muscovite-2m1-direct-azimuthal-60
+    title: Muscovite 2M1 — azimuthal 60
+    phase_slugs: [muscovite-2m1]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-a05d8fc7a22afc92/muscovite-2m1-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-a05d8fc7a22afc92
+    provenance_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-a05d8fc7a22afc92/manifest.json
+    recipe: recipes/reflectors/muscovite-2m1-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: muscovite-2m1-direct-oblique-high
+    title: Muscovite 2M1 — oblique high
+    phase_slugs: [muscovite-2m1]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-b3032e6d2fdac309/muscovite-2m1-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-b3032e6d2fdac309
+    provenance_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-b3032e6d2fdac309/manifest.json
+    recipe: recipes/reflectors/muscovite-2m1-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: muscovite-2m1-direct-tilt-plus-20
+    title: Muscovite 2M1 — tilt +20
+    phase_slugs: [muscovite-2m1]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/muscovite-2m1-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e
+    provenance_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/manifest.json
+    recipe: recipes/reflectors/muscovite-2m1-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+  - id: diopside-direct-standard
+    title: Diopside — standard hemisphere
+    phase_slugs: [diopside]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/diopside-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef
+    provenance_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/manifest.json
+    recipe: recipes/reflectors/diopside-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere.
+    orientation: standard
+    hero: true
+  - id: diopside-direct-azimuthal-60
+    title: Diopside — azimuthal 60
+    phase_slugs: [diopside]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-1fb6ac8481d07e39/diopside-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-1fb6ac8481d07e39
+    provenance_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-1fb6ac8481d07e39/manifest.json
+    recipe: recipes/reflectors/diopside-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: diopside-direct-oblique-high
+    title: Diopside — oblique high
+    phase_slugs: [diopside]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-bcc6c9458d731924/diopside-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-bcc6c9458d731924
+    provenance_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-bcc6c9458d731924/manifest.json
+    recipe: recipes/reflectors/diopside-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: diopside-direct-tilt-plus-20
+    title: Diopside — tilt +20
+    phase_slugs: [diopside]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-b276f7d1dadd63b7/diopside-hemisphere-standard.svg
+    bundle_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-b276f7d1dadd63b7
+    provenance_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-b276f7d1dadd63b7/manifest.json
+    recipe: recipes/reflectors/diopside-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+
   # The five wider-band variants remain directly browsable as individual assets.
   - id: forsterite-direct-wide
     title: Forsterite — wide hemisphere
@@ -543,7 +786,56 @@ products:
     state: local-published
     caption: Full direct-reflector rotation about the horizontal sample axis.
     orientation: active x-axis rotation
-    hero: true
+    hero: false
+
+  - id: plagioclase-an52-x-axis-rotation
+    title: Plagioclase An52 — x-axis rotation
+    phase_slugs: [plagioclase-an52]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-x-axis-rotation-v1/plagioclase-an52-x-axis-rotation.mp4
+    preview_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-x-axis-rotation-v1/preview.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-x-axis-rotation-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-x-axis-rotation-v1/manifest.json
+    recipe: recipes/reflectors/plagioclase-an52-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: muscovite-2m1-x-axis-rotation
+    title: Muscovite 2M1 — x-axis rotation
+    phase_slugs: [muscovite-2m1]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-x-axis-rotation-v1/muscovite-2m1-x-axis-rotation.mp4
+    preview_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-x-axis-rotation-v1/preview.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-x-axis-rotation-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-x-axis-rotation-v1/manifest.json
+    recipe: recipes/reflectors/muscovite-2m1-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: diopside-x-axis-rotation
+    title: Diopside — x-axis rotation
+    phase_slugs: [diopside]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/phase-general-direct-reflector-art/exports/diopside-x-axis-rotation-v1/diopside-x-axis-rotation.mp4
+    preview_path: local/phase-general-direct-reflector-art/exports/diopside-x-axis-rotation-v1/preview.png
+    bundle_path: local/phase-general-direct-reflector-art/exports/diopside-x-axis-rotation-v1
+    provenance_path: local/phase-general-direct-reflector-art/exports/diopside-x-axis-rotation-v1/manifest.json
+    recipe: recipes/reflectors/diopside-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
 
   # Common printable reflector-ridge globes.
   - id: forsterite-reflector-ridge-globe
@@ -636,6 +928,55 @@ products:
     bundle_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-e074ffdc8c058002
     provenance_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-e074ffdc8c058002/reflector-globe-manifest.json
     recipe: recipes/globes/diamond-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+
+  - id: plagioclase-an52-reflector-ridge-globe
+    title: Plagioclase An52 — reflector-ridge globe
+    phase_slugs: [plagioclase-an52]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-7178b0cc383d65e2/8103560-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-7178b0cc383d65e2/8103560-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-7178b0cc383d65e2
+    provenance_path: local/reflector-ridge-series/plagioclase-an52/reflector-ridge-globe-build-7178b0cc383d65e2/reflector-globe-manifest.json
+    recipe: recipes/globes/plagioclase-an52-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+  - id: muscovite-2m1-reflector-ridge-globe
+    title: Muscovite 2M1 — reflector-ridge globe
+    phase_slugs: [muscovite-2m1]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-60d1d4e8b5e28147/9014960-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-60d1d4e8b5e28147/9014960-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-60d1d4e8b5e28147
+    provenance_path: local/reflector-ridge-series/muscovite-2m1/reflector-ridge-globe-build-60d1d4e8b5e28147/reflector-globe-manifest.json
+    recipe: recipes/globes/muscovite-2m1-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+  - id: diopside-reflector-ridge-globe
+    title: Diopside — reflector-ridge globe
+    phase_slugs: [diopside]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-b28ffed562420f30/1000007-reflector-ridges.stl
+    preview_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-b28ffed562420f30/1000007-reflector-ridges-preview.png
+    bundle_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-b28ffed562420f30
+    provenance_path: local/reflector-ridge-series/diopside/reflector-ridge-globe-build-b28ffed562420f30/reflector-globe-manifest.json
+    recipe: recipes/globes/diopside-reflector-ridges.yml
     entrypoint: kikuchi-lab reflector-globe build
     tier: printable-geometry
     state: local-published

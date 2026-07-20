@@ -1,0 +1,44 @@
+schema_version: 1
+identifier: COD-1000007
+cif: COD-1000007.cif
+sha256: 519dd231c62909eb50349b54a518f454fc5c21d1b005a777ede51ead83ede4e3
+retrieved: 2026-07-20
+uri: https://www.crystallography.net/cod/1000007.cif
+page_uri: https://www.crystallography.net/cod/1000007.html
+license: CC0-1.0
+license_uri: https://creativecommons.org/publicdomain/zero/1.0/
+copying_policy: Public-domain COD data; acknowledge the original structural-data authors.
+citation: >-
+  Thompson, R. M. and Downs, R. T. (2008). The crystal structure of diopside
+  at pressure to 10 GPa. American Mineralogist 93, 177-186. Source specimen:
+  P = 1 atm.
+phase:
+  name: diopside-1-atm
+  formula: CaMgSi2O6
+  space_group_number: 15
+  setting: C 1 2/c 1
+  lattice_angstrom: [9.7397, 8.9174, 5.2503, 90.0, 105.866, 90.0]
+sites:
+  - {label: Mg, element: Mg, fract: [0.0, 0.90808, 0.25], occupancy: 1.0, u_iso_angstrom_sq: 0.00393}
+  - {label: Ca, element: Ca, fract: [0.0, 0.30148, 0.25], occupancy: 1.0, u_iso_angstrom_sq: 0.00823}
+  - {label: Si, element: Si, fract: [0.28619, 0.09319, 0.22936], occupancy: 1.0, u_iso_angstrom_sq: 0.00431}
+  - {label: O1, element: O, fract: [0.11554, 0.0869, 0.14186], occupancy: 1.0, u_iso_angstrom_sq: 0.00697}
+  - {label: O2, element: O, fract: [0.36094, 0.25019, 0.31776], occupancy: 1.0, u_iso_angstrom_sq: 0.00785}
+  - {label: O3, element: O, fract: [0.35073, 0.01744, 0.99543], occupancy: 1.0, u_iso_angstrom_sq: 0.00709}
+thermal_factor_policy:
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
+  simulation_units: angstrom^2
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
+simulation_setting:
+  reason: >-
+    COD 1000007 is the conventional C 1 2/c 1 ambient-pressure diopside
+    structure represented directly by space group 15.
+  source_setting: C 1 2/c 1
+  target_setting: C 1 2/c 1
+  target_lattice_from_source: [a, b, c]
+  target_fractional_from_source: [x, y, z]
+  target_site_multiplicities: [4, 4, 8, 8, 8, 8]

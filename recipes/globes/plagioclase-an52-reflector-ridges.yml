@@ -1,0 +1,19 @@
+schema: kikuchi.reflector-ridge-recipe/v1
+geometry:
+  base_diameter_mm: 80.0
+  maximum_relief_mm: 3.0
+  topology: icosphere
+  subdivisions: 7
+  direction: raised_outward
+selection:
+  source_structure_id: COD-8103560
+  energy_kev: 20.0
+  eligibility_min_weight: 0.03
+  tie_policy: keep_equal_weights_together
+  cohort_count: 4
+tiers:
+  1: {height_mm: 1.2, width_multiplier: 1.4, minimum_width_mm: 0.8, edge_fillet_fraction: 0.25}
+  2: {height_mm: 1.8, width_multiplier: 1.8, minimum_width_mm: 1.0, edge_fillet_fraction: 0.25}
+  3: {height_mm: 2.4, width_multiplier: 2.2, minimum_width_mm: 1.2, edge_fillet_fraction: 0.25}
+  4: {height_mm: 3.0, width_multiplier: 2.6, minimum_width_mm: 1.4, edge_fillet_fraction: 0.25}
+fdm_context: filament_fdm

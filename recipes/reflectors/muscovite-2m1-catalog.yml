@@ -1,0 +1,11 @@
+schema_version: 1
+source_record: phases/muscovite-2m1/source.yml
+energy_kev: 20.0
+min_dspacing_angstrom: 0.7
+scattering_params: xtables
+source_master_relative_factor: 0.03
+selection_relative_factor: 0.18
+weight_exponent: 2.0
+eligibility_min_weight: 0.03
+tie_policy: keep_equal_weights_together
+cohort_count: 4

@@ -1,0 +1,59 @@
+schema_version: 1
+identifier: COD-8103560
+cif: COD-8103560.cif
+sha256: 6a3d4f3932da8b9a8ed9ba7dbdaa6da0b91520bd5e5ac358dcec140418168359
+retrieved: 2026-07-20
+uri: https://www.crystallography.net/cod/8103560.cif
+page_uri: https://www.crystallography.net/cod/8103560.html
+license: CC0-1.0
+license_uri: https://creativecommons.org/publicdomain/zero/1.0/
+copying_policy: Public-domain COD data; acknowledge the original structural-data authors.
+citation: >-
+  Horst, W.; Tagai, T.; Korekawa, M.; Jagodzinski, H. (1981). Modulated
+  structure of a plagioclase An52: Theory and structure determination.
+  Zeitschrift fuer Kristallographie 157, 233-250.
+phase:
+  name: plagioclase-An52
+  formula: Al1.46Ca0.347Na0.685O8Si2.54
+  space_group_number: 2
+  setting: C -1
+  lattice_angstrom: [8.178, 12.865, 7.109, 93.53, 116.21, 89.92]
+sites:
+  - {label: Si4, element: Si, fract: [0.683, 0.8796, 0.3564], occupancy: 0.62, u_iso_angstrom_sq: 0.0}
+  - {label: O2, element: O, fract: [0.5805, 0.993, 0.2775], occupancy: 1.0, u_iso_angstrom_sq: 0.0}
+  - {label: Al4, element: Al, fract: [0.683, 0.8796, 0.3564], occupancy: 0.38, u_iso_angstrom_sq: 0.0}
+  - {label: O5, element: O, fract: [0.0153, 0.2931, 0.2796], occupancy: 1.0, u_iso_angstrom_sq: 0.0}
+  - {label: Si3, element: Si, fract: [0.0033, 0.8175, 0.2298], occupancy: 0.83, u_iso_angstrom_sq: 0.0}
+  - {label: Na1, element: Na, fract: [0.2884, 0.0321, 0.1025], occupancy: 0.685, u_iso_angstrom_sq: 0.0}
+  - {label: O6, element: O, fract: [0.015, 0.6895, 0.2148], occupancy: 1.0, u_iso_angstrom_sq: 0.0}
+  - {label: Al3, element: Al, fract: [0.0033, 0.8175, 0.2298], occupancy: 0.17, u_iso_angstrom_sq: 0.0}
+  - {label: Al1, element: Al, fract: [0.0055, 0.1649, 0.2155], occupancy: 0.69, u_iso_angstrom_sq: 0.0}
+  - {label: Ca1, element: Ca, fract: [0.2707, 0.9577, 0.1723], occupancy: 0.347, u_iso_angstrom_sq: 0.0}
+  - {label: O3, element: O, fract: [0.8099, 0.1065, 0.19], occupancy: 1.0, u_iso_angstrom_sq: 0.0}
+  - {label: O7, element: O, fract: [0.2013, 0.1074, 0.3848], occupancy: 1.0, u_iso_angstrom_sq: 0.0}
+  - {label: Si2, element: Si, fract: [0.6854, 0.1095, 0.3173], occupancy: 0.78, u_iso_angstrom_sq: 0.0}
+  - {label: Al2, element: Al, fract: [0.6854, 0.1095, 0.3173], occupancy: 0.22, u_iso_angstrom_sq: 0.0}
+  - {label: O4, element: O, fract: [0.8172, 0.8538, 0.2415], occupancy: 1.0, u_iso_angstrom_sq: 0.0}
+  - {label: O1, element: O, fract: [0.0034, 0.1297, 0.9756], occupancy: 1.0, u_iso_angstrom_sq: 0.0}
+  - {label: Si1, element: Si, fract: [0.0055, 0.1649, 0.2155], occupancy: 0.31, u_iso_angstrom_sq: 0.0}
+  - {label: O8, element: O, fract: [0.1895, 0.8675, 0.4293], occupancy: 1.0, u_iso_angstrom_sq: 0.0}
+thermal_factor_policy:
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
+  simulation_units: angstrom^2
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
+simulation_setting:
+  reason: >-
+    COD 8103560 is expressed as a C-centered triclinic supercell. The
+    simulation view uses its explicitly documented primitive basis so the
+    centering translation is not lost by treating space group 2 as P -1.
+  source_setting: C -1
+  target_setting: P -1 primitive
+  target_direct_basis_from_source_columns:
+    - [0.5, 0.5, 0.0]
+    - [-0.5, 0.5, 0.0]
+    - [0.0, 0.0, 1.0]
+  target_site_multiplicities: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
