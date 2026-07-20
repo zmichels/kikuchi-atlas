@@ -125,6 +125,29 @@ def test_projection_ledger_derives_hemisphere_order_from_recipe(
         assert ledger["projections"][projection]["hemisphere_order"] == expected_order
 
 
+def test_projection_ledger_records_an_explicit_primitive_basis_transform() -> None:
+    record = load_structure_record(ROOT / "phases/plagioclase-an52/source.yml")
+    recipe = load_kinematical_recipe(RECIPE)
+
+    ledger = _projection_ledger(record, recipe)
+
+    assert ledger["frames"]["source_to_crystal"] == {
+        "source_setting": "C -1",
+        "target_setting": "P -1 primitive",
+        "direct_basis_transform": {
+            "target_direct_basis_from_source_columns": [
+                [0.5, 0.5, 0.0],
+                [-0.5, 0.5, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            "equation": "A_target = A_source @ T",
+        },
+        "fractional_coordinate_transform": {
+            "equation": "x_target = inv(T) @ x_source",
+        },
+    }
+
+
 def test_projection_ledger_names_projection_transform_owners(small_simulation) -> None:
     _, _, simulation = small_simulation
     projections = simulation.projection_ledger["projections"]

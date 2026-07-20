@@ -1,0 +1,37 @@
+schema_version: 1
+name: diamond-001-atlas-parity-master
+source_record: ../../phases/diamond/source.yml
+energy_kev: 20.0
+orientation:
+  euler_bunge_deg: [0.0, 0.0, 0.0]
+  frame: crystal_to_sample
+  zone_axis_uvw: [0, 0, 1]
+detector:
+  shape: [1536, 2048]
+  pcx: 0.50
+  pcy: 0.72
+  pcz: 0.60
+  pc_convention: tsl
+  sample_tilt_deg: 70.0
+  detector_tilt_deg: 0.0
+  detector_azimuth_deg: 0.0
+  detector_twist_deg: 0.0
+  pixel_size_um: 5.859375
+  binning: 1
+  supersampling: 1
+reflections:
+  min_dspacing_angstrom: 0.7
+  scattering_params: xtables
+  master_relative_factor: 0.03
+master:
+  half_size: 512
+  hemisphere: both
+  scaling: square
+tone:
+  percentiles: [0.5, 99.85]
+  asinh_scale: 7.0
+figure_size_px: 2400
+promoted_style: quiet
+styles:
+  - {name: balanced, overlay_relative_factor: 0.14, line_alpha: 0.54, line_width_pt: 0.36}
+  - {name: quiet, overlay_relative_factor: 0.22, line_alpha: 0.62, line_width_pt: 0.42}

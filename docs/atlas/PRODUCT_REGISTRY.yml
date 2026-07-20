@@ -1145,3 +1145,437 @@ products:
     caption: Intensity-derived spherical relief geometry.
     orientation: canonical sphere
     hero: false
+
+  # Nine-phase kinematical extension baseline: one source-backed product in each extension family.
+  - id: forsterite-atlas-kinematical-master
+    title: Forsterite — kinematical Lambert master
+    phase_slugs: [forsterite]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-extension-parity/kinematical/forsterite/kinematical-run-3e26a8c7f716e7ce/products/kinematical-master-lambert.png
+    preview_path: local/atlas-extension-parity/kinematical/forsterite/kinematical-run-3e26a8c7f716e7ce/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-extension-parity/kinematical/forsterite/kinematical-run-3e26a8c7f716e7ce
+    provenance_path: local/atlas-extension-parity/kinematical/forsterite/kinematical-run-3e26a8c7f716e7ce/manifest.json
+    recipe: recipes/kinematical/forsterite-etched-master.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: forsterite-atlas-retained-depth-x-axis
+    title: Forsterite — retained depth-field x-axis rotation
+    phase_slugs: [forsterite]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-extension-parity/depth-motion/forsterite/forsterite-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-extension-parity/depth-motion/forsterite/preview.png
+    bundle_path: local/atlas-extension-parity/depth-motion/forsterite
+    provenance_path: local/atlas-extension-parity/depth-motion/forsterite/manifest.json
+    recipe: recipes/presentation/forsterite-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: forsterite-atlas-kinematical-intensity-relief
+    title: Forsterite — kinematical intensity-relief globe
+    phase_slugs: [forsterite]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-extension-parity/relief/forsterite/relief-globe-build-a27c86c89e9aa9fc/forsterite-intensity-relief-globe.stl
+    preview_path: local/atlas-extension-parity/relief/forsterite/relief-globe-build-a27c86c89e9aa9fc/forsterite-intensity-relief-preview.png
+    bundle_path: local/atlas-extension-parity/relief/forsterite/relief-globe-build-a27c86c89e9aa9fc
+    provenance_path: local/atlas-extension-parity/relief/forsterite/relief-globe-build-a27c86c89e9aa9fc/relief-manifest.json
+    recipe: recipes/relief/forsterite-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false
+  - id: ice-ih-atlas-kinematical-master
+    title: Ice Ih — kinematical Lambert master
+    phase_slugs: [ice-ih]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-extension-parity/kinematical/ice-ih/kinematical-run-4fded188e86ffd91/products/kinematical-master-lambert.png
+    preview_path: local/atlas-extension-parity/kinematical/ice-ih/kinematical-run-4fded188e86ffd91/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-extension-parity/kinematical/ice-ih/kinematical-run-4fded188e86ffd91
+    provenance_path: local/atlas-extension-parity/kinematical/ice-ih/kinematical-run-4fded188e86ffd91/manifest.json
+    recipe: recipes/kinematical/ice-ih-oxygen-quiet-proof.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: ice-ih-atlas-retained-depth-x-axis
+    title: Ice Ih — retained depth-field x-axis rotation
+    phase_slugs: [ice-ih]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-extension-parity/depth-motion/ice-ih/ice-ih-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-extension-parity/depth-motion/ice-ih/preview.png
+    bundle_path: local/atlas-extension-parity/depth-motion/ice-ih
+    provenance_path: local/atlas-extension-parity/depth-motion/ice-ih/manifest.json
+    recipe: recipes/presentation/ice-ih-near-depth-stepped-band-led.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: ice-ih-atlas-kinematical-intensity-relief
+    title: Ice Ih — kinematical intensity-relief globe
+    phase_slugs: [ice-ih]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-extension-parity/relief/ice-ih/relief-globe-build-7e78e0da95fdac9d/ice-ih-oxygen-sublattice-intensity-relief-globe.stl
+    preview_path: local/atlas-extension-parity/relief/ice-ih/relief-globe-build-7e78e0da95fdac9d/ice-ih-oxygen-sublattice-intensity-relief-preview.png
+    bundle_path: local/atlas-extension-parity/relief/ice-ih/relief-globe-build-7e78e0da95fdac9d
+    provenance_path: local/atlas-extension-parity/relief/ice-ih/relief-globe-build-7e78e0da95fdac9d/relief-manifest.json
+    recipe: recipes/relief/ice-ih-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false
+  - id: quartz-atlas-kinematical-master
+    title: Alpha quartz — kinematical Lambert master
+    phase_slugs: [quartz]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-extension-parity/kinematical/quartz/kinematical-run-ee999c186e9f6a0a/products/kinematical-master-lambert.png
+    preview_path: local/atlas-extension-parity/kinematical/quartz/kinematical-run-ee999c186e9f6a0a/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-extension-parity/kinematical/quartz/kinematical-run-ee999c186e9f6a0a
+    provenance_path: local/atlas-extension-parity/kinematical/quartz/kinematical-run-ee999c186e9f6a0a/manifest.json
+    recipe: recipes/kinematical/quartz-001-atlas-parity-master.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: quartz-atlas-retained-depth-x-axis
+    title: Alpha quartz — retained depth-field x-axis rotation
+    phase_slugs: [quartz]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-extension-parity/depth-motion/quartz/quartz-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-extension-parity/depth-motion/quartz/preview.png
+    bundle_path: local/atlas-extension-parity/depth-motion/quartz
+    provenance_path: local/atlas-extension-parity/depth-motion/quartz/manifest.json
+    recipe: recipes/presentation/quartz-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: quartz-atlas-kinematical-intensity-relief
+    title: Alpha quartz — kinematical intensity-relief globe
+    phase_slugs: [quartz]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-extension-parity/relief/quartz/relief-globe-build-4863e0d41c1541b2/alpha-quartz-intensity-relief-globe.stl
+    preview_path: local/atlas-extension-parity/relief/quartz/relief-globe-build-4863e0d41c1541b2/alpha-quartz-intensity-relief-preview.png
+    bundle_path: local/atlas-extension-parity/relief/quartz/relief-globe-build-4863e0d41c1541b2
+    provenance_path: local/atlas-extension-parity/relief/quartz/relief-globe-build-4863e0d41c1541b2/relief-manifest.json
+    recipe: recipes/relief/quartz-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false
+  - id: zircon-atlas-kinematical-master
+    title: Zircon — kinematical Lambert master
+    phase_slugs: [zircon]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-extension-parity/kinematical/zircon/kinematical-run-5d7e7e17a1273542/products/kinematical-master-lambert.png
+    preview_path: local/atlas-extension-parity/kinematical/zircon/kinematical-run-5d7e7e17a1273542/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-extension-parity/kinematical/zircon/kinematical-run-5d7e7e17a1273542
+    provenance_path: local/atlas-extension-parity/kinematical/zircon/kinematical-run-5d7e7e17a1273542/manifest.json
+    recipe: recipes/kinematical/zircon-quiet-master.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: zircon-atlas-retained-depth-x-axis
+    title: Zircon — retained depth-field x-axis rotation
+    phase_slugs: [zircon]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-extension-parity/depth-motion/zircon/zircon-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-extension-parity/depth-motion/zircon/preview.png
+    bundle_path: local/atlas-extension-parity/depth-motion/zircon
+    provenance_path: local/atlas-extension-parity/depth-motion/zircon/manifest.json
+    recipe: recipes/presentation/zircon-near-depth-stepped-band-led.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: zircon-atlas-kinematical-intensity-relief
+    title: Zircon — kinematical intensity-relief globe
+    phase_slugs: [zircon]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-extension-parity/relief/zircon/relief-globe-build-444bb23c7a88e06d/zircon-intensity-relief-globe.stl
+    preview_path: local/atlas-extension-parity/relief/zircon/relief-globe-build-444bb23c7a88e06d/zircon-intensity-relief-preview.png
+    bundle_path: local/atlas-extension-parity/relief/zircon/relief-globe-build-444bb23c7a88e06d
+    provenance_path: local/atlas-extension-parity/relief/zircon/relief-globe-build-444bb23c7a88e06d/relief-manifest.json
+    recipe: recipes/relief/zircon-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false
+  - id: titanite-atlas-kinematical-master
+    title: Titanite — kinematical Lambert master
+    phase_slugs: [titanite]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-extension-parity/kinematical/titanite/kinematical-run-f060f20d0b6b8d03/products/kinematical-master-lambert.png
+    preview_path: local/atlas-extension-parity/kinematical/titanite/kinematical-run-f060f20d0b6b8d03/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-extension-parity/kinematical/titanite/kinematical-run-f060f20d0b6b8d03
+    provenance_path: local/atlas-extension-parity/kinematical/titanite/kinematical-run-f060f20d0b6b8d03/manifest.json
+    recipe: recipes/kinematical/titanite-quiet-master.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: titanite-atlas-retained-depth-x-axis
+    title: Titanite — retained depth-field x-axis rotation
+    phase_slugs: [titanite]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-extension-parity/depth-motion/titanite/titanite-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-extension-parity/depth-motion/titanite/preview.png
+    bundle_path: local/atlas-extension-parity/depth-motion/titanite
+    provenance_path: local/atlas-extension-parity/depth-motion/titanite/manifest.json
+    recipe: recipes/presentation/titanite-near-depth-stepped-band-led.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: titanite-atlas-kinematical-intensity-relief
+    title: Titanite — kinematical intensity-relief globe
+    phase_slugs: [titanite]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-extension-parity/relief/titanite/relief-globe-build-373f0e40a3556dc7/synthetic-titanite-25c-intensity-relief-globe.stl
+    preview_path: local/atlas-extension-parity/relief/titanite/relief-globe-build-373f0e40a3556dc7/synthetic-titanite-25c-intensity-relief-preview.png
+    bundle_path: local/atlas-extension-parity/relief/titanite/relief-globe-build-373f0e40a3556dc7
+    provenance_path: local/atlas-extension-parity/relief/titanite/relief-globe-build-373f0e40a3556dc7/relief-manifest.json
+    recipe: recipes/relief/titanite-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false
+  - id: diamond-atlas-kinematical-master
+    title: Diamond — kinematical Lambert master
+    phase_slugs: [diamond]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-extension-parity/kinematical/diamond/kinematical-run-0b724f3885cd1707/products/kinematical-master-lambert.png
+    preview_path: local/atlas-extension-parity/kinematical/diamond/kinematical-run-0b724f3885cd1707/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-extension-parity/kinematical/diamond/kinematical-run-0b724f3885cd1707
+    provenance_path: local/atlas-extension-parity/kinematical/diamond/kinematical-run-0b724f3885cd1707/manifest.json
+    recipe: recipes/kinematical/diamond-001-atlas-parity-master.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: diamond-atlas-retained-depth-x-axis
+    title: Diamond — retained depth-field x-axis rotation
+    phase_slugs: [diamond]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-extension-parity/depth-motion/diamond/diamond-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-extension-parity/depth-motion/diamond/preview.png
+    bundle_path: local/atlas-extension-parity/depth-motion/diamond
+    provenance_path: local/atlas-extension-parity/depth-motion/diamond/manifest.json
+    recipe: recipes/presentation/diamond-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: diamond-atlas-kinematical-intensity-relief
+    title: Diamond — kinematical intensity-relief globe
+    phase_slugs: [diamond]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-extension-parity/relief/diamond/relief-globe-build-5f4dce30a71bebbd/diamond-intensity-relief-globe.stl
+    preview_path: local/atlas-extension-parity/relief/diamond/relief-globe-build-5f4dce30a71bebbd/diamond-intensity-relief-preview.png
+    bundle_path: local/atlas-extension-parity/relief/diamond/relief-globe-build-5f4dce30a71bebbd
+    provenance_path: local/atlas-extension-parity/relief/diamond/relief-globe-build-5f4dce30a71bebbd/relief-manifest.json
+    recipe: recipes/relief/diamond-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false
+  - id: plagioclase-an52-atlas-kinematical-master
+    title: Plagioclase An52 — kinematical Lambert master
+    phase_slugs: [plagioclase-an52]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-extension-parity/kinematical/plagioclase-an52/kinematical-run-b961c7063fb1fa6c/products/kinematical-master-lambert.png
+    preview_path: local/atlas-extension-parity/kinematical/plagioclase-an52/kinematical-run-b961c7063fb1fa6c/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-extension-parity/kinematical/plagioclase-an52/kinematical-run-b961c7063fb1fa6c
+    provenance_path: local/atlas-extension-parity/kinematical/plagioclase-an52/kinematical-run-b961c7063fb1fa6c/manifest.json
+    recipe: recipes/kinematical/plagioclase-an52-001-atlas-parity-master.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: plagioclase-an52-atlas-retained-depth-x-axis
+    title: Plagioclase An52 — retained depth-field x-axis rotation
+    phase_slugs: [plagioclase-an52]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-extension-parity/depth-motion/plagioclase-an52/plagioclase-an52-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-extension-parity/depth-motion/plagioclase-an52/preview.png
+    bundle_path: local/atlas-extension-parity/depth-motion/plagioclase-an52
+    provenance_path: local/atlas-extension-parity/depth-motion/plagioclase-an52/manifest.json
+    recipe: recipes/presentation/plagioclase-an52-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: plagioclase-an52-atlas-kinematical-intensity-relief
+    title: Plagioclase An52 — kinematical intensity-relief globe
+    phase_slugs: [plagioclase-an52]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-extension-parity/relief/plagioclase-an52/relief-globe-build-969a8ad94874ae1a/plagioclase-an52-intensity-relief-globe.stl
+    preview_path: local/atlas-extension-parity/relief/plagioclase-an52/relief-globe-build-969a8ad94874ae1a/plagioclase-an52-intensity-relief-preview.png
+    bundle_path: local/atlas-extension-parity/relief/plagioclase-an52/relief-globe-build-969a8ad94874ae1a
+    provenance_path: local/atlas-extension-parity/relief/plagioclase-an52/relief-globe-build-969a8ad94874ae1a/relief-manifest.json
+    recipe: recipes/relief/plagioclase-an52-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false
+  - id: muscovite-2m1-atlas-kinematical-master
+    title: Muscovite 2M1 — kinematical Lambert master
+    phase_slugs: [muscovite-2m1]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-extension-parity/kinematical/muscovite-2m1/kinematical-run-31036fd0d8a9070d/products/kinematical-master-lambert.png
+    preview_path: local/atlas-extension-parity/kinematical/muscovite-2m1/kinematical-run-31036fd0d8a9070d/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-extension-parity/kinematical/muscovite-2m1/kinematical-run-31036fd0d8a9070d
+    provenance_path: local/atlas-extension-parity/kinematical/muscovite-2m1/kinematical-run-31036fd0d8a9070d/manifest.json
+    recipe: recipes/kinematical/muscovite-2m1-001-atlas-parity-master.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: muscovite-2m1-atlas-retained-depth-x-axis
+    title: Muscovite 2M1 — retained depth-field x-axis rotation
+    phase_slugs: [muscovite-2m1]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-extension-parity/depth-motion/muscovite-2m1/muscovite-2m1-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-extension-parity/depth-motion/muscovite-2m1/preview.png
+    bundle_path: local/atlas-extension-parity/depth-motion/muscovite-2m1
+    provenance_path: local/atlas-extension-parity/depth-motion/muscovite-2m1/manifest.json
+    recipe: recipes/presentation/muscovite-2m1-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: muscovite-2m1-atlas-kinematical-intensity-relief
+    title: Muscovite 2M1 — kinematical intensity-relief globe
+    phase_slugs: [muscovite-2m1]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-extension-parity/relief/muscovite-2m1/relief-globe-build-7cb487eb28ac8fc6/muscovite-2m1-intensity-relief-globe.stl
+    preview_path: local/atlas-extension-parity/relief/muscovite-2m1/relief-globe-build-7cb487eb28ac8fc6/muscovite-2m1-intensity-relief-preview.png
+    bundle_path: local/atlas-extension-parity/relief/muscovite-2m1/relief-globe-build-7cb487eb28ac8fc6
+    provenance_path: local/atlas-extension-parity/relief/muscovite-2m1/relief-globe-build-7cb487eb28ac8fc6/relief-manifest.json
+    recipe: recipes/relief/muscovite-2m1-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false
+  - id: diopside-atlas-kinematical-master
+    title: Diopside — kinematical Lambert master
+    phase_slugs: [diopside]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-extension-parity/kinematical/diopside/kinematical-run-3736bdce7b76c996/products/kinematical-master-lambert.png
+    preview_path: local/atlas-extension-parity/kinematical/diopside/kinematical-run-3736bdce7b76c996/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-extension-parity/kinematical/diopside/kinematical-run-3736bdce7b76c996
+    provenance_path: local/atlas-extension-parity/kinematical/diopside/kinematical-run-3736bdce7b76c996/manifest.json
+    recipe: recipes/kinematical/diopside-001-atlas-parity-master.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: diopside-atlas-retained-depth-x-axis
+    title: Diopside — retained depth-field x-axis rotation
+    phase_slugs: [diopside]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-extension-parity/depth-motion/diopside/diopside-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-extension-parity/depth-motion/diopside/preview.png
+    bundle_path: local/atlas-extension-parity/depth-motion/diopside
+    provenance_path: local/atlas-extension-parity/depth-motion/diopside/manifest.json
+    recipe: recipes/presentation/diopside-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: diopside-atlas-kinematical-intensity-relief
+    title: Diopside — kinematical intensity-relief globe
+    phase_slugs: [diopside]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-extension-parity/relief/diopside/relief-globe-build-a7e41d32557cf38d/diopside-1-atm-intensity-relief-globe.stl
+    preview_path: local/atlas-extension-parity/relief/diopside/relief-globe-build-a7e41d32557cf38d/diopside-1-atm-intensity-relief-preview.png
+    bundle_path: local/atlas-extension-parity/relief/diopside/relief-globe-build-a7e41d32557cf38d
+    provenance_path: local/atlas-extension-parity/relief/diopside/relief-globe-build-a7e41d32557cf38d/relief-manifest.json
+    recipe: recipes/relief/diopside-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false

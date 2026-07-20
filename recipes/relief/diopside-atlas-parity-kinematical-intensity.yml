@@ -1,0 +1,10 @@
+schema: kikuchi.relief-globe-recipe/v1
+source:
+  product_id: master-610cf40dd890cd7c
+  array_sha256: fa8a4ae600a7f16fa3a37690dfb04afa63aca0270b8e13b5f038fb88963d2e74
+  file_sha256: 71be6fc39db62ba3e1265f350d0ad697a5f6efdc3869a1deea5c9e7daf5e990f
+geometry: {base_diameter_mm: 80.0, maximum_relief_mm: 1.2, topology: icosphere, subdivisions: 7}
+mapping: {percentiles: {lower: 1.0, upper: 99.0}, gamma: 1.0, direction: bright_outward}
+filter: {kind: spherical_gaussian, fwhm_mm: 0.8, cutoff_sigma: 3.0}
+export: {formats: [stl]}
+fdm_context: {process: filament_fdm}

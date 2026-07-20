@@ -569,9 +569,39 @@ def _projection_ledger(
         if recipe.hemisphere == "both"
         else [recipe.hemisphere]
     )
-    lattice_axes = record.simulation_setting["target_lattice_from_source"]
-    fractional_axes = record.simulation_setting["target_fractional_from_source"]
     target_setting = record.simulation_setting["target_setting"]
+    direct_basis_columns = record.simulation_setting.get(
+        "target_direct_basis_from_source_columns"
+    )
+    if direct_basis_columns is not None:
+        source_to_crystal = {
+            "source_setting": record.setting,
+            "target_setting": target_setting,
+            "direct_basis_transform": {
+                "target_direct_basis_from_source_columns": direct_basis_columns,
+                "equation": "A_target = A_source @ T",
+            },
+            "fractional_coordinate_transform": {
+                "equation": "x_target = inv(T) @ x_source",
+            },
+        }
+    else:
+        lattice_axes = record.simulation_setting["target_lattice_from_source"]
+        fractional_axes = record.simulation_setting["target_fractional_from_source"]
+        source_to_crystal = {
+            "source_setting": record.setting,
+            "target_setting": target_setting,
+            "lattice_transform": {
+                "target_from_source": lattice_axes,
+                "equation": "(a', b', c') = (" + ", ".join(lattice_axes) + ")",
+            },
+            "fractional_coordinate_transform": {
+                "target_from_source": fractional_axes,
+                "equation": "(x', y', z') = ("
+                + ", ".join(fractional_axes)
+                + ")",
+            },
+        }
     crystal_frame = (
         "standard-Pnma direct and reciprocal Cartesian frames"
         if target_setting == "P n m a"
@@ -597,22 +627,7 @@ def _projection_ledger(
                 "direct_lattice": "angstrom",
                 "reciprocal_lattice": "angstrom^-1",
             },
-            "source_to_crystal": {
-                "source_setting": record.setting,
-                "target_setting": target_setting,
-                "lattice_transform": {
-                    "target_from_source": lattice_axes,
-                    "equation": (
-                        "(a', b', c') = (" + ", ".join(lattice_axes) + ")"
-                    ),
-                },
-                "fractional_coordinate_transform": {
-                    "target_from_source": fractional_axes,
-                    "equation": (
-                        "(x', y', z') = (" + ", ".join(fractional_axes) + ")"
-                    ),
-                },
-            },
+            "source_to_crystal": source_to_crystal,
             "transform_owners": {
                 "source_to_crystal": (
                     "kikuchi_lab.kinematical.kikuchipy_adapter._phase_from_record"

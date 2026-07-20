@@ -213,6 +213,11 @@ def filter_spherical_values(
     tree = cKDTree(unit)
     neighborhoods = tree.query_ball_point(unit, cutoff_chord, workers=1)
     filtered, counts = _filter_from_neighborhoods(value_array, unit, neighborhoods, sigma_rad)
+    # Each neighborhood estimate is a positive normalized weighted mean, so it
+    # must remain within the input range.  Clamp only floating-point roundoff
+    # at that proven convex bound; canonical mapped intensities can otherwise
+    # reach 1 + eps and correctly fail the downstream [0, 1] geometry guard.
+    filtered = np.clip(filtered, value_array.min(), value_array.max())
     constant_residual = _constant_filter_residual(unit, neighborhoods, sigma_rad)
     if constant_residual > 1e-12 or not np.isfinite(filtered).all():
         raise ValueError("spherical filter failed its constant-field invariant")

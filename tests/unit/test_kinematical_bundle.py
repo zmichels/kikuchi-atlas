@@ -21,7 +21,9 @@ from kikuchi_lab.kinematical import (
     load_kinematical_recipe,
 )
 from kikuchi_lab.kinematical.bundle import write_kinematical_bundle
+from kikuchi_lab.kinematical.master_product import canonical_master_product
 from kikuchi_lab.model.identity import canonical_json, stable_id
+from kikuchi_lab.model import load_master_product
 from kikuchi_lab.sources.structure import load_structure_record
 
 
@@ -37,6 +39,7 @@ EXPECTED = {
     "products/kinematical-master-stereographic.png",
     "products/kinematical-master-lambert.npy",
     "products/kinematical-master-lambert.png",
+    "products/canonical-kinematical-master.npz",
     "products/kinematical-detector.npy",
     "products/kinematical-detector.png",
     "figures/kinematical-stereographic-bands.svg",
@@ -65,6 +68,18 @@ def _product(
     metadata = {"projection": label, "fixture": "real-owned-array"}
     if hemisphere is not None:
         metadata["hemisphere"] = hemisphere
+    if label == "master-lambert" and hemisphere == "both":
+        recipe = fixture_recipe()
+        source = fixture_source()
+        metadata.update(
+            {
+                "source_id": source.source_record.source_id,
+                "source_sha256": source.sha256,
+                "recipe_id": recipe.recipe_id,
+                "projection": "lambert-square-equal-area",
+                "energy_kev": recipe.energy_kev,
+            }
+        )
     return KinematicalArrayProduct.from_array(
         label,
         values,
@@ -101,7 +116,8 @@ def fixture_execution() -> KinematicalExecution:
         [[0.0, 1.0, 4.0], [9.0, 16.0, 25.0], [36.0, 49.0, 64.0]],
         dtype=np.float32,
     )
-    lower_lambert = upper_lambert + 100.0
+    lower_lambert = upper_lambert.copy()
+    lower_lambert[1, 1] += 100.0
     simulation = KinematicalSimulation(
         master_stereographic=_product(
             "master-stereographic",
@@ -202,6 +218,18 @@ def test_kinematical_bundle_has_canonical_inventory_and_hashes(tmp_path: Path) -
             "bytes": (result.path / relative).stat().st_size,
         }
     assert result.manifest_sha256 == _sha256(manifest_path)
+    canonical_master = load_master_product(
+        result.path / "products/canonical-kinematical-master.npz"
+    )
+    expected_canonical_master = canonical_master_product(
+        execution.simulation.master_lambert,
+        source=source,
+        recipe=recipe,
+    )
+    assert canonical_master == expected_canonical_master
+    np.testing.assert_array_equal(
+        canonical_master.intensity, execution.simulation.master_lambert.intensity
+    )
     serialized_recipe = json.loads(
         (result.path / "recipes/kinematical.json").read_text(encoding="utf-8")
     )
@@ -225,8 +253,16 @@ def test_kinematical_bundle_has_canonical_inventory_and_hashes(tmp_path: Path) -
         "projection_ledger_id": stable_id(
             "projection-ledger", execution.simulation.projection_ledger
         ),
+        "canonical_master": {
+            "product_id": expected_canonical_master.product_id,
+            "array_sha256": expected_canonical_master.array_sha256,
+        },
     }
     assert manifest["run_identity"] == run_identity
+    assert {
+        key: manifest["canonical_master"][key]
+        for key in ("product_id", "array_sha256")
+    } == run_identity["canonical_master"]
     assert result.run_id == stable_id("kinematical-run", run_identity)
     assert result.path == tmp_path / result.run_id
 
@@ -521,6 +557,8 @@ def test_rank_two_master_preview_records_its_single_hemisphere(
     result = write_kinematical_bundle(tmp_path, execution, recipe, fixture_source())
 
     manifest = json.loads((result.path / "manifest.json").read_text(encoding="utf-8"))
+    assert "canonical_master" not in manifest
+    assert not (result.path / "products/canonical-kinematical-master.npz").exists()
     ledger = json.loads(
         (result.path / "diagnostics/projection-ledger.json").read_text(encoding="utf-8")
     )

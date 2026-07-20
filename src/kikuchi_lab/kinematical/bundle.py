@@ -18,6 +18,7 @@ import numpy as np
 from kikuchi_lab.artifacts import BundleExistsError, PartialBundleError
 from kikuchi_lab.artifacts.images import quantize_uint16, write_npy, write_uint16
 from kikuchi_lab.model.identity import canonical_json, plain_data, stable_id
+from kikuchi_lab.model.persistence import save_master_product
 from kikuchi_lab.sources.structure import StructureRecord
 
 from .contracts import (
@@ -25,6 +26,7 @@ from .contracts import (
     KinematicalExecution,
     KinematicalRecipe,
 )
+from .master_product import canonical_master_product
 
 
 _FIGURE_NAMES = {
@@ -122,10 +124,22 @@ def _source_payload(source: StructureRecord) -> dict[str, object]:
     }
 
 
+def _canonical_master(
+    execution: KinematicalExecution,
+    recipe: KinematicalRecipe,
+    source: StructureRecord,
+):
+    master = execution.simulation.master_lambert
+    if master.intensity.ndim != 3:
+        return None
+    return canonical_master_product(master, source=source, recipe=recipe)
+
+
 def _run_identity(
     execution: KinematicalExecution,
     recipe: KinematicalRecipe,
     source: StructureRecord,
+    canonical_master,
 ) -> dict[str, object]:
     simulation = execution.simulation
     return {
@@ -142,6 +156,16 @@ def _run_identity(
         },
         "reflection_catalog_id": stable_id("reflection-catalog", simulation.reflector_catalog),
         "projection_ledger_id": stable_id("projection-ledger", simulation.projection_ledger),
+        **(
+            {
+                "canonical_master": {
+                    "product_id": canonical_master.product_id,
+                    "array_sha256": canonical_master.array_sha256,
+                }
+            }
+            if canonical_master is not None
+            else {}
+        ),
     }
 
 
@@ -246,6 +270,7 @@ def _write_contents(
     source: StructureRecord,
     run_id: str,
     run_identity: Mapping[str, object],
+    canonical_master,
 ) -> dict[str, object]:
     _write_json(root / "provenance/source.json", _source_payload(source))
     _write_json(root / "recipes/kinematical.json", recipe.to_dict())
@@ -262,6 +287,10 @@ def _write_contents(
         f"{_PRODUCT_STEMS[label]}.png": _write_product(root, execution, label, product)
         for label, product in execution.simulation.products().items()
     }
+    if canonical_master is not None:
+        save_master_product(
+            root / "products/canonical-kinematical-master.npz", canonical_master
+        )
     for name, payload in execution.figures.items():
         _write_bytes(root / "figures" / name, payload)
 
@@ -277,6 +306,17 @@ def _write_contents(
         "schema_version": 1,
         "run_id": run_id,
         "run_identity": run_identity,
+        **(
+            {
+                "canonical_master": {
+                    "product_id": canonical_master.product_id,
+                    "array_sha256": canonical_master.array_sha256,
+                    "path": "products/canonical-kinematical-master.npz",
+                }
+            }
+            if canonical_master is not None
+            else {}
+        ),
         "files": files,
         "png_exports": png_exports,
     }
@@ -353,7 +393,8 @@ def write_kinematical_bundle(
 ) -> KinematicalBundleResult:
     """Write, inventory, and atomically promote one immutable kinematical run."""
     _validate_execution(execution)
-    run_identity = _run_identity(execution, recipe, source)
+    canonical_master = _canonical_master(execution, recipe, source)
+    run_identity = _run_identity(execution, recipe, source, canonical_master)
     run_id = stable_id("kinematical-run", run_identity)
     root = Path(output_root)
     root.mkdir(parents=True, exist_ok=True)
@@ -380,7 +421,15 @@ def write_kinematical_bundle(
         except FileExistsError:
             raise PartialBundleError(f"partial bundle already exists: {partial}") from None
 
-        manifest = _write_contents(partial, execution, recipe, source, run_id, run_identity)
+        manifest = _write_contents(
+            partial,
+            execution,
+            recipe,
+            source,
+            run_id,
+            run_identity,
+            canonical_master,
+        )
         manifest_path = partial / "manifest.json"
         _write_json(manifest_path, manifest)
         manifest_sha256 = _sha256(manifest_path)

@@ -140,6 +140,18 @@ def test_filter_preserves_constant_at_coarse_resolution():
     assert diagnostics.maximum_neighbor_count >= diagnostics.minimum_neighbor_count
 
 
+def test_filter_preserves_the_exact_convex_input_range():
+    """Numerical summation must not push a normalized field beyond one."""
+    topology = build_icosphere(7)
+    values = np.zeros(len(topology.directions), dtype=np.float64)
+    values[::17] = 1.0
+
+    filtered, _ = filter_spherical_values(values, topology.directions, 40.0, filter_spec())
+
+    assert filtered.min() >= 0.0
+    assert filtered.max() <= 1.0
+
+
 def test_filter_is_invariant_under_rigid_rotation():
     topology = build_icosphere(6)
     values = 0.5 + 0.2 * topology.directions[:, 0] - 0.1 * topology.directions[:, 2]

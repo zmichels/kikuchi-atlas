@@ -42,7 +42,7 @@ def test_product_registry_models_individual_products_and_common_core_families() 
         "reflector-ridge-globe",
     }
     assert "tattoo-template" not in {family.identifier for family in families}
-    assert len(products) == 68
+    assert len(products) == 95
     assert all(product.is_available() for product in products)
     assert all("tattoo" not in product.identifier.lower() for product in products)
     assert all("tattoo" not in product.title.lower() for product in products)
@@ -70,6 +70,27 @@ def test_product_registry_models_individual_products_and_common_core_families() 
     }
 
 
+def test_kinematical_extension_baseline_has_exact_nine_phase_coverage() -> None:
+    phases = load_phase_registry(REGISTRY)
+    _, products = load_product_registry(PRODUCTS, phase_slugs={phase.slug for phase in phases})
+
+    expected = {
+        "intensity-master": "kinematical-master",
+        "depth-field-motion": "retained-near-depth-field",
+        "intensity-relief-globe": "kinematical-intensity-relief",
+    }
+    for family_id, tier in expected.items():
+        baseline = [
+            product
+            for product in products
+            if product.family_ids == (family_id,) and product.tier == tier
+        ]
+        assert {product.phase_slugs for product in baseline} == {
+            (phase.slug,) for phase in phases
+        }
+        assert all(product.is_available() for product in baseline)
+
+
 def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     result = build_atlas(
         registry_path=REGISTRY,
@@ -79,7 +100,7 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     )
 
     assert result.phase_count == 9
-    assert result.product_count == 68
+    assert result.product_count == 95
     assert result.index_path.is_file()
     index = result.index_path.read_text(encoding="utf-8")
     assert "Kikuchi Atlas" in index
@@ -115,7 +136,7 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert 'id="product-search"' in product_page
     assert 'id="phase-filter"' in product_page
     assert 'id="family-filter"' in product_page
-    assert product_page.count('class="card product-card"') == 68
+    assert product_page.count('class="card product-card"') == 95
     assert "tattoo" not in index.lower()
     assert "tattoo" not in product_page.lower()
     assert (tmp_path / "site/phases/forsterite.html").is_file()
@@ -128,7 +149,7 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert forsterite.count('class="card highlight-card"') == 3
     assert "tattoo" not in forsterite.lower()
     assert "phases/phases/" not in forsterite
-    assert forsterite.count('class="card product-card"') == 10
+    assert forsterite.count('class="card product-card"') == 13
     assert "Visual product matrix" in forsterite
     assert "Coverage table" in forsterite
     assert forsterite.count('class="card matrix-card"') == 6
@@ -167,8 +188,8 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert diopside.count('class="card matrix-card"') == 6
     assert diopside.count('class="matrix-group"') == 2
     assert 'data-state="available" data-thumbnail-count="4"' in diopside
-    assert diopside.count('class="card product-card"') == 6
+    assert diopside.count('class="card product-card"') == 9
     diamond = (tmp_path / "site/phases/diamond.html").read_text(encoding="utf-8")
-    assert diamond.count('class="card product-card"') == 6
+    assert diamond.count('class="card product-card"') == 9
     assert 'data-family="direct-reflector-orientation-set"' in diamond
     assert 'data-state="available" data-thumbnail-count="4"' in diamond

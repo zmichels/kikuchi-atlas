@@ -2,7 +2,7 @@
 id: KIKU-F011
 type: feature
 title: Build phase-parity products across the Kikuchi Atlas
-status: active
+status: done
 parent: KIKU-E001
 children:
   - KIKU-T048
@@ -34,7 +34,7 @@ their named CIF records are promoted and verified.
 
 - [x] Every tracked-source phase has the full core visual product set.
 - [x] Each candidate phase is either transparently blocked or promoted through a verified source record before rendering.
-- [ ] Extension products preserve their stated simulation/geometry boundaries and do not substitute for core parity.
+- [x] Extension products preserve their stated simulation/geometry boundaries and do not substitute for core parity.
 - [x] Registry, generated Atlas, provenance bundles, and tests remain consistent.
 
 ## Progress Evidence
@@ -44,3 +44,6 @@ their named CIF records are promoted and verified.
 - The three former intake candidates were promoted through exact CIF records;
   An52 uses a tested primitive-cell transform, while muscovite retains its
   measured mixed site occupancies.
+- KIKU-T050 adds a nine-phase kinematical extension baseline: canonical Lambert
+  masters, retained-field x-axis motion, and validated intensity-relief globes.
+  Existing dynamical and specialty products remain separately identified.

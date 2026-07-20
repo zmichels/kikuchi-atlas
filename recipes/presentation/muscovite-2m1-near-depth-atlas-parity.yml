@@ -1,0 +1,21 @@
+schema_version: 1
+name: muscovite-2m1-near-depth-atlas-parity
+source_kinematical_recipe: ../kinematical/muscovite-2m1-001-atlas-parity-master.yml
+expected_kinematical_recipe_id: recipe-9f4c8902b08bc63a
+overlap:
+  relative_factor: 0.22
+  weight_exponent: 2.0
+  normalization_percentile: 99.5
+optical_depth:
+  gain: 0.38
+  luminance_ceiling: 0.985
+center:
+  enabled: false
+boundary:
+  relative_factor: 0.50
+  width_pt: 0.38
+  alpha: 0.50
+  casing_width_pt: 0.98
+  casing_alpha: 0.36
+figure_size_px: 2400
+background_color: "#101519"
