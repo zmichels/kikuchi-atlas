@@ -38,4 +38,7 @@ collision and preservation boundary.
 `KIKU-F009` publishes the provenance-first Atlas as a phase-first and
 product-first local catalog. `KIKU-F010` adds a separate portable S2 dictionary
 fixture with an explicit non-validation boundary and a consumer-side verifier.
+`KIKU-F012` prepares a separate static gallery and archival-release staging
+surface for the Atlas while keeping external hosting and DOI publication behind
+an explicit approval gate.
 Parent/child links remain symmetric, and only accepted work is marked `done`.

@@ -64,3 +64,37 @@ plagioclase and clinopyroxene are families, not one universal structure apiece.
 The older [`../products/ARTIFACT_CATALOG.yml`](../products/ARTIFACT_CATALOG.yml)
 remains a compact publication-anchor list and is cross-checked during the
 Atlas build; it is not the browse database.
+
+## Public-release build
+
+The local Atlas intentionally points at ignored `local/` products. It is not
+safe to upload that page tree directly: it can contain local filesystem links,
+large working data, and unreleased source artifacts.
+
+Build the separate, self-contained web gallery and a local archival-release
+staging area instead:
+
+```bash
+uv run python scripts/build_public_atlas.py --stage-archive
+open dist/atlas-public/site/index.html
+```
+
+The builder copies browser-safe PNG, SVG, JPEG, and MP4 files no larger than
+25 MiB into `dist/atlas-public/site/assets/`, rewrites every public HTML link,
+and fails if any `local/` link survives. Printable STL and other archival media
+are excluded from the web gallery but staged under `dist/atlas-public/archive/`
+with checksums. When present, canonical kinematical master and relief-field
+exports are also staged there; redundant full run directories and animation
+frames remain recipe-reconstructible. `dist/atlas-public/release-inventory.json`
+is the machine-readable bridge between the gallery and the later archival
+release.
+
+The intended public layout is deliberately two-part:
+
+- a static-host deployment of `dist/atlas-public/site/` for browsing;
+- a reviewed DOI/archive release of `dist/atlas-public/archive/` plus its
+  inventory, source/recipe context, and release metadata.
+
+The build itself does not select a public account, domain, DOI, authorship, or
+license. Those are publication decisions, and the archive README names the
+required review before upload.
