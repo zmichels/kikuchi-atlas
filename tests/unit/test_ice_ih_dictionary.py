@@ -123,10 +123,13 @@ def test_published_candidate_dictionary_is_portable_and_ranks_its_fixture(tmp_pa
         == (manifest["entries"]["count"])
     )
     assert manifest["representation"]["sphere_axis_labels"] == [
-        "crystal_x",
-        "crystal_y",
-        "crystal_z",
+        "sample_x",
+        "sample_y",
+        "sample_z",
     ]
+    assert manifest["representation"]["canonical_master_frame"] == "crystal"
+    assert manifest["representation"]["sphere_frame"] == "sample"
+    assert manifest["candidate_cache"]["direction_frame"] == "sample"
     assert manifest["matching_compatibility"]["detector_pattern_input"] == (
         "not accepted directly; explicit adapter required"
     )

@@ -33,7 +33,7 @@ angular diagnostics without conflating the result with acquired EBSD accuracy.
 
 ## Progress Evidence
 
-`ice-ih-spherical-candidate-v0.1.2` embeds the non-cache 3.54-degree rotation,
+`ice-ih-spherical-candidate-v0.1.3` embeds the non-cache 3.54-degree rotation,
 its observed spherical signal, expected coarse result, and the local
 full-master diagnostics. The top coarse candidate has a 2.30-degree angular
 diagnostic; a 1,331-entry, 5-degree-wide local grid improves that to 0.46

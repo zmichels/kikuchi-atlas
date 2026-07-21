@@ -51,8 +51,9 @@ that it is already calibrated against acquired EBSD patterns.
 - `local/dictionaries/ice-ih-spherical-recovery-proof-v0.1.0` records a
   held-out 3.54-degree synthetic rotation: coarse retrieval reached 2.30
   degrees and full-master local refinement reached 0.46 degrees.
-- `local/dictionaries/ice-ih-spherical-candidate-v0.1.2` embeds that recovery
-  fixture, recomputes it during verification, and adds the draft contract's
-  detector-independent metadata. `ebsdxr dictionary-resource-preflight`
-  independently checks the sealed package and requires explicit runtime inputs
-  before a future matcher can proceed.
+- `local/dictionaries/ice-ih-spherical-candidate-v0.1.3` embeds that recovery
+  fixture, recomputes it during verification, and labels the crystal-frame
+  master separately from the sample-frame candidate directions. It also adds
+  the draft contract's detector-independent metadata. `ebsdxr
+  dictionary-resource-preflight` independently checks the sealed package and
+  requires explicit runtime inputs before a future matcher can proceed.

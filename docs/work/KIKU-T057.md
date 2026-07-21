@@ -15,7 +15,7 @@ links:
   - ../../../ebsdx-rs/docs/spherical-dictionary-resource-contract.md
 evidence:
   - ../../src/kikuchi_lab/dictionary/ice_ih.py
-  - ../../recipes/dictionaries/ice-ih-spherical-candidate-v0.1.2.yml
+  - ../../recipes/dictionaries/ice-ih-spherical-candidate-v0.1.3.yml
   - ../../../ebsdx-rs/crates/ebsdx-core/src/dictionary_resource.rs
   - ../../../ebsdx-rs/crates/ebsdx-core/tests/spherical_dictionary_resource.rs
 ---
@@ -31,7 +31,7 @@ contract, which require a concrete manifest extension, and what an eventual
 
 ## Acceptance Criteria
 
-- [x] A field-level crosswalk records the actual `v0.1.2` state and explicit
+- [x] A field-level crosswalk records the actual `v0.1.3` state and explicit
   nonclaims against the local consumer contract.
 - [x] The package manifest supplies every detector-independent field required
   for consumer preflight, including phase and coverage detail.
@@ -43,7 +43,9 @@ contract, which require a concrete manifest extension, and what an eventual
 ## Accepted Evidence
 
 `ebsdxr dictionary-resource-preflight` independently authenticated
-`ice-ih-spherical-dictionary-ce260e6d6c764fd2`: the 13,155 orientation
+`ice-ih-spherical-dictionary-3ef073c780b83778`: the 13,155 orientation
 entries, 1,946 S2 directions, and all 10 manifest-inventoried files passed.
 It accepts a named runtime recipe schema and rejects `--require-runtime` calls
-without one; no detector projection or indexing result is claimed.
+without one. The resource distinguishes its crystal-frame canonical master
+from its sample-frame cache directions; no detector projection or indexing
+result is claimed.

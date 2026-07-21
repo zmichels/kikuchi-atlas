@@ -35,9 +35,11 @@ numeric effect is measured and recorded.
 ## Matching interface
 
 The first matcher receives a spherical observed signal sampled on the exact
-published S2 directions. It rejects mismatched direction grids, non-finite
-values, and unnamed transforms. It mean-centers and L2-normalizes the input,
-then computes cosine similarity against the contiguous candidate matrix.
+published sample-frame S2 directions. Its canonical master is crystal-frame;
+each active crystal-to-sample orientation maps its intensity into those sample
+directions. It rejects mismatched direction grids, non-finite values, and
+unnamed transforms. It mean-centers and L2-normalizes the input, then computes
+cosine similarity against the contiguous candidate matrix.
 
 The result records the top candidates, their canonical active
 crystal-to-sample `w,x,y,z` quaternions, the score metric, source dictionary
@@ -67,8 +69,9 @@ indexing accuracy until declared acquired reference patterns are available.
 
 The accompanying `scripts/run_ice_ih_synthetic_recovery.py` seals the first
 held-out recovery proof as a checksum-bearing local bundle with a visual
-diagnostic. Immutable `v0.1.2` carries the same held-out fixture, its exact
+diagnostic. Immutable `v0.1.3` carries the same held-out fixture, its exact
 coarse-to-refined diagnostics, and the non-acquisition claim boundary inside
-the package, as well as detector-independent contract metadata; the visual
-companion remains useful for human review. The next gate is a consumer-side
-contract check, not a stronger accuracy claim.
+the package, as well as detector-independent contract metadata and explicit
+master/cache frame labels; the visual companion remains useful for human
+review. The next gate is a consumer-side contract check, not a stronger
+accuracy claim.

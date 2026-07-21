@@ -19,8 +19,8 @@ from kikuchi_lab.model.identity import stable_id
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_RECIPE = ROOT / "recipes/dictionaries/ice-ih-spherical-candidate-v0.1.2.yml"
-DEFAULT_OUTPUT = ROOT / "local/dictionaries/ice-ih-spherical-candidate-v0.1.2"
+DEFAULT_RECIPE = ROOT / "recipes/dictionaries/ice-ih-spherical-candidate-v0.1.3.yml"
+DEFAULT_OUTPUT = ROOT / "local/dictionaries/ice-ih-spherical-candidate-v0.1.3"
 
 
 def _sha256(path: Path) -> str:

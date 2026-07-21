@@ -43,13 +43,15 @@ Build and verify it locally with:
 ```bash
 uv run python scripts/build_ice_ih_spherical_dictionary.py
 uv run python scripts/verify_ice_ih_spherical_dictionary.py \
-  local/dictionaries/ice-ih-spherical-candidate-v0.1.2
+  local/dictionaries/ice-ih-spherical-candidate-v0.1.3
 ```
 
-`v0.1.2` embeds a deterministic held-out spherical signal, its expected coarse
-candidate, and full-master local-refinement diagnostics. The verifier reruns
-that recovery from package bytes; it is an integrity and frame check, not an
-acquired-pattern accuracy result. See
+`v0.1.3` embeds a deterministic held-out spherical signal, its expected coarse
+candidate, and full-master local-refinement diagnostics. Its canonical master
+is explicitly crystal-frame, while cache directions and observed spherical
+signals are explicitly sample-frame; the active crystal-to-sample quaternions
+connect the two. The verifier reruns that recovery from package bytes; it is an
+integrity and frame check, not an acquired-pattern accuracy result. See
 [the `ebsdx-rs` contract crosswalk](ice-ih-ebsdx-rs-contract-crosswalk.md)
 for the exact interoperability state.
 
