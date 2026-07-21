@@ -41,4 +41,8 @@ fixture with an explicit non-validation boundary and a consumer-side verifier.
 `KIKU-F012` prepares a separate static gallery and archival-release staging
 surface for the Atlas while keeping external hosting and DOI publication behind
 an explicit approval gate.
+`KIKU-F013` makes Ice Ih the flagship scientific dictionary line: a
+symmetry-reduced spherical candidate cache with local master-field refinement,
+portable provenance, and synthetic recovery evidence before any experimental
+indexing claim.
 Parent/child links remain symmetric, and only accepted work is marked `done`.

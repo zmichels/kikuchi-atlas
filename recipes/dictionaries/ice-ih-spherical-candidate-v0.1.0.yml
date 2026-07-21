@@ -1,0 +1,27 @@
+schema_version: 1
+name: ice-ih-spherical-candidate
+dictionary_version: 0.1.0
+created_at: "2026-07-20T00:00:00Z"
+authors:
+  - Kikuchi Lab local project
+phase_source: ../../phases/ice-ih/source.yml
+source_master:
+  path: ../../local/runs/kinematical-ice/kinematical-run-8e0fa453f0869a21/products/kinematical-master-stereographic.npy
+  sha256: 2bfd467acc72ebf6d0572c0c4760131a1ccaa48c91cc0b03c76abb93c7f2e293
+  run_manifest: ../../local/runs/kinematical-ice/kinematical-run-8e0fa453f0869a21/manifest.json
+  run_manifest_sha256: a8e4f36bc8a4d19a7ca579ac0dbeec4874b60212b6d6e83403fffcddabee7bae
+sampling:
+  orientation:
+    symmetry: 6/mmm
+    method: cubochoric
+    nominal_spacing_degrees: 5.0
+  directions:
+    method: spherified_cube_edge
+    nominal_spacing_degrees: 5.0
+  master_interpolation: bilinear-upper-owns-equator
+  candidate_preprocessing: per-row-mean-center-and-l2-normalize
+claim_boundary: >-
+  A kinematical Ice Ih average-oxygen-sublattice spherical candidate resource.
+  It is not detector calibrated, experimentally EBSD validated, or a classifier
+  for stacking-disordered, cubic, amorphous, high-pressure, or hydrogen-ordered
+  ice phases.

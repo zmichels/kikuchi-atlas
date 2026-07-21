@@ -29,6 +29,28 @@ The interchange shape follows the local
 The generated package remains ignored under `local/`; tracked code, recipe,
 tests, and this document make it reproducible.
 
+## Flagship resource: Ice Ih candidate dictionary
+
+The scientific flagship is now the Ice Ih average-oxygen-sublattice dictionary.
+It uses a source-bound 1025-by-1025 two-hemisphere kinematical master as its
+canonical signal, plus a fast `6/mmm`-reduced spherical candidate cache. The
+cache is intentionally detector-independent: an eventual detector-to-sphere
+adapter must declare geometry and preprocessing instead of silently assuming
+them.
+
+Build and verify it locally with:
+
+```bash
+uv run python scripts/build_ice_ih_spherical_dictionary.py
+uv run python scripts/verify_ice_ih_spherical_dictionary.py \
+  local/dictionaries/ice-ih-spherical-candidate-v0.1.0
+```
+
+The first resource is a kinematical oxygen-sublattice candidate search. It
+does not yet claim acquired-pattern calibration or distinguish Ice Ic,
+stacking-disordered ice, amorphous ice, high-pressure polymorphs, or detailed
+hydrogen order.
+
 ## Claim boundary
 
 The fixture is not a detector-projected pattern library, a calibrated EBSD
