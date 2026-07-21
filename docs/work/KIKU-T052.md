@@ -17,23 +17,23 @@ evidence:
 
 ## Description
 
-Publish the already prepared gallery and archival package only after the user
-chooses the public account/repository identity, hosting destination, version,
-authorship, citation details, and license terms.
+Publish the approved public gallery, then separately publish the archival
+package only after its stable version, DOI, authorship, citation details, and
+license terms have been reviewed.
 
 ## Acceptance Criteria
 
-- [ ] A reviewed public repository and static-host target are named.
+- [x] A reviewed public repository and static-host target are named.
 - [x] Archive metadata, citation, structural-source terms, and release license
   are reviewed before upload.
-- [ ] The deployed gallery URL and archival DOI are recorded in tracked release
+- [x] The deployed gallery URL is recorded in tracked release metadata.
+- [ ] The separately published archival DOI is recorded in tracked release
   metadata.
-- [ ] The public page links only to published, content-checked artifacts.
+- [x] The public page links only to published, content-checked artifacts.
 
-## Deferred Until
+## Remaining gate
 
-The user explicitly authorizes an external publication target and provides or
-approves the required repository, account, and citation identity.
+The archive has a reviewed stable version and DOI publication destination.
 
 ## Prepared Evidence
 
@@ -43,3 +43,5 @@ approves the required repository, account, and citation identity.
   CC BY 4.0.
 - `docs/atlas/STRUCTURAL_SOURCE_AUDIT.json` records all nine exact source
   records: eight CC0 sources and the separately attributed muscovite source.
+- Public source: `https://github.com/zmichels/kikuchi-atlas`.
+- Public static gallery: `https://zmichels.github.io/kikuchi-atlas/`.

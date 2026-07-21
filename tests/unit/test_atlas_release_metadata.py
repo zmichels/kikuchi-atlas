@@ -18,6 +18,9 @@ def test_release_metadata_and_citation_are_aligned_but_do_not_invent_a_license()
 
     assert metadata["schema_version"] == 1
     assert metadata["release"]["status"] == "prepublication"
+    assert metadata["publication"]["repository_url"] == "https://github.com/zmichels/kikuchi-atlas"
+    assert metadata["publication"]["static_site_url"] == "https://zmichels.github.io/kikuchi-atlas/"
+    assert metadata["publication"]["archive_doi"] is None
     assert metadata["licenses"] == {
         "project_code": "MIT",
         "atlas_media_and_geometry": "CC-BY-4.0",

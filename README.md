@@ -55,6 +55,8 @@ The command publishes one immutable, content-addressed five-file bundle. It refu
 existing completed or partial destination instead of overwriting it.
 
 The source repository is public at
-[`zmichels/kikuchi-atlas`](https://github.com/zmichels/kikuchi-atlas). Generated
-media and machine-specific products remain local until they pass their separate
-Atlas gallery/archive release gates.
+[`zmichels/kikuchi-atlas`](https://github.com/zmichels/kikuchi-atlas), and the
+browser-safe phase gallery is live at
+[`zmichels.github.io/kikuchi-atlas`](https://zmichels.github.io/kikuchi-atlas/).
+The separately reviewed archive, DOI, and non-web geometry remain behind their
+own release gate.

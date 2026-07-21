@@ -15,7 +15,7 @@ licenses:
   source_structures: "per-source; see STRUCTURAL_SOURCE_AUDIT.json"
 publication:
   repository_url: https://github.com/zmichels/kikuchi-atlas
-  static_site_url:
+  static_site_url: https://zmichels.github.io/kikuchi-atlas/
   archive_doi:
   maintainer_identity_source: confirmed from local git configuration
 confirmation:
@@ -23,5 +23,5 @@ confirmation:
   project_code_license: MIT confirmed 2026-07-20
   atlas_media_and_geometry_license: CC-BY-4.0 confirmed 2026-07-20
 remaining_gate: >-
-  Choose the static-site URL, archive DOI, and release version before the
-  Atlas gallery/archive release.
+  Assign a stable release version and publish the separately reviewed archive
+  package with a DOI before the archival Atlas release.
