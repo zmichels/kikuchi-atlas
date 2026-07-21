@@ -106,6 +106,24 @@ source run; it is not acquired-pattern validation and is deliberately
 separate from the strict full-S2 `ebsdxr dictionary-resource-rank` contract.
 See [the adapter proof acceptance record](../acceptance/ice-ih-detector-to-s2-adapter-proof.md).
 
+### Master-to-detector congruence proof
+
+The complementary proof reprojects the raw two-hemisphere canonical master
+back into every declared detector pixel, then compares it with the checked
+raw kinematical detector array:
+
+```bash
+uv run python scripts/run_ice_ih_master_detector_congruence.py
+```
+
+For the source-bound Ice Ih fixture, the full 1536 x 2048 detector field has
+a centered cosine of `0.998537216` against the direct master reprojection.
+The visual record includes the two pattern fields, their normalized residual,
+and a pixelwise congruence panel. This checks the project-owned coordinate
+bridge; it does not independently validate physics, calibrate a detector, or
+measure acquired-pattern accuracy. See [the congruence acceptance
+record](../acceptance/ice-ih-master-detector-congruence.md).
+
 The resource is a kinematical oxygen-sublattice candidate search. It does not
 yet claim acquired-pattern calibration or distinguish Ice Ic, stacking-
 disordered ice, amorphous ice, high-pressure polymorphs, or detailed hydrogen

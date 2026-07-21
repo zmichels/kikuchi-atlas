@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 
 from kikuchi_lab.dictionary.ice_ih import CandidateMatch
+from kikuchi_lab.dictionary.ice_ih import sample_stereographic_master
+from kikuchi_lab.dictionary.signal_space_bridge import sample_frame_rays_from_gnomonic
 from kikuchi_lab.model.recipes import DetectorRecipe
 from kikuchi_lab.projection.kikuchipy_adapter import _to_kikuchipy_detector
 
@@ -78,6 +80,64 @@ def _pixel_coordinates_from_s2(
         & (pixels[:, 1] <= columns - 1.0)
     )
     return pixels, covered
+
+
+def _rotation_matrix(value: object, *, name: str) -> np.ndarray:
+    matrix = np.asarray(value, dtype=np.float64)
+    if matrix.shape != (3, 3) or not np.all(np.isfinite(matrix)):
+        raise ValueError(f"{name} must be a finite (3, 3) matrix")
+    identity = np.eye(3, dtype=np.float64)
+    if not np.allclose(matrix @ matrix.T, identity, rtol=0.0, atol=_UNIT_TOLERANCE):
+        raise ValueError(f"{name} must be orthonormal")
+    if not np.isclose(np.linalg.det(matrix), 1.0, rtol=0.0, atol=_UNIT_TOLERANCE):
+        raise ValueError(f"{name} must be right-handed")
+    return np.ascontiguousarray(matrix)
+
+
+def reproject_stereographic_master_to_detector(
+    master: object,
+    detector: DetectorRecipe,
+    *,
+    crystal_to_sample_matrix: object | None = None,
+    batch_rows: int = 64,
+) -> np.ndarray:
+    """Reproject a raw two-hemisphere master into declared detector pixels.
+
+    ``crystal_to_sample_matrix`` is the active column-vector rotation from the
+    canonical master crystal frame into sample frame. The inverse pullback for
+    row-vector sample directions is therefore ``sample_direction @ R_cs``.
+    This is a raw geometric resampling primitive: it neither tone maps nor
+    background-corrects the result.
+    """
+    if type(batch_rows) is not int or batch_rows <= 0:
+        raise ValueError("batch_rows must be a positive integer")
+    rotation = _rotation_matrix(
+        np.eye(3, dtype=np.float64)
+        if crystal_to_sample_matrix is None
+        else crystal_to_sample_matrix,
+        name="crystal_to_sample_matrix",
+    )
+    model = _to_kikuchipy_detector(detector)
+    sample_to_detector = _sample_to_detector_matrix(detector)
+    rows, columns = detector.supersampled_shape
+    result = np.empty((rows, columns), dtype=np.float64)
+    column_coordinates = np.arange(columns, dtype=np.float64)
+    for start in range(0, rows, batch_rows):
+        stop = min(start + batch_rows, rows)
+        row_coordinates = np.arange(start, stop, dtype=np.float64)
+        yy, xx = np.meshgrid(row_coordinates, column_coordinates, indexing="ij")
+        pixels = np.column_stack((yy.reshape(-1), xx.reshape(-1)))
+        gnomonic = np.asarray(model.to_gnomonic_coords(pixels), dtype=np.float64)
+        if gnomonic.ndim == 3 and gnomonic.shape[0] == 1:
+            gnomonic = gnomonic[0]
+        if gnomonic.shape != pixels.shape:
+            raise ValueError("kikuchipy returned unexpected gnomonic-coordinate shape")
+        sample_directions = sample_frame_rays_from_gnomonic(gnomonic, sample_to_detector)
+        crystal_directions = sample_directions @ rotation
+        result[start:stop] = sample_stereographic_master(master, crystal_directions).reshape(
+            stop - start, columns
+        )
+    return np.ascontiguousarray(result)
 
 
 def _bilinear_sample(image: np.ndarray, coordinates_yx: np.ndarray) -> np.ndarray:

@@ -39,6 +39,17 @@ at `0.999549817`. This is a useful geometry and convention proof, not an
 acquired-EBSD result or a Rust consumer capability: the detector was generated
 from the same source run and the score cannot be compared across masks.
 
+## Master-to-detector congruence evidence
+
+`scripts/run_ice_ih_master_detector_congruence.py` makes the inverse
+direction explicit: it maps every pixel of the same declared detector through
+the sample-to-detector transform and samples the byte-identical canonical
+master in that direction. Its 3,145,728-pixel source-bound proof records a
+centered cosine of `0.998537216` and a normalized RMS difference of
+`0.054088520`. It verifies a coordinate bridge between the checked
+kinematical products; it does not create an independent simulator comparison,
+detector calibration, acquired-data result, or Rust matching capability.
+
 ## Promotion gate
 
 Before an `ebsdx-rs` registration command produces Ice Ih indexing results,

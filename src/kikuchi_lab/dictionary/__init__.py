@@ -3,6 +3,7 @@
 from .detector_to_s2 import (
     DetectorToS2Sample,
     rank_masked_candidate_matrix,
+    reproject_stereographic_master_to_detector,
     sample_detector_to_s2,
 )
 from .ice_ih import (
@@ -65,6 +66,7 @@ __all__ = [
     "rank_candidate_matrix",
     "rank_masked_candidate_matrix",
     "rank_spherical_dictionary",
+    "reproject_stereographic_master_to_detector",
     "rotate_canonical_signal_to_sample",
     "run_synthetic_recovery",
     "sample_stereographic_master",

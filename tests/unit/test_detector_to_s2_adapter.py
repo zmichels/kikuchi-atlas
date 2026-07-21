@@ -5,6 +5,7 @@ import pytest
 
 from kikuchi_lab.dictionary.detector_to_s2 import (
     rank_masked_candidate_matrix,
+    reproject_stereographic_master_to_detector,
     sample_detector_to_s2,
 )
 from kikuchi_lab.dictionary.signal_space_bridge import sample_frame_rays_from_gnomonic
@@ -65,3 +66,37 @@ def test_masked_candidate_ranking_uses_only_declared_coverage() -> None:
     assert matches[0].entry_index == 0
     assert matches[0].score == pytest.approx(1.0)
     assert matches[1].entry_index == 1
+
+
+def test_master_reprojection_returns_raw_detector_shape_and_honors_rotation() -> None:
+    recipe = _detector_recipe()
+    coordinate = np.linspace(-1.0, 1.0, 9)
+    xx, yy = np.meshgrid(coordinate, coordinate, indexing="xy")
+    master = np.stack((1.0 + xx + 2.0 * yy, 1.0 - xx + 2.0 * yy)).astype(np.float32)
+
+    identity = reproject_stereographic_master_to_detector(master, recipe, batch_rows=2)
+    rotated = reproject_stereographic_master_to_detector(
+        master,
+        recipe,
+        crystal_to_sample_matrix=np.asarray(((0.0, -1.0, 0.0), (1.0, 0.0, 0.0), (0.0, 0.0, 1.0))),
+        batch_rows=3,
+    )
+
+    assert identity.shape == recipe.shape
+    assert np.all(np.isfinite(identity))
+    assert np.all(np.isfinite(rotated))
+    assert not np.allclose(identity, rotated)
+
+
+def test_master_reprojection_rejects_invalid_batch_or_rotation() -> None:
+    recipe = _detector_recipe()
+    master = np.ones((2, 9, 9), dtype=np.float32)
+
+    with pytest.raises(ValueError, match="batch_rows"):
+        reproject_stereographic_master_to_detector(master, recipe, batch_rows=0)
+    with pytest.raises(ValueError, match="crystal_to_sample_matrix"):
+        reproject_stereographic_master_to_detector(
+            master,
+            recipe,
+            crystal_to_sample_matrix=np.eye(2),
+        )
