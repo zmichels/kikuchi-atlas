@@ -24,7 +24,7 @@ authorship, citation details, and license terms.
 ## Acceptance Criteria
 
 - [ ] A reviewed public repository and static-host target are named.
-- [ ] Archive metadata, citation, structural-source terms, and release license
+- [x] Archive metadata, citation, structural-source terms, and release license
   are reviewed before upload.
 - [ ] The deployed gallery URL and archival DOI are recorded in tracked release
   metadata.
@@ -38,7 +38,8 @@ approves the required repository, account, and citation identity.
 ## Prepared Evidence
 
 - `CITATION.cff`, `.zenodo.json`, and `docs/atlas/RELEASE_METADATA.yml` are
-  aligned pre-publication templates. The maintainer name comes from local Git
-  configuration and must be confirmed before release.
+  aligned pre-publication metadata. The maintainer identity was confirmed from
+  local Git configuration; code is MIT and project-owned media/geometry are
+  CC BY 4.0.
 - `docs/atlas/STRUCTURAL_SOURCE_AUDIT.json` records all nine exact source
   records: eight CC0 sources and the separately attributed muscovite source.

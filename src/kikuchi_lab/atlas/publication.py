@@ -240,7 +240,9 @@ def _copy_tracked_release_context(
         path
         for path in (
             root / "CITATION.cff",
+            root / "LICENSE",
             root / ".zenodo.json",
+            root / "LICENSES/ATLAS_MEDIA_AND_GEOMETRY.md",
             root / "docs/atlas/RELEASE_METADATA.yml",
             root / "docs/atlas/STRUCTURAL_SOURCE_AUDIT.json",
             root / "docs/atlas/STRUCTURAL_SOURCE_ATTRIBUTION.md",

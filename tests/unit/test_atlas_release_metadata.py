@@ -19,19 +19,22 @@ def test_release_metadata_and_citation_are_aligned_but_do_not_invent_a_license()
     assert metadata["schema_version"] == 1
     assert metadata["release"]["status"] == "prepublication"
     assert metadata["licenses"] == {
-        "project_code": "PENDING_USER_SELECTION",
-        "atlas_media_and_geometry": "PENDING_USER_SELECTION",
+        "project_code": "MIT",
+        "atlas_media_and_geometry": "CC-BY-4.0",
         "source_structures": "per-source; see STRUCTURAL_SOURCE_AUDIT.json",
     }
     assert citation["cff-version"] == "1.2.0"
     assert citation["title"] == metadata["release"]["title"]
     assert citation["version"] == metadata["release"]["version"]
     assert citation["authors"] == metadata["contributors"]
-    assert "license" not in citation
+    assert citation["license"] == "MIT"
     assert zenodo["title"] == citation["title"]
     assert zenodo["version"] == citation["version"]
     assert zenodo["creators"] == [{"name": "Michels, Zachary"}]
-    assert "license" not in zenodo
+    assert zenodo["license"] == "MIT"
+    assert "CC BY 4.0" in (ROOT / "LICENSES/ATLAS_MEDIA_AND_GEOMETRY.md").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_structural_source_audit_has_one_exact_record_per_atlas_phase() -> None:

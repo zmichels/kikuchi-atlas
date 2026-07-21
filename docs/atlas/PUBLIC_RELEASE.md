@@ -22,10 +22,15 @@ Tracked pre-publication metadata lives alongside the Atlas source:
 
 - `CITATION.cff` and `.zenodo.json` describe the eventual code release;
 - `RELEASE_METADATA.yml` records the still-unresolved public identity, URL,
-  DOI, and project-license choices; and
+  DOI, and release-version choices; and
 - `STRUCTURAL_SOURCE_AUDIT.json` plus `STRUCTURAL_SOURCE_ATTRIBUTION.md`
   enumerate the exact source records, terms, checksums, and citations for all
   Atlas phases.
+
+The confirmed project license split is MIT for code and CC BY 4.0 for
+project-owned Atlas media/geometry. See the repository `LICENSE` and
+`LICENSES/ATLAS_MEDIA_AND_GEOMETRY.md`; source structures remain governed by
+their individual audit records.
 
 The gallery permits only PNG, SVG, JPEG, and MP4 assets at or below 25 MiB.
 STL geometry and other heavier materials remain in the archive path rather

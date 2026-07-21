@@ -2,6 +2,7 @@
   "title": "Kikuchi Atlas",
   "version": "0.1.0-draft",
   "upload_type": "software",
+  "license": "MIT",
   "description": "A provenance-first code release for modeled Kikuchi visualizations, motion studies, printable geometry, and source-backed spherical-field products. A future curated product archive must be deposited separately as a data release after source-term and license review.",
   "creators": [
     {
