@@ -8,10 +8,10 @@ on:
         required: true
         default: atlas-gallery-web-0.1.0-draft
         type: string
-      asset_name:
-        description: Static-gallery ZIP asset to deploy
+      asset_glob:
+        description: Glob matching the split static-gallery ZIP assets to deploy
         required: true
-        default: kikuchi-atlas-gallery-web-0.1.0-draft.zip
+        default: kikuchi-atlas-gallery-web-0.1.0-draft-*.zip
         type: string
 
 permissions:
@@ -40,9 +40,14 @@ jobs:
           mkdir -p payload site
           gh release download "${{ inputs.release_tag }}" \
             --repo "$GITHUB_REPOSITORY" \
-            --pattern "${{ inputs.asset_name }}" \
+            --pattern "${{ inputs.asset_glob }}" \
             --dir payload
-          unzip -q "payload/${{ inputs.asset_name }}" -d site
+          shopt -s nullglob
+          archives=(payload/*.zip)
+          test "${#archives[@]}" -eq 2
+          for archive in "${archives[@]}"; do
+            unzip -q "$archive" -d site
+          done
           test -f site/index.html
 
       - name: Upload Pages artifact
