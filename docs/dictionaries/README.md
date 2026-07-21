@@ -55,6 +55,21 @@ integrity and frame check, not an acquired-pattern accuracy result. See
 [the `ebsdx-rs` contract crosswalk](ice-ih-ebsdx-rs-contract-crosswalk.md)
 for the exact interoperability state.
 
+The companion Rust engine can now execute the canonical-S2 portion of the
+resource after its independent preflight. Supply a spherical observed signal
+and the exact direction-grid NPY—not detector pixels:
+
+```bash
+ebsdxr dictionary-resource-rank <dictionary.manifest.json> \
+  --observed-spherical-signal <observed-s2.npy> \
+  --observed-direction-grid <directions.npy> --top-k 8 --json
+```
+
+The command requires byte-identical C-order direction-grid payloads, applies
+the declared mean-center/L2 normalization, and ranks normalized cosine scores
+with stable entry-index tie ordering. It remains a canonical S2 matcher; it
+does not project detector patterns or claim acquired-pattern accuracy.
+
 The resource is a kinematical oxygen-sublattice candidate search. It does not
 yet claim acquired-pattern calibration or distinguish Ice Ic, stacking-
 disordered ice, amorphous ice, high-pressure polymorphs, or detailed hydrogen
