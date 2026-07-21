@@ -70,6 +70,23 @@ the declared mean-center/L2 normalization, and ranks normalized cosine scores
 with stable entry-index tie ordering. It remains a canonical S2 matcher; it
 does not project detector patterns or claim acquired-pattern accuracy.
 
+### Why the cache diagnostic looks unlike a Kikuchi pattern
+
+The ranking diagnostic plots the cache as a sparse longitude/latitude scatter
+because it is a 1,946-value S2 feature vector, not a detector image and not a
+Hough/Radon accumulator. The checked local signal-space bridge places all
+three relevant representations together—the kinematical detector projection,
+the crystal-frame stereographic master, and the exact sample-frame vector
+input—with their roles and excluded adapter boundary stated in the output:
+
+```bash
+uv run python scripts/render_ice_ih_dictionary_signal_space_bridge.py \
+  --output local/dictionaries/ice-ih-signal-space-bridge-v0.1.0
+```
+
+See [the signal-space bridge acceptance record](../acceptance/ice-ih-dictionary-signal-space-bridge.md)
+for its source run, input identity, and nonclaims.
+
 The resource is a kinematical oxygen-sublattice candidate search. It does not
 yet claim acquired-pattern calibration or distinguish Ice Ic, stacking-
 disordered ice, amorphous ice, high-pressure polymorphs, or detailed hydrogen
