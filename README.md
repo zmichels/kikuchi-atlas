@@ -54,5 +54,7 @@ uv run kikuchi-lab relief globe build \
 The command publishes one immutable, content-addressed five-file bundle. It refuses an
 existing completed or partial destination instead of overwriting it.
 
-This repository is intentionally local-only. Do not add a Git remote unless
-the project owner explicitly chooses a publication location later.
+The source repository is public at
+[`zmichels/kikuchi-atlas`](https://github.com/zmichels/kikuchi-atlas). Generated
+media and machine-specific products remain local until they pass their separate
+Atlas gallery/archive release gates.

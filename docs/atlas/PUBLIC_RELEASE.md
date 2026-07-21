@@ -2,8 +2,10 @@
 
 ## Status
 
-Local pre-publication build only. No hosting account, public URL, DOI, domain,
-or release license is assumed or created by this repository.
+The source repository is public at
+[`zmichels/kikuchi-atlas`](https://github.com/zmichels/kikuchi-atlas). The
+generated gallery/archive remains a local pre-publication build: no static
+hosting URL, DOI, or published archive release is assumed or created here.
 
 ## Deliverables
 
