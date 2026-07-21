@@ -1,0 +1,19 @@
+{
+  "title": "Kikuchi Atlas",
+  "version": "0.1.0-draft",
+  "upload_type": "software",
+  "description": "A provenance-first code release for modeled Kikuchi visualizations, motion studies, printable geometry, and source-backed spherical-field products. A future curated product archive must be deposited separately as a data release after source-term and license review.",
+  "creators": [
+    {
+      "name": "Michels, Zachary"
+    }
+  ],
+  "keywords": [
+    "EBSD",
+    "Kikuchi patterns",
+    "crystallography",
+    "scientific visualization",
+    "3D printing"
+  ],
+  "notes": "Prepublication metadata: confirm contributors and select project code/media licenses before a public release."
+}

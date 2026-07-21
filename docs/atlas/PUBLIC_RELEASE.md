@@ -18,6 +18,15 @@ or release license is assumed or created by this repository.
   provenance records, tracked registries, recipes, checksums, and release
   notes suitable for a separately reviewed archival upload.
 
+Tracked pre-publication metadata lives alongside the Atlas source:
+
+- `CITATION.cff` and `.zenodo.json` describe the eventual code release;
+- `RELEASE_METADATA.yml` records the still-unresolved public identity, URL,
+  DOI, and project-license choices; and
+- `STRUCTURAL_SOURCE_AUDIT.json` plus `STRUCTURAL_SOURCE_ATTRIBUTION.md`
+  enumerate the exact source records, terms, checksums, and citations for all
+  Atlas phases.
+
 The gallery permits only PNG, SVG, JPEG, and MP4 assets at or below 25 MiB.
 STL geometry and other heavier materials remain in the archive path rather
 than being made implicit web-host dependencies. Canonical kinematical master

@@ -34,3 +34,11 @@ authorship, citation details, and license terms.
 
 The user explicitly authorizes an external publication target and provides or
 approves the required repository, account, and citation identity.
+
+## Prepared Evidence
+
+- `CITATION.cff`, `.zenodo.json`, and `docs/atlas/RELEASE_METADATA.yml` are
+  aligned pre-publication templates. The maintainer name comes from local Git
+  configuration and must be confirmed before release.
+- `docs/atlas/STRUCTURAL_SOURCE_AUDIT.json` records all nine exact source
+  records: eight CC0 sources and the separately attributed muscovite source.

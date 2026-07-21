@@ -236,6 +236,17 @@ def _copy_tracked_release_context(
     """Copy the small tracked context that explains staged binary artifacts."""
     tracked_paths = [registry_path, product_registry_path, anchor_catalog_path, *phase_source_records]
     tracked_paths.extend(root / product.recipe for product in products)
+    tracked_paths.extend(
+        path
+        for path in (
+            root / "CITATION.cff",
+            root / ".zenodo.json",
+            root / "docs/atlas/RELEASE_METADATA.yml",
+            root / "docs/atlas/STRUCTURAL_SOURCE_AUDIT.json",
+            root / "docs/atlas/STRUCTURAL_SOURCE_ATTRIBUTION.md",
+        )
+        if path.is_file()
+    )
     for source in tracked_paths:
         relative = source.relative_to(root)
         destination = archive_root / "tracked-context" / relative

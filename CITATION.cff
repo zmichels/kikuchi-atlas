@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use Kikuchi Atlas, please cite the project and the exact structural sources named in its release audit."
+title: "Kikuchi Atlas"
+version: "0.1.0-draft"
+type: software
+authors:
+  - family-names: Michels
+    given-names: Zachary
+abstract: >-
+  A provenance-first library of modeled Kikuchi visualizations, motion studies,
+  printable geometry, and source-backed spherical-field products.
+keywords:
+  - EBSD
+  - Kikuchi patterns
+  - crystallography
+  - scientific visualization
+  - 3D printing

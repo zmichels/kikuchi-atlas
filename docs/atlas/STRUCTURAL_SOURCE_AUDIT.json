@@ -1,0 +1,399 @@
+{
+  "claim_boundary": "Structure-source terms apply to the named CIF records. They do not determine the separate project-code, visual-media, or printable-geometry license.",
+  "schema_version": 1,
+  "source_count": 9,
+  "sources": [
+    {
+      "cif": "COD-9000319.cif",
+      "citation": "Smyth, J. R. and Hazen, R. M. (1973). The crystal structures of forsterite and hortonolite at several temperatures up to 900 C. American Mineralogist 58, 588-593.",
+      "copying_policy": "Public-domain COD data; acknowledge the original structural-data authors.",
+      "display_name": "Forsterite",
+      "identifier": "COD-9000319",
+      "license": "CC0-1.0",
+      "license_uri": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "page_uri": "https://www.crystallography.net/cod/9000319.html",
+      "phase_slug": "forsterite",
+      "retrieved": "2026-07-12",
+      "sha256": "550b8c89c617267d39e7cb6a07fe6f55cd2343453c1c45ec77738bf6fd25d9cd",
+      "simulation_setting": {
+        "reason": "COD 9000319 is reported in non-standard P b n m. ebsdsim 0.1.8 expands space-group 62 in standard P n m a, so the source axes must be permuted explicitly before simulation to preserve Wyckoff multiplicities.",
+        "source_setting": "P b n m",
+        "target_fractional_from_source": [
+          "y",
+          "z",
+          "x"
+        ],
+        "target_lattice_from_source": [
+          "b",
+          "c",
+          "a"
+        ],
+        "target_setting": "P n m a",
+        "target_site_multiplicities": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          8
+        ]
+      },
+      "source_record": "phases/forsterite/source.yml",
+      "uri": "https://www.crystallography.net/cod/9000319.cif"
+    },
+    {
+      "cif": "COD-1572233-oxygen-sublattice.cif",
+      "citation": "Chodkiewicz, M. L., Olech, B., Jha, K. K., Dominiak, P. M., and Wozniak, K. (2024). Hirshfeld atom refinement and dynamical refinement of hexagonal ice structure from electron diffraction data. IUCrJ 11, 1015-1025.",
+      "copying_policy": "Public-domain COD data; acknowledge the original structural-data authors.",
+      "display_name": "Ice Ih",
+      "identifier": "COD-1572233-O-sublattice",
+      "license": "CC0-1.0",
+      "license_uri": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "page_uri": "https://www.crystallography.net/cod/1572233.html",
+      "phase_slug": "ice-ih",
+      "retrieved": "2026-07-14",
+      "sha256": "4327a279e414a62f861d143e18570e9d741bbbb7d04dd2fb471c930988f95b81",
+      "simulation_setting": {
+        "model_scope": "average oxygen sublattice only",
+        "omitted_source_sites": [
+          "H1a",
+          "H1b"
+        ],
+        "original_cod_sha256": "a267e2ef3c45aedf1cfd2deb09592908fdfd7ab0b771cab08ec9e70b287b5aa4",
+        "reason": "COD 1572233 is already in standard P 63/m m c. This bounded derivative retains only the fully occupied oxygen site and intentionally omits the half-occupied hydrogen sites H1a and H1b.",
+        "source_setting": "P 63/m m c",
+        "target_fractional_from_source": [
+          "x",
+          "y",
+          "z"
+        ],
+        "target_lattice_from_source": [
+          "a",
+          "b",
+          "c"
+        ],
+        "target_setting": "P 63/m m c",
+        "target_site_multiplicities": [
+          4
+        ]
+      },
+      "source_record": "phases/ice-ih/source.yml",
+      "uri": "https://www.crystallography.net/cod/1572233.cif"
+    },
+    {
+      "cif": "COD-9012600.cif",
+      "citation": "Hazen, R. M., Finger, L. W., Hemley, R. J., and Mao, H. K. (1989). High-pressure crystal chemistry and amorphization of alpha-quartz. Solid State Communications 72, 507-511.",
+      "copying_policy": "Public-domain COD data; acknowledge the original structural-data authors.",
+      "display_name": "Alpha quartz",
+      "identifier": "COD-9012600",
+      "license": "CC0-1.0",
+      "license_uri": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "page_uri": "https://www.crystallography.net/cod/9012600.html",
+      "phase_slug": "quartz",
+      "retrieved": "2026-07-16",
+      "sha256": "29176db9b50e42972646a43bd171e4cff1d6bc47cc2f93e265ff809ecadd85ef",
+      "simulation_setting": {
+        "handedness": "right-handed P 31 2 1",
+        "reason": "COD 9012600 is already in the right-handed ambient alpha-quartz setting P 31 2 1, so the simulation uses the source axes without transformation.",
+        "source_setting": "P 31 2 1",
+        "target_fractional_from_source": [
+          "x",
+          "y",
+          "z"
+        ],
+        "target_lattice_from_source": [
+          "a",
+          "b",
+          "c"
+        ],
+        "target_setting": "P 31 2 1",
+        "target_site_multiplicities": [
+          3,
+          6
+        ]
+      },
+      "source_record": "phases/quartz/source.yml",
+      "uri": "https://www.crystallography.net/cod/9012600.cif"
+    },
+    {
+      "cif": "COD-9000684-isotropic-u.cif",
+      "citation": "Hazen, R. M. and Finger, L. W. (1979). Crystal structure and compressibility of zircon at high pressure. American Mineralogist 64, 196-201. Crystal No. 1 at 1 atm before pressure.",
+      "copying_policy": "Public-domain COD data; acknowledge the original structural-data authors and this deterministic derivative.",
+      "display_name": "Zircon",
+      "identifier": "COD-9000684-isotropic-U",
+      "license": "CC0-1.0",
+      "license_uri": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "page_uri": "https://www.crystallography.net/cod/9000684.html",
+      "phase_slug": "zircon",
+      "retrieved": "2026-07-16",
+      "sha256": "ff30c03e88588a8d1a54a9a2a22b3b4e73a0230bf444120dc6eb236d4391739d",
+      "simulation_setting": {
+        "derivative_unchanged_from_original": [
+          "coordinates",
+          "occupancies",
+          "cell_values",
+          "symmetry_operations"
+        ],
+        "derived_from_identifier": "COD-9000684",
+        "derived_from_sha256": "e461a480345cbb60af43cff99a8f6783cf8a3c41530fcb686c506de97b79c44f",
+        "origin_choice_reference_uri": "https://onlinelibrary.wiley.com/iucr/itc/Ac/ch2o3v0001/sgtable2o3o141/",
+        "reason": "diffsims requires isotropic displacement values; derive each site value explicitly from the COD anisotropic tensor. COD coordinates use origin choice 2, while diffpy space-group 141 uses choice 1; add the International Tables choice-1 offset [0, 1/4, -1/8] after the identity axis mapping.",
+        "source_origin_choice": 2,
+        "source_setting": "I 41/a m d :2",
+        "target_fractional_from_source": [
+          "x",
+          "y",
+          "z"
+        ],
+        "target_fractional_origin_shift": [
+          0.0,
+          0.25,
+          -0.125
+        ],
+        "target_lattice_from_source": [
+          "a",
+          "b",
+          "c"
+        ],
+        "target_origin_choice": 1,
+        "target_setting": "I 41/a m d origin choice 1",
+        "target_site_multiplicities": [
+          4,
+          4,
+          16
+        ],
+        "u_iso_derivation": "U_iso = (U_11 + U_22 + U_33) / 3 for orthogonal tetragonal axes"
+      },
+      "source_record": "phases/zircon/source.yml",
+      "uri": "https://www.crystallography.net/cod/9000684.cif"
+    },
+    {
+      "cif": "COD-9000509.cif",
+      "citation": "Taylor, M. and Brown, G. E. (1976). High-temperature structural study of the P2_1/a - A2/a phase transition in synthetic titanite, CaTiSiO5. American Mineralogist 61, 435-447. Structure measured at 25 degrees C.",
+      "copying_policy": "Public-domain COD data; acknowledge the original structural-data authors.",
+      "display_name": "Titanite",
+      "identifier": "COD-9000509",
+      "license": "CC0-1.0",
+      "license_uri": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "page_uri": "https://www.crystallography.net/cod/9000509.html",
+      "phase_slug": "titanite",
+      "retrieved": "2026-07-16",
+      "sha256": "ed45563f6621488f165373f2847c65acef197744322e0937d985518a3437be42",
+      "simulation_setting": {
+        "excluded_polymorph": "high-temperature A2/a",
+        "reason": "The source is the 298.15 K synthetic P21/a structure. diffpy exposes space-group 14 in the standard P21/c setting, so swap source a/c axes and x/z fractional coordinates; the explicit symmetry translations then match exactly. This is neither the high-temperature A2/a polymorph nor a compositionally substituted natural titanite.",
+        "source_setting": "P 1 21/a 1",
+        "specimen": "synthetic stoichiometric CaTiSiO5",
+        "target_fractional_from_source": [
+          "z",
+          "y",
+          "x"
+        ],
+        "target_lattice_from_source": [
+          "c",
+          "b",
+          "a"
+        ],
+        "target_setting": "P 1 21/c 1",
+        "target_site_multiplicities": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "temperature_kelvin": 298.15
+      },
+      "source_record": "phases/titanite/source.yml",
+      "uri": "https://www.crystallography.net/cod/9000509.cif"
+    },
+    {
+      "cif": "COD-2101499-diamond-derived.cif",
+      "citation": "Yamanaka, T. and Morimoto, S. (1996). Isotope effect on anharmonic thermal atomic vibration and k refinement of 12C and 13C diamond. Acta Crystallographica Section B 52, 232-238. DOI: 10.1107/S0108768195010810.",
+      "copying_policy": "Public-domain COD data; acknowledge the original structural-data authors and this deterministic derivative.",
+      "display_name": "Diamond",
+      "identifier": "COD-2101499-diamond-derived",
+      "license": "CC0-1.0",
+      "license_uri": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "page_uri": "https://www.crystallography.net/cod/2101499.html",
+      "phase_slug": "diamond",
+      "retrieved": "2026-07-18",
+      "sha256": "1f3d704031993dfa08759dfee83dbf16ae5c1a7bc22bd4e2e924577d48a12841",
+      "simulation_setting": {
+        "derivative_added_tag": "_space_group_IT_number 227",
+        "original_cod_identifier": "COD-2101499",
+        "original_cod_sha256": "d6be73a0b0c170dcc6e8ab629598739b603a24d2cfb668a72383ad723ab972ed",
+        "reason": "COD 2101499 is cubic F d -3 m and includes the carbon isotropic displacement parameter. This derivative adds only the International Tables number 227 required by the project source verifier. COD's 3/8,3/8,3/8 special position uses an origin convention that diffpy does not share; translate it by -1/8,-1/8,-1/8 to the equivalent 1/4,1/4,1/4 site so its diamond orbit expands to eight atoms, not a 32-site general position.",
+        "source_setting": "F d -3 m, COD origin convention",
+        "target_fractional_from_source": [
+          "x",
+          "y",
+          "z"
+        ],
+        "target_fractional_origin_shift": [
+          -0.125,
+          -0.125,
+          -0.125
+        ],
+        "target_lattice_from_source": [
+          "a",
+          "b",
+          "c"
+        ],
+        "target_origin_convention": "diffpy",
+        "target_setting": "F d -3 m",
+        "target_site_multiplicities": [
+          8
+        ]
+      },
+      "source_record": "phases/diamond/source.yml",
+      "uri": "https://www.crystallography.net/cod/2101499.cif"
+    },
+    {
+      "cif": "COD-8103560.cif",
+      "citation": "Horst, W.; Tagai, T.; Korekawa, M.; Jagodzinski, H. (1981). Modulated structure of a plagioclase An52: Theory and structure determination. Zeitschrift fuer Kristallographie 157, 233-250.",
+      "copying_policy": "Public-domain COD data; acknowledge the original structural-data authors.",
+      "display_name": "Plagioclase (An52 reference)",
+      "identifier": "COD-8103560",
+      "license": "CC0-1.0",
+      "license_uri": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "page_uri": "https://www.crystallography.net/cod/8103560.html",
+      "phase_slug": "plagioclase-an52",
+      "retrieved": "2026-07-20",
+      "sha256": "6a3d4f3932da8b9a8ed9ba7dbdaa6da0b91520bd5e5ac358dcec140418168359",
+      "simulation_setting": {
+        "reason": "COD 8103560 is expressed as a C-centered triclinic supercell. The simulation view uses its explicitly documented primitive basis so the centering translation is not lost by treating space group 2 as P -1.",
+        "source_setting": "C -1",
+        "target_direct_basis_from_source_columns": [
+          [
+            0.5,
+            0.5,
+            0.0
+          ],
+          [
+            -0.5,
+            0.5,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "target_setting": "P -1 primitive",
+        "target_site_multiplicities": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "source_record": "phases/plagioclase-an52/source.yml",
+      "uri": "https://www.crystallography.net/cod/8103560.cif"
+    },
+    {
+      "cif": "COD-9014960.cif",
+      "citation": "Guven, N. (1971). The crystal structures of 2M1 phengite and 2M1 muscovite. Zeitschrift fuer Kristallographie 134, 196-212. Sample: 2M1 muscovite.",
+      "copying_policy": "Source CIF permits scientific-community use with attribution to the journal article.",
+      "display_name": "Muscovite (2M1 reference)",
+      "identifier": "COD-9014960",
+      "license": "COD attribution-use notice",
+      "license_uri": "https://www.crystallography.net/cod/9014960.html",
+      "page_uri": "https://www.crystallography.net/cod/9014960.html",
+      "phase_slug": "muscovite-2m1",
+      "retrieved": "2026-07-20",
+      "sha256": "089aed29c3d2e5437e087312223048fbb0196fd8b92d6a07217a7ee528a06b6f",
+      "simulation_setting": {
+        "reason": "COD 9014960 uses the conventional C 1 2/c 1 setting represented directly by space group 15. Mixed K/Na, octahedral Al/Fe/Mg, and tetrahedral Al/Si occupancies remain explicit.",
+        "source_setting": "C 1 2/c 1",
+        "target_fractional_from_source": [
+          "x",
+          "y",
+          "z"
+        ],
+        "target_lattice_from_source": [
+          "a",
+          "b",
+          "c"
+        ],
+        "target_setting": "C 1 2/c 1",
+        "target_site_multiplicities": [
+          4,
+          4,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8
+        ]
+      },
+      "source_record": "phases/muscovite-2m1/source.yml",
+      "uri": "https://www.crystallography.net/cod/9014960.cif"
+    },
+    {
+      "cif": "COD-1000007.cif",
+      "citation": "Thompson, R. M. and Downs, R. T. (2008). The crystal structure of diopside at pressure to 10 GPa. American Mineralogist 93, 177-186. Source specimen: P = 1 atm.",
+      "copying_policy": "Public-domain COD data; acknowledge the original structural-data authors.",
+      "display_name": "Diopside (clinopyroxene reference)",
+      "identifier": "COD-1000007",
+      "license": "CC0-1.0",
+      "license_uri": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "page_uri": "https://www.crystallography.net/cod/1000007.html",
+      "phase_slug": "diopside",
+      "retrieved": "2026-07-20",
+      "sha256": "519dd231c62909eb50349b54a518f454fc5c21d1b005a777ede51ead83ede4e3",
+      "simulation_setting": {
+        "reason": "COD 1000007 is the conventional C 1 2/c 1 ambient-pressure diopside structure represented directly by space group 15.",
+        "source_setting": "C 1 2/c 1",
+        "target_fractional_from_source": [
+          "x",
+          "y",
+          "z"
+        ],
+        "target_lattice_from_source": [
+          "a",
+          "b",
+          "c"
+        ],
+        "target_setting": "C 1 2/c 1",
+        "target_site_multiplicities": [
+          4,
+          4,
+          8,
+          8,
+          8,
+          8
+        ]
+      },
+      "source_record": "phases/diopside/source.yml",
+      "uri": "https://www.crystallography.net/cod/1000007.cif"
+    }
+  ],
+  "title": "Kikuchi Atlas structural-source audit"
+}
