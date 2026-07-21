@@ -2,7 +2,7 @@
 id: KIKU-F013
 type: feature
 title: Build the Ice Ih flagship spherical dictionary
-status: active
+status: done
 parent: KIKU-E001
 children:
   - KIKU-T053
@@ -15,7 +15,7 @@ tags: [ice-ih, dictionary, indexing, spherical, interoperability]
 links:
   - ../decisions/0005-ice-ih-dictionary-flagship.md
   - ../dictionaries/ice-ih-flagship-design.md
-  - ../../../../ebsdx-rs/docs/spherical-dictionary-resource-contract.md
+  - ../../../ebsdx-rs/docs/spherical-dictionary-resource-contract.md
 evidence:
   - ../../phases/ice-ih/source.yml
   - ../../recipes/kinematical/ice-ih-oxygen-quiet-proof.yml
@@ -41,7 +41,7 @@ that it is already calibrated against acquired EBSD patterns.
   declared full-master local refinement path.
 - [x] Held-out synthetic recovery demonstrates the full coarse-to-refined
   retrieval path, including score and angular-error diagnostics.
-- [ ] The package can be independently verified against the local
+- [x] The package can be independently verified against the local
   `ebsdx-rs` dictionary-resource contract without a hidden detector model.
 
 ## Progress Evidence
@@ -53,5 +53,6 @@ that it is already calibrated against acquired EBSD patterns.
   degrees and full-master local refinement reached 0.46 degrees.
 - `local/dictionaries/ice-ih-spherical-candidate-v0.1.2` embeds that recovery
   fixture, recomputes it during verification, and adds the draft contract's
-  detector-independent metadata; `KIKU-T057` is the remaining consumer-side
-  contract gate.
+  detector-independent metadata. `ebsdxr dictionary-resource-preflight`
+  independently checks the sealed package and requires explicit runtime inputs
+  before a future matcher can proceed.

@@ -2,7 +2,7 @@
 id: KIKU-T057
 type: task
 title: Validate Ice Ih dictionary against the ebsdx-rs resource contract
-status: active
+status: done
 parent: KIKU-F013
 depends_on:
   - KIKU-T054
@@ -12,10 +12,12 @@ priority: P0
 tags: [ice-ih, dictionary, interoperability, ebsdx-rs, contract]
 links:
   - ../dictionaries/ice-ih-ebsdx-rs-contract-crosswalk.md
-  - ../../../../ebsdx-rs/docs/spherical-dictionary-resource-contract.md
+  - ../../../ebsdx-rs/docs/spherical-dictionary-resource-contract.md
 evidence:
   - ../../src/kikuchi_lab/dictionary/ice_ih.py
   - ../../recipes/dictionaries/ice-ih-spherical-candidate-v0.1.2.yml
+  - ../../../ebsdx-rs/crates/ebsdx-core/src/dictionary_resource.rs
+  - ../../../ebsdx-rs/crates/ebsdx-core/tests/spherical_dictionary_resource.rs
 ---
 
 # KIKU-T057: Validate Ice Ih dictionary against the ebsdx-rs resource contract
@@ -33,7 +35,15 @@ contract, which require a concrete manifest extension, and what an eventual
   nonclaims against the local consumer contract.
 - [x] The package manifest supplies every detector-independent field required
   for consumer preflight, including phase and coverage detail.
-- [ ] A consumer-side lint accepts the sealed package and rejects missing
+- [x] A consumer-side lint accepts the sealed package and rejects missing
   runtime detector geometry or unnamed preprocessing.
-- [ ] The package and consumer test retain the exact S2 grid, active `wxyz`
+- [x] The package and consumer test retain the exact S2 grid, active `wxyz`
   crystal-to-sample convention, and normalized-cosine preprocessing.
+
+## Accepted Evidence
+
+`ebsdxr dictionary-resource-preflight` independently authenticated
+`ice-ih-spherical-dictionary-ce260e6d6c764fd2`: the 13,155 orientation
+entries, 1,946 S2 directions, and all 10 manifest-inventoried files passed.
+It accepts a named runtime recipe schema and rejects `--require-runtime` calls
+without one; no detector projection or indexing result is claimed.
