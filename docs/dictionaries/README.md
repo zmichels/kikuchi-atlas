@@ -88,6 +88,24 @@ See [the signal-space bridge acceptance record](../acceptance/ice-ih-dictionary-
 for its source run, input identity, declared camera-footprint overlay, and
 nonclaims.
 
+### Detector-to-S2 geometry proof
+
+The next proof maps raw pixels from the checked simulated Ice detector through
+its declared gnomonic geometry onto only the cache directions that the camera
+actually covers. It then ranks candidates with a coverage-specific masked
+cosine metric:
+
+```bash
+uv run python scripts/run_ice_ih_detector_to_s2_adapter_proof.py
+```
+
+The published local bundle preserves the partial S2 values, coverage mask,
+pixel coordinates, ranking record, source detector/recipe identities, and a
+three-panel visual proof. It is self-consistency evidence for one simulated
+source run; it is not acquired-pattern validation and is deliberately
+separate from the strict full-S2 `ebsdxr dictionary-resource-rank` contract.
+See [the adapter proof acceptance record](../acceptance/ice-ih-detector-to-s2-adapter-proof.md).
+
 The resource is a kinematical oxygen-sublattice candidate search. It does not
 yet claim acquired-pattern calibration or distinguish Ice Ic, stacking-
 disordered ice, amorphous ice, high-pressure polymorphs, or detailed hydrogen

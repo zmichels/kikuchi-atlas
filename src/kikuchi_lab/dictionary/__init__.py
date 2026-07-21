@@ -1,5 +1,10 @@
 """Portable, explicitly bounded spherical dictionary resources."""
 
+from .detector_to_s2 import (
+    DetectorToS2Sample,
+    rank_masked_candidate_matrix,
+    sample_detector_to_s2,
+)
 from .ice_ih import (
     CandidateMatch,
     CandidateRefinement,
@@ -37,6 +42,7 @@ from .spherical import (
 __all__ = [
     "CandidateMatch",
     "CandidateRefinement",
+    "DetectorToS2Sample",
     "DictionaryMatch",
     "IceIhCandidateDictionaryResult",
     "IceIhCandidateDictionaryVerification",
@@ -57,10 +63,12 @@ __all__ = [
     "quaternion_rotation_matrices",
     "quaternion_rotation_matrix",
     "rank_candidate_matrix",
+    "rank_masked_candidate_matrix",
     "rank_spherical_dictionary",
     "rotate_canonical_signal_to_sample",
     "run_synthetic_recovery",
     "sample_stereographic_master",
+    "sample_detector_to_s2",
     "SyntheticRecovery",
     "verify_ice_ih_candidate_dictionary",
     "verify_spherical_dictionary",
