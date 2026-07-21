@@ -8,6 +8,7 @@ children:
   - KIKU-T053
   - KIKU-T054
   - KIKU-T055
+  - KIKU-T057
 created: 2026-07-20
 priority: P0
 tags: [ice-ih, dictionary, indexing, spherical, interoperability]
@@ -50,3 +51,7 @@ that it is already calibrated against acquired EBSD patterns.
 - `local/dictionaries/ice-ih-spherical-recovery-proof-v0.1.0` records a
   held-out 3.54-degree synthetic rotation: coarse retrieval reached 2.30
   degrees and full-master local refinement reached 0.46 degrees.
+- `local/dictionaries/ice-ih-spherical-candidate-v0.1.2` embeds that recovery
+  fixture, recomputes it during verification, and adds the draft contract's
+  detector-independent metadata; `KIKU-T057` is the remaining consumer-side
+  contract gate.

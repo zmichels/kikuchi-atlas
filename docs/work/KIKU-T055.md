@@ -2,7 +2,7 @@
 id: KIKU-T055
 type: task
 title: Demonstrate Ice Ih coarse-to-refined synthetic recovery
-status: active
+status: done
 parent: KIKU-F013
 created: 2026-07-20
 priority: P0
@@ -29,14 +29,13 @@ angular diagnostics without conflating the result with acquired EBSD accuracy.
 - [x] Coarse retrieval returns a documented nearby candidate under the named
   cosine-score preprocessing.
 - [x] Local refinement on the full master improves the angular diagnostic.
-- [ ] The validation output and nonclaims travel with the package.
+- [x] The validation output and nonclaims travel with the package.
 
 ## Progress Evidence
 
-The versioned recovery proof uses a non-cache 3.54-degree rotation composed
-from the cache entry nearest identity. Its top coarse candidate has a 2.30
-degree angular diagnostic; a 1,331-entry, 5-degree-wide local full-master grid
-improves that to 0.46 degrees. The proof bundle is checksum-bearing and linked
-to the exact dictionary identity. The remaining task is to embed this proof in
-the next immutable dictionary version rather than leave it as a companion
-bundle.
+`ice-ih-spherical-candidate-v0.1.2` embeds the non-cache 3.54-degree rotation,
+its observed spherical signal, expected coarse result, and the local
+full-master diagnostics. The top coarse candidate has a 2.30-degree angular
+diagnostic; a 1,331-entry, 5-degree-wide local grid improves that to 0.46
+degrees. The independent verifier recomputes both ranking and refinement from
+package bytes while retaining the explicit non-acquisition claim boundary.

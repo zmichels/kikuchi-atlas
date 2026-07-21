@@ -551,6 +551,16 @@ def _required_source(value: Mapping[str, object]) -> dict[str, object]:
 
 
 def _file_inventory(root: Path) -> list[dict[str, object]]:
+    roles = {
+        "master/ice-ih-master-stereographic.npy": "spherical_signal",
+        "cache/candidate-matrix.npy": "spherical_signal",
+        "cache/directions.npy": "metadata",
+        "cache/quaternions-wxyz.npy": "metadata",
+        "entries.csv": "entries",
+        "README.md": "documentation",
+        "CITATION.cff": "documentation",
+        "LICENSE": "documentation",
+    }
     inventory: list[dict[str, object]] = []
     for path in sorted(item for item in root.rglob("*") if item.is_file()):
         relative = path.relative_to(root).as_posix()
@@ -558,6 +568,9 @@ def _file_inventory(root: Path) -> list[dict[str, object]]:
             continue
         record: dict[str, object] = {
             "path": relative,
+            "role": roles.get(
+                relative, "validation" if relative.startswith("validation/") else "metadata"
+            ),
             "bytes": path.stat().st_size,
             "sha256": _sha256_file(path),
             "format": {
@@ -647,17 +660,113 @@ def _write_license(path: Path) -> None:
     )
 
 
-def _write_validation(root: Path, candidate_matrix: np.ndarray) -> None:
-    _write_npy(root / "validation/observed-cache-entry-000000.npy", candidate_matrix[0])
+def _synthetic_recovery_configuration(
+    value: Mapping[str, object] | None,
+) -> dict[str, object] | None:
+    if value is None:
+        return None
+    configuration = _plain_mapping(value, name="synthetic_recovery")
+    expected = {
+        "held_out_rotation_vector_degrees",
+        "local_half_width_degrees",
+        "local_step_degrees",
+    }
+    if set(configuration) != expected:
+        raise ValueError("synthetic_recovery fields differ from the Ice Ih dictionary contract")
+    vector = np.asarray(configuration["held_out_rotation_vector_degrees"], dtype=np.float64)
+    if vector.shape != (3,) or not np.all(np.isfinite(vector)) or np.linalg.norm(vector) <= 0.0:
+        raise ValueError("synthetic_recovery.held_out_rotation_vector_degrees must be non-zero")
+    half_width = _positive_resolution(
+        configuration["local_half_width_degrees"], name="synthetic recovery local half width"
+    )
+    step = _positive_resolution(
+        configuration["local_step_degrees"], name="synthetic recovery local step"
+    )
+    if step > half_width:
+        raise ValueError("synthetic recovery local step must not exceed local half width")
+    return {
+        "held_out_rotation_vector_degrees": [float(component) for component in vector],
+        "local_half_width_degrees": half_width,
+        "local_step_degrees": step,
+    }
+
+
+def _recovery_record(recovery: SyntheticRecovery) -> dict[str, object]:
+    return {
+        "reference_entry_index": recovery.reference_entry_index,
+        "coarse_entry_index": recovery.coarse_entry_index,
+        "coarse_score": recovery.coarse_score,
+        "coarse_error_degrees": recovery.coarse_error_degrees,
+        "refined_quaternion_wxyz": list(recovery.refined_quaternion_wxyz),
+        "refined_score": recovery.refined_score,
+        "refined_error_degrees": recovery.refined_error_degrees,
+        "local_entry_count": recovery.local_entry_count,
+        "held_out_quaternion_wxyz": list(recovery.held_out_quaternion_wxyz),
+    }
+
+
+def _write_validation(
+    root: Path,
+    candidate_matrix: np.ndarray,
+    *,
+    master: np.ndarray,
+    quaternions: np.ndarray,
+    directions: np.ndarray,
+    synthetic_recovery: Mapping[str, object] | None,
+) -> dict[str, object]:
+    if synthetic_recovery is None:
+        observed_fixture = "validation/observed-cache-entry-000000.npy"
+        expected_results = "validation/expected-ranking.json"
+        _write_npy(root / observed_fixture, candidate_matrix[0])
+        _write_json(
+            root / expected_results,
+            {
+                "schema_version": 1,
+                "observed_signal": observed_fixture,
+                "score_metric": "normalized-cosine",
+                "expected_top_entry_index": 0,
+            },
+        )
+        return {
+            "observed_fixture": observed_fixture,
+            "expected_results": expected_results,
+            "kind": "deterministic cache integrity ranking",
+        }
+
+    recovery = run_synthetic_recovery(
+        master,
+        quaternions,
+        directions,
+        candidate_matrix,
+        held_out_rotation_vector_degrees=synthetic_recovery["held_out_rotation_vector_degrees"],
+        local_half_width_degrees=float(synthetic_recovery["local_half_width_degrees"]),
+        local_step_degrees=float(synthetic_recovery["local_step_degrees"]),
+    )
+    observed_fixture = "validation/observed-held-out-spherical-signal.npy"
+    expected_results = "validation/expected-recovery.json"
+    observed = build_candidate_matrix(
+        master,
+        np.asarray((recovery.held_out_quaternion_wxyz,), dtype=np.float64),
+        directions,
+    )[0]
+    _write_npy(root / observed_fixture, observed)
     _write_json(
-        root / "validation/expected-ranking.json",
+        root / expected_results,
         {
             "schema_version": 1,
-            "observed_signal": "validation/observed-cache-entry-000000.npy",
+            "observed_signal": observed_fixture,
             "score_metric": "normalized-cosine",
-            "expected_top_entry_index": 0,
+            "expected_top_entry_index": recovery.coarse_entry_index,
+            "configuration": synthetic_recovery,
+            "recovery": _recovery_record(recovery),
         },
     )
+    return {
+        "observed_fixture": observed_fixture,
+        "expected_results": expected_results,
+        "kind": "held-out synthetic coarse-to-refined recovery",
+        "synthetic_recovery": synthetic_recovery,
+    }
 
 
 def publish_ice_ih_candidate_dictionary(
@@ -672,6 +781,7 @@ def publish_ice_ih_candidate_dictionary(
     authors: Sequence[str],
     orientation_resolution_degrees: float = 5.0,
     direction_resolution_degrees: float = 5.0,
+    synthetic_recovery: Mapping[str, object] | None = None,
 ) -> IceIhCandidateDictionaryResult:
     """Publish an atomic, verifier-ready Ice Ih spherical candidate package."""
     root = Path(output_root).resolve()
@@ -685,6 +795,7 @@ def publish_ice_ih_candidate_dictionary(
         raise ValueError("created_at must be an ISO-8601 UTC timestamp with a Z suffix")
     parsed_source = _required_source(source)
     parsed_recipe = _plain_mapping(recipe, name="recipe")
+    parsed_synthetic_recovery = _synthetic_recovery_configuration(synthetic_recovery)
     parsed_master = _master(master)
     actual_master_array_sha256 = _sha256_bytes(
         np.ascontiguousarray(parsed_master, dtype=np.float32).tobytes()
@@ -703,6 +814,8 @@ def publish_ice_ih_candidate_dictionary(
     )
     quaternions = ice_ih_so3_orientations(orientation_resolution)
     directions = ice_ih_s2_directions(direction_resolution)
+    if len(np.unique(np.round(quaternions, decimals=12), axis=0)) != len(quaternions):
+        raise ValueError("orientation sampler emitted duplicate canonical quaternions")
     candidate_matrix = build_candidate_matrix(parsed_master, quaternions, directions)
     dictionary_id = stable_id(
         "ice-ih-spherical-dictionary",
@@ -715,6 +828,7 @@ def publish_ice_ih_candidate_dictionary(
             "direction_resolution_degrees": direction_resolution,
             "quaternions_sha256": _sha256_bytes(quaternions.tobytes()),
             "directions_sha256": _sha256_bytes(directions.tobytes()),
+            "synthetic_recovery": parsed_synthetic_recovery,
         },
     )
     staging = root.parent / f".{root.name}.{uuid4().hex}.partial"
@@ -729,7 +843,14 @@ def publish_ice_ih_candidate_dictionary(
         _write_npy(staging / "cache/directions.npy", directions)
         _write_npy(staging / "cache/quaternions-wxyz.npy", quaternions)
         _write_entries(staging / "entries.csv", quaternions)
-        _write_validation(staging, candidate_matrix)
+        validation = _write_validation(
+            staging,
+            candidate_matrix,
+            master=parsed_master,
+            quaternions=quaternions,
+            directions=directions,
+            synthetic_recovery=parsed_synthetic_recovery,
+        )
         _write_readme(staging / "README.md", dictionary_id=dictionary_id)
         _write_citation(
             staging / "CITATION.cff", citation=str(parsed_source["structural_citation"])
@@ -746,6 +867,21 @@ def publish_ice_ih_candidate_dictionary(
             "created_at": created_at,
             "authors": list(parsed_authors),
             "license": "CC-BY-4.0",
+            "citation": {
+                "preferred_citation": (
+                    f"Kikuchi Atlas Ice Ih spherical candidate dictionary v{dictionary_version}"
+                ),
+                "structural_source": parsed_source["structural_citation"],
+                "cff_path": "CITATION.cff",
+            },
+            "repository": "https://github.com/zmichels/kikuchi-atlas",
+            "intended_use": ["candidate_search", "post_acquisition_reindexing"],
+            "not_validated_for": [
+                "detector-calibrated EBSD indexing accuracy",
+                "unnamed detector geometry or preprocessing",
+                "hydrogen-resolved Ice Ih structure",
+                "Ice Ic, stacking-disordered, amorphous, or high-pressure ice",
+            ],
             "phase": {
                 "phase_id": "ice-ih-average-oxygen-sublattice",
                 "phase_name": "Ice Ih average oxygen sublattice",
@@ -753,6 +889,19 @@ def publish_ice_ih_candidate_dictionary(
                 "crystal_system": "hexagonal",
                 "point_group": "6/mmm",
                 "space_group": {"number": 194, "setting": "P 63/m m c"},
+                "lattice_parameters": {
+                    "a": 4.3815,
+                    "b": 4.3815,
+                    "c": 7.183,
+                    "alpha": 90.0,
+                    "beta": 90.0,
+                    "gamma": 120.0,
+                    "unit": "angstrom and degrees",
+                },
+                "symmetry_operators": {
+                    "reference": "International Tables setting P 63/m m c (No. 194)",
+                    "point_group": "6/mmm",
+                },
                 "reference_frame": "right-handed crystal Cartesian frame",
                 "setting_notes": "Average oxygen sublattice only; disordered hydrogen sites omitted.",
             },
@@ -771,6 +920,14 @@ def publish_ice_ih_candidate_dictionary(
                 "sampling_domain": "6/mmm fundamental region",
                 "sampling_method": "orix cubochoric",
                 "nominal_angular_spacing_degrees": orientation_resolution,
+                "entry_count": int(len(quaternions)),
+                "coverage_validation": {
+                    "fundamental_region": "orix D6h cubochoric sampler",
+                    "unit_norm_checked": True,
+                    "canonical_scalar_rule_checked": "w >= 0",
+                    "duplicate_check": "unique after rounding wxyz to 12 decimal places",
+                    "unique_entry_count": int(len(quaternions)),
+                },
             },
             "entries": {"path": "entries.csv", "count": int(len(quaternions))},
             "representation": {
@@ -780,7 +937,28 @@ def publish_ice_ih_candidate_dictionary(
                 "sphere_frame": "crystal",
                 "sphere_handedness": "right-handed",
                 "hemisphere_or_full_sphere": "full sphere",
+                "sphere_axis_labels": ["crystal_x", "crystal_y", "crystal_z"],
+                "angular_units": "degrees",
+                "sampling_resolution": {
+                    "direction_grid": "orix spherified_cube_edge",
+                    "nominal_spacing_degrees": direction_resolution,
+                    "direction_count": int(len(directions)),
+                },
+                "antipodal_assumption": "none; upper and lower master hemispheres are distinct",
                 "interpolation_method": "bilinear; upper owns equator",
+            },
+            "generation": {
+                "generation_method": "kinematical master sampling into a spherical candidate cache",
+                "software_name": "Kikuchi Atlas dictionary builder",
+                "software_version": "local source-controlled implementation",
+                "source_code_commit": "recorded by the consumer release, not inferred at build time",
+                "accelerating_voltage_kv": parsed_source["energy_kev"],
+                "master_pattern_source": parsed_source["master_product_id"],
+                "postprocessing_steps": [
+                    "raw master bilinear sampling",
+                    "per-row mean centering",
+                    "per-row L2 normalization",
+                ],
             },
             "candidate_cache": {
                 "path": "cache/candidate-matrix.npy",
@@ -801,14 +979,34 @@ def publish_ice_ih_candidate_dictionary(
             },
             "matching_compatibility": {
                 "observed_input": "spherical signal on exact cache directions",
+                "accepted_observed_signal_dtypes": ["float32", "float64"],
+                "detector_pattern_input": "not accepted directly; explicit adapter required",
                 "observed_preprocessing": "mean-center and L2-normalize",
+                "required_preprocessing": {
+                    "mask": "none in canonical comparison; adapter mask must be explicit",
+                    "background": "not defined by this resource",
+                    "saturation": "not defined by this resource",
+                    "normalization": "mean-center and L2-normalize after exact S2 sampling",
+                },
+                "supported_metrics": ["normalized-cosine"],
+                "phase_candidates": ["ice-ih-average-oxygen-sublattice"],
+                "multi_phase_matching": False,
+                "expected_output": "ranked candidate entry ids with normalized-cosine scores",
                 "detector_adapter": "not included; detector geometry and preprocessing must be explicit",
+                "required_runtime_geometry": [
+                    "projection_model",
+                    "pattern_center_convention",
+                    "pcx",
+                    "pcy",
+                    "pcz",
+                    "sample_tilt_degrees",
+                    "camera_tilt_degrees",
+                    "beam_direction",
+                    "detector_normal",
+                    "detector_pixel_origin",
+                ],
             },
-            "validation": {
-                "observed_fixture": "validation/observed-cache-entry-000000.npy",
-                "expected_results": "validation/expected-ranking.json",
-                "kind": "deterministic cache integrity ranking",
-            },
+            "validation": validation,
             "claim_boundary": {
                 "experimental_ebsd_validated": False,
                 "detector_calibrated": False,
@@ -1007,12 +1205,86 @@ def verify_ice_ih_candidate_dictionary(
         expected = json.loads(expected_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise ValueError("expected validation result is unreadable") from error
-    expected_top = expected.get("expected_top_entry_index") if isinstance(expected, dict) else None
+    if not isinstance(expected, dict) or expected.get("schema_version") != 1:
+        raise ValueError("expected validation result has an unsupported schema")
+    if expected.get("observed_signal") != validation.get("observed_fixture"):
+        raise ValueError("expected validation result differs from manifest fixture path")
+    if expected.get("score_metric") != "normalized-cosine":
+        raise ValueError("expected validation result lacks the declared score metric")
+    expected_top = expected.get("expected_top_entry_index")
     if not isinstance(expected_top, int):
         raise ValueError("expected validation result lacks an integer top entry index")
     ranking = rank_candidate_matrix(candidate_matrix, observed, top_k=1)
     if ranking[0].entry_index != expected_top:
         raise ValueError("expected validation ranking differs from recomputed cache ranking")
+    validation_kind = validation.get("kind")
+    if validation_kind == "deterministic cache integrity ranking":
+        if expected_top != 0 or not np.array_equal(observed, candidate_matrix[0]):
+            raise ValueError("deterministic cache validation fixture differs from entry zero")
+    elif validation_kind == "held-out synthetic coarse-to-refined recovery":
+        configuration = expected.get("configuration")
+        if not isinstance(configuration, dict):
+            raise ValueError("held-out recovery validation lacks a configuration")
+        parsed_configuration = _synthetic_recovery_configuration(configuration)
+        if (
+            parsed_configuration is None
+            or validation.get("synthetic_recovery") != parsed_configuration
+        ):
+            raise ValueError("held-out recovery configuration differs from the manifest")
+        recovery = run_synthetic_recovery(
+            master,
+            quaternions,
+            directions,
+            candidate_matrix,
+            held_out_rotation_vector_degrees=parsed_configuration[
+                "held_out_rotation_vector_degrees"
+            ],
+            local_half_width_degrees=float(parsed_configuration["local_half_width_degrees"]),
+            local_step_degrees=float(parsed_configuration["local_step_degrees"]),
+        )
+        recomputed_observed = build_candidate_matrix(
+            master,
+            np.asarray((recovery.held_out_quaternion_wxyz,), dtype=np.float64),
+            directions,
+        )[0]
+        if not np.allclose(observed, recomputed_observed, rtol=0.0, atol=2e-6):
+            raise ValueError("held-out recovery fixture differs from its declared orientation")
+        recorded_recovery = expected.get("recovery")
+        if not isinstance(recorded_recovery, dict):
+            raise ValueError("held-out recovery validation lacks diagnostics")
+        recomputed_recovery = _recovery_record(recovery)
+        integer_fields = {
+            "reference_entry_index",
+            "coarse_entry_index",
+            "local_entry_count",
+        }
+        scalar_fields = {
+            "coarse_score",
+            "coarse_error_degrees",
+            "refined_score",
+            "refined_error_degrees",
+        }
+        vector_fields = {"refined_quaternion_wxyz", "held_out_quaternion_wxyz"}
+        expected_fields = integer_fields | scalar_fields | vector_fields
+        if set(recorded_recovery) != expected_fields:
+            raise ValueError("held-out recovery diagnostics differ from the package contract")
+        for field in integer_fields:
+            if recorded_recovery[field] != recomputed_recovery[field]:
+                raise ValueError(f"held-out recovery integer diagnostic differs: {field}")
+        for field in scalar_fields:
+            if not np.isclose(recorded_recovery[field], recomputed_recovery[field], atol=2e-8):
+                raise ValueError(f"held-out recovery scalar diagnostic differs: {field}")
+        for field in vector_fields:
+            if not np.allclose(
+                recorded_recovery[field], recomputed_recovery[field], rtol=0.0, atol=2e-8
+            ):
+                raise ValueError(f"held-out recovery orientation diagnostic differs: {field}")
+        if recovery.coarse_entry_index != expected_top:
+            raise ValueError("held-out recovery coarse result differs from ranking fixture")
+        if recovery.refined_error_degrees >= recovery.coarse_error_degrees:
+            raise ValueError("held-out recovery does not improve its angular diagnostic")
+    else:
+        raise ValueError("dictionary manifest declares an unsupported validation kind")
     return IceIhCandidateDictionaryVerification(
         dictionary_id=dictionary_id,
         path=root,

@@ -67,6 +67,8 @@ indexing accuracy until declared acquired reference patterns are available.
 
 The accompanying `scripts/run_ice_ih_synthetic_recovery.py` seals the first
 held-out recovery proof as a checksum-bearing local bundle with a visual
-diagnostic. It is intentionally separate from the immutable v0.1.0 cache;
-future resource versions will carry this validation evidence inside the package
-itself.
+diagnostic. Immutable `v0.1.2` carries the same held-out fixture, its exact
+coarse-to-refined diagnostics, and the non-acquisition claim boundary inside
+the package, as well as detector-independent contract metadata; the visual
+companion remains useful for human review. The next gate is a consumer-side
+contract check, not a stronger accuracy claim.

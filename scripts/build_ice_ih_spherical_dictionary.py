@@ -19,8 +19,8 @@ from kikuchi_lab.model.identity import stable_id
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_RECIPE = ROOT / "recipes/dictionaries/ice-ih-spherical-candidate-v0.1.0.yml"
-DEFAULT_OUTPUT = ROOT / "local/dictionaries/ice-ih-spherical-candidate-v0.1.0"
+DEFAULT_RECIPE = ROOT / "recipes/dictionaries/ice-ih-spherical-candidate-v0.1.2.yml"
+DEFAULT_OUTPUT = ROOT / "local/dictionaries/ice-ih-spherical-candidate-v0.1.2"
 
 
 def _sha256(path: Path) -> str:
@@ -68,7 +68,7 @@ def _positive_number(value: object, name: str) -> float:
 def build(recipe_path: Path, output_root: Path) -> None:
     recipe_path = recipe_path.resolve()
     recipe = _mapping(yaml.safe_load(recipe_path.read_text(encoding="utf-8")), "recipe")
-    expected = {
+    required = {
         "schema_version",
         "name",
         "dictionary_version",
@@ -79,7 +79,12 @@ def build(recipe_path: Path, output_root: Path) -> None:
         "sampling",
         "claim_boundary",
     }
-    if set(recipe) != expected or recipe["schema_version"] != 1:
+    optional = {"synthetic_recovery"}
+    if (
+        not required <= set(recipe)
+        or not set(recipe) <= required | optional
+        or recipe["schema_version"] != 1
+    ):
         raise ValueError("Ice Ih dictionary recipe fields or schema_version differ from version 1")
     if recipe["name"] != "ice-ih-spherical-candidate":
         raise ValueError("Ice Ih dictionary recipe name is unexpected")
@@ -131,6 +136,9 @@ def build(recipe_path: Path, output_root: Path) -> None:
         raise ValueError("Ice Ih dictionary master interpolation policy differs from contract")
     if sampling.get("candidate_preprocessing") != "per-row-mean-center-and-l2-normalize":
         raise ValueError("Ice Ih dictionary preprocessing policy differs from contract")
+    synthetic_recovery = recipe.get("synthetic_recovery")
+    if synthetic_recovery is not None:
+        synthetic_recovery = _mapping(synthetic_recovery, "synthetic_recovery")
     authors = recipe["authors"]
     if (
         not isinstance(authors, list)
@@ -165,6 +173,7 @@ def build(recipe_path: Path, output_root: Path) -> None:
             "schema_version": recipe["schema_version"],
             "name": recipe["name"],
             "sampling": sampling,
+            "synthetic_recovery": synthetic_recovery,
             "claim_boundary": _text(recipe["claim_boundary"], "claim_boundary"),
             "source_run_id": _text(run_manifest.get("run_id"), "source run manifest.run_id"),
             "source_master_file_sha256": _text(source_master["sha256"], "source_master.sha256"),
@@ -182,6 +191,7 @@ def build(recipe_path: Path, output_root: Path) -> None:
         direction_resolution_degrees=_positive_number(
             directions.get("nominal_spacing_degrees"), "sampling.directions.nominal_spacing_degrees"
         ),
+        synthetic_recovery=synthetic_recovery,
     )
     print(f"Published {result.dictionary_id}")
     print(f"Path: {result.path}")

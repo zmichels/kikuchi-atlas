@@ -103,6 +103,11 @@ def test_published_candidate_dictionary_is_portable_and_ranks_its_fixture(tmp_pa
         authors=("Kikuchi Lab unit test",),
         orientation_resolution_degrees=30.0,
         direction_resolution_degrees=30.0,
+        synthetic_recovery={
+            "held_out_rotation_vector_degrees": (0.0, 0.0, 1.0),
+            "local_half_width_degrees": 2.0,
+            "local_step_degrees": 0.5,
+        },
     )
 
     assert result.path.is_dir()
@@ -111,14 +116,39 @@ def test_published_candidate_dictionary_is_portable_and_ranks_its_fixture(tmp_pa
     assert manifest["phase"]["phase_name"] == "Ice Ih average oxygen sublattice"
     assert manifest["candidate_cache"]["score_metric"] == "normalized-cosine"
     assert manifest["refinement"]["source"] == "canonical-master-stereographic"
+    assert manifest["citation"]["cff_path"] == "CITATION.cff"
+    assert manifest["phase"]["lattice_parameters"]["a"] == pytest.approx(4.3815)
+    assert (
+        manifest["orientation_convention"]["coverage_validation"]["unique_entry_count"]
+        == (manifest["entries"]["count"])
+    )
+    assert manifest["representation"]["sphere_axis_labels"] == [
+        "crystal_x",
+        "crystal_y",
+        "crystal_z",
+    ]
+    assert manifest["matching_compatibility"]["detector_pattern_input"] == (
+        "not accepted directly; explicit adapter required"
+    )
     assert (result.path / "master/ice-ih-master-stereographic.npy").is_file()
     assert (result.path / "cache/candidate-matrix.npy").is_file()
     assert (result.path / "entries.csv").is_file()
+    roles = {record["path"]: record["role"] for record in manifest["files"]}
+    assert roles["entries.csv"] == "entries"
+    assert roles["master/ice-ih-master-stereographic.npy"] == "spherical_signal"
+    assert roles["validation/expected-recovery.json"] == "validation"
+    assert manifest["validation"]["kind"] == "held-out synthetic coarse-to-refined recovery"
+    expected = json.loads(
+        (result.path / "validation/expected-recovery.json").read_text(encoding="utf-8")
+    )
+    assert (
+        expected["recovery"]["refined_error_degrees"] < expected["recovery"]["coarse_error_degrees"]
+    )
 
     verification = verify_ice_ih_candidate_dictionary(result.path)
     assert verification.dictionary_id == result.dictionary_id
     assert verification.entry_count == manifest["entries"]["count"]
-    assert verification.expected_top_entry_index == 0
+    assert verification.expected_top_entry_index == expected["recovery"]["coarse_entry_index"]
 
 
 def test_local_refinement_improves_an_off_grid_synthetic_orientation() -> None:
