@@ -631,7 +631,7 @@ products:
     families: [direct-reflector-template]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/forsterite/forsterite-wide.svg
-    preview_path:
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/forsterite/forsterite-wide.png
     bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
     provenance_path:
     recipe: recipes/art/five-phase-hemisphere-series.yml
@@ -647,7 +647,7 @@ products:
     families: [direct-reflector-template]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/ice-ih/ice-ih-wide.svg
-    preview_path:
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/ice-ih/ice-ih-wide.png
     bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
     provenance_path:
     recipe: recipes/art/five-phase-hemisphere-series.yml
@@ -663,7 +663,7 @@ products:
     families: [direct-reflector-template]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/quartz/quartz-wide.svg
-    preview_path:
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/quartz/quartz-wide.png
     bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
     provenance_path:
     recipe: recipes/art/five-phase-hemisphere-series.yml
@@ -679,7 +679,7 @@ products:
     families: [direct-reflector-template]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/zircon/zircon-wide.svg
-    preview_path:
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/zircon/zircon-wide.png
     bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
     provenance_path:
     recipe: recipes/art/five-phase-hemisphere-series.yml
@@ -695,7 +695,7 @@ products:
     families: [direct-reflector-template]
     format: svg
     media_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/titanite/titanite-wide.svg
-    preview_path:
+    preview_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1/titanite/titanite-wide.png
     bundle_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
     provenance_path:
     recipe: recipes/art/five-phase-hemisphere-series.yml

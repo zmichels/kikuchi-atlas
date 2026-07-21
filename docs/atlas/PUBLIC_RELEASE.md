@@ -6,7 +6,7 @@ The source repository is public at
 [`zmichels/kikuchi-atlas`](https://github.com/zmichels/kikuchi-atlas), and its
 browser-safe static gallery is public at
 [`zmichels.github.io/kikuchi-atlas`](https://zmichels.github.io/kikuchi-atlas/).
-The gallery deployment is a `0.1.0-draft` prerelease payload: it exposes the
+The gallery deployment is a `0.1.0-draft.1` prerelease payload: it exposes the
 curated web assets only. The separately reviewed archive and DOI release
 remain intentionally unpublished.
 
@@ -46,7 +46,7 @@ them; redundant run intermediates stay recipe-reconstructible.
 ## Current static-gallery deployment
 
 The Pages workflow reconstructs the gallery from the ordered assets on the
-[`atlas-gallery-web-0.1.0-draft` prerelease](https://github.com/zmichels/kikuchi-atlas/releases/tag/atlas-gallery-web-0.1.0-draft),
+[`atlas-gallery-web-0.1.0-draft.1` prerelease](https://github.com/zmichels/kikuchi-atlas/releases/tag/atlas-gallery-web-0.1.0-draft.1),
 checks the reconstructed ZIP against its recorded SHA-256, and deploys only
 the resulting static `site/` tree. The release payload is deliberately a
 technical deployment transport rather than the final archival distribution.

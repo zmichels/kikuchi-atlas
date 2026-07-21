@@ -55,6 +55,21 @@ def test_product_registry_models_individual_products_and_common_core_families() 
     ]
     assert all(product.preview_path is not None for product in direct_reflector_products)
     assert all(product.preview_path.suffix == ".png" for product in direct_reflector_products)
+    wide_direct_products = [
+        product
+        for product in products
+        if product.identifier.endswith("-direct-wide")
+    ]
+    assert {product.identifier for product in wide_direct_products} == {
+        "forsterite-direct-wide",
+        "ice-ih-direct-wide",
+        "quartz-direct-wide",
+        "zircon-direct-wide",
+        "titanite-direct-wide",
+    }
+    assert all(product.preview_path is not None for product in wide_direct_products)
+    assert all(product.preview_path.suffix == ".png" for product in wide_direct_products)
+    assert all(product.preview_path.is_file() for product in wide_direct_products)
     assert {
         product.identifier for product in products if product.hero
     } == {

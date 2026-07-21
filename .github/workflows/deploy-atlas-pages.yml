@@ -6,12 +6,12 @@ on:
       release_tag:
         description: GitHub prerelease containing chunks of the verified static gallery ZIP
         required: true
-        default: atlas-gallery-web-0.1.0-draft
+        default: atlas-gallery-web-0.1.0-draft.1
         type: string
       asset_glob:
         description: Glob matching the ordered static-gallery ZIP chunks to deploy
         required: true
-        default: kikuchi-atlas-gallery-web-0.1.0-draft.zip.part-*
+        default: kikuchi-atlas-gallery-web-0.1.0-draft.1.zip.part-*
         type: string
 
 permissions:
@@ -47,7 +47,7 @@ jobs:
           test "${#chunks[@]}" -gt 1
           printf '%s\n' "${chunks[@]}" | LC_ALL=C sort | xargs cat > gallery.zip
           test "$(sha256sum gallery.zip | cut -d ' ' -f1)" = \
-            "010f252558d1bf4e8d6241c0aba47fc63073de2a175bfeca46d825c18cf18d16"
+            "e34c1b78b8503e72c7dad7d375e02c689bf3dce09c6a4123ddd0ea9441684ba9"
           unzip -q gallery.zip -d site
           test -f site/index.html
 
