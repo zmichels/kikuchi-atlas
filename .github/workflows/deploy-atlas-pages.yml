@@ -1,0 +1,55 @@
+name: Deploy Kikuchi Atlas gallery
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: GitHub prerelease containing the verified static gallery ZIP
+        required: true
+        default: atlas-gallery-web-0.1.0-draft
+        type: string
+      asset_name:
+        description: Static-gallery ZIP asset to deploy
+        required: true
+        default: kikuchi-atlas-gallery-web-0.1.0-draft.zip
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: kikuchi-atlas-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Download curated gallery payload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p payload site
+          gh release download "${{ inputs.release_tag }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "${{ inputs.asset_name }}" \
+            --dir payload
+          unzip -q "payload/${{ inputs.asset_name }}" -d site
+          test -f site/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
