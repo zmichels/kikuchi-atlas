@@ -81,11 +81,12 @@ input—with their roles and excluded adapter boundary stated in the output:
 
 ```bash
 uv run python scripts/render_ice_ih_dictionary_signal_space_bridge.py \
-  --output local/dictionaries/ice-ih-signal-space-bridge-v0.1.0
+  --output local/dictionaries/ice-ih-signal-space-bridge-v0.1.1
 ```
 
 See [the signal-space bridge acceptance record](../acceptance/ice-ih-dictionary-signal-space-bridge.md)
-for its source run, input identity, and nonclaims.
+for its source run, input identity, declared camera-footprint overlay, and
+nonclaims.
 
 The resource is a kinematical oxygen-sublattice candidate search. It does not
 yet claim acquired-pattern calibration or distinguish Ice Ic, stacking-

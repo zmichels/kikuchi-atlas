@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 import hashlib
 import os
@@ -106,6 +107,49 @@ def _load_signal(path: Path, count: int) -> np.ndarray:
     return np.ascontiguousarray(centered / norm, dtype=np.float64)
 
 
+def _unit_vectors(value: object, *, name: str, minimum_count: int = 1) -> np.ndarray:
+    vectors = np.asarray(value, dtype=np.float64)
+    if vectors.ndim != 2 or vectors.shape[1] != 3 or len(vectors) < minimum_count:
+        raise ValueError(f"{name} must have shape (N, 3) with at least {minimum_count} vectors")
+    if not np.all(np.isfinite(vectors)):
+        raise ValueError(f"{name} must contain finite values")
+    norms = np.linalg.norm(vectors, axis=1)
+    if not np.allclose(norms, 1.0, rtol=0.0, atol=_UNIT_TOLERANCE):
+        raise ValueError(f"{name} must contain unit vectors")
+    return np.ascontiguousarray(vectors)
+
+
+def sample_frame_rays_from_gnomonic(
+    gnomonic_coordinates: object,
+    sample_to_detector_matrix: object,
+) -> np.ndarray:
+    """Map `(gy, gx)` gnomonic rays to unit sample-frame directions.
+
+    ``sample_to_detector_matrix`` maps sample-frame column vectors into the
+    detector frame. A detector ray has local coordinates `(gx, gy, 1)`, so its
+    row-vector sample-frame inverse is `ray_detector @ matrix`. This is a
+    geometry-only conversion: it neither samples nor alters detector intensity.
+    """
+    gnomonic = np.asarray(gnomonic_coordinates, dtype=np.float64)
+    if gnomonic.ndim != 2 or gnomonic.shape[1] != 2 or len(gnomonic) == 0:
+        raise ValueError("gnomonic_coordinates must be a non-empty (N, 2) array")
+    if not np.all(np.isfinite(gnomonic)):
+        raise ValueError("gnomonic_coordinates must contain finite values")
+    matrix = np.asarray(sample_to_detector_matrix, dtype=np.float64)
+    if matrix.shape != (3, 3) or not np.all(np.isfinite(matrix)):
+        raise ValueError("sample_to_detector_matrix must be a finite (3, 3) array")
+    identity = np.eye(3, dtype=np.float64)
+    if not np.allclose(matrix @ matrix.T, identity, rtol=0.0, atol=_UNIT_TOLERANCE):
+        raise ValueError("sample_to_detector_matrix must be orthonormal")
+    if not np.isclose(np.linalg.det(matrix), 1.0, rtol=0.0, atol=_UNIT_TOLERANCE):
+        raise ValueError("sample_to_detector_matrix must be right-handed")
+    gy, gx = gnomonic.T
+    detector_rays = np.column_stack((gx, gy, np.ones(len(gnomonic), dtype=np.float64)))
+    sample_rays = detector_rays @ matrix
+    sample_rays /= np.linalg.norm(sample_rays, axis=1, keepdims=True)
+    return _unit_vectors(sample_rays, name="sample-frame rays")
+
+
 def _write_figure(
     path: Path,
     *,
@@ -113,6 +157,8 @@ def _write_figure(
     master_image: np.ndarray,
     directions: np.ndarray,
     observed_signal: np.ndarray,
+    detector_footprint_directions: np.ndarray,
+    detector_pc_direction: np.ndarray,
     phase_name: str,
 ) -> None:
     figure, axes = plt.subplots(1, 3, figsize=(18, 8))
@@ -147,7 +193,25 @@ def _write_figure(
 
     longitude = np.degrees(np.arctan2(directions[:, 1], directions[:, 0]))
     latitude = np.degrees(np.arcsin(np.clip(directions[:, 2], -1.0, 1.0)))
+    footprint_longitude = np.degrees(
+        np.arctan2(detector_footprint_directions[:, 1], detector_footprint_directions[:, 0])
+    )
+    footprint_latitude = np.degrees(
+        np.arcsin(np.clip(detector_footprint_directions[:, 2], -1.0, 1.0))
+    )
+    pc_longitude = float(np.degrees(np.arctan2(detector_pc_direction[1], detector_pc_direction[0])))
+    pc_latitude = float(np.degrees(np.arcsin(np.clip(detector_pc_direction[2], -1.0, 1.0))))
     limit = max(float(np.max(np.abs(observed_signal))), np.finfo(np.float64).eps)
+    cache_axis.fill(
+        footprint_longitude,
+        footprint_latitude,
+        facecolor="#54c5c8",
+        edgecolor="#147a84",
+        linewidth=1.8,
+        alpha=0.22,
+        label="declared detector FOV",
+        zorder=1,
+    )
     scatter = cache_axis.scatter(
         longitude,
         latitude,
@@ -157,9 +221,20 @@ def _write_figure(
         vmax=limit,
         s=13,
         linewidths=0.0,
+        zorder=2,
+    )
+    cache_axis.scatter(
+        (pc_longitude,),
+        (pc_latitude,),
+        marker="+",
+        color="#075c67",
+        s=90,
+        linewidths=1.8,
+        label="projection-center ray",
+        zorder=3,
     )
     cache_axis.set(
-        title="3. Sample-frame cache signal\nfixed S² samples; not a detector image",
+        title="3. Sample-frame cache signal\nfixed S² samples + declared detector footprint",
         xlim=(-180.0, 180.0),
         ylim=(-90.0, 90.0),
         xlabel="longitude (deg)",
@@ -167,6 +242,7 @@ def _write_figure(
     )
     cache_axis.set_facecolor("#f7f9fb")
     cache_axis.grid(alpha=0.28, linewidth=0.5)
+    cache_axis.legend(loc="lower right", fontsize=8, framealpha=0.92)
     colorbar = figure.colorbar(scatter, ax=cache_axis, fraction=0.047, pad=0.03)
     colorbar.set_label("mean-centered / L2-normalized feature value", fontsize=9)
     figure.savefig(path, dpi=180, facecolor="white")
@@ -185,6 +261,10 @@ def publish_signal_space_bridge(
     dictionary_id: str,
     dictionary_manifest_sha256: str,
     dictionary_entry_count: int,
+    detector_footprint_directions: object,
+    detector_pc_direction: object,
+    detector_geometry: Mapping[str, object],
+    extra_source_files: Sequence[Path] = (),
 ) -> SignalSpaceBridgeResult:
     """Publish a human-readable bridge for the exact current S² matcher input.
 
@@ -208,24 +288,37 @@ def publish_signal_space_bridge(
         raise ValueError("dictionary_manifest_sha256 must be a lower-case SHA-256 digest")
     if type(dictionary_entry_count) is not int or dictionary_entry_count <= 0:
         raise ValueError("dictionary_entry_count must be a positive integer")
+    if not isinstance(detector_geometry, Mapping) or not detector_geometry:
+        raise ValueError("detector_geometry must be a non-empty mapping")
 
     detector_image = detector_image.resolve()
     master_image = master_image.resolve()
     directions_path = directions_path.resolve()
     observed_signal_path = observed_signal_path.resolve()
-    source_files = sorted(
-        (
+    declared_sources = (
             _source_file(detector_image, source_root),
             _source_file(master_image, source_root),
             _source_file(directions_path, source_root),
             _source_file(observed_signal_path, source_root),
-        ),
+            *(_source_file(Path(path).resolve(), source_root) for path in extra_source_files),
+        )
+    source_files = sorted(
+        {str(record["path"]): record for record in declared_sources}.values(),
         key=lambda record: str(record["path"]),
     )
     directions = _load_directions(directions_path)
     observed_signal = _load_signal(observed_signal_path, len(directions))
     detector_pixels = _load_rgb(detector_image)
     master_pixels = _load_rgb(master_image)
+    detector_footprint = _unit_vectors(
+        detector_footprint_directions,
+        name="detector_footprint_directions",
+        minimum_count=4,
+    )
+    detector_pc = _unit_vectors(
+        np.asarray(detector_pc_direction, dtype=np.float64).reshape(1, 3),
+        name="detector_pc_direction",
+    )[0]
 
     staging = output_root.parent / f".{output_root.name}.{uuid4().hex}.partial"
     staging.mkdir(parents=True)
@@ -237,6 +330,8 @@ def publish_signal_space_bridge(
             master_image=master_pixels,
             directions=directions,
             observed_signal=observed_signal,
+            detector_footprint_directions=detector_footprint,
+            detector_pc_direction=detector_pc,
             phase_name=phase_name,
         )
         manifest = {
@@ -252,6 +347,13 @@ def publish_signal_space_bridge(
                 "direction_frame": "sample",
                 "normalization": "mean-center-and-L2-normalize",
                 "matching_metric": "normalized-cosine",
+            },
+            "detector_footprint": {
+                "direction_frame": "sample",
+                "boundary_direction_count": int(len(detector_footprint)),
+                "projection_center_direction": [float(value) for value in detector_pc],
+                "intensity_resampling": "not performed; geometry-only footprint",
+                "geometry": dict(detector_geometry),
             },
             "signal_spaces": [
                 {
