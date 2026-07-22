@@ -195,6 +195,23 @@ interface must carry its geometry alongside the pixels. See [the
 projection-center sensitivity acceptance
 record](../acceptance/ice-ih-projection-center-sensitivity.md).
 
+### Finite geometry candidate co-search
+
+The next rung can compare a finite set of detector geometry candidates without
+mixing score changes with different camera footprints. It intersects every
+candidate's detector-to-S2 coverage mask, then ranks each candidate using that
+same common support:
+
+```bash
+uv run python scripts/run_ice_ih_projection_center_cosearch.py
+```
+
+The source-bound 81-candidate PCx/PCy proof recovers the declared zero-offset
+geometry and identity entry on 231 shared directions. This is a reusable
+finite-grid mechanism, not a continuous calibration method or an acquired
+geometry fit. See [the shared-mask co-search acceptance
+record](../acceptance/ice-ih-projection-center-cosearch.md).
+
 ### Explicit detector observation package
 
 The first detector-input-side product is now a portable observation package:
@@ -233,7 +250,7 @@ products exist:
 
 ```bash
 uv run python scripts/build_ice_ih_engine_dashboard.py
-open local/ice-ih-engine-dashboard-v0.1.1/index.html
+open local/ice-ih-engine-dashboard-v0.1.2/index.html
 ```
 
 It links image-space Hough evidence, detector-to-S2 sampling, orientation

@@ -13,7 +13,7 @@ from uuid import uuid4
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = ROOT / "local/ice-ih-engine-dashboard-v0.1.1"
+DEFAULT_OUTPUT = ROOT / "local/ice-ih-engine-dashboard-v0.1.2"
 
 
 def _write_bytes(path: Path, payload: bytes) -> None:
@@ -155,6 +155,14 @@ def build(output_root: Path) -> Path:
             summary="A named PCx/PCy perturbation grid shows why detector geometry must travel with the pixels.",
             image=dictionaries / "ice-ih-projection-center-sensitivity-v0.1.0/projection-center-sensitivity.png",
             evidence=dictionaries / "ice-ih-projection-center-sensitivity-v0.1.0/projection-center-sensitivity.json",
+            dashboard_root=root,
+        ),
+        _card(
+            title="Shared-mask geometry co-search",
+            eyebrow="Finite geometry candidate search",
+            summary="All PC candidates are scored on the same S² directions, allowing a defensible finite comparison without calling it calibration.",
+            image=dictionaries / "ice-ih-projection-center-cosearch-v0.1.0/projection-center-cosearch.png",
+            evidence=dictionaries / "ice-ih-projection-center-cosearch-v0.1.0/projection-center-cosearch.json",
             dashboard_root=root,
         ),
         _card(

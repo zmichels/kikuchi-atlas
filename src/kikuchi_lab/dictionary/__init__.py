@@ -7,6 +7,11 @@ from .detector_to_s2 import (
     reproject_stereographic_master_to_detector,
     sample_detector_to_s2,
 )
+from .geometry_search import (
+    DetectorGeometryCandidateResult,
+    DetectorGeometrySearchResult,
+    rank_detector_geometry_candidates,
+)
 from .ice_ih import (
     CandidateMatch,
     CandidateRefinement,
@@ -56,6 +61,8 @@ __all__ = [
     "DetectorObservationPackageResult",
     "DetectorObservationPackageVerification",
     "DetectorObservationPreparation",
+    "DetectorGeometryCandidateResult",
+    "DetectorGeometrySearchResult",
     "DictionaryMatch",
     "IceIhCandidateDictionaryResult",
     "IceIhCandidateDictionaryVerification",
@@ -78,6 +85,7 @@ __all__ = [
     "quaternion_rotation_matrices",
     "quaternion_rotation_matrix",
     "rank_candidate_matrix",
+    "rank_detector_geometry_candidates",
     "rank_masked_candidate_matrix",
     "rank_spherical_dictionary",
     "reproject_stereographic_master_to_detector",

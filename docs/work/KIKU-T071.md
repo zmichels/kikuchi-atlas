@@ -30,6 +30,6 @@ photometric-stress artifacts to their underlying evidence files.
 
 ## Completion Evidence
 
-`local/ice-ih-engine-dashboard-v0.1.1/index.html` opens the six current
+`local/ice-ih-engine-dashboard-v0.1.2/index.html` opens the seven current
 evidence products from a single dark-theme page and links the verified detector
 observation manifest directly.
