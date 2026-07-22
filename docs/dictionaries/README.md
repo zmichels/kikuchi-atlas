@@ -233,7 +233,7 @@ products exist:
 
 ```bash
 uv run python scripts/build_ice_ih_engine_dashboard.py
-open local/ice-ih-engine-dashboard-v0.1.0/index.html
+open local/ice-ih-engine-dashboard-v0.1.1/index.html
 ```
 
 It links image-space Hough evidence, detector-to-S2 sampling, orientation

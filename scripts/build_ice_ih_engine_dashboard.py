@@ -13,7 +13,7 @@ from uuid import uuid4
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = ROOT / "local/ice-ih-engine-dashboard-v0.1.0"
+DEFAULT_OUTPUT = ROOT / "local/ice-ih-engine-dashboard-v0.1.1"
 
 
 def _write_bytes(path: Path, payload: bytes) -> None:
@@ -25,7 +25,7 @@ def _write_bytes(path: Path, payload: bytes) -> None:
 
 
 def _relative_from_dashboard(dashboard_root: Path, path: Path) -> str:
-    return path.resolve().relative_to(dashboard_root.parent.resolve()).as_posix()
+    return Path(os.path.relpath(path.resolve(), start=dashboard_root.resolve())).as_posix()
 
 
 def _required_file(path: Path) -> Path:

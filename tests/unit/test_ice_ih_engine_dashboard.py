@@ -29,3 +29,10 @@ def test_dashboard_html_keeps_observation_boundary_and_evidence_links() -> None:
     assert "identity-preprocessing only" in page
     assert 'href="dictionaries/example.json"' in page
     assert 'src="dictionaries/example.png"' in page
+
+
+def test_dashboard_links_are_relative_to_the_index_file_not_local_root(tmp_path) -> None:
+    dashboard = tmp_path / "local/ice-ih-engine-dashboard-v0.1.1"
+    evidence = tmp_path / "local/dictionaries/example.png"
+
+    assert MODULE._relative_from_dashboard(dashboard, evidence) == "../dictionaries/example.png"
