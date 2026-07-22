@@ -177,6 +177,24 @@ from the same canonical master, not a calibrated or acquired-pattern indexing
 benchmark. See [the off-grid detector-refinement acceptance
 record](../acceptance/ice-ih-offgrid-detector-refinement.md).
 
+### Projection-center sensitivity gate
+
+The detector-to-S2 adapter now makes the importance of named camera geometry
+explicit. It holds the source detector image fixed while rerunning its S2
+sampling and coarse dictionary ranking over a PCx/PCy offset grid:
+
+```bash
+uv run python scripts/run_ice_ih_projection_center_sensitivity.py
+```
+
+The source-declared center returns the nominal Ice Ih identity entry, while
+the deliberately broad synthetic grid reveals structured score changes,
+coverage changes, and orientation failures. This is not a fitted calibration
+or experimental tolerance; it is a clear reason any future detector pattern
+interface must carry its geometry alongside the pixels. See [the
+projection-center sensitivity acceptance
+record](../acceptance/ice-ih-projection-center-sensitivity.md).
+
 The resource is a kinematical oxygen-sublattice candidate search. It does not
 yet claim acquired-pattern calibration or distinguish Ice Ic, stacking-
 disordered ice, amorphous ice, high-pressure polymorphs, or detailed hydrogen
