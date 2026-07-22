@@ -142,6 +142,23 @@ legible. It remains a synthetic convention/integrity proof—not an acquired
 pattern benchmark or an independent simulation comparison. See [the recovery
 acceptance record](../acceptance/ice-ih-synthetic-detector-orientation-recovery.md).
 
+### Detector Hough-space diagnostic
+
+The source detector now also has a native-resolution image-space Hough
+diagnostic—separate from the spherical dictionary matcher:
+
+```bash
+uv run python scripts/run_ice_ih_detector_hough_diagnostic.py
+```
+
+It retains the top `0.8%` finite-difference gradient pixels without Gaussian
+blur, overlays the strongest line hypotheses on the original detector image,
+and records the full line accumulator. This is the true detector-image
+Hough-space view that the sparse S2 cache deliberately is not. It is not yet a
+crystallographic band solver, geometry-aware indexer, or acquired-pattern
+benchmark. See [the Hough diagnostic acceptance
+record](../acceptance/ice-ih-detector-hough-diagnostic.md).
+
 The resource is a kinematical oxygen-sublattice candidate search. It does not
 yet claim acquired-pattern calibration or distinguish Ice Ic, stacking-
 disordered ice, amorphous ice, high-pressure polymorphs, or detailed hydrogen
