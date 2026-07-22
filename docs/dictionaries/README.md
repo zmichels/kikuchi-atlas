@@ -124,6 +124,24 @@ bridge; it does not independently validate physics, calibrate a detector, or
 measure acquired-pattern accuracy. See [the congruence acceptance
 record](../acceptance/ice-ih-master-detector-congruence.md).
 
+### Orientation-varied synthetic detector recovery
+
+The first end-to-end orientation proof deliberately chooses four separated
+cache entries, reprojects the canonical master to the same named detector, and
+returns each partial-S2 signal to the cache ranker:
+
+```bash
+uv run python scripts/run_ice_ih_synthetic_detector_orientation_recovery.py
+```
+
+Entries `6577`, `15`, `297`, and `7144` all recover themselves first using the
+same 308-direction coverage mask, with scores from `0.999790539` to
+`0.999966178`. The compact visual bundle is useful for reviewing how genuine
+orientation changes look in detector space while keeping the ranker output
+legible. It remains a synthetic convention/integrity proof—not an acquired
+pattern benchmark or an independent simulation comparison. See [the recovery
+acceptance record](../acceptance/ice-ih-synthetic-detector-orientation-recovery.md).
+
 The resource is a kinematical oxygen-sublattice candidate search. It does not
 yet claim acquired-pattern calibration or distinguish Ice Ic, stacking-
 disordered ice, amorphous ice, high-pressure polymorphs, or detailed hydrogen
