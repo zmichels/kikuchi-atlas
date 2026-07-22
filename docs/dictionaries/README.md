@@ -159,6 +159,24 @@ crystallographic band solver, geometry-aware indexer, or acquired-pattern
 benchmark. See [the Hough diagnostic acceptance
 record](../acceptance/ice-ih-detector-hough-diagnostic.md).
 
+### Held-out detector orientation refinement
+
+The cache can now act as a coarse seed for a local orientation search while
+retaining the exact covered S2 directions of the declared detector. This
+deliberately uses truths that are absent from the coarse cache:
+
+```bash
+uv run python scripts/run_ice_ih_offgrid_detector_refinement.py
+```
+
+For three separate detector views, the local masked refinement reduces coarse
+angular errors of `3.069`, `0.823`, and `3.069` degrees to `0.346`, `0.528`,
+and `0.412` degrees. This is a useful engine proof—coarse dictionary lookup
+followed by a finer orientation estimate—but remains a self-consistency result
+from the same canonical master, not a calibrated or acquired-pattern indexing
+benchmark. See [the off-grid detector-refinement acceptance
+record](../acceptance/ice-ih-offgrid-detector-refinement.md).
+
 The resource is a kinematical oxygen-sublattice candidate search. It does not
 yet claim acquired-pattern calibration or distinguish Ice Ic, stacking-
 disordered ice, amorphous ice, high-pressure polymorphs, or detailed hydrogen

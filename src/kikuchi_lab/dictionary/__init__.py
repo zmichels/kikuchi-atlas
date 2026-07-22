@@ -2,6 +2,7 @@
 
 from .detector_to_s2 import (
     DetectorToS2Sample,
+    local_refine_masked_candidate,
     rank_masked_candidate_matrix,
     reproject_stereographic_master_to_detector,
     sample_detector_to_s2,
@@ -56,6 +57,7 @@ __all__ = [
     "downsample_to_cube_shell",
     "ice_ih_s2_directions",
     "ice_ih_so3_orientations",
+    "local_refine_masked_candidate",
     "local_refine_candidate",
     "publish_ice_ih_candidate_dictionary",
     "quaternion_from_rotation_vectors_degrees",

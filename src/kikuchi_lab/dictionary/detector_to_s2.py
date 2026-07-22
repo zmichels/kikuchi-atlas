@@ -6,8 +6,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from kikuchi_lab.dictionary.ice_ih import CandidateMatch
-from kikuchi_lab.dictionary.ice_ih import sample_stereographic_master
+from kikuchi_lab.dictionary.ice_ih import (
+    CandidateMatch,
+    CandidateRefinement,
+    build_candidate_matrix,
+    compose_quaternions_wxyz,
+    quaternion_from_rotation_vectors_degrees,
+    sample_stereographic_master,
+)
 from kikuchi_lab.dictionary.signal_space_bridge import sample_frame_rays_from_gnomonic
 from kikuchi_lab.model.recipes import DetectorRecipe
 from kikuchi_lab.projection.kikuchipy_adapter import _to_kikuchipy_detector
@@ -223,3 +229,67 @@ def rank_masked_candidate_matrix(
     scores[valid] = candidates[valid] @ normalized_observed / candidate_norms[valid]
     ordered = np.lexsort((np.arange(len(scores)), -scores))[:top_k]
     return tuple(CandidateMatch(int(index), float(scores[index])) for index in ordered)
+
+
+def local_refine_masked_candidate(
+    master: object,
+    center_quaternion_wxyz: object,
+    directions: object,
+    observed_signal: object,
+    covered: object,
+    *,
+    half_width_degrees: float,
+    step_degrees: float,
+) -> CandidateRefinement:
+    """Refine a coarse orientation against an explicitly covered S2 signal.
+
+    The local candidate signals are sampled from the same raw stereographic
+    master as the coarse cache, then scored with
+    :func:`rank_masked_candidate_matrix`.  It therefore preserves the declared
+    detector coverage instead of silently promoting a partial observation to a
+    full-sphere match.  It is a geometric/signal-space primitive: experimental
+    preprocessing, calibration uncertainty, and detector response remain the
+    caller's responsibility.
+    """
+    if isinstance(half_width_degrees, bool) or not isinstance(
+        half_width_degrees, (int, float)
+    ):
+        raise ValueError("half_width_degrees must be a finite positive number")
+    if isinstance(step_degrees, bool) or not isinstance(step_degrees, (int, float)):
+        raise ValueError("step_degrees must be a finite positive number")
+    half_width = float(half_width_degrees)
+    step = float(step_degrees)
+    if not np.isfinite(half_width) or half_width <= 0.0:
+        raise ValueError("half_width_degrees must be a finite positive number")
+    if not np.isfinite(step) or step <= 0.0:
+        raise ValueError("step_degrees must be a finite positive number")
+    if step > half_width:
+        raise ValueError("step_degrees must not exceed half_width_degrees")
+
+    center = np.asarray(center_quaternion_wxyz, dtype=np.float64).reshape(1, 4)
+    center_norm = float(np.linalg.norm(center[0]))
+    if not np.all(np.isfinite(center)) or not np.isclose(
+        center_norm, 1.0, rtol=0.0, atol=_UNIT_TOLERANCE
+    ):
+        raise ValueError("center_quaternion_wxyz must be one finite unit quaternion")
+
+    coordinates = np.arange(-half_width, half_width + step * 0.5, step, dtype=np.float64)
+    local_vectors = np.stack(
+        np.meshgrid(coordinates, coordinates, coordinates, indexing="ij"), axis=-1
+    ).reshape(-1, 3)
+    deltas = quaternion_from_rotation_vectors_degrees(local_vectors)
+    candidates = compose_quaternions_wxyz(
+        np.repeat(center, len(deltas), axis=0), deltas
+    )
+    local_matrix = build_candidate_matrix(master, candidates, directions)
+    best = rank_masked_candidate_matrix(
+        local_matrix,
+        observed_signal,
+        covered,
+        top_k=1,
+    )[0]
+    return CandidateRefinement(
+        quaternion_wxyz=tuple(float(value) for value in candidates[best.entry_index]),
+        score=best.score,
+        local_entry_count=len(candidates),
+    )
