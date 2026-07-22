@@ -27,6 +27,14 @@ from .ice_ih import (
     sample_stereographic_master,
     verify_ice_ih_candidate_dictionary,
 )
+from .observation import (
+    DetectorObservationPackageResult,
+    DetectorObservationPackageVerification,
+    DetectorObservationPreparation,
+    prepare_detector_observation,
+    publish_detector_observation_package,
+    verify_detector_observation_package,
+)
 from .spherical import (
     DictionaryMatch,
     OrientationEntry,
@@ -45,6 +53,9 @@ __all__ = [
     "CandidateMatch",
     "CandidateRefinement",
     "DetectorToS2Sample",
+    "DetectorObservationPackageResult",
+    "DetectorObservationPackageVerification",
+    "DetectorObservationPreparation",
     "DictionaryMatch",
     "IceIhCandidateDictionaryResult",
     "IceIhCandidateDictionaryVerification",
@@ -60,6 +71,7 @@ __all__ = [
     "local_refine_masked_candidate",
     "local_refine_candidate",
     "publish_ice_ih_candidate_dictionary",
+    "publish_detector_observation_package",
     "quaternion_from_rotation_vectors_degrees",
     "quaternion_misorientation_degrees",
     "publish_spherical_dictionary",
@@ -73,7 +85,9 @@ __all__ = [
     "run_synthetic_recovery",
     "sample_stereographic_master",
     "sample_detector_to_s2",
+    "prepare_detector_observation",
     "SyntheticRecovery",
     "verify_ice_ih_candidate_dictionary",
+    "verify_detector_observation_package",
     "verify_spherical_dictionary",
 ]

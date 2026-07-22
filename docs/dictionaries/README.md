@@ -195,6 +195,52 @@ interface must carry its geometry alongside the pixels. See [the
 projection-center sensitivity acceptance
 record](../acceptance/ice-ih-projection-center-sensitivity.md).
 
+### Explicit detector observation package
+
+The first detector-input-side product is now a portable observation package:
+raw numeric pixels, declared TSL geometry, an explicit `identity`
+preprocessing stage, the byte-stored fixed S2 grid, partial-S2 values,
+coverage, manifest, and checksums.
+
+```bash
+uv run python scripts/publish_ice_ih_source_observation.py
+```
+
+This first fixture is still the checked simulated source detector; it is not
+an acquired Ice reference. Its narrow identity-only contract is deliberate:
+the package will refuse a hidden background, gain, denoising, blur, or
+saturation operation rather than silently applying one. See [the observation
+input acceptance record](../acceptance/ice-ih-observation-input-contract.md).
+
+### Transparent photometric stress sheet
+
+The cache also has a six-condition detector-image stress sheet: identity,
+affine contrast, row and column ramps, upper saturation, and seeded additive
+noise. All are named synthetic inputs—not accepted observation preprocessing:
+
+```bash
+uv run python scripts/run_ice_ih_photometric_stress.py
+```
+
+Within this narrow source-bound test, every condition retains the identity
+coarse winner, while its score falls most under configured saturation. See
+[the photometric-stress acceptance record](../acceptance/ice-ih-photometric-stress.md).
+
+### Browsable engine evidence
+
+For a visual local handoff, build the evidence dashboard after the above
+products exist:
+
+```bash
+uv run python scripts/build_ice_ih_engine_dashboard.py
+open local/ice-ih-engine-dashboard-v0.1.0/index.html
+```
+
+It links image-space Hough evidence, detector-to-S2 sampling, orientation
+recovery/refinement, geometry sensitivity, stress inputs, and the observation
+manifest from one page. It is a local evidence index, not a published
+benchmark or an indexing UI.
+
 The resource is a kinematical oxygen-sublattice candidate search. It does not
 yet claim acquired-pattern calibration or distinguish Ice Ic, stacking-
 disordered ice, amorphous ice, high-pressure polymorphs, or detailed hydrogen
