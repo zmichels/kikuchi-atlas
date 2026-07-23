@@ -13,7 +13,7 @@ from uuid import uuid4
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = ROOT / "local/ice-ih-engine-dashboard-v0.1.2"
+DEFAULT_OUTPUT = ROOT / "local/ice-ih-engine-dashboard-v0.1.3"
 
 
 def _write_bytes(path: Path, payload: bytes) -> None:
@@ -163,6 +163,14 @@ def build(output_root: Path) -> Path:
             summary="All PC candidates are scored on the same S² directions, allowing a defensible finite comparison without calling it calibration.",
             image=dictionaries / "ice-ih-projection-center-cosearch-v0.1.0/projection-center-cosearch.png",
             evidence=dictionaries / "ice-ih-projection-center-cosearch-v0.1.0/projection-center-cosearch.json",
+            dashboard_root=root,
+        ),
+        _card(
+            title="Virtual-camera transfer",
+            eyebrow="Named geometry profiles",
+            summary="Three declared virtual cameras change the detector view and S² coverage while each known orientation still recovers under its own profile-specific metric.",
+            image=dictionaries / "ice-ih-virtual-camera-transfer-v0.1.2/virtual-camera-transfer.png",
+            evidence=dictionaries / "ice-ih-virtual-camera-transfer-v0.1.2/virtual-camera-transfer.json",
             dashboard_root=root,
         ),
         _card(

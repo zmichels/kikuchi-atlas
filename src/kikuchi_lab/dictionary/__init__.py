@@ -7,6 +7,7 @@ from .detector_to_s2 import (
     reproject_stereographic_master_to_detector,
     sample_detector_to_s2,
 )
+from .detector_profiles import DetectorProfile, ice_ih_virtual_camera_profiles
 from .geometry_search import (
     DetectorGeometryCandidateResult,
     DetectorGeometrySearchResult,
@@ -61,6 +62,7 @@ __all__ = [
     "DetectorObservationPackageResult",
     "DetectorObservationPackageVerification",
     "DetectorObservationPreparation",
+    "DetectorProfile",
     "DetectorGeometryCandidateResult",
     "DetectorGeometrySearchResult",
     "DictionaryMatch",
@@ -75,6 +77,7 @@ __all__ = [
     "downsample_to_cube_shell",
     "ice_ih_s2_directions",
     "ice_ih_so3_orientations",
+    "ice_ih_virtual_camera_profiles",
     "local_refine_masked_candidate",
     "local_refine_candidate",
     "publish_ice_ih_candidate_dictionary",

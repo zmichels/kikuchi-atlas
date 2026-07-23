@@ -212,6 +212,25 @@ finite-grid mechanism, not a continuous calibration method or an acquired
 geometry fit. See [the shared-mask co-search acceptance
 record](../acceptance/ice-ih-projection-center-cosearch.md).
 
+### Declared virtual-camera transfer
+
+The final first-pass Ice geometry proof uses three separately declared virtual
+camera views: the checked source geometry plus shorter- and longer-distance
+variants. For two known cache orientations, each view is reprojected from the
+same canonical master, sampled through its own detector-to-S2 map, and ranked
+only on its own coverage mask:
+
+```bash
+uv run python scripts/run_ice_ih_virtual_camera_transfer.py
+```
+
+The nominal, wide, and narrow virtual views retain 308, 390, and 196 of the
+1,946 fixed directions, respectively, and recover both target entries first.
+This establishes a reusable named-geometry adapter seam, not a commercial
+camera model, cross-instrument calibration, or acquired-pattern result. See
+[the virtual-camera transfer acceptance
+record](../acceptance/ice-ih-virtual-camera-transfer.md).
+
 ### Explicit detector observation package
 
 The first detector-input-side product is now a portable observation package:
@@ -250,7 +269,7 @@ products exist:
 
 ```bash
 uv run python scripts/build_ice_ih_engine_dashboard.py
-open local/ice-ih-engine-dashboard-v0.1.2/index.html
+open local/ice-ih-engine-dashboard-v0.1.3/index.html
 ```
 
 It links image-space Hough evidence, detector-to-S2 sampling, orientation
