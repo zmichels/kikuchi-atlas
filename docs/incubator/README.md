@@ -37,6 +37,7 @@ Until then, incubator work must not change the scope or acceptance state of
 | [Texture-weighted spherical intensity](texture-weighted-spherical-intensity.md) | Later ODF-weighted aggregate of a validated single-crystal S2 field |
 | [EMsoft cross-validation](emsoft-cross-validation.md) | Independent dynamical-source comparison |
 | [Independent engine](independent-engine.md) | A later engine informed by companion-project evidence |
+| [Open Kikuchi Reference Pack](open-reference-pack.md) | Acquired-pattern, geometry, master, and golden-result resource contract |
 | [Decision-state diagnostics](decision-state-diagnostics.md) | Linked scientific decisions and state-transition diagnostics |
 
 ## Present boundary
