@@ -25,6 +25,10 @@ download another image.
 - The project-local ebsdx-rs spherical-dictionary resource contract supplies a
   compatible downstream framing for canonical resources, observation-specific
   adapters, and declared provenance.
+- The [Ni 24 dB intake](../acceptance/ni-gain24db-reference-pack-intake.md)
+  now passes the first five promotion gates through a source-bound,
+  checksum-bearing seven-pattern Hough baseline. It is not yet a public pack
+  release or independent orientation-truth benchmark.
 
 ## Dependencies
 
@@ -37,13 +41,10 @@ download another image.
 
 ## Unresolved questions
 
-- Which public Ni or Si dataset exposes enough calibration semantics for the
-  first pack without importing vendor-specific ambiguity?
 - Should a v0.1 pack distribute raw patterns, a stable external pointer, or
   both?
-- What result should be treated as the first golden baseline: a known
-  single-crystal orientation, a constrained phase/orientation candidate list,
-  or a deliberately narrow detector-fit exercise?
+- Does the initial public release need independent orientation truth, or is a
+  clearly labeled source-bound calibration baseline useful enough on its own?
 - Which sidecar form best complements existing HDF5-based archives without
   inventing a competing container format?
 
@@ -57,12 +58,14 @@ download another image.
   packs expose a bounded, validated missing component.
 - [KIKU-F026](../work/KIKU-F026.md) records the synthetic Ice Ih
   multi-geometry transfer proof.
+- [KIKU-F028](../work/KIKU-F028.md) records the acquired Ni calibration
+  intake and source-bound baseline.
 
 ## Promotion trigger
 
-Promote when one candidate dataset passes the written rights, raw-data,
-geometry/calibration, phase/master-provenance, baseline-result, and user-scope
-gates in the needs and gap review.
+Promote when the user approves a precise v0.1 release boundary for the Ni
+source-bound baseline: distributed raw data versus durable pointers, required
+attribution, and whether independent orientation truth is mandatory.
 
 ## Present non-goals
 

@@ -86,7 +86,7 @@ reference contract is more reusable than an unqualified model checkpoint.
 
 | Candidate | Best role | Current decision | Required intake audit |
 |---|---|---|---|
-| Kikuchipy Ni gain/calibration and larger Ni map datasets | Preferred first discovery candidate for an acquired-pattern reference pack | Not adopted yet | Confirm redistribution rights, inspect raw values and metadata, identify geometry/calibration fields, and establish an independently reproducible baseline |
+| Kikuchipy Ni gain/calibration and larger Ni map datasets | First source-bound calibration baseline candidate | Gates 1–5 passed locally; public release scope pending | Decide distributed raw data versus pointer, attribution, and whether independent orientation truth is required |
 | Kikuchipy Si wafer dataset | Calibration/reference-frame fixture | Secondary candidate, not a broad indexing challenge | Confirm what orientation truth and detector semantics are exposed |
 | [PyEBSDIndex simulation/Hough supporting data](https://journals.iucr.org/j/issues/2024/01/00/nb5367/nb5367sup1.pdf) | Independent simulated/Hough comparison fixture | Comparator only | Audit licensing, original metadata, and whether it can be redistributed as a fixture |
 

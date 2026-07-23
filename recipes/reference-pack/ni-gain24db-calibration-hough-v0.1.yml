@@ -1,0 +1,62 @@
+schema_version: 1
+id: ni-gain24db-calibration-hough-v0.1
+status: source-bound-baseline
+title: Ni 24 dB gain calibration-pattern Hough baseline
+source:
+  acquisition:
+    loader: kikuchipy.data.ni_gain
+    kwargs:
+      number: 10
+    zenodo_doi: https://doi.org/10.5281/zenodo.7497682
+    license: CC-BY-4.0
+    raw_pattern_shape: [149, 200, 60, 60]
+    detector: NORDIF UF-1100
+    beam_energy_keV: 20
+  calibration:
+    loader: kikuchipy.data.ni_gain_calibration
+    kwargs:
+      number: 10
+    raw_pattern_shape: [7, 480, 480]
+    detector: NORDIF UF-1100
+    beam_energy_keV: 20
+phase:
+  name: nickel
+  space_group: Fm-3m
+  master:
+    loader: kikuchipy.data.nickel_ebsd_master_pattern_small
+    energy_keV: 20
+    origin: EMsoft EMMCOpenCL and EMEBSDMaster
+    license: CC-BY-4.0
+    representation: 401 by 401 uint8 stereographic upper and lower hemispheres
+geometry:
+  convention: Bruker
+  source: >-
+    kikuchipy Hybrid indexing tutorial, PC-optimization output before
+    dynamical refinement
+  published_hough_pc: [0.41835389, 0.22080713, 0.5048758]
+  raw_metadata_limit: >-
+    The NORDIF settings retain detector, tilts, scan, calibration locations,
+    and acquisition settings, but not a final calibrated projection centre.
+processing:
+  calibration_patterns:
+    static_background: divide
+    dynamic_background: divide
+hough:
+  dependency: pyebsdindex==0.3.9.2
+  min_dspacing_nm: 0.07
+  structure_factor_relative_threshold: 0.12
+  expected_calibration_count: 7
+  expected_indexed_count: 7
+  expected_reflector_count: 50
+  expected_fit_mean: 0.26731613278388977
+  expected_confidence_mean: 0.7579495310783386
+references:
+  data_api: https://kikuchipy.org/en/stable/reference/generated/kikuchipy.data.ni_gain.html
+  calibration_api: https://kikuchipy.org/en/stable/reference/generated/kikuchipy.data.ni_gain_calibration.html
+  master_api: https://kikuchipy.org/en/stable/reference/generated/kikuchipy.data.nickel_ebsd_master_pattern_small.html
+  workflow: https://kikuchipy.org/en/latest/tutorials/hybrid_indexing.html
+nonclaims:
+  - This is a source-bound baseline, not independent orientation ground truth.
+  - The fixed Hough PC is copied from the cited upstream workflow; this run does not re-perform its nonlinear PC optimization or dynamical refinement.
+  - The uint8 master is a documented downconverted convenience master, not the original float32 EMsoft source.
+  - The baseline does not establish inter-instrument transfer or vendor-format compatibility.
