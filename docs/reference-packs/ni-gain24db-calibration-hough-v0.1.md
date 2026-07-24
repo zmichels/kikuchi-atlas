@@ -59,6 +59,13 @@ is `bb0a99ead5bb5e6b5a6a646eb9b7956fd469bbaae2be8cdc57ffb66b3d40fa5c`.
 - It establishes neither vendor-format compatibility nor inter-instrument
   transfer.
 
+## Related support study
+
+The companion [Ni preprocessing-sensitivity study](ni-gain24db-preprocessing-sensitivity-v0.1.md)
+uses this pack's exact source inventory and baseline recipe to expose the
+effect of three fixed background-correction variants. It is a protocol
+comparison, not an independent accuracy result.
+
 ## Sources
 
 - [Kikuchipy Ni gain dataset API](https://kikuchipy.org/en/stable/reference/generated/kikuchipy.data.ni_gain.html)

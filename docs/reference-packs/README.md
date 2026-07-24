@@ -14,6 +14,7 @@ reproduction path.
 | Pack | Phase | Status | Boundary |
 |---|---|---|---|
 | [Ni 24 dB calibration Hough v0.1](ni-gain24db-calibration-hough-v0.1.md) | Ni, Fm-3m | released | source-bound Hough baseline, not independent orientation truth |
+| [Ni 24 dB preprocessing sensitivity v0.1](ni-gain24db-preprocessing-sensitivity-v0.1.md) | Ni, Fm-3m | released | three fixed preprocessing variants on the same seven patterns, not a universal preprocessing ranking |
 
 ## Use a pack
 
@@ -36,6 +37,21 @@ uv run --with pyebsdindex==0.3.9.2 \
 The runner fails if its source dimensions, selected reflector count, indexed
 count, or recipe-pinned aggregate result changes. Its local output includes a
 numeric report, diagnostic overlay, and output checksums.
+
+## Protocol studies
+
+Reference Packs may also contain explicitly bounded support studies. The first
+one holds the Ni source, geometry, reflector set, and Hough route constant and
+compares raw, static-background division, and static-plus-dynamic-background
+division. It reports the resulting Hough diagnostics and cubic-symmetry-reduced
+orientation changes relative to the declared all-division reference; it does
+not call one method generally superior.
+
+```bash
+uv run --with pyebsdindex==0.3.9.2 \
+  python scripts/run_ni_gain24db_preprocessing_sensitivity.py \
+  --output local/reference-packs/ni-gain24db-preprocessing-sensitivity-v0.1
+```
 
 ## Release boundary
 
