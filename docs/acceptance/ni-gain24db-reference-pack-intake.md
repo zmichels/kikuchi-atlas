@@ -1,7 +1,8 @@
 # Ni 24 dB calibration-pattern Reference Pack intake
 
-Status: gates 1–5 passed for a **source-bound baseline**; public Reference Pack
-scope remains pending user approval, 2026-07-23.
+Status: released as a lightweight **source-bound baseline** Reference Pack,
+2026-07-24. Raw source data remain upstream; the repository tracks a durable
+pointer, exact inventory checksums, recipe, verifier, and baseline runner.
 
 ## Decision
 
@@ -10,9 +11,9 @@ for the Open Kikuchi Reference Pack. It is openly licensed, retains raw
 acquisition and calibration files, has a documented 20 keV Ni master source,
 and supports a small Hough baseline that can be rerun locally.
 
-It is not yet a public Reference Pack release. The remaining decision is
-product scope: whether the first release distributes raw patterns, a legal
-source pointer plus checksums, or both.
+The approved v0.1 release uses a legal source pointer plus checksums—not a raw
+data mirror. The public descriptor is
+[Ni 24 dB calibration Hough v0.1](../reference-packs/ni-gain24db-calibration-hough-v0.1.md).
 
 ## Intake gates
 
@@ -23,7 +24,7 @@ source pointer plus checksums, or both.
 | Geometry/calibration | Pass with declared boundary | The raw settings retain detector, tilt, acquisition, calibration locations, and scan information. The final PC is not stored there; the recipe explicitly uses the cited upstream Hough PC. |
 | Phase and master | Pass | The matching 20 keV Ni master is documented as EMsoft-generated and CC BY 4.0; its convenience representation is uint8 stereographic. |
 | Rerunnable baseline | Pass | Seven calibration patterns index as Ni through the pinned CPU Hough route. |
-| User-approved release scope | Pending | This intake does not decide public artifact distribution or claim a general benchmark. |
+| User-approved release scope | Pass | v0.1 retains the source upstream and ships the pointer, inventory checksums, recipe, verifier, and runner. |
 
 ## Fixed source-bound method
 
@@ -44,13 +45,21 @@ source pointer plus checksums, or both.
 The local runner indexed all 7 of 7 calibration patterns, with mean Hough fit
 0.26731613278388977 and mean confidence 0.7579495310783386.
 
-![Ni calibration-pattern source-bound Hough baseline](../../local/reference-packs/ni-gain24db-calibration-hough-v0.1-r3/calibration-hough-baseline.png)
+The current recipe digest is
+`bb0a99ead5bb5e6b5a6a646eb9b7956fd469bbaae2be8cdc57ffb66b3d40fa5c`.
+The released evidence was rerun from that exact recipe on 2026-07-24; an
+earlier local exploratory report with a different recipe digest is superseded
+and is not used as release evidence.
+
+![Ni calibration-pattern source-bound Hough baseline](../../local/reference-packs/ni-gain24db-calibration-hough-v0.1-r4/calibration-hough-baseline.png)
 
 The image is a diagnostic overlay, not a beauty render: white traces are
 geometrical simulations from the Hough solutions, and each panel shows its fit
 and confidence metric.
 
 ## Reproduction
+
+    uv run python scripts/verify_ni_gain24db_reference_pack.py --allow-download
 
     uv run --with pyebsdindex==0.3.9.2 \
       python scripts/build_ni_gain24db_reference_baseline.py \

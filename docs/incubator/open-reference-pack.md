@@ -1,6 +1,6 @@
 # Open Kikuchi Reference Pack
 
-- Status: Incubating
+- Status: First lightweight implementation released
 - Boundary: a reproducible acquired-pattern reference contract, not a new
   simulator, file format, or general indexing benchmark
 
@@ -25,10 +25,10 @@ download another image.
 - The project-local ebsdx-rs spherical-dictionary resource contract supplies a
   compatible downstream framing for canonical resources, observation-specific
   adapters, and declared provenance.
-- The [Ni 24 dB intake](../acceptance/ni-gain24db-reference-pack-intake.md)
-  now passes the first five promotion gates through a source-bound,
-  checksum-bearing seven-pattern Hough baseline. It is not yet a public pack
-  release or independent orientation-truth benchmark.
+- The [Ni 24 dB pack](../reference-packs/ni-gain24db-calibration-hough-v0.1.md)
+  now releases a source-bound, checksum-bearing seven-pattern Hough baseline
+  through an upstream pointer, strict source verifier, tracked recipe, and
+  local evidence runner. It is not an independent orientation-truth benchmark.
 
 ## Dependencies
 
@@ -41,8 +41,6 @@ download another image.
 
 ## Unresolved questions
 
-- Should a v0.1 pack distribute raw patterns, a stable external pointer, or
-  both?
 - Does the initial public release need independent orientation truth, or is a
   clearly labeled source-bound calibration baseline useful enough on its own?
 - Which sidecar form best complements existing HDF5-based archives without
@@ -60,17 +58,20 @@ download another image.
   multi-geometry transfer proof.
 - [KIKU-F028](../work/KIKU-F028.md) records the acquired Ni calibration
   intake and source-bound baseline.
+- [KIKU-F029](../work/KIKU-F029.md) records the approved v0.1 pointer,
+  inventory, verifier, and reproduction release.
 
 ## Promotion trigger
 
-Promote when the user approves a precise v0.1 release boundary for the Ni
-source-bound baseline: distributed raw data versus durable pointers, required
-attribution, and whether independent orientation truth is mandatory.
+Promote when a second acquired phase pack has an independently bounded truth
+or cross-instrument test that can test whether the contract is useful beyond a
+single source-bound Ni reproduction.
 
 ## Present non-goals
 
 - Rewriting or forking kikuchipy, EMsoft, or PyEBSDIndex.
 - Publishing a broad master-pattern database without observation semantics.
 - Calling the current synthetic Ice Ih package an acquired-data benchmark.
+- Rebranding the Ni v0.1 source-bound baseline as an independent truth set.
 - Training or releasing a general ML indexing model.
 - Claiming vendor compatibility before a specific format path is tested.

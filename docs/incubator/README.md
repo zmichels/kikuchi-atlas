@@ -38,6 +38,7 @@ Until then, incubator work must not change the scope or acceptance state of
 | [EMsoft cross-validation](emsoft-cross-validation.md) | Independent dynamical-source comparison |
 | [Independent engine](independent-engine.md) | A later engine informed by companion-project evidence |
 | [Open Kikuchi Reference Pack](open-reference-pack.md) | Acquired-pattern, geometry, master, and golden-result resource contract |
+| [Adaptive simulation and evidence budget](adaptive-simulation-budget.md) | Future bandit-style allocation of expensive simulation or acquisition work |
 | [Decision-state diagnostics](decision-state-diagnostics.md) | Linked scientific decisions and state-transition diagnostics |
 
 ## Present boundary

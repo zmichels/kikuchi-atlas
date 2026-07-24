@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "ni-gain24db-calibration-hough-v0.1-source-inventory",
+  "source": {
+    "provider": "Kikuchipy data API backed by Zenodo",
+    "zenodo_doi": "https://doi.org/10.5281/zenodo.7497682",
+    "license": "CC-BY-4.0",
+    "gain_number": 10,
+    "acquisition_loader": "kikuchipy.data.ni_gain",
+    "calibration_loader": "kikuchipy.data.ni_gain_calibration",
+    "raw_pattern_path": "Pattern.dat"
+  },
+  "recipe": {
+    "path": "recipes/reference-pack/ni-gain24db-calibration-hough-v0.1.yml",
+    "sha256": "bb0a99ead5bb5e6b5a6a646eb9b7956fd469bbaae2be8cdc57ffb66b3d40fa5c"
+  },
+  "files": [
+    {"bytes": 4678, "name": "Acquisition (278,476).bmp", "sha256": "a4acf6f2116c2c92e3c5d89692d474f9aa8c60051838648a11fe8461d78a63b8"},
+    {"bytes": 4678, "name": "Acquisition (278,476)BS.bmp", "sha256": "6e3993182bc4b628c8f4f333bd4b29d09bb2444910a148b2c4dc6e05edeeacb5"},
+    {"bytes": 4678, "name": "Acquisition (419,386).bmp", "sha256": "aa160b760fddb9a608426dd9ec2d71c57adeb5ac3aec2fb3f7600d92f5231359"},
+    {"bytes": 4678, "name": "Acquisition (419,386)BS.bmp", "sha256": "6488eee23f6c96a236b877399a70cfbb9968e4605f1e56630ce554d78102535d"},
+    {"bytes": 4678, "name": "Acquisition (459,582).bmp", "sha256": "4583ab57205dc58c3472be287a9bb9c649395ccbac6f67aafbe8748843d2c8a5"},
+    {"bytes": 4678, "name": "Acquisition (459,582)BS.bmp", "sha256": "6f7247af993488e84c4b952acb513f8093c064de77d48efe4b100a7eb5a587e3"},
+    {"bytes": 3000054, "name": "Area ROI.bmp", "sha256": "fac34a69a37db3073cc260d1c51799ad4df7dee1cdd1c0c63811f029acfb936c"},
+    {"bytes": 1001078, "name": "Area.bmp", "sha256": "5271d222c1041bd90ec45826d920df9266c22b0308ed228c178ff4763e8295da"},
+    {"bytes": 4678, "name": "Background acquisition pattern.bmp", "sha256": "45d016a4d08da0025821f5529eaff91b7724391f500842eb98562cd3c6744fed"},
+    {"bytes": 231478, "name": "Background calibration pattern.bmp", "sha256": "74be400195604b1c8966c6c027a679db40bcd1be10ff4683519902f23b5834c3"},
+    {"bytes": 231478, "name": "Calibration (131,221).bmp", "sha256": "0ac026f2e5dd98c99f1e2bc3fbf0d9b39a5caa37fddfd20cb393e58012a26305"},
+    {"bytes": 231478, "name": "Calibration (131,221)BS.bmp", "sha256": "cfefae56dbe54c82e4d9784e012e3b6b5a5c4ccc558df740726e21345112b572"},
+    {"bytes": 231478, "name": "Calibration (196,690).bmp", "sha256": "1dfaea905836d5c1ae1192a1cbac95ea1de91b6a48d2c421bb1c7e457477d675"},
+    {"bytes": 231478, "name": "Calibration (196,690)BS.bmp", "sha256": "467ba911682b75063896a0ce922f5e05cb3db50333aeba7d14c97c8517e365f0"},
+    {"bytes": 231478, "name": "Calibration (386,450).bmp", "sha256": "c196e5fade17d4aa3414d97f074e6383d3d24dff80c32e0a83f49f99a3c96ce9"},
+    {"bytes": 231478, "name": "Calibration (386,450)BS.bmp", "sha256": "2044946dc44389bbb1c6bfda7664819616c33f35572b1f80e3da7048c38917e4"},
+    {"bytes": 231478, "name": "Calibration (561,592).bmp", "sha256": "9326d38537330dc58fa403e06dad480a0e90e4de0351d7abc1053191cb19be88"},
+    {"bytes": 231478, "name": "Calibration (561,592)BS.bmp", "sha256": "ddb394b8e7e06d95e8f91cbd03edf7b148c00e8cc3e1a8bc89bc47851f65cb05"},
+    {"bytes": 231478, "name": "Calibration (607,375).bmp", "sha256": "335df4c7a1d09f4feb101f86f44f33161540f41e05375ba4ea0393e192eb7c1b"},
+    {"bytes": 231478, "name": "Calibration (607,375)BS.bmp", "sha256": "1f4ce4086a76104d38289d3f0be63e0f1050f9f68e79033205b04ac358446f4e"},
+    {"bytes": 231478, "name": "Calibration (741,256).bmp", "sha256": "5f174f53de0ca01b6aa8adedfe3d431f67df3307ad0357766079dd76f23962ac"},
+    {"bytes": 231478, "name": "Calibration (741,256)BS.bmp", "sha256": "5d595a26a05868168ab07d296d98812df7a96c2f4ae2eb950c36e53ad4b3715e"},
+    {"bytes": 231478, "name": "Calibration (741,680).bmp", "sha256": "3dc615eb4673fe441713ff7f6ca416632db58416cdec2d10b79f7549e04f4090"},
+    {"bytes": 231478, "name": "Calibration (741,680)BS.bmp", "sha256": "d4ec8c042e2820ba547894c0315b07d8188a3d5c8902adeb0e3d536c145e588b"},
+    {"bytes": 107280000, "name": "Pattern.dat", "sha256": "b7222e655a7b9ea4602f2d0feaceb54db156cdf2d9c649c5a9bb23da0f4fdb95"},
+    {"bytes": 1733, "name": "Setting.txt", "sha256": "5152f320c16c9d25abb62c9f876979f3faaf7b04f0c9a44bd4d37c44a38a4610"}
+  ]
+}

@@ -23,6 +23,11 @@ machine-readable line with an explicit non-validation boundary; the initial
 forsterite fixture proves the resource contract and is not an experimental
 EBSD-indexing claim.
 
+[Reference Packs](docs/reference-packs/README.md) are a complementary
+acquired-pattern line: lightweight source pointers, checksums, declared
+geometry/processing recipes, and bounded rerunnable baselines. They retain raw
+data upstream rather than silently copying it into this repository.
+
 ## Development
 
 Use uv's managed arm64 Python 3.12 runtime:
