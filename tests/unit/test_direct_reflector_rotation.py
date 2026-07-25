@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import runpy
+from pathlib import Path
+
 import numpy as np
 
 from kikuchi_lab.art_products.rotation_animation import (
@@ -10,6 +13,17 @@ from kikuchi_lab.art_products.rotation_animation import (
     render_direct_reflector_frame,
 )
 from kikuchi_lab.model.recipes import Orientation
+
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_enstatite_rotation_source_points_to_published_standard_template() -> None:
+    script_globals = runpy.run_path(str(ROOT / "scripts/render_direct_reflector_rotation.py"))
+    assert script_globals["PHASE_SOURCES"]["enstatite"] == Path(
+        "local/atlas-expansion/enstatite/templates/"
+        "enstatite-hemisphere-standard-run-5ac8464fe1575028"
+    )
 
 
 def test_full_axis_rotation_is_identity() -> None:
