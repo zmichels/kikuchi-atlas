@@ -69,10 +69,10 @@ detector acquisition, indexing, or orientation accuracy.
 
 ## Artifact and mesh verification
 
-All 12 pyrope manifest files were read. Every declared artifact exists and
-matches its recorded byte count and SHA-256: 89 manifest-declared files,
-including the four animation exports. Both rotation movies also match the
-recorded hashes and ffprobe profiles above.
+All 12 pyrope manifest files were read. The 85 entries in manifest `files`
+ledgers exist and match their recorded byte counts and SHA-256 values. The four
+rotation-export paths also exist and match their recorded SHA-256 values; both
+movies additionally match the recorded ffprobe sizes and profiles above.
 
 Both STL validations passed with one body, positive volume, no degenerate or
 duplicate triangles, watertight geometry, and winding consistency. The ridge
