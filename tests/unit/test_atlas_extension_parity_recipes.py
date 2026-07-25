@@ -54,6 +54,10 @@ PARITY_RECIPES = {
         "kinematical/enstatite-001-atlas-parity-master.yml",
         "presentation/enstatite-near-depth-atlas-parity.yml",
     ),
+    "pyrope": (
+        "kinematical/pyrope-001-atlas-parity-master.yml",
+        "presentation/pyrope-near-depth-atlas-parity.yml",
+    ),
 }
 
 
