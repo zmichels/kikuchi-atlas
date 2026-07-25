@@ -28,6 +28,10 @@ def test_pyrope_derivative_is_checksum_and_structure_verified() -> None:
     assert record.setting == "I a -3 d"
     assert record.simulation_setting["temperature_k"] == 298.15
     assert record.simulation_setting["target_site_multiplicities"] == [24, 16, 24, 96]
+    assert record.simulation_setting["scope_note"] == (
+        "Scope boundary: one pure Mg-garnet endmember; not all garnets, natural "
+        "pyrope solid solutions, a pressure series, or indexing/orientation validation."
+    )
     assert record.simulation_setting["derived_from_sha256"] == ORIGINAL_SHA256
     assert record.simulation_setting["u_iso_derivation"] == (
         "U_iso = (U_11 + U_22 + U_33) / 3 for orthogonal cubic axes"

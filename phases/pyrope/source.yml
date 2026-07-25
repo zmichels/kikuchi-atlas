@@ -36,6 +36,9 @@ thermal_factor_policy:
 simulation_setting:
   temperature_k: 298.15
   target_site_multiplicities: [24, 16, 24, 96]
+  scope_note: >-
+    Scope boundary: one pure Mg-garnet endmember; not all garnets, natural
+    pyrope solid solutions, a pressure series, or indexing/orientation validation.
   derived_from_identifier: COD-9000435
   derived_from_sha256: 90c7d0b964653c5d1e32aa944a45430e760f29f3910ff8997a0a3524d4f55932
   u_iso_derivation: U_iso = (U_11 + U_22 + U_33) / 3 for orthogonal cubic axes
