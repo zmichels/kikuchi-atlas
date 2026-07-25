@@ -16,6 +16,21 @@ Date accepted: 2026-07-24
 occupancies, Uiso values, and all ten site multiplicities. Each independent
 site has multiplicity 8, for 80 atoms in the conventional cell.
 
+## Tracked baseline paths
+
+- Source record: `phases/enstatite/source.yml`.
+- Direct-reflector recipes:
+  `recipes/reflectors/enstatite-art-bands.yml` and
+  `recipes/reflectors/enstatite-catalog.yml`.
+- Kinematical recipe:
+  `recipes/kinematical/enstatite-001-atlas-parity-master.yml`.
+- Near-depth presentation recipe:
+  `recipes/presentation/enstatite-near-depth-atlas-parity.yml`.
+- Reflector-ridge globe recipe:
+  `recipes/globes/enstatite-reflector-ridges.yml`.
+- Kinematical intensity-relief recipe:
+  `recipes/relief/enstatite-atlas-parity-kinematical-intensity.yml`.
+
 ## Accepted products
 
 - Zero-master direct catalog:

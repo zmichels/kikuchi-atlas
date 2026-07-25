@@ -14,6 +14,21 @@ Date accepted: 2026-07-24
 `verify_structure()` accepted the CIF checksum, formula, lattice, coordinates,
 occupancies, Uiso values, and 6/6/18 site multiplicities.
 
+## Tracked baseline paths
+
+- Source record: `phases/calcite/source.yml`.
+- Direct-reflector recipes:
+  `recipes/reflectors/calcite-art-bands.yml` and
+  `recipes/reflectors/calcite-catalog.yml`.
+- Kinematical recipe:
+  `recipes/kinematical/calcite-001-atlas-parity-master.yml`.
+- Near-depth presentation recipe:
+  `recipes/presentation/calcite-near-depth-atlas-parity.yml`.
+- Reflector-ridge globe recipe:
+  `recipes/globes/calcite-reflector-ridges.yml`.
+- Kinematical intensity-relief recipe:
+  `recipes/relief/calcite-atlas-parity-kinematical-intensity.yml`.
+
 ## Accepted products
 
 - Zero-master direct catalog:
