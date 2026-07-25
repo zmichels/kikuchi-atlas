@@ -46,7 +46,7 @@ def test_structural_source_audit_has_one_exact_record_per_atlas_phase() -> None:
     )
 
     assert audit["schema_version"] == 1
-    assert audit["source_count"] == 9
+    assert audit["source_count"] == 11
     assert {record["phase_slug"] for record in audit["sources"]} == {
         "forsterite",
         "ice-ih",
@@ -57,20 +57,22 @@ def test_structural_source_audit_has_one_exact_record_per_atlas_phase() -> None:
         "plagioclase-an52",
         "muscovite-2m1",
         "diopside",
+        "calcite",
+        "enstatite",
     }
-    assert sum(record["license"] == "CC0-1.0" for record in audit["sources"]) == 8
+    assert sum(record["license"] == "CC0-1.0" for record in audit["sources"]) == 9
     muscovite = next(record for record in audit["sources"] if record["phase_slug"] == "muscovite-2m1")
     assert muscovite["identifier"] == "COD-9014960"
     assert muscovite["license"] == "COD attribution-use notice"
     assert all(record["sha256"] and record["citation"] for record in audit["sources"])
 
 
-def test_structural_source_audit_builder_reproduces_the_nine_record_inventory(tmp_path: Path) -> None:
+def test_structural_source_audit_builder_reproduces_the_eleven_record_inventory(tmp_path: Path) -> None:
     result = build_structural_source_audit(
         registry_path=ROOT / "docs/atlas/PHASE_REGISTRY.yml", output_directory=tmp_path
     )
 
-    assert result.source_count == 9
+    assert result.source_count == 11
     assert result.markdown_path.is_file()
     regenerated = json.loads(result.json_path.read_text(encoding="utf-8"))
     tracked = json.loads((ROOT / "docs/atlas/STRUCTURAL_SOURCE_AUDIT.json").read_text(encoding="utf-8"))

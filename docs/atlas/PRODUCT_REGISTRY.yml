@@ -1579,3 +1579,291 @@ products:
     caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
     orientation: canonical sphere
     hero: false
+  - id: calcite-direct-standard
+    title: Calcite — standard hemisphere
+    phase_slugs: [calcite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed/calcite-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed/calcite-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed
+    provenance_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed/manifest.json
+    recipe: recipes/reflectors/calcite-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere.
+    orientation: standard
+    hero: true
+  - id: calcite-direct-azimuthal-60
+    title: Calcite — azimuthal 60
+    phase_slugs: [calcite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-512741cee768c7d8/calcite-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-512741cee768c7d8/calcite-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-512741cee768c7d8
+    provenance_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-512741cee768c7d8/manifest.json
+    recipe: recipes/reflectors/calcite-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: calcite-direct-tilt-plus-20
+    title: Calcite — tilt +20
+    phase_slugs: [calcite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-5cb9a8852adf5b64/calcite-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-5cb9a8852adf5b64/calcite-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-5cb9a8852adf5b64
+    provenance_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-5cb9a8852adf5b64/manifest.json
+    recipe: recipes/reflectors/calcite-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+  - id: calcite-direct-oblique-high
+    title: Calcite — oblique high
+    phase_slugs: [calcite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-c278d16f924f62e1/calcite-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-c278d16f924f62e1/calcite-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-c278d16f924f62e1
+    provenance_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-c278d16f924f62e1/manifest.json
+    recipe: recipes/reflectors/calcite-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: calcite-x-axis-rotation
+    title: Calcite — x-axis rotation
+    phase_slugs: [calcite]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/atlas-expansion/calcite/direct-rotation/calcite-x-axis-rotation.mp4
+    preview_path: local/atlas-expansion/calcite/direct-rotation/preview.png
+    bundle_path: local/atlas-expansion/calcite/direct-rotation
+    provenance_path: local/atlas-expansion/calcite/direct-rotation/manifest.json
+    recipe: recipes/reflectors/calcite-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: calcite-reflector-ridge-globe
+    title: Calcite — reflector-ridge globe
+    phase_slugs: [calcite]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/atlas-expansion/calcite/reflector-globe/reflector-ridge-globe-build-d4963f20a3e3b35e/1547350-reflector-ridges.stl
+    preview_path: local/atlas-expansion/calcite/reflector-globe/reflector-ridge-globe-build-d4963f20a3e3b35e/1547350-reflector-ridges-preview.png
+    bundle_path: local/atlas-expansion/calcite/reflector-globe/reflector-ridge-globe-build-d4963f20a3e3b35e
+    provenance_path: local/atlas-expansion/calcite/reflector-globe/reflector-ridge-globe-build-d4963f20a3e3b35e/reflector-globe-manifest.json
+    recipe: recipes/globes/calcite-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+  - id: calcite-atlas-kinematical-master
+    title: Calcite — kinematical Lambert master
+    phase_slugs: [calcite]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-expansion/calcite/kinematical/kinematical-run-3b6cf9bd8c987327/products/kinematical-master-lambert.png
+    preview_path: local/atlas-expansion/calcite/kinematical/kinematical-run-3b6cf9bd8c987327/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-expansion/calcite/kinematical/kinematical-run-3b6cf9bd8c987327
+    provenance_path: local/atlas-expansion/calcite/kinematical/kinematical-run-3b6cf9bd8c987327/manifest.json
+    recipe: recipes/kinematical/calcite-001-atlas-parity-master.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: calcite-atlas-retained-depth-x-axis
+    title: Calcite — retained depth-field x-axis rotation
+    phase_slugs: [calcite]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-expansion/calcite/depth-rotation/calcite-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-expansion/calcite/depth-rotation/preview.png
+    bundle_path: local/atlas-expansion/calcite/depth-rotation
+    provenance_path: local/atlas-expansion/calcite/depth-rotation/manifest.json
+    recipe: recipes/presentation/calcite-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: calcite-atlas-kinematical-intensity-relief
+    title: Calcite — kinematical intensity-relief globe
+    phase_slugs: [calcite]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-expansion/calcite/relief/relief-globe-build-62b9e581469c5065/calcite-295k-intensity-relief-globe.stl
+    preview_path: local/atlas-expansion/calcite/relief/relief-globe-build-62b9e581469c5065/calcite-295k-intensity-relief-preview.png
+    bundle_path: local/atlas-expansion/calcite/relief/relief-globe-build-62b9e581469c5065
+    provenance_path: local/atlas-expansion/calcite/relief/relief-globe-build-62b9e581469c5065/relief-manifest.json
+    recipe: recipes/relief/calcite-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false
+  - id: enstatite-direct-standard
+    title: Orthoenstatite — standard hemisphere
+    phase_slugs: [enstatite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028/enstatite-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028/enstatite-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028
+    provenance_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028/manifest.json
+    recipe: recipes/reflectors/enstatite-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere.
+    orientation: standard
+    hero: true
+  - id: enstatite-direct-azimuthal-60
+    title: Orthoenstatite — azimuthal 60
+    phase_slugs: [enstatite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-6dec041969316a0a/enstatite-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-6dec041969316a0a/enstatite-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-6dec041969316a0a
+    provenance_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-6dec041969316a0a/manifest.json
+    recipe: recipes/reflectors/enstatite-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: enstatite-direct-tilt-plus-20
+    title: Orthoenstatite — tilt +20
+    phase_slugs: [enstatite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-c96ede19f7f90c14/enstatite-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-c96ede19f7f90c14/enstatite-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-c96ede19f7f90c14
+    provenance_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-c96ede19f7f90c14/manifest.json
+    recipe: recipes/reflectors/enstatite-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+  - id: enstatite-direct-oblique-high
+    title: Orthoenstatite — oblique high
+    phase_slugs: [enstatite]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-ed1fa8dd13a0913c/enstatite-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-ed1fa8dd13a0913c/enstatite-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-ed1fa8dd13a0913c
+    provenance_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-ed1fa8dd13a0913c/manifest.json
+    recipe: recipes/reflectors/enstatite-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: enstatite-x-axis-rotation
+    title: Orthoenstatite — x-axis rotation
+    phase_slugs: [enstatite]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/atlas-expansion/enstatite/direct-rotation/enstatite-x-axis-rotation.mp4
+    preview_path: local/atlas-expansion/enstatite/direct-rotation/preview.png
+    bundle_path: local/atlas-expansion/enstatite/direct-rotation
+    provenance_path: local/atlas-expansion/enstatite/direct-rotation/manifest.json
+    recipe: recipes/reflectors/enstatite-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: enstatite-reflector-ridge-globe
+    title: Orthoenstatite — reflector-ridge globe
+    phase_slugs: [enstatite]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/atlas-expansion/enstatite/reflector-globe/reflector-ridge-globe-build-22ca622745752a1f/9001593-reflector-ridges.stl
+    preview_path: local/atlas-expansion/enstatite/reflector-globe/reflector-ridge-globe-build-22ca622745752a1f/9001593-reflector-ridges-preview.png
+    bundle_path: local/atlas-expansion/enstatite/reflector-globe/reflector-ridge-globe-build-22ca622745752a1f
+    provenance_path: local/atlas-expansion/enstatite/reflector-globe/reflector-ridge-globe-build-22ca622745752a1f/reflector-globe-manifest.json
+    recipe: recipes/globes/enstatite-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+  - id: enstatite-atlas-kinematical-master
+    title: Orthoenstatite — kinematical Lambert master
+    phase_slugs: [enstatite]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-expansion/enstatite/kinematical/kinematical-run-5969a144389b170c/products/kinematical-master-lambert.png
+    preview_path: local/atlas-expansion/enstatite/kinematical/kinematical-run-5969a144389b170c/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-expansion/enstatite/kinematical/kinematical-run-5969a144389b170c
+    provenance_path: local/atlas-expansion/enstatite/kinematical/kinematical-run-5969a144389b170c/manifest.json
+    recipe: recipes/kinematical/enstatite-001-atlas-parity-master.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: enstatite-atlas-retained-depth-x-axis
+    title: Orthoenstatite — retained depth-field x-axis rotation
+    phase_slugs: [enstatite]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-expansion/enstatite/depth-rotation/enstatite-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-expansion/enstatite/depth-rotation/preview.png
+    bundle_path: local/atlas-expansion/enstatite/depth-rotation
+    provenance_path: local/atlas-expansion/enstatite/depth-rotation/manifest.json
+    recipe: recipes/presentation/enstatite-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: enstatite-atlas-kinematical-intensity-relief
+    title: Orthoenstatite — kinematical intensity-relief globe
+    phase_slugs: [enstatite]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-expansion/enstatite/relief/relief-globe-build-20eecba93ca3a20e/orthoenstatite-0-gpa-intensity-relief-globe.stl
+    preview_path: local/atlas-expansion/enstatite/relief/relief-globe-build-20eecba93ca3a20e/orthoenstatite-0-gpa-intensity-relief-preview.png
+    bundle_path: local/atlas-expansion/enstatite/relief/relief-globe-build-20eecba93ca3a20e
+    provenance_path: local/atlas-expansion/enstatite/relief/relief-globe-build-20eecba93ca3a20e/relief-manifest.json
+    recipe: recipes/relief/enstatite-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false
