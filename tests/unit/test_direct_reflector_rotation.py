@@ -21,6 +21,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_pyrope_rotation_source_points_to_published_standard_template() -> None:
     script_globals = runpy.run_path(str(ROOT / "scripts/render_direct_reflector_rotation.py"))
+    assert script_globals["PHASE_SOURCES"]["pyrope"] == Path(
+        "local/atlas-expansion/pyrope/templates/"
+        "pyrope-hemisphere-standard-run-cf3ddb145179cc6e"
+    )
     source = ROOT / script_globals["PHASE_SOURCES"]["pyrope"]
     manifest = json.loads((source / "manifest.json").read_text(encoding="utf-8"))
     assert source.is_dir()
