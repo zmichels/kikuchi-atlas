@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from kikuchi_lab.kinematical.kikuchipy_adapter import _phase_from_record
 from kikuchi_lab.sources.structure import load_structure_record, verify_structure
 
 
@@ -28,6 +29,10 @@ def test_pyrope_derivative_is_checksum_and_structure_verified() -> None:
     assert record.setting == "I a -3 d"
     assert record.simulation_setting["temperature_k"] == 298.15
     assert record.simulation_setting["target_site_multiplicities"] == [24, 16, 24, 96]
+    assert record.simulation_setting["source_setting"] == "I a -3 d"
+    assert record.simulation_setting["target_setting"] == "I a -3 d"
+    assert record.simulation_setting["target_lattice_from_source"] == ["a", "b", "c"]
+    assert record.simulation_setting["target_fractional_from_source"] == ["x", "y", "z"]
     assert record.simulation_setting["scope_note"] == (
         "Scope boundary: one pure Mg-garnet endmember; not all garnets, natural "
         "pyrope solid solutions, a pressure series, or indexing/orientation validation."
@@ -42,3 +47,4 @@ def test_pyrope_derivative_is_checksum_and_structure_verified() -> None:
     assert verified.missing_thermal_factor_labels == ()
     assert verified.occupancy_source == "implicit CIF default 1.0"
     assert _sha256(ORIGINAL) == ORIGINAL_SHA256
+    assert len(_phase_from_record(record).structure) == 160

@@ -35,6 +35,10 @@ thermal_factor_policy:
   ebsdsim_fallback_b_iso_angstrom_sq: 0.5
 simulation_setting:
   temperature_k: 298.15
+  source_setting: "I a -3 d"
+  target_setting: "I a -3 d"
+  target_lattice_from_source: [a, b, c]
+  target_fractional_from_source: [x, y, z]
   target_site_multiplicities: [24, 16, 24, 96]
   scope_note: >-
     Scope boundary: one pure Mg-garnet endmember; not all garnets, natural
