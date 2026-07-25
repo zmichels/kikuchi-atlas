@@ -37,6 +37,7 @@ PHASE_SOURCES = {
     "diopside": Path("local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef"),
     "calcite": Path("local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed"),
     "enstatite": Path("local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028"),
+    "pyrope": Path("local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e"),
 }
 AXES = {"x": (1.0, 0.0, 0.0), "oblique": (2.0, 1.0, 1.0)}
 
