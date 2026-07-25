@@ -26,6 +26,7 @@ def test_atlas_registry_has_exact_family_references_not_ambiguous_family_labels(
         "diopside",
         "calcite",
         "enstatite",
+        "pyrope",
     }
     assert phases["plagioclase-an52"].source_status == "tracked-source"
     assert phases["plagioclase-an52"].source_record == "phases/plagioclase-an52/source.yml"
@@ -33,6 +34,7 @@ def test_atlas_registry_has_exact_family_references_not_ambiguous_family_labels(
     assert phases["diopside"].family == "clinopyroxene"
     assert phases["calcite"].family == "carbonate"
     assert phases["enstatite"].family == "orthopyroxene"
+    assert phases["pyrope"].family == "garnet"
 
 
 def test_product_registry_models_individual_products_and_common_core_families() -> None:
@@ -46,7 +48,7 @@ def test_product_registry_models_individual_products_and_common_core_families() 
         "reflector-ridge-globe",
     }
     assert "tattoo-template" not in {family.identifier for family in families}
-    assert len(products) == 113
+    assert len(products) == 122
     assert all(product.is_available() for product in products)
     assert all("tattoo" not in product.identifier.lower() for product in products)
     assert all("tattoo" not in product.title.lower() for product in products)
@@ -88,10 +90,11 @@ def test_product_registry_models_individual_products_and_common_core_families() 
         "diopside-direct-standard",
         "calcite-direct-standard",
         "enstatite-direct-standard",
+        "pyrope-direct-standard",
     }
 
 
-def test_kinematical_extension_baseline_has_exact_eleven_phase_coverage() -> None:
+def test_kinematical_extension_baseline_has_exact_twelve_phase_coverage() -> None:
     phases = load_phase_registry(REGISTRY)
     _, products = load_product_registry(PRODUCTS, phase_slugs={phase.slug for phase in phases})
 
@@ -120,8 +123,8 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
         output_root=tmp_path / "site",
     )
 
-    assert result.phase_count == 11
-    assert result.product_count == 113
+    assert result.phase_count == 12
+    assert result.product_count == 122
     assert result.index_path.is_file()
     index = result.index_path.read_text(encoding="utf-8")
     assert "Kikuchi Atlas" in index
@@ -148,16 +151,16 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     direct_type_html = direct_type.read_text(encoding="utf-8")
     assert "Direct-reflector orientation set" in direct_type_html
     assert "Available phases" in direct_type_html
-    assert direct_type_html.count('class="card type-phase-card"') == 11
+    assert direct_type_html.count('class="card type-phase-card"') == 12
     globe_type = tmp_path / "site/product-types/reflector-ridge-globe.html"
     assert globe_type.is_file()
-    assert globe_type.read_text(encoding="utf-8").count('class="card type-phase-card"') == 11
+    assert globe_type.read_text(encoding="utf-8").count('class="card type-phase-card"') == 12
     assert result.products_path.is_file()
     product_page = result.products_path.read_text(encoding="utf-8")
     assert 'id="product-search"' in product_page
     assert 'id="phase-filter"' in product_page
     assert 'id="family-filter"' in product_page
-    assert product_page.count('class="card product-card"') == 113
+    assert product_page.count('class="card product-card"') == 122
     assert "tattoo" not in index.lower()
     assert "tattoo" not in product_page.lower()
     assert (tmp_path / "site/phases/forsterite.html").is_file()
@@ -199,6 +202,7 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
         "diopside",
         "calcite",
         "enstatite",
+        "pyrope",
     ):
         phase_html = (tmp_path / f"site/phases/{source_backed_phase}.html").read_text(encoding="utf-8")
         assert "Visual highlights" in phase_html

@@ -1867,3 +1867,147 @@ products:
     caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
     orientation: canonical sphere
     hero: false
+  - id: pyrope-direct-standard
+    title: Pyrope (298.15 K Mg endmember) — standard hemisphere
+    phase_slugs: [pyrope]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e/pyrope-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e/pyrope-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e
+    provenance_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e/manifest.json
+    recipe: recipes/reflectors/pyrope-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere.
+    orientation: standard
+    hero: true
+  - id: pyrope-direct-azimuthal-60
+    title: Pyrope (298.15 K Mg endmember) — azimuthal 60
+    phase_slugs: [pyrope]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-b90e12560a80f8db/pyrope-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-b90e12560a80f8db/pyrope-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-b90e12560a80f8db
+    provenance_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-b90e12560a80f8db/manifest.json
+    recipe: recipes/reflectors/pyrope-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the azimuthal-60 orientation.
+    orientation: azimuthal-60
+    hero: false
+  - id: pyrope-direct-tilt-plus-20
+    title: Pyrope (298.15 K Mg endmember) — tilt +20
+    phase_slugs: [pyrope]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-9c85bbaf883a30b7/pyrope-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-9c85bbaf883a30b7/pyrope-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-9c85bbaf883a30b7
+    provenance_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-9c85bbaf883a30b7/manifest.json
+    recipe: recipes/reflectors/pyrope-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the tilt-plus-20 orientation.
+    orientation: tilt-plus-20
+    hero: false
+  - id: pyrope-direct-oblique-high
+    title: Pyrope (298.15 K Mg endmember) — oblique high
+    phase_slugs: [pyrope]
+    families: [direct-reflector-template, orientation-variation]
+    format: svg
+    media_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-124fc32621d4c0b3/pyrope-hemisphere-standard.svg
+    preview_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-124fc32621d4c0b3/pyrope-hemisphere-standard-stencil.png
+    bundle_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-124fc32621d4c0b3
+    provenance_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-124fc32621d4c0b3/manifest.json
+    recipe: recipes/reflectors/pyrope-art-bands.yml
+    entrypoint: scripts/render_phase_art_templates.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Standard-width direct-reflector hemisphere at the oblique-high orientation.
+    orientation: oblique-high
+    hero: false
+  - id: pyrope-x-axis-rotation
+    title: Pyrope (298.15 K Mg endmember) — x-axis rotation
+    phase_slugs: [pyrope]
+    families: [x-axis-motion]
+    format: mp4
+    media_path: local/atlas-expansion/pyrope/direct-rotation/pyrope-x-axis-rotation.mp4
+    preview_path: local/atlas-expansion/pyrope/direct-rotation/preview.png
+    bundle_path: local/atlas-expansion/pyrope/direct-rotation
+    provenance_path: local/atlas-expansion/pyrope/direct-rotation/manifest.json
+    recipe: recipes/reflectors/pyrope-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Full direct-reflector rotation about the horizontal sample axis.
+    orientation: active x-axis rotation
+    hero: false
+  - id: pyrope-reflector-ridge-globe
+    title: Pyrope (298.15 K Mg endmember) — reflector-ridge globe
+    phase_slugs: [pyrope]
+    families: [reflector-ridge-globe]
+    format: stl
+    media_path: local/atlas-expansion/pyrope/reflector-globe/reflector-ridge-globe-build-5cfde597411006cd/9000435-isotropic-u-reflector-ridges.stl
+    preview_path: local/atlas-expansion/pyrope/reflector-globe/reflector-ridge-globe-build-5cfde597411006cd/9000435-isotropic-u-reflector-ridges-preview.png
+    bundle_path: local/atlas-expansion/pyrope/reflector-globe/reflector-ridge-globe-build-5cfde597411006cd
+    provenance_path: local/atlas-expansion/pyrope/reflector-globe/reflector-ridge-globe-build-5cfde597411006cd/reflector-globe-manifest.json
+    recipe: recipes/globes/pyrope-reflector-ridges.yml
+    entrypoint: kikuchi-lab reflector-globe build
+    tier: printable-geometry
+    state: local-published
+    caption: Direct-reflector ridge geometry on a full spherical surface.
+    orientation: canonical sphere
+    hero: false
+  - id: pyrope-atlas-kinematical-master
+    title: Pyrope (298.15 K Mg endmember) — kinematical Lambert master
+    phase_slugs: [pyrope]
+    families: [intensity-master]
+    format: png
+    media_path: local/atlas-expansion/pyrope/kinematical/kinematical-run-d30e6a355c2dbdcd/products/kinematical-master-lambert.png
+    preview_path: local/atlas-expansion/pyrope/kinematical/kinematical-run-d30e6a355c2dbdcd/products/kinematical-master-lambert.png
+    bundle_path: local/atlas-expansion/pyrope/kinematical/kinematical-run-d30e6a355c2dbdcd
+    provenance_path: local/atlas-expansion/pyrope/kinematical/kinematical-run-d30e6a355c2dbdcd/manifest.json
+    recipe: recipes/kinematical/pyrope-001-atlas-parity-master.yml
+    entrypoint: kikuchi-lab render-kinematical
+    tier: kinematical-master
+    state: local-published
+    caption: Source-backed 20 keV retained Lambert master; its bundle carries the aligned canonical spherical-field export.
+    orientation: canonical crystal frame
+    hero: false
+  - id: pyrope-atlas-retained-depth-x-axis
+    title: Pyrope (298.15 K Mg endmember) — retained depth-field x-axis rotation
+    phase_slugs: [pyrope]
+    families: [depth-field-motion]
+    format: mp4
+    media_path: local/atlas-expansion/pyrope/depth-rotation/pyrope-near-depth-x-axis-rotation.mp4
+    preview_path: local/atlas-expansion/pyrope/depth-rotation/preview.png
+    bundle_path: local/atlas-expansion/pyrope/depth-rotation
+    provenance_path: local/atlas-expansion/pyrope/depth-rotation/manifest.json
+    recipe: recipes/presentation/pyrope-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: 12-second active x-axis view of a saved kinematical master and retained overlap field; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation
+    hero: false
+  - id: pyrope-atlas-kinematical-intensity-relief
+    title: Pyrope (298.15 K Mg endmember) — kinematical intensity-relief globe
+    phase_slugs: [pyrope]
+    families: [intensity-relief-globe]
+    format: stl
+    media_path: local/atlas-expansion/pyrope/relief/relief-globe-build-e14176e6772c169c/pyrope-intensity-relief-globe.stl
+    preview_path: local/atlas-expansion/pyrope/relief/relief-globe-build-e14176e6772c169c/pyrope-intensity-relief-preview.png
+    bundle_path: local/atlas-expansion/pyrope/relief/relief-globe-build-e14176e6772c169c
+    provenance_path: local/atlas-expansion/pyrope/relief/relief-globe-build-e14176e6772c169c/relief-manifest.json
+    recipe: recipes/relief/pyrope-atlas-parity-kinematical-intensity.yml
+    entrypoint: kikuchi-lab relief globe build
+    tier: kinematical-intensity-relief
+    state: local-published
+    caption: Validated 80 mm spherical STL with outward relief mapped from the canonical kinematical field.
+    orientation: canonical sphere
+    hero: false

@@ -1,7 +1,7 @@
 {
   "claim_boundary": "Structure-source terms apply to the named CIF records. They do not determine the separate project-code, visual-media, or printable-geometry license.",
   "schema_version": 1,
-  "source_count": 11,
+  "source_count": 12,
   "sources": [
     {
       "cif": "COD-9000319.cif",
@@ -472,6 +472,52 @@
       },
       "source_record": "phases/enstatite/source.yml",
       "uri": "https://www.crystallography.net/cod/9001593.cif"
+    },
+    {
+      "cif": "COD-9000435-isotropic-u.cif",
+      "citation": "Meagher, E. P. (1975). The crystal structures of pyrope and grossularite at elevated temperatures. American Mineralogist 60, 218-228. Source specimen: T = 25 deg C.",
+      "copying_policy": "Source CIF permits scientific-community use with attribution to Meagher (1975); the original and derivative retain the COD attribution notice.",
+      "display_name": "Pyrope (298.15 K Mg endmember)",
+      "identifier": "COD-9000435-isotropic-U",
+      "license": "COD attribution-use notice",
+      "license_uri": "https://www.crystallography.net/cod/9000435.html",
+      "page_uri": "https://www.crystallography.net/cod/9000435.html",
+      "phase_slug": "pyrope",
+      "retrieved": "2026-07-25",
+      "sha256": "d5235c9c9a5f335eb35e764435f27de32591bc96d3728ce3c241b8462035d7e8",
+      "simulation_setting": {
+        "derivative_unchanged_from_original": [
+          "coordinates",
+          "occupancies",
+          "cell_values",
+          "symmetry_operations"
+        ],
+        "derived_from_identifier": "COD-9000435",
+        "derived_from_sha256": "90c7d0b964653c5d1e32aa944a45430e760f29f3910ff8997a0a3524d4f55932",
+        "scope_note": "Scope boundary: one pure Mg-garnet endmember; not all garnets, natural pyrope solid solutions, a pressure series, or indexing/orientation validation.",
+        "source_setting": "I a -3 d",
+        "target_fractional_from_source": [
+          "x",
+          "y",
+          "z"
+        ],
+        "target_lattice_from_source": [
+          "a",
+          "b",
+          "c"
+        ],
+        "target_setting": "I a -3 d",
+        "target_site_multiplicities": [
+          24,
+          16,
+          24,
+          96
+        ],
+        "temperature_k": 298.15,
+        "u_iso_derivation": "U_iso = (U_11 + U_22 + U_33) / 3 for orthogonal cubic axes"
+      },
+      "source_record": "phases/pyrope/source.yml",
+      "uri": "https://www.crystallography.net/cod/9000435.cif"
     }
   ],
   "title": "Kikuchi Atlas structural-source audit"

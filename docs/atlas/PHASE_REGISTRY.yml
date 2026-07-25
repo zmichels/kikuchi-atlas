@@ -114,3 +114,13 @@ phases:
     source_record: phases/enstatite/source.yml
     candidate_reference:
     scope_note: One 0 GPa Pbca MgSiO3 orthoenstatite refinement; not a proxy for the full orthopyroxene compositional or pressure range.
+
+  - slug: pyrope
+    display_name: Pyrope (298.15 K Mg endmember)
+    family: garnet
+    formula: Mg3Al2Si3O12
+    crystal_system: cubic
+    source_status: tracked-source
+    source_record: phases/pyrope/source.yml
+    candidate_reference:
+    scope_note: One 298.15 K Ia-3d pure Mg pyrope refinement with transparent Ueq derivation; not a universal garnet or natural solid-solution reference.
