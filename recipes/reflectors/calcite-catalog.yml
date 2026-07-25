@@ -1,0 +1,13 @@
+schema_version: 1
+source_record: phases/calcite/source.yml
+energy_kev: 20.0
+min_dspacing_angstrom: 0.7
+scattering_params: xtables
+source_master_relative_factor: 0.03
+selection_relative_factor: 0.18
+weight_exponent: 2.0
+# Calcite's high symmetry produces exactly four eligible tied blocks at this
+# cutoff, preserving one physical ridge tier per block.
+eligibility_min_weight: 0.05
+tie_policy: keep_equal_weights_together
+cohort_count: 4

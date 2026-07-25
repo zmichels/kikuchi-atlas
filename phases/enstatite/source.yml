@@ -1,0 +1,49 @@
+schema_version: 1
+identifier: COD-9001593
+cif: COD-9001593.cif
+sha256: 9a7e8ca57e3eb4f804fdeb4954566cfaa7b3a61fe24f4931c9c76c1e8228d51d
+retrieved: 2026-07-24
+uri: https://www.crystallography.net/cod/9001593.cif
+page_uri: https://www.crystallography.net/cod/9001593.html
+license: COD attribution-use notice
+license_uri: https://www.crystallography.net/cod/9001593.html
+copying_policy: Source CIF permits scientific-community use with attribution to the journal article.
+citation: >-
+  Hugh-Jones, D. A. and Angel, R. J. (1994). A compressional study of
+  MgSiO3 orthoenstatite up to 8.5 GPa. American Mineralogist 79, 405-410.
+  Source specimen: P = 0 GPa.
+phase:
+  name: orthoenstatite-0-GPa
+  formula: MgSiO3
+  space_group_number: 61
+  setting: P b c a
+  lattice_angstrom: [18.233, 8.8191, 5.1802, 90.0, 90.0, 90.0]
+sites:
+  - {label: Mg1, element: Mg, fract: [0.3763, 0.6541, 0.8663], occupancy: 1.0, u_iso_angstrom_sq: 0.00849}
+  - {label: Mg2, element: Mg, fract: [0.3769, 0.4872, 0.3589], occupancy: 1.0, u_iso_angstrom_sq: 0.01039}
+  - {label: SiA, element: Si, fract: [0.2715, 0.3418, 0.0506], occupancy: 1.0, u_iso_angstrom_sq: 0.00735}
+  - {label: SiB, element: Si, fract: [0.4736, 0.3374, 0.7981], occupancy: 1.0, u_iso_angstrom_sq: 0.00747}
+  - {label: O1a, element: O, fract: [0.1835, 0.3407, 0.034], occupancy: 1.0, u_iso_angstrom_sq: 0.00811}
+  - {label: O2a, element: O, fract: [0.3114, 0.5029, 0.043], occupancy: 1.0, u_iso_angstrom_sq: 0.00773}
+  - {label: O3a, element: O, fract: [0.3025, 0.2224, 0.832], occupancy: 1.0, u_iso_angstrom_sq: 0.00545}
+  - {label: O1b, element: O, fract: [0.5622, 0.3414, 0.798], occupancy: 1.0, u_iso_angstrom_sq: 0.01203}
+  - {label: O2b, element: O, fract: [0.4324, 0.4836, 0.69], occupancy: 1.0, u_iso_angstrom_sq: 0.00722}
+  - {label: O3b, element: O, fract: [0.4483, 0.1951, 0.603], occupancy: 1.0, u_iso_angstrom_sq: 0.00722}
+thermal_factor_policy:
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
+  simulation_units: angstrom^2
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
+simulation_setting:
+  reason: >-
+    COD 9001593 is the 0 GPa orthoenstatite structure in the conventional
+    P b c a setting represented directly by space group 61.
+  source_setting: P b c a
+  target_setting: P b c a
+  target_lattice_from_source: [a, b, c]
+  target_fractional_from_source: [x, y, z]
+  target_site_multiplicities: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8]
+  pressure_gpa: 0.0
