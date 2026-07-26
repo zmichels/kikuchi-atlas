@@ -153,7 +153,7 @@ def main() -> None:
     output = (
         args.output.resolve()
         if args.output is not None
-        else ROOT / "local/idealized-near-depth-rotation/ice-ih-x-axis-band-led-v1"
+        else ROOT / "local/work/kikuchi-renders/near-depth-rotation/ice-ih-x-axis-band-led-v1"
     )
     if output.exists():
         raise FileExistsError(f"refusing to overwrite existing output: {output}")

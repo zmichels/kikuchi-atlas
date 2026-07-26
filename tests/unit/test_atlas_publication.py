@@ -4,6 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 
+import yaml
+
 from kikuchi_lab.atlas import build_public_atlas
 
 
@@ -25,6 +27,43 @@ def _fixture_repository(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
     _write(root / "local/demo/demo.stl", b"solid demo\nendsolid demo\n")
     _write(root / "local/demo/manifest.json", "{}\n")
     _write(root / "local/demo/products/canonical-kinematical-master.npz", b"master-field")
+    package_root = root / "local/atlas/phases/demo/products/demo-movie"
+    package_payloads = {
+        "media/demo-master.mov": b"authoritative-mov",
+        "previews/movie-preview.png": b"movie-preview",
+        "web/demo-browser.mp4": b"browser-mp4",
+        "provenance/original-provenance.json": b'{"source":"original"}\n',
+        "provenance/scientific-fields/master-field.npz": b"scientific-field",
+    }
+    for relative, content in package_payloads.items():
+        _write(package_root / relative, content)
+    package_manifest = {
+        "schema_version": 1,
+        "phase_slug": "demo",
+        "product_id": "demo-movie",
+        "registry_id": "demo-movie",
+        "source_commit": "1" * 40,
+        "tracked_references": {"recipe": "recipes/demo.yml"},
+        "files": [
+            {
+                "path": relative,
+                "role": (
+                    "preview"
+                    if relative.startswith("previews/")
+                    else relative.split("/", 1)[0]
+                ),
+                "bytes": len(content),
+                "sha256": hashlib.sha256(content).hexdigest(),
+                "mime_type": "application/octet-stream",
+                "destinations": ["google-drive"],
+            }
+            for relative, content in package_payloads.items()
+        ],
+    }
+    _write(
+        package_root / "product-package.yml",
+        yaml.safe_dump(package_manifest, sort_keys=False),
+    )
     _write(
         root / "docs/atlas/PHASE_REGISTRY.yml",
         """schema_version: 1
@@ -96,6 +135,23 @@ products:
     caption: a printable product retained for archival release
     orientation: canonical sphere
     hero: false
+  - id: demo-movie
+    title: Demo movie
+    phase_slugs: [demo]
+    families: [direct-reflector-template]
+    format: mov
+    media_path: local/atlas/phases/demo/products/demo-movie/media/demo-master.mov
+    preview_path: local/atlas/phases/demo/products/demo-movie/previews/movie-preview.png
+    web_path: local/atlas/phases/demo/products/demo-movie/web/demo-browser.mp4
+    bundle_path: local/atlas/phases/demo/products/demo-movie
+    provenance_path: local/atlas/phases/demo/products/demo-movie/product-package.yml
+    recipe: recipes/demo.yml
+    entrypoint: fixture
+    tier: direct-reflector
+    state: local-published
+    caption: an authoritative movie with a browser proxy
+    orientation: active
+    hero: false
 """,
     )
     _write(root / "docs/products/ARTIFACT_CATALOG.yml", "schema_version: 1\nentries: []\n")
@@ -122,14 +178,37 @@ def test_public_atlas_build_is_self_contained_and_has_an_archive_inventory(tmp_p
     assert index.is_file()
     assert "local/" not in index.read_text(encoding="utf-8")
     assert "/tmp/" not in index.read_text(encoding="utf-8")
-    assert result.web_asset_count == 2
-    assert result.archival_asset_count == 5
+    assert result.web_asset_count == 4
+    assert result.archival_asset_count == 11
     assert all(path.suffix.lower() != ".stl" for path in result.web_assets)
     assert any(path.suffix.lower() == ".stl" for path in result.archive_assets)
+    assert all(path.suffix.lower() != ".mov" for path in result.web_assets)
+    assert any(path.suffix.lower() == ".mov" for path in result.archive_assets)
     assert (result.site_root / "release-inventory.html").is_file()
+    public_inventory_path = result.site_root / "release-inventory.json"
+    assert public_inventory_path.is_file()
 
     inventory = json.loads(result.inventory_path.read_text(encoding="utf-8"))
+    public_inventory_text = public_inventory_path.read_text(encoding="utf-8")
+    public_inventory = json.loads(public_inventory_text)
     products_by_id = {product["id"]: product for product in inventory["products"]}
+    public_products_by_id = {
+        product["id"]: product for product in public_inventory["products"]
+    }
+    assert set(public_inventory) == {
+        "claim_boundary",
+        "phase_slugs",
+        "product_count",
+        "products",
+        "schema_version",
+        "title",
+        "web_asset_count",
+        "web_asset_limit_bytes",
+        "web_assets",
+    }
+    assert "archive" not in public_inventory_text
+    assert "source_media_path" not in public_inventory_text
+    assert "local/" not in public_inventory_text
     assert products_by_id["demo-line"]["web"]["media_path"]
     assert products_by_id["demo-globe"]["web"]["media_path"] is None
     assert products_by_id["demo-globe"]["archive"]["media_path"]
@@ -138,6 +217,42 @@ def test_public_atlas_build_is_self_contained_and_has_an_archive_inventory(tmp_p
     assert products_by_id["demo-globe"]["archive"]["media_sha256"] == hashlib.sha256(
         staged_stl.read_bytes()
     ).hexdigest()
+    movie = products_by_id["demo-movie"]
+    assert movie["web"]["media_path"].endswith("/demo-browser.mp4")
+    assert movie["delivery"] == {
+        "authoritative_media_format": "mov",
+        "browser_media_path": movie["web"]["media_path"],
+        "full_resolution_url": None,
+    }
+    public_movie = public_products_by_id["demo-movie"]
+    assert public_movie["delivery"] == {
+        "authoritative_media_format": "mov",
+        "browser_media_path": public_movie["web"]["media_path"],
+        "browser_media_type": "video/mp4",
+        "full_resolution_url": None,
+    }
+    demo_page = (result.site_root / "phases/demo.html").read_text(encoding="utf-8")
+    assert 'src="../assets/' in demo_page
+    assert 'demo-browser.mp4" type="video/mp4"' in demo_page
+    assert ">open MP4</a>" in demo_page
+    assert "video/quicktime" not in demo_page
+    assert ">open MOV</a>" not in demo_page
+    package_files = {
+        item["package_path"]: item for item in movie["archive"]["package_files"]
+    }
+    assert set(package_files) == {
+        "product-package.yml",
+        "media/demo-master.mov",
+        "previews/movie-preview.png",
+        "web/demo-browser.mp4",
+        "provenance/original-provenance.json",
+        "provenance/scientific-fields/master-field.npz",
+    }
+    assert all(item["path"] for item in package_files.values())
+    assert all(
+        "local/demo/products" not in path.as_posix()
+        for path in result.archive_assets
+    )
     supplemental = products_by_id["demo-line"]["archive"]["supplemental"]
     master_digest = hashlib.sha256(b"master-field").hexdigest()
     assert supplemental == [
@@ -147,6 +262,27 @@ def test_public_atlas_build_is_self_contained_and_has_an_archive_inventory(tmp_p
             "sha256": master_digest,
         }
     ]
+    checksum_entries = {
+        relative: digest
+        for digest, relative in (
+            line.split("  ", 1)
+            for line in (result.archive_root / "checksums.sha256")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        )
+    }
+    checksum_targets = {
+        path.relative_to(result.archive_root).as_posix()
+        for directory in ("artifacts", "tracked-context")
+        for path in (result.archive_root / directory).rglob("*")
+        if path.is_file()
+    }
+    assert set(checksum_entries) == checksum_targets
+    assert all(
+        checksum_entries[relative]
+        == hashlib.sha256((result.archive_root / relative).read_bytes()).hexdigest()
+        for relative in checksum_targets
+    )
 
     stale = result.site_root / "assets/stale.txt"
     stale.write_text("stale build residue", encoding="utf-8")
@@ -158,3 +294,95 @@ def test_public_atlas_build_is_self_contained_and_has_an_archive_inventory(tmp_p
         stage_archive=True,
     )
     assert not stale.exists()
+
+
+def test_public_atlas_emits_only_public_verified_full_resolution_urls(
+    tmp_path: Path,
+) -> None:
+    registry, products, anchors, root = _fixture_repository(tmp_path)
+    mirror = root / "docs/atlas/GOOGLE_MIRROR.yml"
+    _write(
+        mirror,
+        yaml.safe_dump(
+            {
+                "schema_version": 1,
+                "provider": "google-drive",
+                "account": "zmichels@umn.edu",
+                "local_mount": None,
+                "transport": "undecided",
+                "quota": {
+                    "observed_at": None,
+                    "total_bytes": None,
+                    "used_bytes": None,
+                    "free_bytes": None,
+                    "required_headroom_bytes": 10737418240,
+                },
+                "root": {
+                    "drive_id": None,
+                    "url": None,
+                    "access": "private",
+                    "state": "planned",
+                },
+                "phases": {
+                    "demo": {
+                        "drive_id": None,
+                        "url": None,
+                        "access": "private",
+                        "state": "planned",
+                        "products": {
+                            "demo-line": {
+                                "drive_id": "private-id",
+                                "url": "https://drive.google.com/drive/folders/private-id",
+                                "access": "private",
+                                "state": "uploaded",
+                                "package_manifest_sha256": None,
+                                "verified_at": None,
+                            },
+                            "demo-movie": {
+                                "drive_id": "verified-id",
+                                "url": "https://drive.google.com/drive/folders/verified-id",
+                                "access": "public-link",
+                                "state": "public-verified",
+                                "package_manifest_sha256": None,
+                                "verified_at": None,
+                            },
+                        },
+                    }
+                },
+                "site": {
+                    "draft_url": (
+                        "https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test"
+                    ),
+                    "public_url": None,
+                    "audience": "university-only",
+                    "state": "draft",
+                },
+            },
+            sort_keys=False,
+        ),
+    )
+
+    result = build_public_atlas(
+        registry_path=registry,
+        product_registry_path=products,
+        anchor_catalog_path=anchors,
+        output_root=root / "dist/atlas-public",
+        mirror_registry_path=mirror,
+    )
+
+    inventory_text = result.inventory_path.read_text(encoding="utf-8")
+    inventory = json.loads(inventory_text)
+    by_id = {item["id"]: item for item in inventory["products"]}
+    assert by_id["demo-line"]["delivery"]["full_resolution_url"] is None
+    assert (
+        by_id["demo-movie"]["delivery"]["full_resolution_url"]
+        == "https://drive.google.com/drive/folders/verified-id"
+    )
+    pages = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(result.site_root.rglob("*.html"))
+    )
+    assert "https://drive.google.com/drive/folders/private-id" not in pages
+    assert "https://drive.google.com/drive/folders/private-id" not in inventory_text
+    assert "https://drive.google.com/drive/folders/verified-id" in pages
+    assert pages.count(">open full-resolution package<") == 2

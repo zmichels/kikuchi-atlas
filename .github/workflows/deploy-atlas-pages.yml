@@ -6,12 +6,12 @@ on:
       release_tag:
         description: GitHub prerelease containing chunks of the verified static gallery ZIP
         required: true
-        default: atlas-gallery-web-0.1.0-draft.1
+        default: atlas-gallery-web-0.2.0-draft.2
         type: string
       asset_glob:
         description: Glob matching the ordered static-gallery ZIP chunks to deploy
         required: true
-        default: kikuchi-atlas-gallery-web-0.1.0-draft.1.zip.part-*
+        default: kikuchi-atlas-gallery-web-0.2.0-draft.2.zip.part-*
         type: string
 
 permissions:
@@ -31,31 +31,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
       - name: Download curated gallery payload
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          ASSET_GLOB: ${{ inputs.asset_glob }}
+          EXPECTED_RELEASE_TAG: atlas-gallery-web-0.2.0-draft.2
+          EXPECTED_ASSET_GLOB: kikuchi-atlas-gallery-web-0.2.0-draft.2.zip.part-*
         run: |
-          mkdir -p payload site
-          gh release download "${{ inputs.release_tag }}" \
+          set -euo pipefail
+          test "$RELEASE_TAG" = "$EXPECTED_RELEASE_TAG"
+          test "$ASSET_GLOB" = "$EXPECTED_ASSET_GLOB"
+          mkdir -p -- payload site
+          gh release download "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
-            --pattern "${{ inputs.asset_glob }}" \
+            --pattern "$ASSET_GLOB" \
             --dir payload
-          shopt -s nullglob
-          chunks=(payload/*.part-*)
+          mapfile -d '' chunks < <(
+            find payload -maxdepth 1 -type f -name "$EXPECTED_ASSET_GLOB" -print0 |
+              sort -z
+          )
           test "${#chunks[@]}" -gt 1
-          printf '%s\n' "${chunks[@]}" | LC_ALL=C sort | xargs cat > gallery.zip
+          cat "${chunks[@]}" > gallery.zip
           test "$(sha256sum gallery.zip | cut -d ' ' -f1)" = \
-            "e34c1b78b8503e72c7dad7d375e02c689bf3dce09c6a4123ddd0ea9441684ba9"
+            "d32d21494ae2b9b078d3e59dee7dd241c8474914ade76db7226cbb410875a514"
           unzip -q gallery.zip -d site
           test -f site/index.html
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
           path: site
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

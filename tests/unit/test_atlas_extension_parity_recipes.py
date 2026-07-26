@@ -46,6 +46,18 @@ PARITY_RECIPES = {
         "kinematical/diopside-001-atlas-parity-master.yml",
         "presentation/diopside-near-depth-atlas-parity.yml",
     ),
+    "calcite": (
+        "kinematical/calcite-001-atlas-parity-master.yml",
+        "presentation/calcite-near-depth-atlas-parity.yml",
+    ),
+    "enstatite": (
+        "kinematical/enstatite-001-atlas-parity-master.yml",
+        "presentation/enstatite-near-depth-atlas-parity.yml",
+    ),
+    "pyrope": (
+        "kinematical/pyrope-001-atlas-parity-master.yml",
+        "presentation/pyrope-near-depth-atlas-parity.yml",
+    ),
 }
 
 

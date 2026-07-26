@@ -50,3 +50,37 @@ def test_retained_field_rotation_closes_cleanly_without_a_spatial_filter() -> No
     assert first.size == (128, 128)
     assert tuple(pixels[0, 0]) == (16, 21, 25)
     np.testing.assert_array_equal(pixels, np.asarray(closure))
+
+
+def test_tiled_high_resolution_path_matches_the_original_renderer() -> None:
+    size = 33
+    coordinate = np.linspace(-1.0, 1.0, size, dtype=np.float32)
+    x, y = np.meshgrid(coordinate, coordinate)
+    master = np.stack((0.55 + 0.20 * x + 0.10 * y, 0.55 - 0.15 * x + 0.05 * y))
+    overlap = np.maximum(0.0, 1.0 - (x * x + y * y)).astype(np.float32)
+    directions, valid = MODULE._screen_directions(128)
+    rotation = axis_angle_matrix(np.array((1.0, 0.0, 0.0)), 137.5)
+    orientation = axis_angle_matrix(np.array((2.0, 1.0, 1.0)), 23.0)
+    original = MODULE._render_frame(
+        master,
+        overlap,
+        normalization=1.0,
+        gain=0.38,
+        ceiling=0.985,
+        screen_directions=directions,
+        screen_valid=valid,
+        rotation=rotation,
+        base_orientation=orientation,
+    )
+    tiled = MODULE._render_frame_tiled(
+        master,
+        overlap,
+        normalization=1.0,
+        gain=0.38,
+        ceiling=0.985,
+        frame_size=128,
+        tile_rows=17,
+        rotation=rotation,
+        base_orientation=orientation,
+    )
+    np.testing.assert_array_equal(np.asarray(original), np.asarray(tiled))

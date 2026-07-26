@@ -1,0 +1,42 @@
+schema_version: 1
+identifier: COD-1547350
+cif: COD-1547350.cif
+sha256: 0fb4f7a3f6f0aeb6e053e0512a1ffa959f3ba1d6f49e7186063324acab3290e7
+retrieved: 2026-07-24
+uri: https://www.crystallography.net/cod/1547350.cif
+page_uri: https://www.crystallography.net/cod/1547350.html
+license: CC0-1.0
+license_uri: https://creativecommons.org/publicdomain/zero/1.0/
+copying_policy: Public-domain COD data; acknowledge the original structural-data authors.
+citation: >-
+  Ishizawa, N.; Setoguchi, H.; Yanagisawa, K. (2013). Structural evolution
+  of calcite at high temperatures: Phase V unveiled. Scientific Reports 3,
+  2832. Source data block: 295 K calcite in air.
+phase:
+  name: calcite-295K
+  formula: C1Ca1O3
+  space_group_number: 167
+  setting: R -3 c :H
+  lattice_angstrom: [4.9876, 4.9876, 17.0575, 90.0, 90.0, 120.0]
+sites:
+  - {label: Ca1, element: Ca, fract: [0.0, 0.0, 0.0], occupancy: 1.0, u_iso_angstrom_sq: 0.0116}
+  - {label: C1, element: C, fract: [0.0, 0.0, 0.25], occupancy: 1.0, u_iso_angstrom_sq: 0.0115}
+  - {label: O1, element: O, fract: [0.255, 0.0, 0.25], occupancy: 1.0, u_iso_angstrom_sq: 0.0186}
+thermal_factor_policy:
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
+  simulation_units: angstrom^2
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
+simulation_setting:
+  reason: >-
+    COD 1547350 is a 295 K calcite refinement in the conventional hexagonal
+    R -3 c setting and is represented directly by space group 167.
+  source_setting: R -3 c :H
+  target_setting: R -3 c :H
+  target_lattice_from_source: [a, b, c]
+  target_fractional_from_source: [x, y, z]
+  target_site_multiplicities: [6, 6, 18]
+  temperature_kelvin: 295

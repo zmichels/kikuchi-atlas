@@ -53,7 +53,7 @@ Build the canonical spherical intensity-relief globe from a verified master prod
 uv run kikuchi-lab relief globe build \
   --master-pattern local/benchmarks/forsterite-resolution-501/COD-9000319-ebsdsim.bundle/master-437f865cd0f68384.npz \
   --recipe recipes/relief/forsterite-intensity-globe.yml \
-  --output local/relief-globes/forsterite-501
+  --output local/work/kikuchi-renders/relief-globes/forsterite-501
 ```
 
 The command publishes one immutable, content-addressed five-file bundle. It refuses an

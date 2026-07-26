@@ -1,0 +1,49 @@
+schema_version: 1
+identifier: COD-9000435-isotropic-U
+cif: COD-9000435-isotropic-u.cif
+sha256: d5235c9c9a5f335eb35e764435f27de32591bc96d3728ce3c241b8462035d7e8
+retrieved: 2026-07-25
+uri: https://www.crystallography.net/cod/9000435.cif
+page_uri: https://www.crystallography.net/cod/9000435.html
+license: COD attribution-use notice
+license_uri: https://www.crystallography.net/cod/9000435.html
+copying_policy: >-
+  Source CIF permits scientific-community use with attribution to Meagher
+  (1975); the original and derivative retain the COD attribution notice.
+citation: >-
+  Meagher, E. P. (1975). The crystal structures of pyrope and grossularite
+  at elevated temperatures. American Mineralogist 60, 218-228. Source
+  specimen: T = 25 deg C.
+phase:
+  name: pyrope
+  formula: Mg3Al2Si3O12
+  space_group_number: 230
+  setting: "I a -3 d"
+  lattice_angstrom: [11.456, 11.456, 11.456, 90.0, 90.0, 90.0]
+sites:
+  - {label: Mg, element: Mg, fract: [0.12500, 0.00000, 0.25000], occupancy: 1.0, u_iso_angstrom_sq: 0.011836666666666667}
+  - {label: Al, element: Al, fract: [0.00000, 0.00000, 0.00000], occupancy: 1.0, u_iso_angstrom_sq: 0.00507}
+  - {label: Si, element: Si, fract: [0.00000, 0.25000, 0.37500], occupancy: 1.0, u_iso_angstrom_sq: 0.0036133333333333334}
+  - {label: O, element: O, fract: [0.03280, 0.05030, 0.65340], occupancy: 1.0, u_iso_angstrom_sq: 0.00596}
+thermal_factor_policy:
+  source_field: _atom_site_U_iso_or_equiv
+  source_units: angstrom^2
+  simulation_field: B_iso
+  conversion: B_iso = 8 * pi^2 * U_iso
+  simulation_units: angstrom^2
+  missing: reject
+  ebsdsim_fallback_b_iso_angstrom_sq: 0.5
+simulation_setting:
+  temperature_k: 298.15
+  source_setting: "I a -3 d"
+  target_setting: "I a -3 d"
+  target_lattice_from_source: [a, b, c]
+  target_fractional_from_source: [x, y, z]
+  target_site_multiplicities: [24, 16, 24, 96]
+  scope_note: >-
+    Scope boundary: one pure Mg-garnet endmember; not all garnets, natural
+    pyrope solid solutions, a pressure series, or indexing/orientation validation.
+  derived_from_identifier: COD-9000435
+  derived_from_sha256: 90c7d0b964653c5d1e32aa944a45430e760f29f3910ff8997a0a3524d4f55932
+  u_iso_derivation: U_iso = (U_11 + U_22 + U_33) / 3 for orthogonal cubic axes
+  derivative_unchanged_from_original: [coordinates, occupancies, cell_values, symmetry_operations]

@@ -7,6 +7,9 @@ parent: KIKU-E001
 children:
   - KIKU-T051
   - KIKU-T052
+  - KIKU-T085
+  - KIKU-T086
+  - KIKU-T087
 created: 2026-07-20
 priority: P1
 tags: [atlas, publication, provenance, archive]
@@ -41,3 +44,7 @@ browser-safe gallery assets from DOI-oriented scientific/print artifacts.
 - KIKU-T051 provides a tested public-gallery and archival-staging builder.
 - KIKU-T052 remains intentionally deferred until the user selects the public
   hosting/repository identity and archival metadata.
+- KIKU-T085 freezes and then materializes the 125 canonical product packages.
+- KIKU-T086 refreshes the release-driven 125-product GitHub Pages catalogue.
+- KIKU-T087 gates the UMN Drive and Google Sites mirror on action-time
+  confirmation and logged-out verification.

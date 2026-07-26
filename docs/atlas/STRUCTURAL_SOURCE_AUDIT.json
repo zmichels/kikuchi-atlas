@@ -1,7 +1,7 @@
 {
   "claim_boundary": "Structure-source terms apply to the named CIF records. They do not determine the separate project-code, visual-media, or printable-geometry license.",
   "schema_version": 1,
-  "source_count": 9,
+  "source_count": 12,
   "sources": [
     {
       "cif": "COD-9000319.cif",
@@ -393,6 +393,131 @@
       },
       "source_record": "phases/diopside/source.yml",
       "uri": "https://www.crystallography.net/cod/1000007.cif"
+    },
+    {
+      "cif": "COD-1547350.cif",
+      "citation": "Ishizawa, N.; Setoguchi, H.; Yanagisawa, K. (2013). Structural evolution of calcite at high temperatures: Phase V unveiled. Scientific Reports 3, 2832. Source data block: 295 K calcite in air.",
+      "copying_policy": "Public-domain COD data; acknowledge the original structural-data authors.",
+      "display_name": "Calcite (295 K reference)",
+      "identifier": "COD-1547350",
+      "license": "CC0-1.0",
+      "license_uri": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "page_uri": "https://www.crystallography.net/cod/1547350.html",
+      "phase_slug": "calcite",
+      "retrieved": "2026-07-24",
+      "sha256": "0fb4f7a3f6f0aeb6e053e0512a1ffa959f3ba1d6f49e7186063324acab3290e7",
+      "simulation_setting": {
+        "reason": "COD 1547350 is a 295 K calcite refinement in the conventional hexagonal R -3 c setting and is represented directly by space group 167.",
+        "source_setting": "R -3 c :H",
+        "target_fractional_from_source": [
+          "x",
+          "y",
+          "z"
+        ],
+        "target_lattice_from_source": [
+          "a",
+          "b",
+          "c"
+        ],
+        "target_setting": "R -3 c :H",
+        "target_site_multiplicities": [
+          6,
+          6,
+          18
+        ],
+        "temperature_kelvin": 295
+      },
+      "source_record": "phases/calcite/source.yml",
+      "uri": "https://www.crystallography.net/cod/1547350.cif"
+    },
+    {
+      "cif": "COD-9001593.cif",
+      "citation": "Hugh-Jones, D. A. and Angel, R. J. (1994). A compressional study of MgSiO3 orthoenstatite up to 8.5 GPa. American Mineralogist 79, 405-410. Source specimen: P = 0 GPa.",
+      "copying_policy": "Source CIF permits scientific-community use with attribution to the journal article.",
+      "display_name": "Orthoenstatite (0 GPa reference)",
+      "identifier": "COD-9001593",
+      "license": "COD attribution-use notice",
+      "license_uri": "https://www.crystallography.net/cod/9001593.html",
+      "page_uri": "https://www.crystallography.net/cod/9001593.html",
+      "phase_slug": "enstatite",
+      "retrieved": "2026-07-24",
+      "sha256": "9a7e8ca57e3eb4f804fdeb4954566cfaa7b3a61fe24f4931c9c76c1e8228d51d",
+      "simulation_setting": {
+        "pressure_gpa": 0.0,
+        "reason": "COD 9001593 is the 0 GPa orthoenstatite structure in the conventional P b c a setting represented directly by space group 61.",
+        "source_setting": "P b c a",
+        "target_fractional_from_source": [
+          "x",
+          "y",
+          "z"
+        ],
+        "target_lattice_from_source": [
+          "a",
+          "b",
+          "c"
+        ],
+        "target_setting": "P b c a",
+        "target_site_multiplicities": [
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8
+        ]
+      },
+      "source_record": "phases/enstatite/source.yml",
+      "uri": "https://www.crystallography.net/cod/9001593.cif"
+    },
+    {
+      "cif": "COD-9000435-isotropic-u.cif",
+      "citation": "Meagher, E. P. (1975). The crystal structures of pyrope and grossularite at elevated temperatures. American Mineralogist 60, 218-228. Source specimen: T = 25 deg C.",
+      "copying_policy": "Source CIF permits scientific-community use with attribution to Meagher (1975); the original and derivative retain the COD attribution notice.",
+      "display_name": "Pyrope (298.15 K Mg endmember)",
+      "identifier": "COD-9000435-isotropic-U",
+      "license": "COD attribution-use notice",
+      "license_uri": "https://www.crystallography.net/cod/9000435.html",
+      "page_uri": "https://www.crystallography.net/cod/9000435.html",
+      "phase_slug": "pyrope",
+      "retrieved": "2026-07-25",
+      "sha256": "d5235c9c9a5f335eb35e764435f27de32591bc96d3728ce3c241b8462035d7e8",
+      "simulation_setting": {
+        "derivative_unchanged_from_original": [
+          "coordinates",
+          "occupancies",
+          "cell_values",
+          "symmetry_operations"
+        ],
+        "derived_from_identifier": "COD-9000435",
+        "derived_from_sha256": "90c7d0b964653c5d1e32aa944a45430e760f29f3910ff8997a0a3524d4f55932",
+        "scope_note": "Scope boundary: one pure Mg-garnet endmember; not all garnets, natural pyrope solid solutions, a pressure series, or indexing/orientation validation.",
+        "source_setting": "I a -3 d",
+        "target_fractional_from_source": [
+          "x",
+          "y",
+          "z"
+        ],
+        "target_lattice_from_source": [
+          "a",
+          "b",
+          "c"
+        ],
+        "target_setting": "I a -3 d",
+        "target_site_multiplicities": [
+          24,
+          16,
+          24,
+          96
+        ],
+        "temperature_k": 298.15,
+        "u_iso_derivation": "U_iso = (U_11 + U_22 + U_33) / 3 for orthogonal cubic axes"
+      },
+      "source_record": "phases/pyrope/source.yml",
+      "uri": "https://www.crystallography.net/cod/9000435.cif"
     }
   ],
   "title": "Kikuchi Atlas structural-source audit"

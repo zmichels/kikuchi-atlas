@@ -1,0 +1,66 @@
+schema_version: 1
+canonical_root: local/atlas/phases
+legacy_roots:
+  - local/atlas-expansion
+  - local/atlas-extension-parity
+  - local/phase-general-direct-reflector-art
+  - local/reflector-ridge-series
+  - local/dynamical-master-rotation
+  - local/ice-intensity-globes-fixed
+  - local/ice-reflector-globes
+  - local/idealized-direct-reflector-depth-rotation
+  - local/idealized-near-depth-rotation
+  - local/relief-globes
+extra_products:
+  - id: quartz-direct-reflector-artist-master-x-axis
+    title: Alpha quartz — 4K direct-reflector artist-master x-axis rotation
+    phase_slugs: [quartz]
+    families: [x-axis-motion]
+    format: mov
+    media_source: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1/quartz-x-axis-rotation-artist-master.mov
+    preview_source: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1/preview.png
+    web_source: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1/quartz-x-axis-rotation-viewing-copy.mp4
+    provenance_source: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1/manifest.json
+    recipe: recipes/reflectors/quartz-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_rotation.py
+    tier: direct-reflector-art
+    state: local-published
+    caption: Edit-friendly 4K ProRes direct-reflector science-art master with a browser-safe H.264 viewing copy; not a detector acquisition.
+    orientation: active sample-frame x-axis rotation from Bunge ZXZ (17, 31, 43) degrees
+    hero: false
+  - id: quartz-near-depth-artist-master-identity-60fps
+    title: Alpha quartz — 60 fps near-depth identity artist master
+    phase_slugs: [quartz]
+    families: [depth-field-motion]
+    format: mov
+    media_source: local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1/quartz-near-depth-identity-60fps-x-axis-rotation-artist-master.mov
+    preview_source: local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1/preview.png
+    web_transform:
+      profile: h264-square-1280-6500k
+      filename: quartz-near-depth-identity-60fps-x-axis-rotation-web.mp4
+    provenance_source: local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1/manifest.json
+    recipe: recipes/presentation/quartz-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: Edit-friendly 2K 60 fps ProRes retained-field master with a derived browser proxy; not a detector acquisition or per-frame diffraction simulation.
+    orientation: active sample-frame x-axis rotation from identity
+    hero: false
+  - id: quartz-near-depth-artist-master-oblique-17-31-43-60fps
+    title: Alpha quartz — 60 fps near-depth oblique artist master
+    phase_slugs: [quartz]
+    families: [depth-field-motion]
+    format: mov
+    media_source: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1/quartz-near-depth-oblique-17-31-43-60fps-x-axis-rotation-artist-master.mov
+    preview_source: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1/preview.png
+    web_transform:
+      profile: h264-square-1280-6500k
+      filename: quartz-near-depth-oblique-17-31-43-60fps-x-axis-rotation-web.mp4
+    provenance_source: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1/manifest.json
+    recipe: recipes/presentation/quartz-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    tier: retained-near-depth-field
+    state: local-published
+    caption: Edit-friendly 2K 60 fps ProRes retained-field master with a derived browser proxy; not a detector acquisition or per-frame diffraction simulation.
+    orientation: active sample-frame x-axis rotation from Bunge ZXZ (17, 31, 43) degrees
+    hero: false

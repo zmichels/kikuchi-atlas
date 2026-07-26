@@ -18,6 +18,7 @@ children:
   - KIKU-F011
   - KIKU-F012
   - KIKU-F013
+  - KIKU-F014
   - KIKU-F015
   - KIKU-F016
   - KIKU-F017
@@ -34,6 +35,7 @@ children:
   - KIKU-F028
   - KIKU-F029
   - KIKU-F030
+  - KIKU-F031
 created: 2026-07-12
 priority: P0
 tags: [forsterite, milestone]
@@ -67,3 +69,9 @@ phases, orientation data, print geometry, and independent-engine research.
 - [ ] The exceptional-forsterite feature proves the companion architecture with a cited source and authoritative master pattern.
 - [ ] Project-owned recipes, products, diagnostics, and bundles isolate upstream simulator and projection objects.
 - [ ] Later companion directions are preserved as evidence-aware incubator records.
+
+## Progress Evidence
+
+- KIKU-T085 records canonical package consolidation and byte-identity gates.
+- KIKU-T086 records the 125-product GitHub Pages publication gates.
+- KIKU-T087 records the confirmed UMN Drive and Google Sites mirror gates.

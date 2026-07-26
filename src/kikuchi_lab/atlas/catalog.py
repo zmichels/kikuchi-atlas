@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from html import escape
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import yaml
 
@@ -53,6 +53,7 @@ _PRODUCT_FIELDS = {
     "format",
     "media_path",
     "preview_path",
+    "web_path",
     "bundle_path",
     "provenance_path",
     "recipe",
@@ -66,7 +67,7 @@ _PRODUCT_FIELDS = {
 _SOURCE_STATUSES = {"tracked-source", "candidate-reference"}
 _PRODUCT_STATES = {"local-published", "tracked-review-proof"}
 _COVERAGE = {"core", "extension"}
-_FORMATS = {"png", "svg", "mp4", "stl"}
+_FORMATS = {"png", "svg", "mp4", "mov", "stl"}
 _HIGHLIGHT_FAMILY_ORDER = (
     "direct-reflector-template",
     "intensity-master",
@@ -136,6 +137,7 @@ class AtlasProduct:
     media_format: str
     media_path: Path
     preview_path: Path | None
+    web_path: Path | None
     bundle_path: Path
     provenance_path: Path | None
     recipe: str
@@ -146,8 +148,27 @@ class AtlasProduct:
     orientation: str
     hero: bool
 
+    def required_paths(self) -> tuple[Path, ...]:
+        return tuple(
+            path
+            for path in (
+                self.media_path,
+                self.preview_path,
+                self.web_path,
+                self.bundle_path,
+                self.provenance_path,
+            )
+            if path is not None
+        )
+
     def is_available(self) -> bool:
-        return self.media_path.is_file()
+        return (
+            self.media_path.is_file()
+            and self.bundle_path.is_dir()
+            and (self.preview_path is None or self.preview_path.is_file())
+            and (self.web_path is None or self.web_path.is_file())
+            and (self.provenance_path is None or self.provenance_path.is_file())
+        )
 
 
 @dataclass(frozen=True)
@@ -283,7 +304,13 @@ def _product_from_mapping(
     phase_slugs: set[str],
     family_ids: set[str],
 ) -> AtlasProduct:
-    raw = _mapping_with_optional(value, _PRODUCT_FIELDS - {"preview_path", "provenance_path", "orientation", "hero"}, {"preview_path", "provenance_path", "orientation", "hero"}, "atlas product")
+    optional = {"preview_path", "web_path", "provenance_path", "orientation", "hero"}
+    raw = _mapping_with_optional(
+        value,
+        _PRODUCT_FIELDS - optional,
+        optional,
+        "atlas product",
+    )
     phases = _text_list(raw["phase_slugs"], "atlas product phase_slugs")
     unknown_phases = set(phases) - phase_slugs
     if unknown_phases:
@@ -313,7 +340,18 @@ def _product_from_mapping(
         family_ids=families,
         media_format=media_format,
         media_path=_repository_path(root, raw["media_path"], "atlas product media_path"),
-        preview_path=_repository_path(root, raw.get("preview_path"), "atlas product preview_path", allow_none=True),
+        preview_path=_repository_path(
+            root,
+            raw.get("preview_path"),
+            "atlas product preview_path",
+            allow_none=True,
+        ),
+        web_path=_repository_path(
+            root,
+            raw.get("web_path"),
+            "atlas product web_path",
+            allow_none=True,
+        ),
         bundle_path=_repository_path(root, raw["bundle_path"], "atlas product bundle_path"),
         provenance_path=_repository_path(
             root, raw.get("provenance_path"), "atlas product provenance_path", allow_none=True
@@ -463,11 +501,13 @@ def _product_type_href(page: Path, output_root: Path, product_type: ProductType)
 def _product_visual(product: AtlasProduct, page: Path) -> str:
     media_available = product.is_available()
     preview = product.preview_path if product.preview_path and product.preview_path.is_file() else None
-    if product.media_format == "mp4" and media_available:
+    if product.media_format in {"mov", "mp4"} and media_available:
         poster = f' poster="{escape(_relative_href(page, preview))}"' if preview else ""
+        mime_type = "video/mp4" if product.media_format == "mp4" else "video/quicktime"
         return (
             f'<video controls preload="metadata"{poster}>'
-            f'<source src="{escape(_relative_href(page, product.media_path))}" type="video/mp4"></video>'
+            f'<source src="{escape(_relative_href(page, product.media_path))}" '
+            f'type="{mime_type}"></video>'
         )
     display_path = preview or (product.media_path if media_available else None)
     if display_path is not None and display_path.suffix.lower() in {".png", ".svg", ".jpg", ".jpeg"}:
@@ -824,6 +864,7 @@ def _product_html(
     page: Path,
     output_root: Path,
     phase_by_slug: dict[str, AtlasPhase],
+    product_urls: Mapping[str, str],
 ) -> str:
     availability = "available locally" if product.is_available() else "not present in this checkout"
     phase_tags = "".join(
@@ -834,11 +875,20 @@ def _product_html(
     family_tags = "".join(f'<span class="tag">{escape(family_id)}</span>' for family_id in product.family_ids)
     actions = [
         f'<a href="{escape(_relative_href(page, product.media_path))}">open {escape(product.media_format.upper())}</a>',
-        f'<a href="{escape(_relative_href(page, product.bundle_path))}">bundle</a>',
     ]
+    if product.web_path is not None:
+        actions.append(
+            f'<a href="{escape(_relative_href(page, product.web_path))}">web copy</a>'
+        )
+    actions.append(f'<a href="{escape(_relative_href(page, product.bundle_path))}">bundle</a>')
     if product.provenance_path is not None:
         actions.append(
             f'<a href="{escape(_relative_href(page, product.provenance_path))}">provenance</a>'
+        )
+    full_resolution_url = product_urls.get(product.identifier)
+    if full_resolution_url is not None:
+        actions.append(
+            f'<a href="{escape(full_resolution_url)}">open full-resolution package</a>'
         )
     search = " ".join(
         (
@@ -917,6 +967,7 @@ def _individual_product_groups_html(
     page: Path,
     output_root: Path,
     phase_by_slug: dict[str, AtlasPhase],
+    product_urls: Mapping[str, str],
 ) -> str:
     """Render product cards once, grouped by their authoritative coverage family."""
     coverage_by_family = {family.identifier: family.coverage for family in families}
@@ -932,7 +983,7 @@ def _individual_product_groups_html(
         f'<section class="product-group" data-coverage="{coverage}">'
         f'<div class="product-group-heading"><p class="kicker">{coverage} release</p>'
         f'<h3>{escape(label)}</h3><p>{escape(description)}</p></div>'
-        f'<div class="grid">{"".join(_product_html(product, page, output_root, phase_by_slug) for product in grouped[coverage])}</div>'
+        f'<div class="grid">{"".join(_product_html(product, page, output_root, phase_by_slug, product_urls) for product in grouped[coverage])}</div>'
         '</section>'
         for coverage, (label, description) in _COVERAGE_PRESENTATION.items()
         if grouped[coverage]
@@ -947,6 +998,7 @@ def _phase_page_html(
     page: Path,
     output_root: Path,
     phase_by_slug: dict[str, AtlasPhase],
+    product_urls: Mapping[str, str],
 ) -> str:
     related = tuple(product for product in products if phase.slug in product.phase_slugs)
     product_html = _individual_product_groups_html(
@@ -955,6 +1007,7 @@ def _phase_page_html(
         page,
         output_root,
         phase_by_slug,
+        product_urls,
     )
     if not product_html:
         product_html = '<div class="placeholder">No individual product published yet</div>'
@@ -967,7 +1020,7 @@ def _phase_page_html(
 {_visual_product_matrix_html(phase, families, products, page, output_root)}
 <h2>Coverage table</h2><p class="lede">Every phase is measured against the same named product families. A blank slot is a transparent production state, not a different kind of plot.</p>
 {_matrix_html(phase, families, products)}
-<h2>Individual products</h2><p class="lede">Each card opens its actual SVG, PNG, MP4, or STL first. The bundle and provenance record are secondary links for reproduction and audit.</p>{product_html}''',
+<h2>Individual products</h2><p class="lede">Each card opens its actual SVG, PNG, MP4, MOV, or STL first. The bundle and provenance record are secondary links for reproduction and audit.</p>{product_html}''',
     )
 
 
@@ -978,6 +1031,7 @@ def _products_page_html(
     phases: tuple[AtlasPhase, ...],
     page: Path,
     output_root: Path,
+    product_urls: Mapping[str, str],
 ) -> str:
     phase_by_slug = {phase.slug: phase for phase in phases}
     options = "".join(
@@ -986,7 +1040,10 @@ def _products_page_html(
     family_options = "".join(
         f'<option value="{escape(family.identifier)}">{escape(family.label)}</option>' for family in families
     )
-    cards = "".join(_product_html(product, page, output_root, phase_by_slug) for product in products)
+    cards = "".join(
+        _product_html(product, page, output_root, phase_by_slug, product_urls)
+        for product in products
+    )
     return _page_shell(
         "Kikuchi Atlas — products",
         f'''{_navigation(page, output_root)}<h1>Browse individual products</h1>
@@ -1040,6 +1097,7 @@ def build_atlas(
     product_registry_path: str | Path,
     anchor_catalog_path: str | Path,
     output_root: str | Path,
+    product_urls: Mapping[str, str] | None = None,
 ) -> AtlasBuildResult:
     """Render a relational local atlas while leaving generated media in ``local/``."""
     registry = Path(registry_path).resolve()
@@ -1054,6 +1112,7 @@ def build_atlas(
     phase_directory.mkdir(parents=True, exist_ok=True)
     product_type_directory.mkdir(parents=True, exist_ok=True)
     phase_by_slug = {phase.slug: phase for phase in phases}
+    verified_product_urls = dict(product_urls or {})
     phase_pages: list[Path] = []
     for phase in phases:
         page = phase_directory / f"{phase.slug}.html"
@@ -1065,6 +1124,7 @@ def build_atlas(
                 page=page,
                 output_root=output,
                 phase_by_slug=phase_by_slug,
+                product_urls=verified_product_urls,
             ),
             encoding="utf-8",
         )
@@ -1086,7 +1146,12 @@ def build_atlas(
     products_page = output / "products.html"
     products_page.write_text(
         _products_page_html(
-            products=products, families=families, phases=phases, page=products_page, output_root=output
+            products=products,
+            families=families,
+            phases=phases,
+            page=products_page,
+            output_root=output,
+            product_urls=verified_product_urls,
         ),
         encoding="utf-8",
     )

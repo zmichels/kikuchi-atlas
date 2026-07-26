@@ -1,7 +1,7 @@
 schema_version: 1
 release:
   title: "Kikuchi Atlas"
-  version: "0.1.0-draft"
+  version: "0.2.0-draft"
   status: prepublication
   description: >-
     A provenance-first library of modeled Kikuchi visualizations, motion
@@ -16,6 +16,8 @@ licenses:
 publication:
   repository_url: https://github.com/zmichels/kikuchi-atlas
   static_site_url: https://zmichels.github.io/kikuchi-atlas/
+  google_drive_root_url:
+  google_site_url:
   archive_doi:
   maintainer_identity_source: confirmed from local git configuration
 confirmation:

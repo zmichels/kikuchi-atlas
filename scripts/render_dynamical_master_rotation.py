@@ -40,7 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT / "local/dynamical-master-rotation/forsterite-x-axis-proof-v1",
+        default=ROOT / "local/work/kikuchi-renders/dynamical-master-rotation/forsterite-x-axis-proof-v1",
     )
     parser.add_argument("--frames", type=int, default=24)
     parser.add_argument("--fps", type=int, default=3)

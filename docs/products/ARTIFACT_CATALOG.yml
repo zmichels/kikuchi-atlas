@@ -9,8 +9,12 @@ entries:
   - id: forsterite-dynamical-master-x-axis
     tier: dynamical-reference
     phase: forsterite
-    artifact_path: local/dynamical-master-rotation/forsterite-x-axis-gold-v1
-    files: [manifest.json, preview.png, forsterite-dynamical-master-x-axis-proof.mp4]
+    artifact_path: local/atlas/phases/forsterite/products/forsterite-dynamical-master-x-axis
+    files:
+      - product-package.yml
+      - provenance/manifest.json
+      - previews/preview.png
+      - media/forsterite-dynamical-master-x-axis-proof.mp4
     recipe: recipes/production/forsterite-simulation.yml
     entrypoint: scripts/render_dynamical_master_rotation.py
     state: local-published
@@ -18,8 +22,12 @@ entries:
   - id: forsterite-direct-reflector-depth-x-axis
     tier: direct-reflector-art
     phase: forsterite
-    artifact_path: local/idealized-direct-reflector-depth-rotation/forsterite-x-axis-v1
-    files: [manifest.json, preview.png, forsterite-direct-reflector-depth-x-axis-rotation.mp4]
+    artifact_path: local/atlas/phases/forsterite/products/forsterite-depth-field-x-axis
+    files:
+      - product-package.yml
+      - provenance/manifest.json
+      - previews/preview.png
+      - media/forsterite-direct-reflector-depth-x-axis-rotation.mp4
     recipe: recipes/reflectors/forsterite-art-bands.yml
     entrypoint: scripts/render_direct_reflector_depth_rotation.py
     state: local-published
@@ -27,8 +35,12 @@ entries:
   - id: ice-ih-direct-reflector-depth-x-axis
     tier: direct-reflector-art
     phase: ice-ih
-    artifact_path: local/idealized-direct-reflector-depth-rotation/ice-ih-x-axis-v1
-    files: [manifest.json, preview.png, ice-ih-direct-reflector-depth-x-axis-rotation.mp4]
+    artifact_path: local/atlas/phases/ice-ih/products/ice-ih-depth-field-x-axis
+    files:
+      - product-package.yml
+      - provenance/manifest.json
+      - previews/preview.png
+      - media/ice-ih-direct-reflector-depth-x-axis-rotation.mp4
     recipe: recipes/reflectors/ice-ih-art-bands.yml
     entrypoint: scripts/render_direct_reflector_depth_rotation.py
     state: local-published
@@ -36,8 +48,12 @@ entries:
   - id: titanite-retained-near-depth-x-axis
     tier: retained-near-depth-field
     phase: titanite
-    artifact_path: local/idealized-near-depth-rotation/titanite-x-axis-band-led-v1
-    files: [manifest.json, preview.png, titanite-near-depth-x-axis-rotation.mp4]
+    artifact_path: local/atlas/phases/titanite/products/titanite-near-depth-x-axis
+    files:
+      - product-package.yml
+      - provenance/manifest.json
+      - previews/preview.png
+      - media/titanite-near-depth-x-axis-rotation.mp4
     recipe: recipes/presentation/titanite-near-depth-stepped-band-led.yml
     entrypoint: scripts/render_retained_near_depth_rotation.py
     state: local-published
@@ -45,8 +61,12 @@ entries:
   - id: zircon-retained-near-depth-x-axis
     tier: retained-near-depth-field
     phase: zircon
-    artifact_path: local/idealized-near-depth-rotation/zircon-x-axis-band-led-v1
-    files: [manifest.json, preview.png, zircon-near-depth-x-axis-rotation.mp4]
+    artifact_path: local/atlas/phases/zircon/products/zircon-near-depth-x-axis
+    files:
+      - product-package.yml
+      - provenance/manifest.json
+      - previews/preview.png
+      - media/zircon-near-depth-x-axis-rotation.mp4
     recipe: recipes/presentation/zircon-near-depth-stepped-band-led.yml
     entrypoint: scripts/render_retained_near_depth_rotation.py
     state: local-published
@@ -54,8 +74,12 @@ entries:
   - id: forsterite-reflector-ridge-globe
     tier: printable-geometry
     phase: forsterite
-    artifact_path: local/reflector-ridge-series/forsterite/reflector-ridge-globe-build-1c2dad85f3d06ae1
-    files: [reflector-globe-manifest.json, forsterite-reflector-ridges.stl, mesh-validation.json]
+    artifact_path: local/atlas/phases/forsterite/products/forsterite-reflector-ridge-globe
+    files:
+      - product-package.yml
+      - provenance/reflector-globe-manifest.json
+      - previews/forsterite-reflector-ridges-preview.png
+      - media/forsterite-reflector-ridges.stl
     recipe: recipes/globes/forsterite-reflector-ridges.yml
     entrypoint: kikuchi-lab reflector-globe build
     state: local-published
@@ -63,8 +87,12 @@ entries:
   - id: forsterite-intensity-relief-globe
     tier: printable-geometry
     phase: forsterite
-    artifact_path: local/relief-globes/forsterite-501/relief-globe-build-41742681d599409a
-    files: [relief-manifest.json, forsterite-intensity-relief-globe.stl, mesh-validation.json]
+    artifact_path: local/atlas/phases/forsterite/products/forsterite-intensity-relief-globe
+    files:
+      - product-package.yml
+      - provenance/relief-manifest.json
+      - previews/forsterite-intensity-relief-preview.png
+      - media/forsterite-intensity-relief-globe.stl
     recipe: recipes/relief/forsterite-intensity-globe.yml
     entrypoint: kikuchi-lab relief globe build
     state: local-published
@@ -72,10 +100,54 @@ entries:
   - id: five-phase-standard-vector-family
     tier: direct-reflector-art
     phase: [forsterite, ice-ih, quartz, zircon, titanite]
-    artifact_path: local/phase-general-direct-reflector-art/exports/five-phase-white-background-v1
-    files: [forsterite/forsterite-standard.svg, ice-ih/ice-ih-standard.svg, quartz/quartz-standard.svg, zircon/zircon-standard.svg, titanite/titanite-standard.svg]
+    artifact_path: local/atlas/phases
+    files:
+      - forsterite/products/forsterite-direct-standard/media/standard.svg
+      - ice-ih/products/ice-ih-direct-standard/media/standard.svg
+      - quartz/products/quartz-direct-standard/media/standard.svg
+      - zircon/products/zircon-direct-standard/media/standard.svg
+      - titanite/products/titanite-direct-standard/media/standard.svg
     recipe: recipes/art/five-phase-hemisphere-series.yml
     entrypoint: scripts/render_phase_art_templates.py
+    state: local-published
+
+  - id: quartz-direct-reflector-artist-master-x-axis
+    tier: direct-reflector-art
+    phase: quartz
+    artifact_path: local/atlas/phases/quartz/products/quartz-direct-reflector-artist-master-x-axis
+    files:
+      - product-package.yml
+      - previews/preview.png
+      - media/quartz-x-axis-rotation-artist-master.mov
+      - web/quartz-x-axis-rotation-viewing-copy.mp4
+    recipe: recipes/reflectors/quartz-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_rotation.py
+    state: local-published
+
+  - id: quartz-near-depth-artist-master-identity-60fps
+    tier: retained-near-depth-field
+    phase: quartz
+    artifact_path: local/atlas/phases/quartz/products/quartz-near-depth-artist-master-identity-60fps
+    files:
+      - product-package.yml
+      - previews/preview.png
+      - media/quartz-near-depth-identity-60fps-x-axis-rotation-artist-master.mov
+      - web/quartz-near-depth-identity-60fps-x-axis-rotation-web.mp4
+    recipe: recipes/presentation/quartz-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    state: local-published
+
+  - id: quartz-near-depth-artist-master-oblique-17-31-43-60fps
+    tier: retained-near-depth-field
+    phase: quartz
+    artifact_path: local/atlas/phases/quartz/products/quartz-near-depth-artist-master-oblique-17-31-43-60fps
+    files:
+      - product-package.yml
+      - previews/preview.png
+      - media/quartz-near-depth-oblique-17-31-43-60fps-x-axis-rotation-artist-master.mov
+      - web/quartz-near-depth-oblique-17-31-43-60fps-x-axis-rotation-web.mp4
+    recipe: recipes/presentation/quartz-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
     state: local-published
 
   - id: five-phase-orientation-gallery
@@ -86,3 +158,4 @@ entries:
     recipe: recipes/art/five-phase-standard-orientation-gallery.yml
     entrypoint: scripts/verify_orientation_gallery.py
     state: tracked-review-proof
+    classification: historical-reproduction-evidence

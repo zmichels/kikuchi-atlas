@@ -67,7 +67,7 @@ def main() -> None:
     output = (
         args.output.resolve()
         if args.output is not None
-        else ROOT / f"local/idealized-direct-reflector-depth-rotation/{args.phase}-x-axis-v1"
+        else ROOT / f"local/work/kikuchi-renders/direct-reflector-depth-rotation/{args.phase}-x-axis-v1"
     )
     if output.exists():
         raise FileExistsError(f"refusing to overwrite existing output: {output}")

@@ -23,6 +23,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--output", type=Path, default=ROOT / "dist/atlas-public")
     parser.add_argument(
+        "--mirror-registry",
+        type=Path,
+        help="Optional mirror ledger; only public-verified product URLs are added.",
+    )
+    parser.add_argument(
         "--stage-archive",
         action="store_true",
         help="Copy selected media/provenance files into an archival-release staging directory.",
@@ -38,6 +43,7 @@ def main() -> None:
         anchor_catalog_path=args.anchor_catalog,
         output_root=args.output,
         stage_archive=args.stage_archive,
+        mirror_registry_path=args.mirror_registry,
     )
     print(
         f"public Atlas built site={result.site_root} web_assets={result.web_asset_count} "

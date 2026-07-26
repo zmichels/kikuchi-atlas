@@ -25,12 +25,54 @@ def test_product_catalog_has_unique_static_entries_and_tracked_inputs() -> None:
         "forsterite-reflector-ridge-globe",
         "forsterite-intensity-relief-globe",
         "five-phase-standard-vector-family",
+        "quartz-direct-reflector-artist-master-x-axis",
+        "quartz-near-depth-artist-master-identity-60fps",
+        "quartz-near-depth-artist-master-oblique-17-31-43-60fps",
         "five-phase-orientation-gallery",
     }
     for entry in entries:
         assert (ROOT / entry["recipe"]).is_file()
         if entry["entrypoint"].startswith("scripts/"):
             assert (ROOT / entry["entrypoint"]).is_file()
+
+
+def test_publishable_catalog_entries_use_canonical_packages() -> None:
+    entries = load_catalog(ROOT / "docs/products/ARTIFACT_CATALOG.yml")
+    by_id = {entry["id"]: entry for entry in entries}
+    gallery = by_id.pop("five-phase-orientation-gallery")
+
+    assert all(
+        entry["artifact_path"] == "local/atlas/phases"
+        or entry["artifact_path"].startswith("local/atlas/phases/")
+        for entry in by_id.values()
+    )
+    assert gallery["classification"] == "historical-reproduction-evidence"
+    assert gallery["state"] == "tracked-review-proof"
+    assert "orientation-gallery" in gallery["artifact_path"]
+    assert by_id["five-phase-standard-vector-family"]["files"] == [
+        f"{phase}/products/{phase}-direct-standard/media/standard.svg"
+        for phase in ("forsterite", "ice-ih", "quartz", "zircon", "titanite")
+    ]
+    assert by_id["quartz-direct-reflector-artist-master-x-axis"]["files"] == [
+        "product-package.yml",
+        "previews/preview.png",
+        "media/quartz-x-axis-rotation-artist-master.mov",
+        "web/quartz-x-axis-rotation-viewing-copy.mp4",
+    ]
+    assert by_id["quartz-near-depth-artist-master-identity-60fps"]["files"] == [
+        "product-package.yml",
+        "previews/preview.png",
+        "media/quartz-near-depth-identity-60fps-x-axis-rotation-artist-master.mov",
+        "web/quartz-near-depth-identity-60fps-x-axis-rotation-web.mp4",
+    ]
+    assert by_id[
+        "quartz-near-depth-artist-master-oblique-17-31-43-60fps"
+    ]["files"] == [
+        "product-package.yml",
+        "previews/preview.png",
+        "media/quartz-near-depth-oblique-17-31-43-60fps-x-axis-rotation-artist-master.mov",
+        "web/quartz-near-depth-oblique-17-31-43-60fps-x-axis-rotation-web.mp4",
+    ]
 
 
 def test_product_catalog_rejects_duplicate_identifiers(tmp_path: Path) -> None:
