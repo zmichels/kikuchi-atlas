@@ -10,6 +10,7 @@ from kikuchi_lab.atlas.consolidation import (
     audit_legacy_paths,
     build_migration_ledger,
     materialize_ledger,
+    record_github_pages_verification,
     rewrite_product_registry,
     validate_migration_output_path,
     verify_canonical_tree,
@@ -101,10 +102,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         default=ROOT / "docs/atlas/LEGACY_PATH_AUDIT.yml",
     )
+    github_verification = subparsers.add_parser(
+        "record-github-verification",
+        help="Atomically record one observed successful GitHub Pages deployment.",
+    )
+    github_verification.add_argument("--output", type=Path, required=True)
+    github_verification.add_argument("--release-tag", required=True)
+    github_verification.add_argument("--workflow-run-id", type=int, required=True)
+    github_verification.add_argument("--workflow-conclusion", required=True)
+    github_verification.add_argument("--site-url", required=True)
+    github_verification.add_argument("--phase-count", type=int, required=True)
+    github_verification.add_argument("--product-count", type=int, required=True)
+    github_verification.add_argument("--zip-sha256", required=True)
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    repository_root: Path = ROOT,
+) -> int:
     args = parse_args(argv)
     if args.command == "plan":
         validate_migration_output_path(args.output, args.policy, args.registry)
@@ -154,6 +171,22 @@ def main(argv: list[str] | None = None) -> int:
             "publishable legacy references="
             f"{result.publishable_legacy_reference_count} "
             f"allowed={result.allowed_reference_count}"
+        )
+    elif args.command == "record-github-verification":
+        result = record_github_pages_verification(
+            output_path=args.output,
+            repository_root=repository_root,
+            release_tag=args.release_tag,
+            workflow_run_id=args.workflow_run_id,
+            workflow_conclusion=args.workflow_conclusion,
+            site_url=args.site_url,
+            phase_count=args.phase_count,
+            product_count=args.product_count,
+            zip_sha256=args.zip_sha256,
+        )
+        print(
+            f"recorded run={result.workflow_run_id} "
+            f"phases={result.phase_count} products={result.product_count}"
         )
     return 0
 

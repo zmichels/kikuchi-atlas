@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, replace
+from datetime import datetime, timezone
 from hashlib import sha256
 import importlib.util
+import json
 import mimetypes
 import os
 from pathlib import Path, PurePosixPath
@@ -28,6 +30,10 @@ from .web_proxy import WEB_PROXY_PROFILE, build_web_proxy, validate_web_proxy
 
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_ATLAS_GALLERY_RELEASE_TAG = re.compile(
+    r"^atlas-gallery-web-[0-9]+\.[0-9]+\.[0-9]+-draft\.[0-9]+$"
+)
+_GITHUB_PAGES_SITE_URL = "https://zmichels.github.io/kikuchi-atlas/"
 _POLICY_FIELDS = {"schema_version", "canonical_root", "legacy_roots", "extra_products"}
 _LEDGER_FIELDS = {
     "schema_version",
@@ -209,6 +215,126 @@ class LegacyPathAuditResult:
 
     publishable_legacy_reference_count: int
     allowed_reference_count: int
+
+
+@dataclass(frozen=True)
+class GitHubPagesVerification:
+    """Observed identity of one successful Atlas Pages publication."""
+
+    schema_version: int
+    observed_at: str
+    release_tag: str
+    workflow_run_id: int
+    workflow_conclusion: str
+    site_url: str
+    phase_count: int
+    product_count: int
+    zip_sha256: str
+
+
+def record_github_pages_verification(
+    *,
+    output_path: str | Path,
+    repository_root: str | Path,
+    release_tag: str,
+    workflow_run_id: int,
+    workflow_conclusion: str,
+    site_url: str,
+    phase_count: int,
+    product_count: int,
+    zip_sha256: str,
+) -> GitHubPagesVerification:
+    """Atomically record one observed Atlas Pages publication."""
+    if workflow_conclusion != "success":
+        raise ValueError("workflow conclusion must be success")
+    if type(workflow_run_id) is not int or workflow_run_id <= 0:
+        raise ValueError("workflow run ID must be a positive integer")
+    if type(phase_count) is not int or phase_count != 12:
+        raise ValueError("GitHub Pages verification requires exactly 12 phases")
+    if type(product_count) is not int or product_count != 125:
+        raise ValueError("GitHub Pages verification requires exactly 125 products")
+    if not isinstance(release_tag, str) or not _ATLAS_GALLERY_RELEASE_TAG.fullmatch(
+        release_tag
+    ):
+        raise ValueError("release tag must match the Atlas gallery draft tag shape")
+    if site_url != _GITHUB_PAGES_SITE_URL:
+        raise ValueError(f"site URL must be exactly {_GITHUB_PAGES_SITE_URL}")
+    if not isinstance(zip_sha256, str):
+        raise ValueError("ZIP SHA-256 must be 64 hexadecimal characters")
+    normalized_sha256 = zip_sha256.lower()
+    if not _SHA256.fullmatch(normalized_sha256):
+        raise ValueError("ZIP SHA-256 must be 64 hexadecimal characters")
+
+    root = Path(repository_root).resolve(strict=True)
+    if not root.is_dir():
+        raise ValueError("repository root must be a directory")
+    safe_root = root / "local/atlas"
+    if (root / "local").is_symlink() or safe_root.is_symlink():
+        raise ValueError("repository local/atlas root must not contain a symlink")
+    resolved_safe_root = safe_root.resolve(strict=False)
+    if not resolved_safe_root.is_relative_to(root):
+        raise ValueError("repository local/atlas root must not escape through a symlink")
+    output = Path(output_path)
+    if not output.is_absolute():
+        output = root / output
+    if output.is_symlink():
+        raise ValueError("GitHub verification output must not be a symlink")
+    resolved_output = output.resolve(strict=False)
+    if (
+        resolved_output == resolved_safe_root
+        or not resolved_output.is_relative_to(resolved_safe_root)
+    ):
+        raise ValueError("GitHub verification output must be inside repository local/atlas")
+    _assert_real_directory(resolved_output.parent, anchor=root)
+    if resolved_output.is_symlink():
+        raise ValueError("GitHub verification output must not be a symlink")
+    if resolved_output.exists() and (
+        not resolved_output.is_file() or resolved_output.stat().st_nlink != 1
+    ):
+        raise ValueError("GitHub verification output must be one regular file")
+
+    record = GitHubPagesVerification(
+        schema_version=1,
+        observed_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        release_tag=release_tag,
+        workflow_run_id=workflow_run_id,
+        workflow_conclusion=workflow_conclusion,
+        site_url=site_url,
+        phase_count=phase_count,
+        product_count=product_count,
+        zip_sha256=normalized_sha256,
+    )
+    content = (json.dumps(asdict(record), indent=2, sort_keys=True) + "\n").encode()
+    partial = resolved_output.with_name(resolved_output.name + ".partial")
+    if partial.exists() or partial.is_symlink():
+        if (
+            partial.is_symlink()
+            or not partial.is_file()
+            or partial.stat().st_nlink != 1
+        ):
+            raise ValueError(f"unsafe partial verification output: {partial}")
+        partial.unlink()
+    try:
+        with partial.open("xb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if (
+            partial.is_symlink()
+            or not partial.is_file()
+            or partial.stat().st_nlink != 1
+            or partial.stat().st_size != len(content)
+            or sha256_file(partial) != sha256(content).hexdigest()
+        ):
+            raise ValueError("partial GitHub verification record failed byte validation")
+        if resolved_output.is_symlink():
+            raise ValueError("GitHub verification output must not be a symlink")
+        os.replace(partial, resolved_output)
+    except Exception:
+        if partial.is_file() and not partial.is_symlink():
+            partial.unlink(missing_ok=True)
+        raise
+    return record
 
 
 def _read_policy(path: Path) -> dict[str, Any]:
@@ -1908,6 +2034,7 @@ def materialize_ledger(
 
 __all__ = [
     "CanonicalVerification",
+    "GitHubPagesVerification",
     "LegacyPathAuditResult",
     "MigrationFile",
     "MigrationLedger",
@@ -1916,6 +2043,7 @@ __all__ = [
     "audit_legacy_paths",
     "build_migration_ledger",
     "materialize_ledger",
+    "record_github_pages_verification",
     "rewrite_product_registry",
     "validate_migration_output_path",
     "verify_canonical_tree",
