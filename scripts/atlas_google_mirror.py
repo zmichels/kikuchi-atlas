@@ -12,6 +12,7 @@ from kikuchi_lab.atlas import (
     export_local_mirror,
     initialize_mirror_ledger,
     record_mirror_quota,
+    record_public_verification,
     record_remote_folders,
     record_site_draft,
     record_uploaded_private_acceptance,
@@ -118,6 +119,13 @@ def parse_args() -> argparse.Namespace:
     site_draft.add_argument("--proposed-public-url", required=True)
     site_draft.add_argument("--audience", choices=("university-only",), required=True)
     site_draft.add_argument("--state", choices=("draft-complete",), required=True)
+
+    public_verified = commands.add_parser(
+        "record-public-verified",
+        help="Record exact cookie-free public access and representative file evidence.",
+    )
+    public_verified.add_argument("--mirror", type=Path, required=True)
+    public_verified.add_argument("--verification-json", required=True)
 
     quota = commands.add_parser(
         "record-quota",
@@ -244,6 +252,25 @@ def main() -> None:
             f"audience={ledger.site_audience} "
             f"editor={ledger.site_draft_url} "
             f"proposed={ledger.site_public_url}"
+        )
+        return
+
+    if args.command == "record-public-verified":
+        ledger = record_public_verification(
+            mirror_path=args.mirror,
+            verification=json.loads(args.verification_json),
+        )
+        if ledger.public_verification is None or ledger.upload_acceptance is None:
+            raise ValueError("public verification was not recorded")
+        representatives = ledger.public_verification["representatives"]
+        round_trip = ledger.upload_acceptance["round_trip_verification"]
+        print(
+            f"public verification recorded state={ledger.root_state} "
+            f"phases={ledger.phase_count} products={ledger.product_count} "
+            f"representatives={len(representatives)} "
+            f"site={ledger.site_state} "
+            f"round-trip={round_trip['status']} "
+            f"disposition={round_trip['disposition']}"
         )
         return
 
