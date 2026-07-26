@@ -185,9 +185,30 @@ def test_public_atlas_build_is_self_contained_and_has_an_archive_inventory(tmp_p
     assert all(path.suffix.lower() != ".mov" for path in result.web_assets)
     assert any(path.suffix.lower() == ".mov" for path in result.archive_assets)
     assert (result.site_root / "release-inventory.html").is_file()
+    public_inventory_path = result.site_root / "release-inventory.json"
+    assert public_inventory_path.is_file()
 
     inventory = json.loads(result.inventory_path.read_text(encoding="utf-8"))
+    public_inventory_text = public_inventory_path.read_text(encoding="utf-8")
+    public_inventory = json.loads(public_inventory_text)
     products_by_id = {product["id"]: product for product in inventory["products"]}
+    public_products_by_id = {
+        product["id"]: product for product in public_inventory["products"]
+    }
+    assert set(public_inventory) == {
+        "claim_boundary",
+        "phase_slugs",
+        "product_count",
+        "products",
+        "schema_version",
+        "title",
+        "web_asset_count",
+        "web_asset_limit_bytes",
+        "web_assets",
+    }
+    assert "archive" not in public_inventory_text
+    assert "source_media_path" not in public_inventory_text
+    assert "local/" not in public_inventory_text
     assert products_by_id["demo-line"]["web"]["media_path"]
     assert products_by_id["demo-globe"]["web"]["media_path"] is None
     assert products_by_id["demo-globe"]["archive"]["media_path"]
@@ -203,6 +224,19 @@ def test_public_atlas_build_is_self_contained_and_has_an_archive_inventory(tmp_p
         "browser_media_path": movie["web"]["media_path"],
         "full_resolution_url": None,
     }
+    public_movie = public_products_by_id["demo-movie"]
+    assert public_movie["delivery"] == {
+        "authoritative_media_format": "mov",
+        "browser_media_path": public_movie["web"]["media_path"],
+        "browser_media_type": "video/mp4",
+        "full_resolution_url": None,
+    }
+    demo_page = (result.site_root / "phases/demo.html").read_text(encoding="utf-8")
+    assert 'src="../assets/' in demo_page
+    assert 'demo-browser.mp4" type="video/mp4"' in demo_page
+    assert ">open MP4</a>" in demo_page
+    assert "video/quicktime" not in demo_page
+    assert ">open MOV</a>" not in demo_page
     package_files = {
         item["package_path"]: item for item in movie["archive"]["package_files"]
     }
@@ -228,6 +262,27 @@ def test_public_atlas_build_is_self_contained_and_has_an_archive_inventory(tmp_p
             "sha256": master_digest,
         }
     ]
+    checksum_entries = {
+        relative: digest
+        for digest, relative in (
+            line.split("  ", 1)
+            for line in (result.archive_root / "checksums.sha256")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        )
+    }
+    checksum_targets = {
+        path.relative_to(result.archive_root).as_posix()
+        for directory in ("artifacts", "tracked-context")
+        for path in (result.archive_root / directory).rglob("*")
+        if path.is_file()
+    }
+    assert set(checksum_entries) == checksum_targets
+    assert all(
+        checksum_entries[relative]
+        == hashlib.sha256((result.archive_root / relative).read_bytes()).hexdigest()
+        for relative in checksum_targets
+    )
 
     stale = result.site_root / "assets/stale.txt"
     stale.write_text("stale build residue", encoding="utf-8")

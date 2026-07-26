@@ -27,6 +27,13 @@ from .packages import load_product_package, validate_product_package
 
 _WEB_SUFFIXES = {".png", ".svg", ".jpg", ".jpeg", ".mp4"}
 _DEFAULT_MAX_WEB_ASSET_BYTES = 25 * 1024 * 1024
+_WEB_MEDIA_TYPES = {
+    ".jpeg": "image/jpeg",
+    ".jpg": "image/jpeg",
+    ".mp4": "video/mp4",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+}
 
 
 @dataclass(frozen=True)
@@ -88,6 +95,12 @@ def _web_safe(path: Path, *, max_web_asset_bytes: int) -> bool:
         and path.suffix.lower() in _WEB_SUFFIXES
         and path.stat().st_size <= max_web_asset_bytes
     )
+
+
+def _web_media_type(path: str | None) -> str | None:
+    if path is None:
+        return None
+    return _WEB_MEDIA_TYPES.get(Path(path).suffix.lower())
 
 
 def _archive_sources(product: AtlasProduct) -> tuple[Path, ...]:
@@ -237,6 +250,76 @@ def _product_inventory(
     }
 
 
+def _public_inventory(
+    inventory: dict[str, object],
+    *,
+    site_root: Path,
+    web_assets: Iterable[Path],
+) -> dict[str, object]:
+    """Return the useful browser inventory without archive or workspace paths."""
+    products = inventory["products"]
+    assert isinstance(products, list)
+    public_products = []
+    for product in products:
+        web = product["web"]
+        delivery = product["delivery"]
+        public_products.append(
+            {
+                "id": product["id"],
+                "title": product["title"],
+                "phase_slugs": product["phase_slugs"],
+                "family_ids": product["family_ids"],
+                "tier": product["tier"],
+                "caption": product["caption"],
+                "orientation": product["orientation"],
+                "web": {
+                    "media_path": web["media_path"],
+                    "media_type": _web_media_type(web["media_path"]),
+                    "preview_path": web["preview_path"],
+                    "preview_type": _web_media_type(web["preview_path"]),
+                },
+                "delivery": {
+                    "authoritative_media_format": delivery[
+                        "authoritative_media_format"
+                    ],
+                    "browser_media_path": delivery["browser_media_path"],
+                    "browser_media_type": _web_media_type(
+                        delivery["browser_media_path"]
+                    ),
+                    "full_resolution_url": delivery["full_resolution_url"],
+                },
+            }
+        )
+    unique_web_assets = sorted(set(web_assets))
+    public_assets = [
+        {
+            "path": path.relative_to(site_root).as_posix(),
+            "media_type": _web_media_type(path.name),
+            "bytes": path.stat().st_size,
+            "sha256": _digest(path),
+        }
+        for path in unique_web_assets
+    ]
+    phase_slugs = sorted(
+        {
+            phase_slug
+            for product in public_products
+            for phase_slug in product["phase_slugs"]
+        }
+    )
+    return {
+        "schema_version": inventory["schema_version"],
+        "title": inventory["title"],
+        "claim_boundary": inventory["claim_boundary"],
+        "phase_slugs": phase_slugs,
+        "product_count": len(public_products),
+        "web_asset_count": len(public_assets),
+        "web_asset_limit_bytes": inventory["web_asset_limit_bytes"],
+        "products": public_products,
+        "web_assets": public_assets,
+    }
+
+
 def _release_inventory_html(inventory: dict[str, object]) -> str:
     products = inventory["products"]
     assert isinstance(products, list)
@@ -318,6 +401,7 @@ def _rewrite_site_links(
     site_root: Path,
     web_paths: dict[Path, Path],
     all_local_paths: set[Path],
+    products: Iterable[AtlasProduct],
 ) -> None:
     """Replace local workspace links with web assets or the release inventory."""
     for page in sorted(site_root.rglob("*.html")):
@@ -330,6 +414,21 @@ def _rewrite_site_links(
         html = page.read_text(encoding="utf-8")
         for old_href in sorted(replacements, key=len, reverse=True):
             html = html.replace(old_href, replacements[old_href])
+        for product in products:
+            if product.media_format != "mov" or product.web_path is None:
+                continue
+            target = web_paths.get(product.web_path)
+            if target is None:
+                continue
+            target_href = escape(_relative_href(page, target))
+            html = html.replace(
+                f'<source src="{target_href}" type="video/quicktime">',
+                f'<source src="{target_href}" type="video/mp4">',
+            )
+            html = html.replace(
+                f'<a href="{target_href}">open MOV</a>',
+                f'<a href="{target_href}">open MP4</a>',
+            )
         nav_link = f'<a href="{escape(inventory_href)}">Release inventory</a>'
         html = html.replace("</nav>", f"{nav_link}</nav>")
         if "local/" in html:
@@ -448,10 +547,24 @@ def build_public_atlas(
     inventory_path = output / "release-inventory.json"
     output.mkdir(parents=True, exist_ok=True)
     inventory_path.write_text(json.dumps(inventory, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    public_inventory = _public_inventory(
+        inventory,
+        site_root=site_root,
+        web_assets=web_paths.values(),
+    )
+    (site_root / "release-inventory.json").write_text(
+        json.dumps(public_inventory, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     (site_root / "release-inventory.html").write_text(
         _release_inventory_html(inventory), encoding="utf-8"
     )
-    _rewrite_site_links(site_root=site_root, web_paths=web_paths, all_local_paths=all_local_paths)
+    _rewrite_site_links(
+        site_root=site_root,
+        web_paths=web_paths,
+        all_local_paths=all_local_paths,
+        products=products,
+    )
 
     archive_assets: tuple[Path, ...] = tuple(sorted(set(archive_paths.values())))
     if stage_archive:
@@ -466,8 +579,18 @@ def build_public_atlas(
             phase_source_records=phase_source_records,
         )
         _write_archive_readme(archive_root, inventory)
+        checksum_targets = set(archive_assets)
+        checksum_targets.update(
+            path
+            for path in (archive_root / "tracked-context").rglob("*")
+            if path.is_file()
+        )
         checksums = "".join(
-            f"{_digest(path)}  {path.relative_to(archive_root).as_posix()}\n" for path in archive_assets
+            f"{_digest(path)}  {path.relative_to(archive_root).as_posix()}\n"
+            for path in sorted(
+                checksum_targets,
+                key=lambda path: path.relative_to(archive_root).as_posix(),
+            )
         )
         (archive_root / "checksums.sha256").write_text(checksums, encoding="utf-8")
 

@@ -4,13 +4,15 @@
 
 The source repository is public at
 [`zmichels/kikuchi-atlas`](https://github.com/zmichels/kikuchi-atlas), and its
-browser-safe static gallery is public at
+existing browser-safe static gallery is public at
 [`zmichels.github.io/kikuchi-atlas`](https://zmichels.github.io/kikuchi-atlas/).
-The gallery deployment is a `0.2.0-draft.1` prerelease payload: it exposes a
-12-phase catalogue of 125 individual products through curated browser assets
-only. The full-resolution UMN mirror remains private, and the separately
-reviewed archive and DOI release remain intentionally unpublished. No public
-Drive root or Google Site has passed its separate publication gate.
+The new 12-phase, 125-product candidate is pending independent review, merge to
+`master`, a successful protected-environment workflow run, and observed live
+verification. Until those gates pass, this contract does not claim that the
+live gallery serves the candidate. The full-resolution UMN mirror remains
+private, and the separately reviewed archive and DOI release remain
+intentionally unpublished. No public Drive root or Google Site has passed its
+separate publication gate.
 
 ## Deliverables
 
@@ -45,13 +47,17 @@ than being made implicit web-host dependencies. Canonical kinematical master
 and relief-field exports are selected into the archive when their bundle has
 them; redundant run intermediates stay recipe-reconstructible.
 
-## Current static-gallery deployment
+## Pending static-gallery candidate
 
-The Pages workflow reconstructs the gallery from the ordered assets on the
-[`atlas-gallery-web-0.2.0-draft.1` prerelease](https://github.com/zmichels/kikuchi-atlas/releases/tag/atlas-gallery-web-0.2.0-draft.1),
-checks the reconstructed ZIP against its recorded SHA-256, and deploys only
-the resulting static `site/` tree. The release payload is deliberately a
-technical deployment transport rather than the final archival distribution.
+The
+[`atlas-gallery-web-0.2.0-draft.2` prerelease](https://github.com/zmichels/kikuchi-atlas/releases/tag/atlas-gallery-web-0.2.0-draft.2)
+is the review candidate payload. The Pages workflow reconstructs the gallery
+from its ordered assets, checks the reconstructed ZIP against its pinned
+SHA-256, and deploys only the resulting static `site/` tree after the reviewed
+workflow reaches `master`. The release payload is deliberately a technical
+deployment transport rather than the final archival distribution. Publication
+status changes only after a successful master deployment and observed live
+verification.
 
 ## Remaining release gates
 
