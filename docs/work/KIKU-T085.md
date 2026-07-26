@@ -33,5 +33,5 @@ Copy every publishable 12-phase Atlas artifact into the phase-slugged canonical 
 ## Completion Evidence
 
 The final acceptance record identifies the exact canonical inventory, cleaned
-migration-ledger hash, recoverable 364-file cleanup, post-cleanup local/public
+migration-ledger hash, recoverable 347-file cleanup, post-cleanup local/public
 builds, focused tests, and repository-wide baseline classification.

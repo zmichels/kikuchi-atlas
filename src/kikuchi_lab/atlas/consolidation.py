@@ -900,8 +900,81 @@ def build_migration_ledger(
     )
 
 
+def _is_in_retained_source_bundle(
+    source_path: str,
+    retained_source_paths: tuple[str, ...],
+) -> bool:
+    source = PurePosixPath(source_path)
+    return any(
+        source == retained or source.is_relative_to(retained)
+        for retained in map(PurePosixPath, retained_source_paths)
+    )
+
+
+def _validate_retained_source_approvals(ledger: MigrationLedger) -> None:
+    if any(
+        item.source_path is not None
+        and item.cleanup_approved
+        and _is_in_retained_source_bundle(
+            item.source_path,
+            ledger.retained_source_paths,
+        )
+        for item in ledger.files
+    ):
+        raise ValueError("cleanup-approved file is inside a retained source bundle")
+
+
+def _cleanup_candidate_groups(
+    ledger: MigrationLedger,
+) -> dict[str, tuple[MigrationFile, ...]]:
+    all_groups: dict[str, list[MigrationFile]] = {}
+    for item in ledger.files:
+        if item.source_path is not None:
+            all_groups.setdefault(item.source_path, []).append(item)
+
+    candidates: dict[str, tuple[MigrationFile, ...]] = {}
+    for source_path, items in all_groups.items():
+        copied = [item for item in items if item.kind == "copied"]
+        if not any(item.cleanup_approved for item in copied):
+            continue
+        if (
+            any(not item.cleanup_approved for item in copied)
+            or any(item.kind == "generated-proxy" and item.cleanup_approved for item in items)
+            or any(item.kind not in {"copied", "generated-proxy"} for item in items)
+        ):
+            raise ValueError(f"cleanup approvals are inconsistent: {source_path}")
+        # A false approval on a generated proxy is intentional: only copied
+        # records authorize cleanup, while every exact-source destination must
+        # still be validated before the source can move.
+        candidates[source_path] = tuple(items)
+    return candidates
+
+
+def _validate_cleanup_destination_journal(ledger: MigrationLedger) -> None:
+    if ledger.state != "cleaned":
+        return
+    if ledger.cleanup is None:
+        raise ValueError("cleaned migration ledger requires a cleanup journal")
+    groups = _cleanup_candidate_groups(ledger)
+    records = {item.original_path: item for item in ledger.cleanup.files}
+    if set(records) != set(groups):
+        raise ValueError("cleanup destination journal source set is incomplete")
+    for source_path, items in groups.items():
+        record = records[source_path]
+        identities = {(item.source_byte_count, item.source_sha256) for item in items}
+        destinations = tuple(sorted(item.destination_path for item in items))
+        if (
+            len(identities) != 1
+            or identities.pop() != (record.byte_count, record.sha256)
+            or record.verified_destinations != destinations
+        ):
+            raise ValueError(f"cleanup destination journal is incomplete: {source_path}")
+
+
 def write_migration_ledger(ledger: MigrationLedger, output_path: str | Path) -> None:
     """Write a deterministic YAML migration ledger."""
+    _validate_retained_source_approvals(ledger)
+    _validate_cleanup_destination_journal(ledger)
     product_by_id = {item.product_id: item for item in ledger.products}
     file_records: list[dict[str, object]] = []
     for item in ledger.files:
@@ -1183,6 +1256,7 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
     product_ids = {item.product_id for item in ledger.products}
     if any(item.product_id not in product_ids for item in ledger.files):
         raise ValueError("migration ledger file refers to an unknown product")
+    _validate_retained_source_approvals(ledger)
     null_outputs = [
         item
         for item in ledger.files
@@ -1197,6 +1271,7 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
         raise ValueError("only generated proxies may have null destination identity")
     if ledger.state in {"materialized", "cleaned"} and null_outputs:
         raise ValueError("materialized ledger contains a null destination identity")
+    _validate_cleanup_destination_journal(ledger)
     return ledger
 
 
@@ -1638,18 +1713,61 @@ def _assert_no_symlink_components(path: Path, *, anchor: Path, label: str) -> No
 
 
 def _cleanup_tracked_paths(root: Path) -> set[str]:
-    git_marker = root / ".git"
-    if not git_marker.exists():
-        return set()
-    result = subprocess.run(
-        ["git", "ls-files", "-z"],
-        cwd=root,
-        check=False,
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        raise ValueError("cleanup cannot verify tracked-file exclusions")
-    return {value.decode("utf-8") for value in result.stdout.split(b"\0") if value}
+    def run_git(*arguments: str) -> subprocess.CompletedProcess[bytes]:
+        try:
+            return subprocess.run(
+                ["git", *arguments],
+                cwd=root,
+                check=False,
+                capture_output=True,
+            )
+        except OSError as error:
+            raise ValueError("cleanup cannot prove git worktree/top-level") from error
+
+    inside = run_git("rev-parse", "--is-inside-work-tree")
+    top_level = run_git("rev-parse", "--show-toplevel")
+    if inside.returncode != 0 or inside.stdout.strip() != b"true" or top_level.returncode != 0:
+        raise ValueError("cleanup cannot prove git worktree/top-level")
+    try:
+        resolved_top_level = Path(top_level.stdout.decode("utf-8").strip()).resolve(strict=True)
+    except (OSError, UnicodeDecodeError):
+        raise ValueError("cleanup cannot prove git worktree/top-level") from None
+    if resolved_top_level != root:
+        raise ValueError("cleanup repository root is not the git worktree top-level")
+
+    symbolic_head = run_git("symbolic-ref", "-q", "HEAD")
+    if symbolic_head.returncode == 0:
+        try:
+            head_reference = symbolic_head.stdout.decode("utf-8").strip()
+        except UnicodeDecodeError:
+            raise ValueError("cleanup cannot prove git worktree HEAD") from None
+        if not head_reference or run_git("check-ref-format", head_reference).returncode != 0:
+            raise ValueError("cleanup cannot prove git worktree HEAD")
+    elif symbolic_head.returncode == 1:
+        if run_git("rev-parse", "--verify", "HEAD^{commit}").returncode != 0:
+            raise ValueError("cleanup cannot prove git worktree HEAD")
+    else:
+        raise ValueError("cleanup cannot prove git worktree HEAD")
+
+    inventory = run_git("ls-files", "-z")
+    status = run_git("status", "--porcelain=v1", "-z", "--untracked-files=no")
+    if inventory.returncode != 0 or status.returncode != 0:
+        raise ValueError("cleanup cannot verify tracked-file inventory")
+    try:
+        return {value.decode("utf-8") for value in inventory.stdout.split(b"\0") if value}
+    except UnicodeDecodeError:
+        raise ValueError("cleanup cannot verify tracked-file inventory") from None
+
+
+def _remove_empty_cleanup_batch(batch: Path) -> None:
+    if not batch.exists():
+        return
+    if batch.is_symlink() or not batch.is_dir():
+        raise RuntimeError(f"cleanup rollback found an unsafe batch path: {batch}")
+    for directory, _, files in os.walk(batch, topdown=False):
+        if files:
+            raise RuntimeError(f"cleanup rollback left files in Trash batch: {batch}")
+        Path(directory).rmdir()
 
 
 def _validate_trash_directory(
@@ -1720,10 +1838,7 @@ def cleanup_legacy_files(
         github_verification_path=Path(github_verification_path).resolve(),
     )
 
-    grouped: dict[str, list[MigrationFile]] = {}
-    for item in ledger.files:
-        if item.source_path is not None and item.cleanup_approved:
-            grouped.setdefault(item.source_path, []).append(item)
+    grouped = _cleanup_candidate_groups(ledger)
     if not grouped:
         raise ValueError("cleanup ledger contains no approved source files")
     tracked = _cleanup_tracked_paths(root)
@@ -1738,7 +1853,10 @@ def cleanup_legacy_files(
             or source_relative.parts[0] != "local"
             or source_relative == canonical
             or source_relative.is_relative_to(canonical)
-            or source_relative in retained
+            or any(
+                source_relative == retained_path or source_relative.is_relative_to(retained_path)
+                for retained_path in retained
+            )
         ):
             raise ValueError(f"cleanup source is not an exact legacy file: {source_value}")
         if "frames" in source_relative.parts:
@@ -1750,9 +1868,7 @@ def cleanup_legacy_files(
         if source.is_symlink() or not source.is_file() or source.stat().st_nlink != 1:
             raise ValueError(f"cleanup source must be one regular file: {source_value}")
         identities = {(item.source_byte_count, item.source_sha256) for item in items}
-        if len(identities) != 1 or any(
-            not item.cleanup_approved or item.kind != "copied" for item in items
-        ):
+        if len(identities) != 1:
             raise ValueError(f"cleanup approvals are inconsistent: {source_value}")
         expected_bytes, expected_sha256 = identities.pop()
         if source.stat().st_size != expected_bytes or sha256_file(source) != expected_sha256:
@@ -1792,7 +1908,7 @@ def cleanup_legacy_files(
                 source,
                 expected_bytes,
                 expected_sha256,
-                tuple(destinations),
+                tuple(sorted(destinations)),
             )
         )
 
@@ -1845,16 +1961,19 @@ def cleanup_legacy_files(
     staged_ledger = ledger_file.with_name(ledger_file.name + ".cleanup-generated")
     if staged_ledger.exists() or staged_ledger.is_symlink():
         raise ValueError("cleanup ledger staging path is not empty")
-    write_migration_ledger(cleaned, staged_ledger)
-    _load_migration_ledger(staged_ledger)
-    batch.mkdir()
+    original_ledger_bytes = ledger_file.read_bytes()
+    moved: list[tuple[Path, Path, CleanupFileRecord]] = []
     try:
+        write_migration_ledger(cleaned, staged_ledger)
+        _load_migration_ledger(staged_ledger)
+        batch.mkdir()
         for record, (_, source, _, _, _) in zip(records, validated, strict=True):
             destination = Path(record.trash_path)
             destination.parent.mkdir(parents=True, exist_ok=True)
             if destination.exists() or destination.is_symlink():
                 raise ValueError(f"cleanup Trash collision: {destination}")
             os.replace(source, destination)
+            moved.append((source, destination, record))
             if (
                 destination.is_symlink()
                 or not destination.is_file()
@@ -1864,9 +1983,49 @@ def cleanup_legacy_files(
             ):
                 raise ValueError(f"cleanup Trash verification failed: {destination}")
         os.replace(staged_ledger, ledger_file)
-    except Exception:
-        # Preserve both the batch and staged ledger as an explicit recovery
-        # journal if a later same-volume move fails.
+    except Exception as error:
+        rollback_errors: list[str] = []
+        for source, destination, record in reversed(moved):
+            try:
+                if source.exists() or source.is_symlink():
+                    raise RuntimeError(f"cleanup source reappeared during rollback: {source}")
+                if (
+                    destination.is_symlink()
+                    or not destination.is_file()
+                    or destination.stat().st_nlink != 1
+                    or destination.stat().st_size != record.byte_count
+                    or sha256_file(destination) != record.sha256
+                ):
+                    raise RuntimeError(f"cleanup Trash file changed before rollback: {destination}")
+                os.replace(destination, source)
+                if (
+                    source.is_symlink()
+                    or not source.is_file()
+                    or source.stat().st_nlink != 1
+                    or source.stat().st_size != record.byte_count
+                    or sha256_file(source) != record.sha256
+                ):
+                    raise RuntimeError(f"cleanup source restoration failed: {source}")
+            except Exception as rollback_error:
+                rollback_errors.append(str(rollback_error))
+        try:
+            if staged_ledger.is_symlink():
+                raise RuntimeError("cleanup staged ledger became a symlink")
+            if staged_ledger.exists():
+                staged_ledger.unlink()
+            _remove_empty_cleanup_batch(batch)
+            if ledger_file.read_bytes() != original_ledger_bytes:
+                rollback_ledger = ledger_file.with_name(ledger_file.name + ".cleanup-rollback")
+                if rollback_ledger.exists() or rollback_ledger.is_symlink():
+                    raise RuntimeError("cleanup rollback ledger staging path is not empty")
+                rollback_ledger.write_bytes(original_ledger_bytes)
+                os.replace(rollback_ledger, ledger_file)
+            if ledger_file.read_bytes() != original_ledger_bytes:
+                raise RuntimeError("cleanup ledger restoration failed")
+        except Exception as rollback_error:
+            rollback_errors.append(str(rollback_error))
+        if rollback_errors:
+            raise RuntimeError("cleanup rollback failed: " + "; ".join(rollback_errors)) from error
         raise
     return result
 

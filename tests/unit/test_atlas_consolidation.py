@@ -214,6 +214,8 @@ def _verification_kwargs(output: Path, repository_root: Path) -> dict[str, objec
 def _prepare_cleanup_fixture(
     fixture_repo: Path,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    initialize_git: bool = True,
 ) -> tuple[Path, Path, Path, Path]:
     ledger_path = _write_fixture_ledger(fixture_repo)
     materialize_ledger(ledger_path, repository_root=fixture_repo)
@@ -260,6 +262,8 @@ def _prepare_cleanup_fixture(
     )
     trash = fixture_repo / ".Trash"
     trash.mkdir()
+    if initialize_git:
+        subprocess.run(["git", "init", "-q"], cwd=fixture_repo, check=True)
     return ledger_path, mirror_path, github_path, trash
 
 
@@ -445,6 +449,386 @@ def test_cleanup_preserves_exact_source_when_approval_is_revoked(
     assert (fixture_repo / preserved).is_file()
     assert result.moved_count == 5
     assert preserved not in {item.original_path for item in result.files}
+
+
+def test_migration_ledger_rejects_cleanup_approval_inside_retained_bundle(
+    fixture_repo: Path,
+) -> None:
+    ledger = replace(
+        _build_fixture_ledger(fixture_repo),
+        retained_source_paths=("local/legacy",),
+    )
+
+    with pytest.raises(ValueError, match="retained source bundle"):
+        write_migration_ledger(
+            ledger,
+            fixture_repo / "docs/atlas/ATLAS_MIGRATION.yml",
+        )
+
+
+def test_cleanup_preserves_every_descendant_of_retained_bundle(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    ledger = consolidation._load_migration_ledger(ledger_path)
+    original = fixture_repo / "local/legacy/demo.json"
+    retained = fixture_repo / "local/legacy/selection-bundle/demo.json"
+    retained.parent.mkdir(exist_ok=True)
+    original.replace(retained)
+    source_value = retained.relative_to(fixture_repo).as_posix()
+    write_migration_ledger(
+        replace(
+            ledger,
+            retained_source_paths=("local/legacy/selection-bundle",),
+            files=tuple(
+                replace(
+                    item,
+                    source_path=source_value,
+                    cleanup_approved=False,
+                )
+                if item.source_path == "local/legacy/demo.json"
+                else item
+                for item in ledger.files
+            ),
+        ),
+        ledger_path,
+    )
+
+    result = cleanup_legacy_files(
+        ledger_path=ledger_path,
+        mirror_path=mirror_path,
+        github_verification_path=github_path,
+        repository_root=fixture_repo,
+        dry_run=False,
+        trash_directory=trash,
+    )
+
+    assert retained.is_file()
+    assert result.moved_count == 5
+    assert not any(
+        PurePosixPath(item.original_path).is_relative_to(
+            PurePosixPath("local/legacy/selection-bundle")
+        )
+        for item in result.files
+    )
+
+
+def test_cleanup_rejects_tampered_approval_inside_retained_bundle(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    ledger = consolidation._load_migration_ledger(ledger_path)
+    original = fixture_repo / "local/legacy/demo.json"
+    retained = fixture_repo / "local/legacy/selection-bundle/demo.json"
+    retained.parent.mkdir(exist_ok=True)
+    original.replace(retained)
+    source_value = retained.relative_to(fixture_repo).as_posix()
+    write_migration_ledger(
+        replace(
+            ledger,
+            retained_source_paths=("local/legacy/selection-bundle",),
+            files=tuple(
+                replace(
+                    item,
+                    source_path=source_value,
+                    cleanup_approved=False,
+                )
+                if item.source_path == "local/legacy/demo.json"
+                else item
+                for item in ledger.files
+            ),
+        ),
+        ledger_path,
+    )
+    payload = yaml.safe_load(ledger_path.read_text(encoding="utf-8"))
+    next(item for item in payload["files"] if item["source_path"] == source_value)[
+        "cleanup_approved"
+    ] = True
+    ledger_path.write_text(
+        yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="retained source bundle"):
+        cleanup_legacy_files(
+            ledger_path=ledger_path,
+            mirror_path=mirror_path,
+            github_verification_path=github_path,
+            repository_root=fixture_repo,
+            dry_run=False,
+            trash_directory=trash,
+        )
+
+    assert retained.is_file()
+    assert not tuple(trash.iterdir())
+
+
+def _add_shared_generated_proxy(
+    *,
+    fixture_repo: Path,
+    ledger_path: Path,
+) -> tuple[str, str]:
+    ledger = consolidation._load_migration_ledger(ledger_path)
+    copied = next(item for item in ledger.files if item.source_path == "local/legacy/demo.svg")
+    proxy_relative = "local/atlas/phases/quartz/products/quartz-demo/web/demo-proxy.mp4"
+    proxy = fixture_repo / proxy_relative
+    proxy.write_bytes(b"generated proxy")
+    write_migration_ledger(
+        replace(
+            ledger,
+            files=(
+                *ledger.files,
+                replace(
+                    copied,
+                    destination_path=proxy_relative,
+                    role="web",
+                    kind="generated-proxy",
+                    destination_byte_count=proxy.stat().st_size,
+                    destination_sha256=consolidation.sha256_file(proxy),
+                    cleanup_approved=False,
+                ),
+            ),
+        ),
+        ledger_path,
+    )
+    return copied.destination_path, proxy_relative
+
+
+def test_cleanup_records_all_destinations_for_shared_generated_proxy_source(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    authoritative, proxy = _add_shared_generated_proxy(
+        fixture_repo=fixture_repo,
+        ledger_path=ledger_path,
+    )
+
+    result = cleanup_legacy_files(
+        ledger_path=ledger_path,
+        mirror_path=mirror_path,
+        github_verification_path=github_path,
+        repository_root=fixture_repo,
+        dry_run=False,
+        trash_directory=trash,
+    )
+
+    record = next(item for item in result.files if item.original_path == "local/legacy/demo.svg")
+    assert set(record.verified_destinations) == {authoritative, proxy}
+
+
+def test_cleanup_validates_generated_proxy_destination_before_source_move(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    _, proxy = _add_shared_generated_proxy(
+        fixture_repo=fixture_repo,
+        ledger_path=ledger_path,
+    )
+    (fixture_repo / proxy).write_bytes(b"changed proxy")
+
+    with pytest.raises(ValueError, match="canonical destination changed"):
+        cleanup_legacy_files(
+            ledger_path=ledger_path,
+            mirror_path=mirror_path,
+            github_verification_path=github_path,
+            repository_root=fixture_repo,
+            dry_run=False,
+            trash_directory=trash,
+        )
+
+    assert (fixture_repo / "local/legacy/demo.svg").is_file()
+    assert not tuple(trash.iterdir())
+
+
+def test_cleaned_ledger_rejects_incomplete_shared_source_destination_journal(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    authoritative, proxy = _add_shared_generated_proxy(
+        fixture_repo=fixture_repo,
+        ledger_path=ledger_path,
+    )
+    cleanup_legacy_files(
+        ledger_path=ledger_path,
+        mirror_path=mirror_path,
+        github_verification_path=github_path,
+        repository_root=fixture_repo,
+        dry_run=False,
+        trash_directory=trash,
+    )
+    payload = yaml.safe_load(ledger_path.read_text(encoding="utf-8"))
+    record = next(
+        item
+        for item in payload["cleanup"]["files"]
+        if item["original_path"] == "local/legacy/demo.svg"
+    )
+    assert set(record["verified_destinations"]) == {authoritative, proxy}
+    record["verified_destinations"] = [authoritative]
+    ledger_path.write_text(
+        yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="cleanup destination journal"):
+        consolidation._load_migration_ledger(ledger_path)
+
+
+def test_cleanup_refuses_without_proven_git_worktree(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+        initialize_git=False,
+    )
+
+    with pytest.raises(ValueError, match="git worktree"):
+        cleanup_legacy_files(
+            ledger_path=ledger_path,
+            mirror_path=mirror_path,
+            github_verification_path=github_path,
+            repository_root=fixture_repo,
+            dry_run=False,
+            trash_directory=trash,
+        )
+
+    assert (fixture_repo / "local/legacy/demo.svg").is_file()
+    assert not tuple(trash.iterdir())
+
+
+def test_cleanup_refuses_broken_git_inventory(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    (fixture_repo / ".git/HEAD").write_text(
+        "ref: refs/heads/\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="git worktree|tracked-file"):
+        cleanup_legacy_files(
+            ledger_path=ledger_path,
+            mirror_path=mirror_path,
+            github_verification_path=github_path,
+            repository_root=fixture_repo,
+            dry_run=False,
+            trash_directory=trash,
+        )
+
+    assert (fixture_repo / "local/legacy/demo.svg").is_file()
+    assert not tuple(trash.iterdir())
+
+
+def test_cleanup_rolls_back_every_source_after_mid_move_failure(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    before = ledger_path.read_bytes()
+    approved = {
+        item.source_path
+        for item in consolidation._load_migration_ledger(ledger_path).files
+        if item.source_path is not None and item.cleanup_approved
+    }
+    real_replace = consolidation.os.replace
+    moves = 0
+
+    def fail_second_source_move(source: object, destination: object) -> None:
+        nonlocal moves
+        source_path = Path(source)
+        destination_path = Path(destination)
+        if source_path.is_relative_to(
+            fixture_repo / "local/legacy"
+        ) and destination_path.is_relative_to(trash):
+            moves += 1
+            if moves == 2:
+                raise OSError("induced second move failure")
+        real_replace(source, destination)
+
+    monkeypatch.setattr(consolidation.os, "replace", fail_second_source_move)
+
+    with pytest.raises(OSError, match="induced second move failure"):
+        cleanup_legacy_files(
+            ledger_path=ledger_path,
+            mirror_path=mirror_path,
+            github_verification_path=github_path,
+            repository_root=fixture_repo,
+            dry_run=False,
+            trash_directory=trash,
+        )
+
+    assert all((fixture_repo / path).is_file() for path in approved)
+    assert ledger_path.read_bytes() == before
+    assert not tuple(trash.iterdir())
+    assert not ledger_path.with_name(ledger_path.name + ".cleanup-generated").exists()
+
+
+def test_cleanup_rolls_back_every_source_when_ledger_publication_fails(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    before = ledger_path.read_bytes()
+    approved = {
+        item.source_path
+        for item in consolidation._load_migration_ledger(ledger_path).files
+        if item.source_path is not None and item.cleanup_approved
+    }
+    staged = ledger_path.with_name(ledger_path.name + ".cleanup-generated")
+    real_replace = consolidation.os.replace
+
+    def fail_ledger_publication(source: object, destination: object) -> None:
+        if Path(source) == staged and Path(destination) == ledger_path:
+            raise OSError("induced ledger publication failure")
+        real_replace(source, destination)
+
+    monkeypatch.setattr(consolidation.os, "replace", fail_ledger_publication)
+
+    with pytest.raises(OSError, match="induced ledger publication failure"):
+        cleanup_legacy_files(
+            ledger_path=ledger_path,
+            mirror_path=mirror_path,
+            github_verification_path=github_path,
+            repository_root=fixture_repo,
+            dry_run=False,
+            trash_directory=trash,
+        )
+
+    assert all((fixture_repo / path).is_file() for path in approved)
+    assert ledger_path.read_bytes() == before
+    assert not tuple(trash.iterdir())
+    assert not staged.exists()
 
 
 def test_record_github_verification_cli_writes_exact_atomic_record(

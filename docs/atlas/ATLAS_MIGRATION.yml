@@ -3253,7 +3253,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: calcite-direct-standard
   phase_slug: calcite
   source_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed/calcite-hemisphere-standard-stencil.png
@@ -3268,7 +3268,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: calcite-direct-standard
   phase_slug: calcite
   source_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed/manifest.json
@@ -3282,7 +3282,7 @@ files:
   mime_type: application/json
   destinations:
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: calcite-direct-standard
   phase_slug: calcite
   source_path: null
@@ -4566,7 +4566,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: diopside-direct-standard
   phase_slug: diopside
   source_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/diopside-hemisphere-standard-stencil.png
@@ -4581,7 +4581,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: diopside-direct-standard
   phase_slug: diopside
   source_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/manifest.json
@@ -4595,7 +4595,7 @@ files:
   mime_type: application/json
   destinations:
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: diopside-direct-standard
   phase_slug: diopside
   source_path: null
@@ -5222,7 +5222,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: enstatite-direct-standard
   phase_slug: enstatite
   source_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028/enstatite-hemisphere-standard-stencil.png
@@ -5237,7 +5237,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: enstatite-direct-standard
   phase_slug: enstatite
   source_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028/manifest.json
@@ -5251,7 +5251,7 @@ files:
   mime_type: application/json
   destinations:
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: enstatite-direct-standard
   phase_slug: enstatite
   source_path: null
@@ -7805,7 +7805,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: muscovite-2m1-direct-tilt-plus-20
   phase_slug: muscovite-2m1
   source_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/muscovite-2m1-hemisphere-standard-stencil.png
@@ -7820,7 +7820,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: muscovite-2m1-direct-tilt-plus-20
   phase_slug: muscovite-2m1
   source_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/manifest.json
@@ -7834,7 +7834,7 @@ files:
   mime_type: application/json
   destinations:
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: muscovite-2m1-direct-tilt-plus-20
   phase_slug: muscovite-2m1
   source_path: null
@@ -8398,7 +8398,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: plagioclase-an52-direct-standard
   phase_slug: plagioclase-an52
   source_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/plagioclase-an52-hemisphere-standard-stencil.png
@@ -8413,7 +8413,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: plagioclase-an52-direct-standard
   phase_slug: plagioclase-an52
   source_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/manifest.json
@@ -8427,7 +8427,7 @@ files:
   mime_type: application/json
   destinations:
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: plagioclase-an52-direct-standard
   phase_slug: plagioclase-an52
   source_path: null
@@ -9057,7 +9057,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: pyrope-direct-standard
   phase_slug: pyrope
   source_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e/pyrope-hemisphere-standard-stencil.png
@@ -9072,7 +9072,7 @@ files:
   destinations:
   - github-pages
   - google-drive
-  cleanup_approved: true
+  cleanup_approved: false
 - product_id: pyrope-direct-standard
   phase_slug: pyrope
   source_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e/manifest.json
@@ -11930,10 +11930,10 @@ files:
     \  hero: false\n"
 cleanup:
   trash_root: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38
-  approved_count: 364
-  approved_bytes: 7130200953
-  moved_count: 364
-  moved_bytes: 7130200953
+  approved_count: 347
+  approved_bytes: 7129461220
+  moved_count: 347
+  moved_bytes: 7129461220
   files:
   - trashed_at: '2026-07-26T22:07:56.510434Z'
     original_path: local/atlas-expansion/calcite/depth-rotation/calcite-near-depth-x-axis-rotation.mp4
@@ -12091,27 +12091,6 @@ cleanup:
     verified_destinations:
     - local/atlas/phases/calcite/products/calcite-direct-tilt-plus-20/provenance/manifest.json
   - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed/calcite-hemisphere-standard-stencil.png
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed/calcite-hemisphere-standard-stencil.png
-    byte_count: 36882
-    sha256: a30cc67ff74b91123b181e5ef30fb5543fc120e26caf7c11410e756e2d0bf654
-    verified_destinations:
-    - local/atlas/phases/calcite/products/calcite-direct-standard/previews/calcite-hemisphere-standard-stencil.png
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed/calcite-hemisphere-standard.svg
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed/calcite-hemisphere-standard.svg
-    byte_count: 82544
-    sha256: 45cfc315d599ead9213dddea0d3d2cb44a725c32b492c42f8a8a703c17558d2e
-    verified_destinations:
-    - local/atlas/phases/calcite/products/calcite-direct-standard/media/calcite-hemisphere-standard.svg
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed/manifest.json
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed/manifest.json
-    byte_count: 2452
-    sha256: 877ad395e93fd3387ec7ea63cc221f108484f3ffd86c18072ce1bcaa182a1b66
-    verified_destinations:
-    - local/atlas/phases/calcite/products/calcite-direct-standard/provenance/manifest.json
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
     original_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-c278d16f924f62e1/calcite-hemisphere-standard-stencil.png
     trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-c278d16f924f62e1/calcite-hemisphere-standard-stencil.png
     byte_count: 37115
@@ -12245,27 +12224,6 @@ cleanup:
     sha256: 80b67980990a9d647ee1fedf10dda342189cc39f848526f230431af77c236669
     verified_destinations:
     - local/atlas/phases/enstatite/products/enstatite-atlas-kinematical-intensity-relief/provenance/relief-manifest.json
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028/enstatite-hemisphere-standard-stencil.png
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028/enstatite-hemisphere-standard-stencil.png
-    byte_count: 37489
-    sha256: 11a34686235f2c419d4aa4b67f5dacb33e921fc79ccb24a391f08b61306c9bca
-    verified_destinations:
-    - local/atlas/phases/enstatite/products/enstatite-direct-standard/previews/enstatite-hemisphere-standard-stencil.png
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028/enstatite-hemisphere-standard.svg
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028/enstatite-hemisphere-standard.svg
-    byte_count: 83890
-    sha256: 1630ed40ce23435957ac1afef4d7ab1890acca4c60ccf3c3162875fd7788e33b
-    verified_destinations:
-    - local/atlas/phases/enstatite/products/enstatite-direct-standard/media/enstatite-hemisphere-standard.svg
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028/manifest.json
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028/manifest.json
-    byte_count: 2473
-    sha256: 1ec41e94d44532446c517f5e5dc8bae4ec4c6ffc8bca53454102a8a7c71b5d82
-    verified_destinations:
-    - local/atlas/phases/enstatite/products/enstatite-direct-standard/provenance/manifest.json
   - trashed_at: '2026-07-26T22:07:56.510434Z'
     original_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-6dec041969316a0a/enstatite-hemisphere-standard-stencil.png
     trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-6dec041969316a0a/enstatite-hemisphere-standard-stencil.png
@@ -12505,20 +12463,6 @@ cleanup:
     sha256: 655154512d4d0556cf6f80f3d149f7bb06c22a8444fe92b46f364fcd81960dc1
     verified_destinations:
     - local/atlas/phases/pyrope/products/pyrope-direct-azimuthal-60/media/pyrope-hemisphere-standard.svg
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e/pyrope-hemisphere-standard-stencil.png
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e/pyrope-hemisphere-standard-stencil.png
-    byte_count: 38838
-    sha256: 78ce86dfbed8866e4f4196970c316c6025b033b2f67927144aa7e904cbf225d5
-    verified_destinations:
-    - local/atlas/phases/pyrope/products/pyrope-direct-standard/previews/pyrope-hemisphere-standard-stencil.png
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e/pyrope-hemisphere-standard.svg
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e/pyrope-hemisphere-standard.svg
-    byte_count: 83618
-    sha256: b7c64c0553b08268b48db8d27a8dcde45802574f3aa8a2f0df7164e0fb9c6d82
-    verified_destinations:
-    - local/atlas/phases/pyrope/products/pyrope-direct-standard/media/pyrope-hemisphere-standard.svg
   - trashed_at: '2026-07-26T22:07:56.510434Z'
     original_path: local/atlas-extension-parity/depth-motion/diamond/diamond-near-depth-x-axis-rotation.mp4
     trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/atlas-extension-parity/depth-motion/diamond/diamond-near-depth-x-axis-rotation.mp4
@@ -13326,6 +13270,7 @@ cleanup:
     sha256: 8c45c5dc7c220ba80f21b7716205e1197c8e9137114baed26d0d54da796a7b5a
     verified_destinations:
     - local/atlas/phases/quartz/products/quartz-near-depth-artist-master-identity-60fps/media/quartz-near-depth-identity-60fps-x-axis-rotation-artist-master.mov
+    - local/atlas/phases/quartz/products/quartz-near-depth-artist-master-identity-60fps/web/quartz-near-depth-identity-60fps-x-axis-rotation-web.mp4
   - trashed_at: '2026-07-26T22:07:56.510434Z'
     original_path: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1/manifest.json
     trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1/manifest.json
@@ -13347,6 +13292,7 @@ cleanup:
     sha256: e7b3ed4f9b18b2f11daf3267e65d3aab8c021a01e9b0289ff62d301dbab77ac2
     verified_destinations:
     - local/atlas/phases/quartz/products/quartz-near-depth-artist-master-oblique-17-31-43-60fps/media/quartz-near-depth-oblique-17-31-43-60fps-x-axis-rotation-artist-master.mov
+    - local/atlas/phases/quartz/products/quartz-near-depth-artist-master-oblique-17-31-43-60fps/web/quartz-near-depth-oblique-17-31-43-60fps-x-axis-rotation-web.mp4
   - trashed_at: '2026-07-26T22:07:56.510434Z'
     original_path: local/idealized-near-depth-rotation/titanite-x-axis-band-led-v1/manifest.json
     trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/idealized-near-depth-rotation/titanite-x-axis-band-led-v1/manifest.json
@@ -13515,27 +13461,6 @@ cleanup:
     sha256: 093ee27508c36ec4db034197ae0e29d3e82d698834f2997a66051e2680a00757
     verified_destinations:
     - local/atlas/phases/diopside/products/diopside-direct-azimuthal-60/provenance/manifest.json
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/diopside-hemisphere-standard-stencil.png
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/diopside-hemisphere-standard-stencil.png
-    byte_count: 38391
-    sha256: a0719f8377b6dfe0ff0f22348de2362645e044b947fcf3d3036349614bf01115
-    verified_destinations:
-    - local/atlas/phases/diopside/products/diopside-direct-standard/previews/diopside-hemisphere-standard-stencil.png
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/diopside-hemisphere-standard.svg
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/diopside-hemisphere-standard.svg
-    byte_count: 84024
-    sha256: ebb347c87887ef6bf9f8ca89340a1510827a2df1adaba3f06200b1e5197311f7
-    verified_destinations:
-    - local/atlas/phases/diopside/products/diopside-direct-standard/media/diopside-hemisphere-standard.svg
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/manifest.json
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef/manifest.json
-    byte_count: 2462
-    sha256: ec65cf3fb6713a86b5022eef10c07f1a3e6bca27773fcc4accc7abf72a7ce36b
-    verified_destinations:
-    - local/atlas/phases/diopside/products/diopside-direct-standard/provenance/manifest.json
   - trashed_at: '2026-07-26T22:07:56.510434Z'
     original_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-b276f7d1dadd63b7/diopside-hemisphere-standard-stencil.png
     trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-b276f7d1dadd63b7/diopside-hemisphere-standard-stencil.png
@@ -14018,27 +13943,6 @@ cleanup:
     verified_destinations:
     - local/atlas/phases/ice-ih/products/ice-ih-x-axis-rotation/previews/preview.png
   - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/manifest.json
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/manifest.json
-    byte_count: 2512
-    sha256: d7531b75d98bc0cb2725d68f384e1763d3386660cdc415f2679b437fb737ff86
-    verified_destinations:
-    - local/atlas/phases/muscovite-2m1/products/muscovite-2m1-direct-tilt-plus-20/provenance/manifest.json
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/muscovite-2m1-hemisphere-standard-stencil.png
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/muscovite-2m1-hemisphere-standard-stencil.png
-    byte_count: 37251
-    sha256: d51c2ab710875264b817d0005deec51d9f059c672be3a0dab27c0ecf8e0933be
-    verified_destinations:
-    - local/atlas/phases/muscovite-2m1/products/muscovite-2m1-direct-tilt-plus-20/previews/muscovite-2m1-hemisphere-standard-stencil.png
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/muscovite-2m1-hemisphere-standard.svg
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e/muscovite-2m1-hemisphere-standard.svg
-    byte_count: 83620
-    sha256: a8ba102db6a5d6354f2423aa1b8b14807f1632cfe1d304f2cadb1cc40a1b6806
-    verified_destinations:
-    - local/atlas/phases/muscovite-2m1/products/muscovite-2m1-direct-tilt-plus-20/media/muscovite-2m1-hemisphere-standard.svg
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
     original_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-7e2c8f3668dda50f/manifest.json
     trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-7e2c8f3668dda50f/manifest.json
     byte_count: 2512
@@ -14164,27 +14068,6 @@ cleanup:
     sha256: 5af4e83869b2c139fc9c631f6bc53e315c88a83e08d0c4c2163cf175ad114cd5
     verified_destinations:
     - local/atlas/phases/plagioclase-an52/products/plagioclase-an52-direct-tilt-plus-20/media/plagioclase-an52-hemisphere-standard.svg
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/manifest.json
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/manifest.json
-    byte_count: 2542
-    sha256: 4080468436f9a77a88b3b0fc232ce9c1aabc52eedc8de3df750693e7491ffb71
-    verified_destinations:
-    - local/atlas/phases/plagioclase-an52/products/plagioclase-an52-direct-standard/provenance/manifest.json
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/plagioclase-an52-hemisphere-standard-stencil.png
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/plagioclase-an52-hemisphere-standard-stencil.png
-    byte_count: 36863
-    sha256: 2213c9e347754060101d9feac88927d854347867684fa170ac72e91799514fb0
-    verified_destinations:
-    - local/atlas/phases/plagioclase-an52/products/plagioclase-an52-direct-standard/previews/plagioclase-an52-hemisphere-standard-stencil.png
-  - trashed_at: '2026-07-26T22:07:56.510434Z'
-    original_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/plagioclase-an52-hemisphere-standard.svg
-    trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1/plagioclase-an52-hemisphere-standard.svg
-    byte_count: 83882
-    sha256: 5263d714d4d263ef47417eb23b7ed577fe9c6b8b67764ffbd4abf05fe4944723
-    verified_destinations:
-    - local/atlas/phases/plagioclase-an52/products/plagioclase-an52-direct-standard/media/plagioclase-an52-hemisphere-standard.svg
   - trashed_at: '2026-07-26T22:07:56.510434Z'
     original_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-e793c6fa4b7ee342/manifest.json
     trash_path: /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38/local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-e793c6fa4b7ee342/manifest.json

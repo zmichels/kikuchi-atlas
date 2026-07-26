@@ -52,8 +52,8 @@ Final migration-ledger identity:
 
 ```text
 path: docs/atlas/ATLAS_MIGRATION.yml
-bytes: 882500
-SHA-256: efc48dc3a345c9e7e2692f4c979b1037ac245644fd12f6f459962ddef2a92157
+bytes: 870743
+SHA-256: bb28b4626e7853c050240bd198c93e1108a4f595b69b2e1a5e5b85762b6b905f
 ```
 
 ## Quartz artist masters
@@ -150,21 +150,25 @@ Cookie-free public checks recorded:
 Final accepted cleanup:
 
 ```text
-files moved: 364
-bytes moved: 7,130,200,953
+files moved: 347
+bytes moved: 7,129,461,220
 Trash namespace:
 /Users/Z/.Trash/Kikuchi Atlas legacy cleanup 20260726T220756510434Z-e73a00517a38
 ```
 
 Each move was an exact same-volume file rename into a collision-safe batch
 tree. No legacy root was recursively deleted. The source and every canonical
-destination were checked against the frozen ledger before the first move.
+destination were checked against the frozen ledger before the first move,
+including both generated MP4 destinations that share their authoritative
+quartz MOV source.
 The Trash write/rename/restore preflight passed, and the final ledger is the
 recovery journal.
 
 All ten legacy roots remain as directories. All 12 explicitly retained source
-paths remain, as do the unlisted intermediates, including 6,367 frame files
-observed immediately after the initial move.
+paths remain. All 18 copied payloads below those retained bundles, totaling
+742,176 bytes, exist at their original paths with exact planned hashes, as do
+the unlisted intermediates, including 6,367 frame files observed immediately
+after the initial move.
 
 An initial dry run identified 365 candidates / 7,130,203,396 bytes. The first
 full-suite run exposed one over-broad classification: the 2,443-byte pyrope
@@ -172,8 +176,23 @@ standard-template `manifest.json` was also required identity evidence for the
 retained direct-reflector source bundle. That exact file, SHA-256
 `309ba1d0689c29e62a38f84a1e6e148180ffa2afe3803dd47bf638c0e14c5d7d`,
 was restored from its recorded Trash path; its ledger approval is now false,
-and the final cleanup totals and journal exclude it. No other file was
-restored.
+and the final cleanup totals and journal exclude it.
+
+Independent review then found that `retained_source_paths` names whole bundles,
+not only exact directory markers. Exactly 17 additional journaled descendants
+totaling 739,733 bytes were restored after their Trash identities were
+verified. Their approvals are false and the final journal contains zero
+retained-bundle descendants. Across both corrections, exactly 18 files /
+742,176 bytes were restored and no other file was restored.
+
+The cleanup implementation now groups all entries by exact source before
+filtering. Copied records explicitly authorize cleanup; generated proxies
+remain `cleanup_approved: false`, but every destination in the shared-source
+group must validate and appear in the recovery journal. Cleanup also refuses
+unless Git proves the exact worktree top-level and tracked inventory. Any
+mid-move or ledger-publication failure rolls all moved files back, removes the
+empty Trash batch and staging file, and proves the original ledger bytes are
+unchanged.
 
 ## Post-cleanup verification
 
@@ -184,8 +203,9 @@ After the cleanup and exact correction:
 - local Atlas build: 12 phases and 125 individual products;
 - public build: 212 web assets / 286,371,069 bytes and 617 staged archive
   assets / 7,169,121,139 bytes;
-- focused Atlas suite: 135 passed;
-- corrected cleanup/direct-rotation slice: 52 passed;
+- focused Atlas suite: 164 passed;
+- consolidation unit suite: 57 passed;
+- corrected cleanup/retained-bundle/shared-journal slice: 17 passed;
 - work-item validation: 119 records valid;
 - required Ruff scope: clean; and
 - `git diff --check`: clean.
@@ -193,7 +213,7 @@ After the cleanup and exact correction:
 Fresh repository-wide result after the exact correction:
 
 ```text
-1 failed, 1,690 passed, 1 skipped, 4,383 warnings in 586.65s
+1 failed, 1,701 passed, 1 skipped, 4,383 warnings in 587.40s
 ```
 
 The remaining expected failure is outside this cleanup scope:
@@ -212,9 +232,9 @@ passing.
 - No remote deduplication was accepted without downloaded-byte evidence.
   Existing remote quartz items were candidates only; no item was merged,
   overwritten, or called identical on filename or displayed-size evidence.
-- The pyrope retained-source manifest was restored and excluded from cleanup
-  after the full suite proved its dual role. The correction narrowed cleanup;
-  it did not restore a legacy publication fallback.
+- The pyrope retained-source manifest and all 17 other copied descendants of
+  retained bundles were restored and excluded from cleanup. The correction
+  narrowed cleanup; it did not restore a legacy publication fallback.
 - The earlier draft.1 workflow dispatch was blocked by the protected
   deployment branch policy. Later reviewed master deployments succeeded;
   existing tags/releases were retained rather than overwritten.
