@@ -216,3 +216,48 @@ def test_plan_cli_rejects_output_inside_canonical_root_without_writing(
     assert result.returncode != 0
     assert "canonical root" in result.stderr
     assert not output.exists()
+
+
+def test_plan_cli_anchors_canonical_root_to_registry_with_relocated_policy(
+    fixture_repo: Path,
+) -> None:
+    original_policy = fixture_repo / "docs/atlas/CONSOLIDATION.yml"
+    relocated_policy = fixture_repo.parent / "relocated/CONSOLIDATION.yml"
+    relocated_policy.parent.mkdir()
+    relocated_policy.write_text(
+        original_policy.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    policy_link = fixture_repo / "relocated-policy.yml"
+    policy_link.symlink_to(relocated_policy)
+    output = fixture_repo / (
+        "local/atlas/phases/quartz/products/escape/product-package.yml"
+    )
+    output.parent.mkdir(parents=True)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/consolidate_atlas_products.py"),
+            "plan",
+            "--registry",
+            str(fixture_repo / "docs/atlas/PHASE_REGISTRY.yml"),
+            "--products",
+            str(fixture_repo / "docs/atlas/PRODUCT_REGISTRY.yml"),
+            "--catalog",
+            str(fixture_repo / "docs/products/ARTIFACT_CATALOG.yml"),
+            "--policy",
+            str(policy_link),
+            "--output",
+            str(output),
+            "--source-commit",
+            "a" * 40,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "canonical root" in result.stderr
+    assert not output.exists()

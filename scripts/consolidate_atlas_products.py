@@ -48,7 +48,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.command == "plan":
-        validate_migration_output_path(args.output, args.policy)
+        validate_migration_output_path(args.output, args.policy, args.registry)
         ledger = build_migration_ledger(
             registry_path=args.registry,
             product_registry_path=args.products,

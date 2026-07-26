@@ -388,11 +388,12 @@ def _check_destination_collisions(files: list[MigrationFile]) -> None:
 def validate_migration_output_path(
     output_path: str | Path,
     consolidation_path: str | Path,
+    registry_path: str | Path,
 ) -> None:
     """Reject plan output paths that could mutate the canonical package tree."""
     policy_path = Path(consolidation_path).resolve()
     policy = _read_policy(policy_path)
-    repository_root = policy_path.parents[2]
+    repository_root = Path(registry_path).resolve().parents[2]
     canonical_root = (
         repository_root / _relative_path(policy["canonical_root"], "canonical_root")
     ).resolve(strict=False)
