@@ -204,10 +204,22 @@ def test_pages_workflow_treats_dispatch_inputs_as_data_and_pins_actions() -> Non
         download_step["env"]["EXPECTED_ASSET_GLOB"]
         == dispatch_inputs["asset_glob"]["default"]
     )
+    assert (
+        dispatch_inputs["release_tag"]["default"]
+        == "atlas-gallery-web-0.2.0-draft.2"
+    )
+    assert (
+        dispatch_inputs["asset_glob"]["default"]
+        == "kikuchi-atlas-gallery-web-0.2.0-draft.2.zip.part-*"
+    )
     assert "${{ inputs." not in download_step["run"]
     assert 'test "$RELEASE_TAG" = "$EXPECTED_RELEASE_TAG"' in download_step["run"]
     assert 'test "$ASSET_GLOB" = "$EXPECTED_ASSET_GLOB"' in download_step["run"]
     assert "set -euo pipefail" in download_step["run"]
+    assert (
+        '"d32d21494ae2b9b078d3e59dee7dd241c8474914ade76db7226cbb410875a514"'
+        in download_step["run"]
+    )
     assert (
         "uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b"
         " # v5" in workflow_text
