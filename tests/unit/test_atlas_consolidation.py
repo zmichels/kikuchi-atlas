@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 import yaml
 
 from kikuchi_lab.atlas.consolidation import MigrationLedger, build_migration_ledger
+
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture
@@ -164,3 +169,50 @@ def test_plan_rejects_same_destination_with_different_bytes(fixture_repo: Path) 
     policy.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     with pytest.raises(ValueError, match="destination collision"):
         _build_fixture_ledger(fixture_repo)
+
+
+def test_plan_rejects_symlinked_source_that_escapes_approved_root(
+    fixture_repo: Path,
+) -> None:
+    source = fixture_repo / "local/legacy/demo.svg"
+    outside = fixture_repo / "outside.svg"
+    outside.write_text("<svg>outside</svg>\n", encoding="utf-8")
+    source.unlink()
+    source.symlink_to(outside)
+
+    with pytest.raises(ValueError, match="symlink"):
+        _build_fixture_ledger(fixture_repo)
+
+
+def test_plan_cli_rejects_output_inside_canonical_root_without_writing(
+    fixture_repo: Path,
+) -> None:
+    output = fixture_repo / (
+        "local/atlas/phases/quartz/products/escape/product-package.yml"
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/consolidate_atlas_products.py"),
+            "plan",
+            "--registry",
+            str(fixture_repo / "docs/atlas/PHASE_REGISTRY.yml"),
+            "--products",
+            str(fixture_repo / "docs/atlas/PRODUCT_REGISTRY.yml"),
+            "--catalog",
+            str(fixture_repo / "docs/products/ARTIFACT_CATALOG.yml"),
+            "--policy",
+            str(fixture_repo / "docs/atlas/CONSOLIDATION.yml"),
+            "--output",
+            str(output),
+            "--source-commit",
+            "a" * 40,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "canonical root" in result.stderr
+    assert not output.exists()

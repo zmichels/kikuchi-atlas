@@ -6,7 +6,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from kikuchi_lab.atlas.consolidation import build_migration_ledger, write_migration_ledger
+from kikuchi_lab.atlas.consolidation import (
+    build_migration_ledger,
+    validate_migration_output_path,
+    write_migration_ledger,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,6 +48,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.command == "plan":
+        validate_migration_output_path(args.output, args.policy)
         ledger = build_migration_ledger(
             registry_path=args.registry,
             product_registry_path=args.products,

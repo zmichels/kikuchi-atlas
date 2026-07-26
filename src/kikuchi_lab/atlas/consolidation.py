@@ -148,14 +148,28 @@ def _source_path(
     root: Path,
     relative_value: str,
     *,
-    approved_roots: tuple[PurePosixPath, ...],
+    approved_roots: tuple[tuple[PurePosixPath, Path], ...],
 ) -> Path:
     relative = _relative_path(relative_value, "migration source")
-    if not any(relative == approved or relative.is_relative_to(approved) for approved in approved_roots):
+    if not any(
+        relative == declared or relative.is_relative_to(declared)
+        for declared, _ in approved_roots
+    ):
         raise ValueError(f"source path is outside approved legacy roots: {relative_value}")
     source = root / relative
-    if not source.is_file():
+    if source.is_symlink():
+        raise ValueError(f"migration source must not be a symlink: {relative_value}")
+    try:
+        resolved_source = source.resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise ValueError(f"migration source is missing: {relative_value}") from error
+    if not resolved_source.is_file():
         raise ValueError(f"migration source is missing: {relative_value}")
+    if not any(
+        resolved_source == approved or resolved_source.is_relative_to(approved)
+        for _, approved in approved_roots
+    ):
+        raise ValueError(f"source path is outside approved legacy roots: {relative_value}")
     return source
 
 
@@ -253,7 +267,7 @@ def _add_copy(
     files: list[MigrationFile],
     *,
     root: Path,
-    approved_roots: tuple[PurePosixPath, ...],
+    approved_roots: tuple[tuple[PurePosixPath, Path], ...],
     product_id: str,
     phase_slug: str,
     destination_root: PurePosixPath,
@@ -285,23 +299,30 @@ def _add_copy(
     )
 
 
-def _supplemental_sources(product: AtlasProduct, root: Path) -> tuple[tuple[str, str], ...]:
+def _supplemental_sources(
+    product: AtlasProduct,
+    root: Path,
+    bundle_value: str,
+) -> tuple[tuple[str, str], ...]:
     sources: list[tuple[str, str]] = []
+    bundle = _relative_path(bundle_value, "atlas product bundle_path")
     if "intensity-master" in product.family_ids:
-        master = product.bundle_path / "products/canonical-kinematical-master.npz"
+        master_relative = bundle / "products/canonical-kinematical-master.npz"
+        master = root / master_relative
         if master.is_file():
             sources.append(
                 (
-                    master.relative_to(root).as_posix(),
+                    master_relative.as_posix(),
                     "provenance/scientific-fields/canonical-kinematical-master.npz",
                 )
             )
     if "intensity-relief-globe" in product.family_ids:
-        relief = product.bundle_path / "relief-field.npz"
+        relief_relative = bundle / "relief-field.npz"
+        relief = root / relief_relative
         if relief.is_file():
             sources.append(
                 (
-                    relief.relative_to(root).as_posix(),
+                    relief_relative.as_posix(),
                     "provenance/scientific-fields/relief-field.npz",
                 )
             )
@@ -364,6 +385,24 @@ def _check_destination_collisions(files: list[MigrationFile]) -> None:
         by_destination[item.destination_path] = item.source_sha256
 
 
+def validate_migration_output_path(
+    output_path: str | Path,
+    consolidation_path: str | Path,
+) -> None:
+    """Reject plan output paths that could mutate the canonical package tree."""
+    policy_path = Path(consolidation_path).resolve()
+    policy = _read_policy(policy_path)
+    repository_root = policy_path.parents[2]
+    canonical_root = (
+        repository_root / _relative_path(policy["canonical_root"], "canonical_root")
+    ).resolve(strict=False)
+    resolved_output = Path(output_path).resolve(strict=False)
+    if resolved_output == canonical_root or resolved_output.is_relative_to(canonical_root):
+        raise ValueError(
+            f"migration output must be outside the canonical root: {resolved_output}"
+        )
+
+
 def build_migration_ledger(
     registry_path: str | Path,
     product_registry_path: str | Path,
@@ -383,13 +422,22 @@ def build_migration_ledger(
     phase_slugs = {phase.slug for phase in phases}
     phase_source_by_slug = {phase.slug: phase.source_record for phase in phases}
     families, registry_products = load_product_registry(product_registry, phase_slugs=phase_slugs)
+    raw_product_payload = yaml.safe_load(product_registry.read_text(encoding="utf-8"))
+    raw_product_by_id = {
+        item["id"]: item
+        for item in raw_product_payload["products"]
+    }
     family_ids = {family.identifier for family in families}
     catalog = _load_catalog(Path(artifact_catalog_path).resolve())
     catalog_by_id = {entry["id"]: entry for entry in catalog}
     policy = _read_policy(Path(consolidation_path).resolve())
     canonical_root = _relative_path(policy["canonical_root"], "canonical_root")
     approved_roots = tuple(
-        _relative_path(value, "legacy root") for value in policy["legacy_roots"]
+        (
+            _relative_path(value, "legacy root"),
+            (root / _relative_path(value, "legacy root")).resolve(strict=False),
+        )
+        for value in policy["legacy_roots"]
     )
 
     products: list[MigrationProduct] = []
@@ -403,6 +451,7 @@ def build_migration_ledger(
             )
         product_id = product.identifier
         phase_slug = product.phase_slugs[0]
+        raw_product = raw_product_by_id[product_id]
         seen_ids.add(product_id)
         destination_root = canonical_root / phase_slug / "products" / product_id
         record = _registry_record(product, root)
@@ -414,13 +463,14 @@ def build_migration_ledger(
                 registry_record=record,
             )
         )
-        for role, source, directory in (
-            ("media", product.media_path, "media"),
-            ("preview", product.preview_path, "previews"),
-            ("provenance", product.provenance_path, "provenance"),
+        for role, source_field, directory in (
+            ("media", "media_path", "media"),
+            ("preview", "preview_path", "previews"),
+            ("provenance", "provenance_path", "provenance"),
         ):
-            if source is not None:
-                source_value = source.relative_to(root).as_posix()
+            source_value = raw_product.get(source_field)
+            if source_value is not None:
+                source_value = str(source_value)
                 _add_copy(
                     files,
                     root=root,
@@ -429,10 +479,16 @@ def build_migration_ledger(
                     phase_slug=phase_slug,
                     destination_root=destination_root,
                     source_value=source_value,
-                    destination_relative=f"{directory}/{source.name}",
+                    destination_relative=(
+                        f"{directory}/{PurePosixPath(source_value).name}"
+                    ),
                     role=role,
                 )
-        for source_value, destination_relative in _supplemental_sources(product, root):
+        for source_value, destination_relative in _supplemental_sources(
+            product,
+            root,
+            str(raw_product["bundle_path"]),
+        ):
             _add_copy(
                 files,
                 root=root,
@@ -634,5 +690,6 @@ __all__ = [
     "MigrationLedger",
     "MigrationProduct",
     "build_migration_ledger",
+    "validate_migration_output_path",
     "write_migration_ledger",
 ]
