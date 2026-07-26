@@ -6,12 +6,12 @@ on:
       release_tag:
         description: GitHub prerelease containing chunks of the verified static gallery ZIP
         required: true
-        default: atlas-gallery-web-0.2.0-draft.2
+        default: atlas-gallery-web-0.2.0-draft.3
         type: string
       asset_glob:
         description: Glob matching the ordered static-gallery ZIP chunks to deploy
         required: true
-        default: kikuchi-atlas-gallery-web-0.2.0-draft.2.zip.part-*
+        default: kikuchi-atlas-gallery-web-0.2.0-draft.3.zip.part-*
         type: string
 
 permissions:
@@ -38,8 +38,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
           ASSET_GLOB: ${{ inputs.asset_glob }}
-          EXPECTED_RELEASE_TAG: atlas-gallery-web-0.2.0-draft.2
-          EXPECTED_ASSET_GLOB: kikuchi-atlas-gallery-web-0.2.0-draft.2.zip.part-*
+          EXPECTED_RELEASE_TAG: atlas-gallery-web-0.2.0-draft.3
+          EXPECTED_ASSET_GLOB: kikuchi-atlas-gallery-web-0.2.0-draft.3.zip.part-*
         run: |
           set -euo pipefail
           test "$RELEASE_TAG" = "$EXPECTED_RELEASE_TAG"
@@ -56,7 +56,7 @@ jobs:
           test "${#chunks[@]}" -gt 1
           cat "${chunks[@]}" > gallery.zip
           test "$(sha256sum gallery.zip | cut -d ' ' -f1)" = \
-            "d32d21494ae2b9b078d3e59dee7dd241c8474914ade76db7226cbb410875a514"
+            "214f49f383596a42301f8d9ef05304f792f70bc929c4238a90f100ec891d16c3"
           unzip -q gallery.zip -d site
           test -f site/index.html
 
