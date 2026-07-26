@@ -2,6 +2,19 @@ schema_version: 1
 state: materialized
 source_commit: d2bb3f9afa2a809abc65529d6842579b59b567b9
 canonical_root: local/atlas/phases
+retained_source_paths:
+- local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed
+- local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028
+- local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e
+- local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8
+- local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef
+- local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e
+- local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1
+- local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980
+- local/phase-general-direct-reflector-art/series/forsterite-hemisphere-standard-run-1c34e517644729c5
+- local/phase-general-direct-reflector-art/series/quartz-hemisphere-standard-run-c8e68d027682d562
+- local/phase-general-direct-reflector-art/series/titanite-hemisphere-standard-run-7a58d5c09fe6273c
+- local/phase-general-direct-reflector-art/series/zircon-hemisphere-standard-run-ad71aeef33302d99
 phase_count: 12
 product_count: 125
 products:

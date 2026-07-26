@@ -34,6 +34,7 @@ _LEDGER_FIELDS = {
     "state",
     "source_commit",
     "canonical_root",
+    "retained_source_paths",
     "phase_count",
     "product_count",
     "products",
@@ -165,6 +166,7 @@ class MigrationLedger:
     state: str
     source_commit: str
     canonical_root: str
+    retained_source_paths: tuple[str, ...]
     products: tuple[MigrationProduct, ...]
     files: tuple[MigrationFile, ...]
 
@@ -743,6 +745,7 @@ def build_migration_ledger(
         state="planned",
         source_commit=source_commit,
         canonical_root=canonical_root.as_posix(),
+        retained_source_paths=(),
         products=sorted_products,
         files=sorted_files,
     )
@@ -772,6 +775,7 @@ def write_migration_ledger(ledger: MigrationLedger, output_path: str | Path) -> 
         "state": ledger.state,
         "source_commit": ledger.source_commit,
         "canonical_root": ledger.canonical_root,
+        "retained_source_paths": list(ledger.retained_source_paths),
         "phase_count": ledger.phase_count,
         "product_count": ledger.product_count,
         "products": [asdict(item) for item in ledger.products],
@@ -802,6 +806,21 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
     canonical_root = _relative_path(payload["canonical_root"], "canonical_root")
     if canonical_root != _CANONICAL_ROOT:
         raise ValueError("migration ledger canonical_root must be local/atlas/phases")
+    raw_retained_source_paths = payload["retained_source_paths"]
+    if (
+        not isinstance(raw_retained_source_paths, list)
+        or not all(
+            isinstance(item, str) and item for item in raw_retained_source_paths
+        )
+        or len(set(raw_retained_source_paths)) != len(raw_retained_source_paths)
+    ):
+        raise ValueError(
+            "migration ledger retained_source_paths must contain unique paths"
+        )
+    retained_source_paths = tuple(
+        _relative_path(value, "retained source path").as_posix()
+        for value in raw_retained_source_paths
+    )
 
     raw_products = payload["products"]
     if not isinstance(raw_products, list):
@@ -887,6 +906,7 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
         state=str(payload["state"]),
         source_commit=payload["source_commit"],
         canonical_root=canonical_root.as_posix(),
+        retained_source_paths=retained_source_paths,
         products=tuple(products),
         files=tuple(files),
     )
@@ -1592,8 +1612,8 @@ def _allowed_reference(
             for marker in ("--output", "default=", "else ROOT /", "output_root")
         ):
             return None
-        retained_input = 'Path("local/' in line_text or any(
-            source == legacy or source.is_relative_to(legacy) for source in source_paths
+        retained_input = any(
+            source == legacy or legacy.is_relative_to(source) for source in source_paths
         )
         if retained_input:
             return (
@@ -1639,9 +1659,16 @@ def audit_legacy_paths(
         raise ValueError("legacy path audit requires a materialized migration ledger")
     legacy_roots = _legacy_roots_from_ledger(ledger)
     source_paths = tuple(
-        PurePosixPath(item.source_path)
-        for item in ledger.files
-        if item.source_path is not None
+        sorted(
+            {
+                *(PurePosixPath(value) for value in ledger.retained_source_paths),
+                *(
+                    PurePosixPath(item.source_path)
+                    for item in ledger.files
+                    if item.source_path is not None
+                ),
+            }
+        )
     )
     gallery_root = _orientation_gallery_root(root)
     output = Path(output_path).resolve()

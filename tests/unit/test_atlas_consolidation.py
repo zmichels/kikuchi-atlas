@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
+from dataclasses import replace
+from pathlib import Path, PurePosixPath
 import subprocess
 import sys
 import time
@@ -31,6 +32,7 @@ def fixture_repo(tmp_path: Path) -> Path:
         "phases/quartz",
         "recipes/demo",
         "local/legacy/frames",
+        "local/legacy/selection-bundle",
     ):
         (repo / directory).mkdir(parents=True, exist_ok=True)
     (repo / "phases/quartz/source.yml").write_text("phase: quartz\n", encoding="utf-8")
@@ -166,6 +168,20 @@ def test_plan_combines_registry_products_and_three_intake_products(fixture_repo:
         item.source_byte_count > 0 and len(item.source_sha256) == 64
         for item in ledger.files
     )
+    assert ledger.retained_source_paths == ()
+
+
+def test_retained_source_paths_round_trip_through_ledger(fixture_repo: Path) -> None:
+    ledger_path = fixture_repo / "docs/atlas/ATLAS_MIGRATION.yml"
+    ledger = replace(
+        _build_fixture_ledger(fixture_repo),
+        retained_source_paths=("local/legacy/selection-bundle",),
+    )
+    write_migration_ledger(ledger, ledger_path)
+
+    loaded = consolidation._load_migration_ledger(ledger_path)
+
+    assert loaded.retained_source_paths == ("local/legacy/selection-bundle",)
 
 
 def test_plan_classifies_only_exact_publishable_files(fixture_repo: Path) -> None:
@@ -435,7 +451,7 @@ entries:
     scripts = fixture_repo / "scripts"
     scripts.mkdir()
     (scripts / "render_direct_reflector_rotation.py").write_text(
-        'SELECTION = Path("local/legacy/selection-bundle")\n',
+        'SELECTION = Path("local/legacy/demo.svg")\n',
         encoding="utf-8",
     )
     acceptance = fixture_repo / "docs/acceptance"
@@ -559,3 +575,29 @@ def test_path_audit_rejects_live_script_output_roots(
             repository_root=fixture_repo,
             output_path=output,
         )
+
+
+@pytest.mark.parametrize(
+    "source_paths",
+    (
+        (),
+        (PurePosixPath("local/other/verified-source.dat"),),
+        (
+            PurePosixPath("local")
+            / "relief-globes/future-publication/verified-source.dat",
+        ),
+    ),
+)
+def test_path_audit_rejects_unlisted_nonmarker_script_path(
+    source_paths: tuple[PurePosixPath, ...],
+) -> None:
+    legacy_path = PurePosixPath("local") / "relief-globes/future-publication"
+    classification = consolidation._allowed_reference(
+        file=PurePosixPath("scripts/future_publication.py"),
+        line_text=f'DESTINATION = Path("{legacy_path}")',
+        legacy_path=legacy_path.as_posix(),
+        source_paths=source_paths,
+        orientation_gallery_root=None,
+    )
+
+    assert classification is None
