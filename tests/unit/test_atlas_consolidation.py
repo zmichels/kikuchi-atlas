@@ -3,11 +3,19 @@ from __future__ import annotations
 from pathlib import Path
 import subprocess
 import sys
+import time
 
 import pytest
 import yaml
 
-from kikuchi_lab.atlas.consolidation import MigrationLedger, build_migration_ledger
+from kikuchi_lab.atlas.consolidation import (
+    MigrationLedger,
+    build_migration_ledger,
+    materialize_ledger,
+    verify_canonical_tree,
+    write_migration_ledger,
+)
+from kikuchi_lab.atlas.packages import validate_product_package
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -64,7 +72,7 @@ product_families:
     description: Fixture products.
     claim_boundary: Fixture only.
 products:
-  - id: quartz-a-demo
+  - id: quartz-demo
     title: Quartz demo
     phase_slugs: [quartz]
     families: [demo-family]
@@ -139,11 +147,18 @@ def _build_fixture_ledger(fixture_repo: Path) -> MigrationLedger:
     )
 
 
+def _write_fixture_ledger(fixture_repo: Path) -> Path:
+    ledger_path = fixture_repo / "docs/atlas/ATLAS_MIGRATION.yml"
+    write_migration_ledger(_build_fixture_ledger(fixture_repo), ledger_path)
+    return ledger_path
+
+
 def test_plan_combines_registry_products_and_three_intake_products(fixture_repo: Path) -> None:
     ledger = _build_fixture_ledger(fixture_repo)
     assert ledger.phase_count == 1
     assert ledger.product_count == 2
-    assert ledger.products[1].destination_root == (
+    artist = next(item for item in ledger.products if item.product_id == "quartz-artist")
+    assert artist.destination_root == (
         "local/atlas/phases/quartz/products/quartz-artist"
     )
     assert all(
@@ -261,3 +276,68 @@ def test_plan_cli_anchors_canonical_root_to_registry_with_relocated_policy(
     assert result.returncode != 0
     assert "canonical root" in result.stderr
     assert not output.exists()
+
+
+def test_materialize_copies_to_partial_then_verifies_and_publishes(
+    fixture_repo: Path,
+) -> None:
+    ledger_path = _write_fixture_ledger(fixture_repo)
+
+    result = materialize_ledger(ledger_path, repository_root=fixture_repo)
+
+    package = fixture_repo / (
+        "local/atlas/phases/quartz/products/quartz-demo/product-package.yml"
+    )
+    assert result.state == "materialized"
+    assert validate_product_package(package).product_id == "quartz-demo"
+    assert not tuple(package.parent.rglob("*.partial"))
+
+
+def test_materialize_resumes_matching_destination_without_rewriting(
+    fixture_repo: Path,
+) -> None:
+    ledger_path = _write_fixture_ledger(fixture_repo)
+    first = materialize_ledger(ledger_path, repository_root=fixture_repo)
+    media = fixture_repo / first.files[0].destination_path
+    before = media.stat().st_mtime_ns
+    time.sleep(0.001)
+
+    materialize_ledger(ledger_path, repository_root=fixture_repo)
+
+    assert media.stat().st_mtime_ns == before
+
+
+def test_materialize_refuses_existing_different_bytes(fixture_repo: Path) -> None:
+    ledger_path = _write_fixture_ledger(fixture_repo)
+    destination = fixture_repo / (
+        "local/atlas/phases/quartz/products/quartz-demo/media/demo.svg"
+    )
+    destination.parent.mkdir(parents=True)
+    destination.write_bytes(b"different")
+
+    with pytest.raises(ValueError, match="refusing to overwrite"):
+        materialize_ledger(ledger_path, repository_root=fixture_repo)
+
+
+def test_materialize_rejects_changed_source_before_copy(fixture_repo: Path) -> None:
+    ledger_path = _write_fixture_ledger(fixture_repo)
+    (fixture_repo / "local/legacy/demo.svg").write_text(
+        "<svg>other</svg>\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="source SHA-256 changed"):
+        materialize_ledger(ledger_path, repository_root=fixture_repo)
+
+
+def test_verify_canonical_tree_reports_complete_inventory(fixture_repo: Path) -> None:
+    ledger_path = _write_fixture_ledger(fixture_repo)
+    materialize_ledger(ledger_path, repository_root=fixture_repo)
+
+    result = verify_canonical_tree(ledger_path, repository_root=fixture_repo)
+
+    assert result.phase_count == 1
+    assert result.product_count == 2
+    assert result.missing_count == 0
+    assert result.mismatched_count == 0
+    assert result.symlink_count == 0

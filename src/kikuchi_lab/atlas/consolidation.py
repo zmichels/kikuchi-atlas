@@ -2,22 +2,71 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from hashlib import sha256
 import importlib.util
 import mimetypes
+import os
 from pathlib import Path, PurePosixPath
 import re
+import shutil
+import stat
+import subprocess
 from typing import Any
 
 import yaml
 
 from .catalog import AtlasProduct, load_phase_registry, load_product_registry
-from .packages import sha256_file
+from .packages import (
+    ProductPackage,
+    sha256_file,
+    validate_phase_package,
+    validate_product_package,
+)
+from .web_proxy import WEB_PROXY_PROFILE, build_web_proxy, validate_web_proxy
 
 
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _POLICY_FIELDS = {"schema_version", "canonical_root", "legacy_roots", "extra_products"}
+_LEDGER_FIELDS = {
+    "schema_version",
+    "state",
+    "source_commit",
+    "canonical_root",
+    "phase_count",
+    "product_count",
+    "products",
+    "files",
+}
+_LEDGER_PRODUCT_FIELDS = {
+    "product_id",
+    "phase_slug",
+    "destination_root",
+    "registry_record",
+}
+_LEDGER_FILE_FIELDS = {
+    "product_id",
+    "phase_slug",
+    "source_path",
+    "destination_path",
+    "role",
+    "kind",
+    "source_byte_count",
+    "source_sha256",
+    "destination_byte_count",
+    "destination_sha256",
+    "mime_type",
+    "destinations",
+    "cleanup_approved",
+}
+_CANONICAL_ROOT = PurePosixPath("local/atlas/phases")
+_ROLE_DIRECTORIES = {
+    "media": "media",
+    "preview": "previews",
+    "web": "web",
+    "provenance": "provenance",
+}
 _EXTRA_REQUIRED_FIELDS = {
     "id",
     "title",
@@ -110,6 +159,21 @@ class MigrationLedger:
     @property
     def phase_count(self) -> int:
         return len({item.phase_slug for item in self.products})
+
+
+@dataclass(frozen=True)
+class CanonicalVerification:
+    """Summary of an exact canonical-tree verification pass."""
+
+    phase_count: int
+    product_count: int
+    missing_count: int
+    mismatched_count: int
+    symlink_count: int
+
+    @property
+    def valid(self) -> bool:
+        return not (self.missing_count or self.mismatched_count or self.symlink_count)
 
 
 def _read_policy(path: Path) -> dict[str, Any]:
@@ -651,7 +715,7 @@ def build_migration_ledger(
 
 
 def write_migration_ledger(ledger: MigrationLedger, output_path: str | Path) -> None:
-    """Write a deterministic YAML migration ledger without materializing products."""
+    """Write a deterministic YAML migration ledger."""
     product_by_id = {item.product_id: item for item in ledger.products}
     file_records: list[dict[str, object]] = []
     for item in ledger.files:
@@ -686,11 +750,643 @@ def write_migration_ledger(ledger: MigrationLedger, output_path: str | Path) -> 
     )
 
 
+def _load_migration_ledger(path: Path) -> MigrationLedger:
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as error:
+        raise ValueError("migration ledger cannot be read as YAML") from error
+    if not isinstance(payload, dict) or set(payload) != _LEDGER_FIELDS:
+        raise ValueError("migration ledger fields differ from schema")
+    if payload["schema_version"] != 1:
+        raise ValueError("unsupported migration ledger schema")
+    if payload["state"] not in {"planned", "materialized"}:
+        raise ValueError("migration ledger state must be planned or materialized")
+    if not isinstance(payload["source_commit"], str) or not _COMMIT.fullmatch(
+        payload["source_commit"]
+    ):
+        raise ValueError("migration ledger source_commit is invalid")
+    canonical_root = _relative_path(payload["canonical_root"], "canonical_root")
+    if canonical_root != _CANONICAL_ROOT:
+        raise ValueError("migration ledger canonical_root must be local/atlas/phases")
+
+    raw_products = payload["products"]
+    if not isinstance(raw_products, list):
+        raise ValueError("migration ledger products must be a list")
+    products: list[MigrationProduct] = []
+    for raw in raw_products:
+        if not isinstance(raw, dict) or set(raw) != _LEDGER_PRODUCT_FIELDS:
+            raise ValueError("migration ledger product fields differ from schema")
+        if not isinstance(raw["registry_record"], dict):
+            raise ValueError("migration ledger registry_record must be a mapping")
+        products.append(
+            MigrationProduct(
+                product_id=str(raw["product_id"]),
+                phase_slug=str(raw["phase_slug"]),
+                destination_root=str(raw["destination_root"]),
+                registry_record=dict(raw["registry_record"]),
+            )
+        )
+    if len({item.product_id for item in products}) != len(products):
+        raise ValueError("migration ledger products contain duplicate IDs")
+
+    raw_files = payload["files"]
+    if not isinstance(raw_files, list):
+        raise ValueError("migration ledger files must be a list")
+    files: list[MigrationFile] = []
+    for raw in raw_files:
+        if not isinstance(raw, dict):
+            raise ValueError("migration ledger file must be a mapping")
+        fields = set(raw)
+        kind = raw.get("kind")
+        expected_fields = set(_LEDGER_FILE_FIELDS)
+        if kind == "generated-metadata":
+            expected_fields.add("generated_content")
+        if fields != expected_fields:
+            raise ValueError("migration ledger file fields differ from schema")
+        source_sha256 = raw["source_sha256"]
+        destination_sha256 = raw["destination_sha256"]
+        if not isinstance(source_sha256, str) or not _SHA256.fullmatch(source_sha256):
+            raise ValueError("migration ledger source SHA-256 is invalid")
+        if destination_sha256 is not None and (
+            not isinstance(destination_sha256, str)
+            or not _SHA256.fullmatch(destination_sha256)
+        ):
+            raise ValueError("migration ledger destination SHA-256 is invalid")
+        destinations = raw["destinations"]
+        if not isinstance(destinations, list) or not all(
+            isinstance(item, str) for item in destinations
+        ):
+            raise ValueError("migration ledger destinations must be a list of text")
+        files.append(
+            MigrationFile(
+                product_id=str(raw["product_id"]),
+                phase_slug=str(raw["phase_slug"]),
+                source_path=(
+                    None if raw["source_path"] is None else str(raw["source_path"])
+                ),
+                destination_path=str(raw["destination_path"]),
+                role=str(raw["role"]),
+                kind=str(kind),
+                source_byte_count=int(raw["source_byte_count"]),
+                source_sha256=source_sha256,
+                destination_byte_count=(
+                    None
+                    if raw["destination_byte_count"] is None
+                    else int(raw["destination_byte_count"])
+                ),
+                destination_sha256=destination_sha256,
+                mime_type=str(raw["mime_type"]),
+                destinations=tuple(destinations),
+                cleanup_approved=bool(raw["cleanup_approved"]),
+            )
+        )
+        if kind == "generated-metadata":
+            generated_content = raw["generated_content"]
+            if not isinstance(generated_content, str):
+                raise ValueError("generated metadata content must be text")
+            if len(generated_content.encode("utf-8")) != int(raw["source_byte_count"]):
+                raise ValueError("generated metadata byte count changed")
+            if sha256(generated_content.encode("utf-8")).hexdigest() != source_sha256:
+                raise ValueError("generated metadata SHA-256 changed")
+
+    ledger = MigrationLedger(
+        state=str(payload["state"]),
+        source_commit=payload["source_commit"],
+        canonical_root=canonical_root.as_posix(),
+        products=tuple(products),
+        files=tuple(files),
+    )
+    if payload["phase_count"] != ledger.phase_count:
+        raise ValueError("migration ledger phase_count is inconsistent")
+    if payload["product_count"] != ledger.product_count:
+        raise ValueError("migration ledger product_count is inconsistent")
+    product_ids = {item.product_id for item in ledger.products}
+    if any(item.product_id not in product_ids for item in ledger.files):
+        raise ValueError("migration ledger file refers to an unknown product")
+    null_outputs = [
+        item
+        for item in ledger.files
+        if item.destination_byte_count is None or item.destination_sha256 is None
+    ]
+    if any(
+        item.kind != "generated-proxy"
+        or item.destination_byte_count is not None
+        or item.destination_sha256 is not None
+        for item in null_outputs
+    ):
+        raise ValueError("only generated proxies may have null destination identity")
+    if ledger.state == "materialized" and null_outputs:
+        raise ValueError("materialized ledger contains a null destination identity")
+    return ledger
+
+
+def _assert_path_below(path: PurePosixPath, parent: PurePosixPath, label: str) -> None:
+    if path == parent or not path.is_relative_to(parent):
+        raise ValueError(f"{label} must be below {parent}")
+
+
+def _assert_real_directory(path: Path, *, anchor: Path) -> None:
+    relative = path.relative_to(anchor)
+    current = anchor
+    if current.is_symlink():
+        raise ValueError(f"canonical directory must not be a symlink: {current}")
+    for component in relative.parts:
+        current /= component
+        if current.is_symlink():
+            raise ValueError(f"canonical directory must not be a symlink: {current}")
+        if current.exists() and not current.is_dir():
+            raise ValueError(f"canonical directory path is not a directory: {current}")
+        current.mkdir(exist_ok=True)
+
+
+def _validate_source_identity(
+    source: Path,
+    *,
+    expected_byte_count: int,
+    expected_sha256: str,
+) -> None:
+    if source.is_symlink() or not source.is_file():
+        raise ValueError(f"source must be a regular file: {source}")
+    if source.stat().st_size != expected_byte_count:
+        raise ValueError(f"source byte count changed since planning: {source}")
+    if sha256_file(source) != expected_sha256:
+        raise ValueError(f"source SHA-256 changed since planning: {source}")
+
+
+def _clone_or_copy_verified(
+    source: Path,
+    destination: Path,
+    expected_sha256: str,
+) -> None:
+    if source.is_symlink() or not source.is_file():
+        raise ValueError(f"source must be a regular file: {source}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists() or destination.is_symlink():
+        if (
+            destination.is_symlink()
+            or not destination.is_file()
+            or destination.stat().st_nlink != 1
+            or sha256_file(destination) != expected_sha256
+        ):
+            raise ValueError(
+                f"refusing to overwrite different destination: {destination}"
+            )
+        return
+    partial = destination.with_name(destination.name + ".partial")
+    if partial.exists() or partial.is_symlink():
+        if partial.is_symlink() or not partial.is_file():
+            raise ValueError(f"unsafe partial destination: {partial}")
+        partial.unlink()
+    cloned = (
+        subprocess.run(
+            ["cp", "-c", str(source), str(partial)],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).returncode
+        == 0
+    )
+    if not cloned:
+        shutil.copy2(source, partial)
+    if partial.is_symlink() or not partial.is_file() or partial.stat().st_nlink != 1:
+        if partial.exists() and partial.is_file() and not partial.is_symlink():
+            partial.unlink()
+        raise ValueError(f"copy did not produce an independent regular file: {destination}")
+    if partial.stat().st_size != source.stat().st_size:
+        partial.unlink()
+        raise ValueError(f"byte-count mismatch after copy: {destination}")
+    if sha256_file(partial) != expected_sha256:
+        partial.unlink()
+        raise ValueError(f"SHA-256 mismatch after copy: {destination}")
+    os.replace(partial, destination)
+
+
+def _publish_bytes_verified(content: bytes, destination: Path) -> None:
+    expected_sha256 = sha256(content).hexdigest()
+    if destination.exists() or destination.is_symlink():
+        if (
+            destination.is_symlink()
+            or not destination.is_file()
+            or destination.stat().st_nlink != 1
+            or destination.stat().st_size != len(content)
+            or sha256_file(destination) != expected_sha256
+        ):
+            raise ValueError(
+                f"refusing to overwrite different destination: {destination}"
+            )
+        return
+    partial = destination.with_name(destination.name + ".partial")
+    if partial.exists() or partial.is_symlink():
+        if partial.is_symlink() or not partial.is_file():
+            raise ValueError(f"unsafe partial destination: {partial}")
+        partial.unlink()
+    partial.write_bytes(content)
+    if (
+        partial.is_symlink()
+        or partial.stat().st_nlink != 1
+        or partial.stat().st_size != len(content)
+        or sha256_file(partial) != expected_sha256
+    ):
+        partial.unlink()
+        raise ValueError(f"generated content verification failed: {destination}")
+    os.replace(partial, destination)
+
+
+def _product_manifest(
+    ledger: MigrationLedger,
+    product: MigrationProduct,
+    files: tuple[MigrationFile, ...],
+) -> bytes:
+    destination_root = PurePosixPath(product.destination_root)
+    records: list[dict[str, object]] = []
+    for item in sorted(
+        files,
+        key=lambda value: (
+            value.role,
+            PurePosixPath(value.destination_path).relative_to(destination_root).as_posix(),
+        ),
+    ):
+        relative_path = PurePosixPath(item.destination_path).relative_to(destination_root)
+        if item.destination_byte_count is None or item.destination_sha256 is None:
+            raise ValueError(f"destination identity is incomplete: {item.destination_path}")
+        records.append(
+            {
+                "path": relative_path.as_posix(),
+                "role": item.role,
+                "bytes": item.destination_byte_count,
+                "sha256": item.destination_sha256,
+                "mime_type": item.mime_type,
+                "destinations": list(item.destinations),
+            }
+        )
+    recipe = product.registry_record.get("recipe")
+    if not isinstance(recipe, str) or not recipe:
+        raise ValueError(f"product recipe is missing: {product.product_id}")
+    payload = {
+        "schema_version": 1,
+        "phase_slug": product.phase_slug,
+        "product_id": product.product_id,
+        "registry_id": product.product_id,
+        "source_commit": ledger.source_commit,
+        "tracked_references": {
+            "phase_source": f"phases/{product.phase_slug}/source.yml",
+            "recipe": recipe,
+            "product_registry": "docs/atlas/PRODUCT_REGISTRY.yml",
+        },
+        "files": records,
+    }
+    return yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).encode("utf-8")
+
+
+def _phase_manifest(
+    phase_slug: str,
+    products: tuple[ProductPackage, ...],
+) -> bytes:
+    payload = {
+        "schema_version": 1,
+        "phase_slug": phase_slug,
+        "source_record": f"phases/{phase_slug}/source.yml",
+        "products": [
+            {
+                "product_id": product.product_id,
+                "manifest": f"products/{product.product_id}/product-package.yml",
+                "manifest_sha256": product.package_sha256,
+            }
+            for product in sorted(products, key=lambda item: item.product_id)
+        ],
+    }
+    return yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).encode("utf-8")
+
+
+def _expected_tree(
+    ledger: MigrationLedger,
+    root: Path,
+) -> tuple[set[Path], set[Path]]:
+    canonical = root / ledger.canonical_root
+    expected_directories = {canonical}
+    expected_files: set[Path] = set()
+    for product in ledger.products:
+        product_root = root / product.destination_root
+        phase_root = canonical / product.phase_slug
+        expected_directories.update(
+            {
+                phase_root,
+                phase_root / "products",
+                product_root,
+                *(product_root / directory for directory in _ROLE_DIRECTORIES.values()),
+            }
+        )
+        expected_files.add(product_root / "product-package.yml")
+        expected_files.add(phase_root / "phase-package.yml")
+    for item in ledger.files:
+        destination = root / item.destination_path
+        expected_files.add(destination)
+        parent = destination.parent
+        while parent != canonical and parent.is_relative_to(canonical):
+            expected_directories.add(parent)
+            parent = parent.parent
+    return expected_directories, expected_files
+
+
+def _verify_canonical_tree(
+    ledger: MigrationLedger,
+    repository_root: Path,
+) -> CanonicalVerification:
+    canonical = repository_root / ledger.canonical_root
+    expected_directories, expected_files = _expected_tree(ledger, repository_root)
+    missing: set[Path] = set()
+    mismatched: set[Path] = set()
+    symlinks: set[Path] = set()
+
+    if not canonical.exists():
+        missing.update(expected_directories)
+        missing.update(expected_files)
+    else:
+        actual_directories = {canonical}
+        actual_files: set[Path] = set()
+        for current_value, directory_names, filenames in os.walk(
+            canonical,
+            followlinks=False,
+        ):
+            current = Path(current_value)
+            for name in directory_names:
+                path = current / name
+                if path.is_symlink():
+                    symlinks.add(path)
+                else:
+                    actual_directories.add(path)
+            for name in filenames:
+                path = current / name
+                if path.is_symlink():
+                    symlinks.add(path)
+                else:
+                    actual_files.add(path)
+                    try:
+                        metadata = path.stat()
+                    except OSError:
+                        mismatched.add(path)
+                    else:
+                        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                            mismatched.add(path)
+        missing.update(expected_directories - actual_directories)
+        missing.update(expected_files - actual_files)
+        mismatched.update(actual_directories - expected_directories)
+        mismatched.update(actual_files - expected_files)
+
+    files_by_product: dict[str, list[MigrationFile]] = {
+        product.product_id: [] for product in ledger.products
+    }
+    for item in ledger.files:
+        files_by_product[item.product_id].append(item)
+    for product in ledger.products:
+        manifest = repository_root / product.destination_root / "product-package.yml"
+        if manifest not in expected_files or not manifest.is_file() or manifest.is_symlink():
+            continue
+        try:
+            package = validate_product_package(manifest)
+        except ValueError as error:
+            if "symlink" in str(error):
+                symlinks.add(manifest)
+            else:
+                mismatched.add(manifest)
+            continue
+        expected_file_identity = {
+            (
+                PurePosixPath(item.destination_path)
+                .relative_to(PurePosixPath(product.destination_root))
+                .as_posix(),
+                item.role,
+                item.destination_byte_count,
+                item.destination_sha256,
+                item.mime_type,
+                item.destinations,
+            )
+            for item in files_by_product[product.product_id]
+        }
+        actual_file_identity = {
+            (
+                item.relative_path.as_posix(),
+                item.role,
+                item.byte_count,
+                item.sha256,
+                item.mime_type,
+                item.destinations,
+            )
+            for item in package.files
+        }
+        if expected_file_identity != actual_file_identity:
+            mismatched.add(manifest)
+            continue
+        if (
+            package.phase_slug != product.phase_slug
+            or package.product_id != product.product_id
+            or package.registry_id != product.product_id
+            or package.source_commit != ledger.source_commit
+        ):
+            mismatched.add(manifest)
+            continue
+    for phase_slug in sorted({item.phase_slug for item in ledger.products}):
+        manifest = canonical / phase_slug / "phase-package.yml"
+        if not manifest.is_file() or manifest.is_symlink():
+            continue
+        try:
+            phase = validate_phase_package(manifest)
+        except ValueError as error:
+            if "symlink" in str(error):
+                symlinks.add(manifest)
+            else:
+                mismatched.add(manifest)
+            continue
+        expected_ids = tuple(
+            sorted(
+                item.product_id
+                for item in ledger.products
+                if item.phase_slug == phase_slug
+            )
+        )
+        if (
+            phase.phase_slug != phase_slug
+            or phase.source_record != f"phases/{phase_slug}/source.yml"
+            or phase.product_ids != expected_ids
+        ):
+            mismatched.add(manifest)
+
+    return CanonicalVerification(
+        phase_count=ledger.phase_count,
+        product_count=ledger.product_count,
+        missing_count=len(missing),
+        mismatched_count=len(mismatched),
+        symlink_count=len(symlinks),
+    )
+
+
+def verify_canonical_tree(
+    ledger_path: str | Path,
+    repository_root: str | Path,
+) -> CanonicalVerification:
+    """Verify exact packages, manifests, bytes, links, and tree inventory."""
+    ledger = _load_migration_ledger(Path(ledger_path))
+    return _verify_canonical_tree(ledger, Path(repository_root).resolve())
+
+
+def materialize_ledger(
+    ledger_path: str | Path,
+    repository_root: str | Path,
+) -> MigrationLedger:
+    """Safely materialize and validate every package before advancing ledger state."""
+    ledger_file = Path(ledger_path)
+    ledger = _load_migration_ledger(ledger_file)
+    root = Path(repository_root).resolve()
+    canonical = root / ledger.canonical_root
+    _assert_real_directory(canonical, anchor=root)
+
+    product_by_id = {item.product_id: item for item in ledger.products}
+    for product in ledger.products:
+        destination_root = _relative_path(
+            product.destination_root,
+            "product destination root",
+        )
+        expected_root = _CANONICAL_ROOT / product.phase_slug / "products" / product.product_id
+        if destination_root != expected_root:
+            raise ValueError(
+                f"product destination root differs from canonical layout: {product.product_id}"
+            )
+        product_root = root / destination_root
+        for directory in _ROLE_DIRECTORIES.values():
+            _assert_real_directory(product_root / directory, anchor=root)
+
+    updated_files: list[MigrationFile] = []
+    for item in ledger.files:
+        destination_relative = _relative_path(
+            item.destination_path,
+            "migration destination",
+        )
+        _assert_path_below(destination_relative, _CANONICAL_ROOT, "migration destination")
+        product = product_by_id[item.product_id]
+        product_root = _relative_path(product.destination_root, "product destination root")
+        _assert_path_below(destination_relative, product_root, "migration destination")
+        destination = root / destination_relative
+        _assert_real_directory(destination.parent, anchor=root)
+
+        if item.kind == "generated-metadata":
+            content = _release_metadata(
+                product_id=item.product_id,
+                phase_slug=item.phase_slug,
+                source_commit=ledger.source_commit,
+                registry_record=product.registry_record,
+            )
+            if len(content) != item.source_byte_count:
+                raise ValueError(f"generated metadata byte count changed: {destination}")
+            if sha256(content).hexdigest() != item.source_sha256:
+                raise ValueError(f"generated metadata SHA-256 changed: {destination}")
+            _publish_bytes_verified(content, destination)
+            updated_files.append(item)
+            continue
+
+        if item.source_path is None:
+            raise ValueError(f"migration source is missing from ledger: {destination}")
+        source_relative = _relative_path(item.source_path, "migration source")
+        source = root / source_relative
+        try:
+            resolved_source = source.resolve(strict=True)
+        except (OSError, RuntimeError) as error:
+            raise ValueError(f"migration source is missing: {source}") from error
+        if not resolved_source.is_relative_to(root):
+            raise ValueError(f"migration source escapes repository root: {source}")
+        _validate_source_identity(
+            source,
+            expected_byte_count=item.source_byte_count,
+            expected_sha256=item.source_sha256,
+        )
+
+        if item.kind == "copied":
+            if (
+                item.destination_byte_count != item.source_byte_count
+                or item.destination_sha256 != item.source_sha256
+            ):
+                raise ValueError(f"copied destination identity is invalid: {destination}")
+            _clone_or_copy_verified(source, destination, item.source_sha256)
+            updated_files.append(item)
+            continue
+        if item.kind != "generated-proxy":
+            raise ValueError(f"unsupported migration file kind: {item.kind}")
+
+        if destination.exists() or destination.is_symlink():
+            proxy = validate_web_proxy(destination, WEB_PROXY_PROFILE)
+        else:
+            proxy = build_web_proxy(source, destination, WEB_PROXY_PROFILE)
+        if item.destination_byte_count is not None and (
+            proxy.byte_count != item.destination_byte_count
+            or proxy.sha256 != item.destination_sha256
+        ):
+            raise ValueError(
+                f"refusing to overwrite different destination: {destination}"
+            )
+        updated_files.append(
+            replace(
+                item,
+                destination_byte_count=proxy.byte_count,
+                destination_sha256=proxy.sha256,
+            )
+        )
+
+    updated_ledger = replace(ledger, files=tuple(updated_files))
+    files_by_product: dict[str, tuple[MigrationFile, ...]] = {
+        product.product_id: tuple(
+            item for item in updated_ledger.files if item.product_id == product.product_id
+        )
+        for product in updated_ledger.products
+    }
+    validated_by_phase: dict[str, list[ProductPackage]] = {}
+    for product in updated_ledger.products:
+        product_root = root / product.destination_root
+        manifest = product_root / "product-package.yml"
+        _publish_bytes_verified(
+            _product_manifest(
+                updated_ledger,
+                product,
+                files_by_product[product.product_id],
+            ),
+            manifest,
+        )
+        package = validate_product_package(manifest)
+        validated_by_phase.setdefault(product.phase_slug, []).append(package)
+
+    for phase_slug, products in sorted(validated_by_phase.items()):
+        phase_manifest = canonical / phase_slug / "phase-package.yml"
+        _publish_bytes_verified(
+            _phase_manifest(phase_slug, tuple(products)),
+            phase_manifest,
+        )
+        validate_phase_package(phase_manifest)
+
+    verification = _verify_canonical_tree(updated_ledger, root)
+    if not verification.valid:
+        raise ValueError(
+            "canonical verification failed: "
+            f"missing={verification.missing_count} "
+            f"mismatched={verification.mismatched_count} "
+            f"symlinks={verification.symlink_count}"
+        )
+    materialized = replace(updated_ledger, state="materialized")
+    write_migration_ledger(materialized, ledger_file)
+    final_verification = _verify_canonical_tree(
+        _load_migration_ledger(ledger_file),
+        root,
+    )
+    if not final_verification.valid:
+        raise ValueError("canonical verification failed after ledger publication")
+    return materialized
+
+
 __all__ = [
+    "CanonicalVerification",
     "MigrationFile",
     "MigrationLedger",
     "MigrationProduct",
     "build_migration_ledger",
+    "materialize_ledger",
     "validate_migration_output_path",
+    "verify_canonical_tree",
     "write_migration_ledger",
 ]

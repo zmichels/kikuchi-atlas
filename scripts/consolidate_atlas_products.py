@@ -8,7 +8,9 @@ from pathlib import Path
 
 from kikuchi_lab.atlas.consolidation import (
     build_migration_ledger,
+    materialize_ledger,
     validate_migration_output_path,
+    verify_canonical_tree,
     write_migration_ledger,
 )
 
@@ -42,6 +44,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=ROOT / "docs/atlas/ATLAS_MIGRATION.yml",
     )
     plan.add_argument("--source-commit", required=True)
+    materialize = subparsers.add_parser(
+        "materialize",
+        help="Materialize and byte-verify every planned canonical package.",
+    )
+    materialize.add_argument(
+        "--ledger",
+        type=Path,
+        default=ROOT / "docs/atlas/ATLAS_MIGRATION.yml",
+    )
+    materialize.add_argument("--root", type=Path, default=ROOT)
+    verify = subparsers.add_parser(
+        "verify",
+        help="Verify the complete canonical package tree.",
+    )
+    verify.add_argument(
+        "--ledger",
+        type=Path,
+        default=ROOT / "docs/atlas/ATLAS_MIGRATION.yml",
+    )
+    verify.add_argument("--root", type=Path, default=ROOT)
     return parser.parse_args(argv)
 
 
@@ -58,6 +80,21 @@ def main(argv: list[str] | None = None) -> int:
         )
         write_migration_ledger(ledger, args.output)
         print(f"{ledger.state} phases={ledger.phase_count} products={ledger.product_count}")
+    elif args.command == "materialize":
+        ledger = materialize_ledger(args.ledger, repository_root=args.root)
+        print(
+            f"{ledger.state} phases={ledger.phase_count} "
+            f"products={ledger.product_count}"
+        )
+    elif args.command == "verify":
+        result = verify_canonical_tree(args.ledger, repository_root=args.root)
+        print(
+            f"verified phases={result.phase_count} products={result.product_count} "
+            f"missing={result.missing_count} mismatched={result.mismatched_count} "
+            f"symlinks={result.symlink_count}"
+        )
+        if not result.valid:
+            return 1
     return 0
 
 

@@ -1,5 +1,5 @@
 schema_version: 1
-state: planned
+state: materialized
 source_commit: d2bb3f9afa2a809abc65529d6842579b59b567b9
 canonical_root: local/atlas/phases
 phase_count: 12
@@ -10047,8 +10047,8 @@ files:
   kind: generated-proxy
   source_byte_count: 2440639579
   source_sha256: 8c45c5dc7c220ba80f21b7716205e1197c8e9137114baed26d0d54da796a7b5a
-  destination_byte_count: null
-  destination_sha256: null
+  destination_byte_count: 19314771
+  destination_sha256: 6c4c1ca80a455ceb88f9a8457762025c7d8acdec16479feb063ac0f2362d939b
   mime_type: video/mp4
   destinations:
   - github-pages
@@ -10135,8 +10135,8 @@ files:
   kind: generated-proxy
   source_byte_count: 2448567101
   source_sha256: e7b3ed4f9b18b2f11daf3267e65d3aab8c021a01e9b0289ff62d301dbab77ac2
-  destination_byte_count: null
-  destination_sha256: null
+  destination_byte_count: 19302380
+  destination_sha256: 0fbfe4db378a6a526d24c63ccab964516acf8f3fff7846429b1c9df7631b6447
   mime_type: video/mp4
   destinations:
   - github-pages
