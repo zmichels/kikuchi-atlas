@@ -321,6 +321,30 @@ def _sites_url(value: object, label: str, *, allow_none: bool) -> str | None:
     return url
 
 
+def _sites_editor_url(value: object, label: str) -> str:
+    url = _optional_text(value, label)
+    if url is None:
+        raise ValueError(f"{label} must be non-empty text")
+    parsed = urlsplit(url)
+    parts = tuple(part for part in parsed.path.split("/") if part)
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "sites.google.com"
+        or parsed.username is not None
+        or parsed.password is not None
+        or len(parts) != 5
+        or parts[0] != "d"
+        or parts[2] != "p"
+        or parts[4] != "edit"
+        or not _OPAQUE_ID.fullmatch(parts[1])
+        or not _OPAQUE_ID.fullmatch(parts[3])
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(f"{label} must be an exact Google Sites editor URL")
+    return url
+
+
 def _access(value: object, label: str) -> str:
     access = _text(value, label)
     if access not in _ACCESS_STATES:
@@ -827,8 +851,11 @@ def load_mirror_ledger(path: str | Path) -> MirrorLedger:
         root_state=root_state,
         upload_acceptance=upload_acceptance,
         phases=phases,
-        site_draft_url=_sites_url(site["draft_url"], "mirror site draft_url", allow_none=False)
-        or "",
+        site_draft_url=(
+            _sites_editor_url(site["draft_url"], "mirror site draft_url")
+            if site["state"] == "draft-complete"
+            else _sites_url(site["draft_url"], "mirror site draft_url", allow_none=False) or ""
+        ),
         site_public_url=_sites_url(site["public_url"], "mirror site public_url", allow_none=True),
         site_audience=_text(site["audience"], "mirror site audience"),
         site_state=_state(site["state"], "mirror site state"),
@@ -1293,6 +1320,55 @@ def record_uploaded_private_acceptance(
     raw["schema_version"] = 2
     raw["upload_acceptance"] = {field: dict(value) for field, value in normalized.items()}
     raw["root"]["state"] = "uploaded-private"
+    _validate_mirror_mapping_candidate(path, raw)
+    _write_mirror_mapping_atomic(path, raw)
+    return load_mirror_ledger(path)
+
+
+def record_site_draft(
+    *,
+    mirror_path: str | Path,
+    editor_url: str,
+    proposed_public_url: str,
+    audience: str,
+    state: str,
+) -> MirrorLedger:
+    """Atomically record one complete, still-unpublished university Site draft."""
+    path = Path(mirror_path).absolute()
+    if path.is_symlink():
+        raise ValueError("mirror ledger must not be a symlink")
+    ledger = load_mirror_ledger(path)
+    if ledger.root_state != "uploaded-private":
+        raise ValueError("site draft requires an uploaded-private mirror root")
+    if audience != "university-only" or state != "draft-complete":
+        raise ValueError("site draft must remain university-only and draft-complete")
+    validated_editor_url = _sites_editor_url(editor_url, "site draft editor URL")
+    validated_public_url = _sites_url(
+        proposed_public_url,
+        "site draft proposed public URL",
+        allow_none=False,
+    )
+    if validated_public_url is None:  # pragma: no cover - guarded by allow_none=False
+        raise ValueError("site draft proposed public URL must be non-empty text")
+    requested = {
+        "draft_url": validated_editor_url,
+        "public_url": validated_public_url,
+        "audience": audience,
+        "state": state,
+    }
+    current = {
+        "draft_url": ledger.site_draft_url,
+        "public_url": ledger.site_public_url,
+        "audience": ledger.site_audience,
+        "state": ledger.site_state,
+    }
+    if current == requested:
+        return ledger
+    if ledger.site_state == "draft-complete":
+        raise ValueError("record-site-draft refuses to replace a complete draft")
+
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    raw["site"] = requested
     _validate_mirror_mapping_candidate(path, raw)
     _write_mirror_mapping_atomic(path, raw)
     return load_mirror_ledger(path)
