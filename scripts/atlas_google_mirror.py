@@ -13,6 +13,7 @@ from kikuchi_lab.atlas import (
     initialize_mirror_ledger,
     record_mirror_quota,
     record_remote_folders,
+    record_site_draft,
     record_uploaded_private_acceptance,
     reconcile_downloaded_mirror,
     set_mirror_root,
@@ -107,6 +108,16 @@ def parse_args() -> argparse.Namespace:
     )
     uploaded_private.add_argument("--mirror", type=Path, required=True)
     uploaded_private.add_argument("--acceptance-json", required=True)
+
+    site_draft = commands.add_parser(
+        "record-site-draft",
+        help="Record one complete, university-only, still-unpublished Site draft.",
+    )
+    site_draft.add_argument("--mirror", type=Path, required=True)
+    site_draft.add_argument("--editor-url", required=True)
+    site_draft.add_argument("--proposed-public-url", required=True)
+    site_draft.add_argument("--audience", choices=("university-only",), required=True)
+    site_draft.add_argument("--state", choices=("draft-complete",), required=True)
 
     quota = commands.add_parser(
         "record-quota",
@@ -217,6 +228,22 @@ def main() -> None:
             f"phases={ledger.phase_count} products={ledger.product_count} "
             f"round-trip={round_trip['status']} "
             f"disposition={round_trip['disposition']}"
+        )
+        return
+
+    if args.command == "record-site-draft":
+        ledger = record_site_draft(
+            mirror_path=args.mirror,
+            editor_url=args.editor_url,
+            proposed_public_url=args.proposed_public_url,
+            audience=args.audience,
+            state=args.state,
+        )
+        print(
+            f"site draft recorded state={ledger.site_state} "
+            f"audience={ledger.site_audience} "
+            f"editor={ledger.site_draft_url} "
+            f"proposed={ledger.site_public_url}"
         )
         return
 

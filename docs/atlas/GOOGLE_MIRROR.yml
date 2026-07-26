@@ -965,10 +965,10 @@ phases:
         package_manifest_sha256: null
         verified_at: null
 site:
-  draft_url: https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test
-  public_url: null
+  draft_url: https://sites.google.com/d/1lyi4zBFb31m-8nRdtAsR14bmTvS35g5r/p/1lQWfJnlloPvDy9Yx029riQUJ4QgzDUWS/edit
+  public_url: https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test
   audience: university-only
-  state: draft
+  state: draft-complete
 upload_acceptance:
   upload_observation:
     observed_at: null

@@ -620,6 +620,54 @@ def test_cli_records_uploaded_private_waiver_without_hash_overclaim(
     assert mirror.read_bytes() == before
 
 
+def test_cli_records_exact_unpublished_site_draft_without_promoting_drive(
+    tmp_path: Path,
+) -> None:
+    mirror, acceptance = _make_uploaded_private_mirror(tmp_path)
+    editor_url = "https://sites.google.com/d/site-id/p/home-page-id/edit"
+    proposed_public_url = "https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test"
+    command = (
+        "record-site-draft",
+        "--mirror",
+        str(mirror),
+        "--editor-url",
+        editor_url,
+        "--proposed-public-url",
+        proposed_public_url,
+        "--audience",
+        "university-only",
+        "--state",
+        "draft-complete",
+    )
+
+    first = _run_mirror_cli(*command)
+
+    assert first.returncode == 0, first.stderr
+    first_bytes = mirror.read_bytes()
+    ledger = load_mirror_ledger(mirror)
+    assert ledger.site_draft_url == editor_url
+    assert ledger.site_public_url == proposed_public_url
+    assert ledger.site_audience == "university-only"
+    assert ledger.site_state == "draft-complete"
+    assert ledger.root_state == "uploaded-private"
+    assert ledger.upload_acceptance == acceptance
+    assert public_product_urls(ledger) == {}
+
+    second = _run_mirror_cli(*command)
+    assert second.returncode == 0, second.stderr
+    assert mirror.read_bytes() == first_bytes
+
+    wrong_audience = _run_mirror_cli(
+        *command[:-4],
+        "--audience",
+        "public",
+        "--state",
+        "draft-complete",
+    )
+    assert wrong_audience.returncode != 0
+    assert mirror.read_bytes() == first_bytes
+
+
 @pytest.mark.parametrize(
     ("tamper", "message"),
     (
