@@ -12,18 +12,23 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import shutil
 import tempfile
 from types import MappingProxyType
 from typing import Any, Mapping
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import yaml
 
 from .catalog import AtlasPhase, AtlasProduct, load_phase_registry, load_product_registry
-from .packages import sha256_file, validate_phase_package, validate_product_package
+from .packages import (
+    load_product_package,
+    sha256_file,
+    validate_phase_package,
+    validate_product_package,
+)
 
 
 _ACCOUNT = "zmichels@umn.edu"
@@ -40,7 +45,8 @@ _LEGACY_TOP_LEVEL_FIELDS = {
     "phases",
     "site",
 }
-_TOP_LEVEL_FIELDS = _LEGACY_TOP_LEVEL_FIELDS | {"upload_acceptance"}
+_SCHEMA_2_TOP_LEVEL_FIELDS = _LEGACY_TOP_LEVEL_FIELDS | {"upload_acceptance"}
+_SCHEMA_3_TOP_LEVEL_FIELDS = _SCHEMA_2_TOP_LEVEL_FIELDS | {"public_verification"}
 _LEGACY_QUOTA_FIELDS = {
     "observed_at",
     "total_bytes",
@@ -103,6 +109,59 @@ _ROUND_TRIP_VERIFICATION_FIELDS = {
     "downloaded_phase_archives",
     "sha256_compared_files",
 }
+_PUBLIC_VERIFICATION_FIELDS = {
+    "observed_at",
+    "transport",
+    "site",
+    "github",
+    "drive",
+    "representatives",
+    "streaming",
+    "retained_temp_files",
+    "exceptions",
+}
+_PUBLIC_SITE_FIELDS = {
+    "public_url",
+    "pages_checked",
+    "status_200",
+    "exact_final_urls",
+    "phase_pages_with_exact_targets",
+    "exceptions",
+}
+_PUBLIC_GITHUB_FIELDS = {
+    "pages_checked",
+    "status_200",
+    "exact_final_urls",
+    "registry_titles_visible",
+    "exceptions",
+}
+_PUBLIC_DRIVE_FIELDS = {
+    "root_url",
+    "roots_checked",
+    "phases_checked",
+    "products_checked",
+    "status_200",
+    "exact_final_urls",
+    "identities_visible",
+    "inventory_markers_visible",
+    "denied_signals",
+    "exceptions",
+}
+_PUBLIC_REPRESENTATIVE_FIELDS = {
+    "kind",
+    "product_id",
+    "relative_path",
+    "url",
+    "final_url",
+    "status",
+    "content_type",
+    "content_disposition",
+    "expected_bytes",
+    "observed_bytes",
+    "expected_sha256",
+    "observed_sha256",
+    "retained_temp_files",
+}
 _TRANSPORTS = {"undecided", "drive-for-desktop", "chrome-folder-upload"}
 _ACCESS_STATES = {"private", "public-link"}
 _COMPLETE_STATES = {"complete", "complete-private", "public-verified"}
@@ -112,9 +171,26 @@ _EXPECTED_COMPLETE_PHASES = 12
 _EXPECTED_COMPLETE_PRODUCTS = 125
 _EXPECTED_PRIVATE_DRIVE_IDENTITIES = 138
 _CANONICAL_UPLOAD_BYTES_BASIS = "exact-regular-file-sum"
+_PUBLIC_FILE_KINDS = {"png", "svg", "mp4", "mov", "stl", "yml", "npz"}
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 _PHASE_REGISTRY = _REPOSITORY_ROOT / "docs/atlas/PHASE_REGISTRY.yml"
 _PRODUCT_REGISTRY = _REPOSITORY_ROOT / "docs/atlas/PRODUCT_REGISTRY.yml"
+
+
+def _deep_freeze(value: object) -> object:
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _deep_freeze(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_deep_freeze(item) for item in value)
+    return value
+
+
+def _deep_thaw(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {key: _deep_thaw(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_deep_thaw(item) for item in value]
+    return value
 
 
 @dataclass(frozen=True)
@@ -160,6 +236,7 @@ class MirrorLedger:
     root_access: str
     root_state: str
     upload_acceptance: Mapping[str, object] | None
+    public_verification: Mapping[str, object] | None
     phases: Mapping[str, MirrorPhase]
     site_draft_url: str
     site_public_url: str | None
@@ -173,6 +250,12 @@ class MirrorLedger:
                 self,
                 "upload_acceptance",
                 MappingProxyType(dict(self.upload_acceptance)),
+            )
+        if self.public_verification is not None:
+            object.__setattr__(
+                self,
+                "public_verification",
+                _deep_freeze(self.public_verification),
             )
         object.__setattr__(self, "phases", MappingProxyType(dict(self.phases)))
 
@@ -575,6 +658,308 @@ def _validate_upload_acceptance(value: object) -> Mapping[str, object]:
     )
 
 
+def _empty_exceptions(value: object, label: str) -> list[object]:
+    if not isinstance(value, list) or value:
+        raise ValueError(f"{label} must be an empty list")
+    return value
+
+
+def _required_digest(value: object, label: str) -> str:
+    digest = _optional_digest(value, label)
+    if digest is None:
+        raise ValueError(f"{label} must be a lowercase SHA-256 digest")
+    return digest
+
+
+def _drive_download_url(value: object, label: str) -> str:
+    url = _text(value, label)
+    parsed = urlsplit(url)
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "drive.usercontent.google.com"
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path != "/download"
+        or parsed.fragment
+        or set(query) != {"id", "export", "confirm"}
+        or len(query["id"]) != 1
+        or not _OPAQUE_ID.fullmatch(query["id"][0])
+        or query["export"] != ["download"]
+        or query["confirm"] != ["t"]
+    ):
+        raise ValueError(f"{label} must be an exact public Drive download URL")
+    return url
+
+
+def _canonical_public_file(
+    *,
+    phases: Mapping[str, MirrorPhase],
+    product_id: str,
+    relative_path: str,
+) -> tuple[int, str]:
+    matches = [slug for slug, phase in phases.items() if product_id in phase.products]
+    if len(matches) != 1:
+        raise ValueError("public representative product must resolve to one ledger product")
+    phase_slug = matches[0]
+    manifest = (
+        _REPOSITORY_ROOT
+        / "local/atlas/phases"
+        / phase_slug
+        / "products"
+        / product_id
+        / "product-package.yml"
+    )
+    package = load_product_package(manifest)
+    file_records = [
+        item for item in package.files if item.relative_path.as_posix() == relative_path
+    ]
+    if len(file_records) != 1:
+        raise ValueError("public representative path must resolve to one canonical manifest file")
+    file_record = file_records[0]
+    return file_record.byte_count, file_record.sha256
+
+
+def _validate_public_verification(
+    value: object,
+    *,
+    root_url: str | None,
+    site_public_url: str | None,
+    phases: Mapping[str, MirrorPhase],
+) -> Mapping[str, object]:
+    raw = _mapping(
+        value,
+        _PUBLIC_VERIFICATION_FIELDS,
+        "mirror public verification",
+    )
+    _iso_timestamp(
+        raw["observed_at"],
+        "mirror public verification observed_at",
+        allow_none=False,
+        require_utc=True,
+    )
+    if _text(raw["transport"], "mirror public verification transport") != "cookie-free-http":
+        raise ValueError("mirror public verification transport must be cookie-free-http")
+    if root_url is None or site_public_url is None:
+        raise ValueError("public verification requires recorded root and Site public URLs")
+
+    site = _mapping(
+        raw["site"],
+        _PUBLIC_SITE_FIELDS,
+        "mirror public verification Site",
+    )
+    observed_site_url = _sites_url(
+        site["public_url"],
+        "mirror public verification Site public URL",
+        allow_none=False,
+    )
+    if observed_site_url != site_public_url:
+        raise ValueError("mirror public verification Site public URL differs from the ledger")
+    expected_site_counts = {
+        "pages_checked": 14,
+        "status_200": 14,
+        "exact_final_urls": 14,
+        "phase_pages_with_exact_targets": 12,
+    }
+    if any(
+        _non_negative_integer(
+            site[field],
+            f"mirror public verification Site {field}",
+        )
+        != expected
+        for field, expected in expected_site_counts.items()
+    ):
+        raise ValueError("mirror public verification Site access counts are not exact")
+    _empty_exceptions(
+        site["exceptions"],
+        "mirror public verification Site exceptions",
+    )
+
+    github = _mapping(
+        raw["github"],
+        _PUBLIC_GITHUB_FIELDS,
+        "mirror public verification GitHub",
+    )
+    expected_github_counts = {
+        "pages_checked": 12,
+        "status_200": 12,
+        "exact_final_urls": 12,
+        "registry_titles_visible": 12,
+    }
+    if any(
+        _non_negative_integer(
+            github[field],
+            f"mirror public verification GitHub {field}",
+        )
+        != expected
+        for field, expected in expected_github_counts.items()
+    ):
+        raise ValueError("mirror public verification GitHub access counts are not exact")
+    _empty_exceptions(
+        github["exceptions"],
+        "mirror public verification GitHub exceptions",
+    )
+
+    drive = _mapping(
+        raw["drive"],
+        _PUBLIC_DRIVE_FIELDS,
+        "mirror public verification Drive",
+    )
+    observed_root_url = _drive_folder_url(
+        drive["root_url"],
+        "mirror public verification Drive root URL",
+    )
+    if observed_root_url != root_url:
+        raise ValueError(
+            "mirror public verification Drive root URL differs from the ledger root URL"
+        )
+    expected_drive_counts = {
+        "roots_checked": 1,
+        "phases_checked": _EXPECTED_COMPLETE_PHASES,
+        "products_checked": _EXPECTED_COMPLETE_PRODUCTS,
+        "status_200": _EXPECTED_PRIVATE_DRIVE_IDENTITIES,
+        "exact_final_urls": _EXPECTED_PRIVATE_DRIVE_IDENTITIES,
+        "identities_visible": _EXPECTED_PRIVATE_DRIVE_IDENTITIES,
+        "inventory_markers_visible": _EXPECTED_PRIVATE_DRIVE_IDENTITIES,
+        "denied_signals": 0,
+    }
+    if any(
+        _non_negative_integer(
+            drive[field],
+            f"mirror public verification Drive {field}",
+        )
+        != expected
+        for field, expected in expected_drive_counts.items()
+    ):
+        raise ValueError("mirror public verification Drive access counts are not exact")
+    _empty_exceptions(
+        drive["exceptions"],
+        "mirror public verification Drive exceptions",
+    )
+
+    representatives = raw["representatives"]
+    if not isinstance(representatives, list) or len(representatives) != len(_PUBLIC_FILE_KINDS):
+        raise ValueError("mirror public verification requires exactly seven representatives")
+    normalized_representatives: list[dict[str, object]] = []
+    kinds: list[str] = []
+    for index, value_record in enumerate(representatives):
+        record = _mapping(
+            value_record,
+            _PUBLIC_REPRESENTATIVE_FIELDS,
+            f"mirror public representative {index}",
+        )
+        kind = _text(record["kind"], f"mirror public representative {index} kind")
+        kinds.append(kind)
+        product_id = _text(
+            record["product_id"],
+            f"mirror public representative {index} product_id",
+        )
+        relative_path = _text(
+            record["relative_path"],
+            f"mirror public representative {index} relative_path",
+        )
+        parsed_path = PurePosixPath(relative_path)
+        if parsed_path.is_absolute() or ".." in parsed_path.parts:
+            raise ValueError("mirror public representative relative_path must be package-relative")
+        url = _drive_download_url(
+            record["url"],
+            f"mirror public representative {index} URL",
+        )
+        final_url = _drive_download_url(
+            record["final_url"],
+            f"mirror public representative {index} final URL",
+        )
+        if final_url != url:
+            raise ValueError(
+                "mirror public representative final URL must exactly match its download URL"
+            )
+        if (
+            _non_negative_integer(
+                record["status"],
+                f"mirror public representative {index} status",
+            )
+            != 200
+        ):
+            raise ValueError("mirror public representative HTTP status must be 200")
+        _text(
+            record["content_type"],
+            f"mirror public representative {index} content_type",
+        )
+        _text(
+            record["content_disposition"],
+            f"mirror public representative {index} content_disposition",
+        )
+        if (
+            _non_negative_integer(
+                record["retained_temp_files"],
+                f"mirror public representative {index} retained_temp_files",
+            )
+            != 0
+        ):
+            raise ValueError("mirror public verification retained temporary files must be zero")
+        canonical_bytes, canonical_sha256 = _canonical_public_file(
+            phases=phases,
+            product_id=product_id,
+            relative_path=relative_path,
+        )
+        expected_bytes = _non_negative_integer(
+            record["expected_bytes"],
+            f"mirror public representative {index} expected_bytes",
+        )
+        observed_bytes = _non_negative_integer(
+            record["observed_bytes"],
+            f"mirror public representative {index} observed_bytes",
+        )
+        expected_sha256 = _required_digest(
+            record["expected_sha256"],
+            f"mirror public representative {index} expected_sha256",
+        )
+        observed_sha256 = _required_digest(
+            record["observed_sha256"],
+            f"mirror public representative {index} observed_sha256",
+        )
+        if (
+            expected_bytes != canonical_bytes
+            or observed_bytes != canonical_bytes
+            or expected_sha256 != canonical_sha256
+            or observed_sha256 != canonical_sha256
+        ):
+            raise ValueError("mirror public representative differs from its canonical manifest")
+        normalized_representatives.append(dict(record))
+    if set(kinds) != _PUBLIC_FILE_KINDS or len(set(kinds)) != len(kinds):
+        raise ValueError(
+            "mirror public verification representative kinds must be exactly "
+            "png, svg, mp4, mov, stl, yml, and npz"
+        )
+    if _text(raw["streaming"], "mirror public verification streaming") != "bounded-memory-chunks":
+        raise ValueError("mirror public verification streaming must use bounded-memory-chunks")
+    if (
+        _non_negative_integer(
+            raw["retained_temp_files"],
+            "mirror public verification retained_temp_files",
+        )
+        != 0
+    ):
+        raise ValueError("mirror public verification retained temporary files must be zero")
+    _empty_exceptions(
+        raw["exceptions"],
+        "mirror public verification exceptions",
+    )
+    return MappingProxyType(
+        {
+            "observed_at": raw["observed_at"],
+            "transport": raw["transport"],
+            "site": dict(site),
+            "github": dict(github),
+            "drive": dict(drive),
+            "representatives": normalized_representatives,
+            "streaming": raw["streaming"],
+            "retained_temp_files": raw["retained_temp_files"],
+            "exceptions": list(raw["exceptions"]),
+        }
+    )
+
+
 def _validate_quota(
     value: object,
     *,
@@ -592,7 +977,7 @@ def _validate_quota(
         ):
             raise ValueError(f"mirror quota {field} must be a non-negative integer or null")
     _optional_text(raw["observed_at"], "mirror quota observed_at")
-    if schema_version == 2:
+    if schema_version >= 2:
         canonical_upload_bytes = raw["canonical_upload_bytes"]
         if canonical_upload_bytes is not None and (
             not isinstance(canonical_upload_bytes, int)
@@ -780,6 +1165,92 @@ def _validate_uploaded_private_terminal(ledger: MirrorLedger) -> None:
         )
 
 
+def _validate_public_terminal(ledger: MirrorLedger) -> None:
+    expected_products = _expected_registry_products_by_phase()
+    if set(ledger.phases) != set(expected_products) or any(
+        set(ledger.phases[slug].products) != product_ids
+        for slug, product_ids in expected_products.items()
+    ):
+        raise ValueError(
+            "public-verified mirror phase/product registry set differs from "
+            "the canonical registries"
+        )
+    if (
+        ledger.root_drive_id is None
+        or ledger.root_url is None
+        or ledger.root_access != "public-link"
+        or ledger.upload_acceptance is None
+        or ledger.public_verification is None
+    ):
+        raise ValueError(
+            "public-verified mirror root requires a public identity and both acceptance records"
+        )
+    if (
+        ledger.site_public_url is None
+        or ledger.site_audience != "public"
+        or ledger.site_state != "public-verified"
+    ):
+        raise ValueError("public-verified mirror requires a public, public-verified Site")
+
+    identities: list[tuple[str, str, str]] = [
+        ("mirror root", ledger.root_drive_id, ledger.root_url)
+    ]
+    for slug, phase in ledger.phases.items():
+        if (
+            phase.state != _PUBLIC_STATE
+            or phase.access != "public-link"
+            or phase.drive_id is None
+            or phase.url is None
+        ):
+            raise ValueError("public-verified mirror requires public-verified public phases")
+        identities.append((f"mirror phase {slug}", phase.drive_id, phase.url))
+        for product_id, product in phase.products.items():
+            if (
+                product.state != _PUBLIC_STATE
+                or product.access != "public-link"
+                or product.drive_id is None
+                or product.url is None
+                or product.package_manifest_sha256 is not None
+                or product.verified_at is not None
+            ):
+                raise ValueError(
+                    "public-verified mirror requires public products without "
+                    "waived full-round-trip digest claims"
+                )
+            identities.append(
+                (
+                    f"mirror product {product_id}",
+                    product.drive_id,
+                    product.url,
+                )
+            )
+    if len(identities) != _EXPECTED_PRIVATE_DRIVE_IDENTITIES:
+        raise ValueError("public-verified mirror requires exactly 138 Drive identities")
+    drive_ids = [drive_id for _, drive_id, _ in identities]
+    drive_urls = [url for _, _, url in identities]
+    if len(set(drive_ids)) != len(drive_ids):
+        raise ValueError("public-verified Drive IDs must be globally unique")
+    if len(set(drive_urls)) != len(drive_urls):
+        raise ValueError("public-verified Drive URLs must be globally unique")
+    for label, drive_id, url in identities:
+        if _drive_folder_url_token(url) != drive_id:
+            raise ValueError(f"{label} URL token must match its recorded Drive ID")
+
+    upload = ledger.upload_acceptance["upload_observation"]
+    if (
+        upload["canonical_upload_bytes"] != ledger.quota["canonical_upload_bytes"]
+        or upload["canonical_upload_bytes_basis"] != ledger.quota["canonical_upload_bytes_basis"]
+    ):
+        raise ValueError(
+            "public-verified canonical upload bytes differ between quota and upload evidence"
+        )
+    round_trip = ledger.upload_acceptance["round_trip_verification"]
+    if round_trip["status"] != "not-performed" or round_trip["disposition"] != "waived-by-user":
+        raise ValueError(
+            "public-verified mirror must preserve the waived, not-performed round trip"
+        )
+
+
 def load_mirror_ledger(path: str | Path) -> MirrorLedger:
     """Load and validate a local mirror ledger without deriving remote identities."""
     ledger_path = Path(path).resolve()
@@ -793,13 +1264,23 @@ def load_mirror_ledger(path: str | Path) -> MirrorLedger:
     if schema_version == 1:
         raw = _mapping(parsed, _LEGACY_TOP_LEVEL_FIELDS, "mirror ledger")
         upload_acceptance = None
+        raw_public_verification = None
     elif schema_version == 2:
-        raw = _mapping(parsed, _TOP_LEVEL_FIELDS, "mirror ledger")
+        raw = _mapping(parsed, _SCHEMA_2_TOP_LEVEL_FIELDS, "mirror ledger")
         upload_acceptance = (
             None
             if raw["upload_acceptance"] is None
             else _validate_upload_acceptance(raw["upload_acceptance"])
         )
+        raw_public_verification = None
+    elif schema_version == 3:
+        raw = _mapping(parsed, _SCHEMA_3_TOP_LEVEL_FIELDS, "mirror ledger")
+        upload_acceptance = (
+            None
+            if raw["upload_acceptance"] is None
+            else _validate_upload_acceptance(raw["upload_acceptance"])
+        )
+        raw_public_verification = raw["public_verification"]
     else:
         raise ValueError("unsupported mirror ledger schema")
     if raw["provider"] != "google-drive":
@@ -838,6 +1319,21 @@ def load_mirror_ledger(path: str | Path) -> MirrorLedger:
         raise ValueError(
             "public-verified mirror root requires an opaque ID and public-link folder URL"
         )
+    site_public_url = _sites_url(
+        site["public_url"],
+        "mirror site public_url",
+        allow_none=True,
+    )
+    public_verification = (
+        None
+        if raw_public_verification is None
+        else _validate_public_verification(
+            raw_public_verification,
+            root_url=root_url,
+            site_public_url=site_public_url,
+            phases=phases,
+        )
+    )
     ledger = MirrorLedger(
         path=ledger_path,
         provider="google-drive",
@@ -850,13 +1346,14 @@ def load_mirror_ledger(path: str | Path) -> MirrorLedger:
         root_access=root_access,
         root_state=root_state,
         upload_acceptance=upload_acceptance,
+        public_verification=public_verification,
         phases=phases,
         site_draft_url=(
             _sites_editor_url(site["draft_url"], "mirror site draft_url")
-            if site["state"] == "draft-complete"
+            if site["state"] in {"draft-complete", "public-verified"}
             else _sites_url(site["draft_url"], "mirror site draft_url", allow_none=False) or ""
         ),
-        site_public_url=_sites_url(site["public_url"], "mirror site public_url", allow_none=True),
+        site_public_url=site_public_url,
         site_audience=_text(site["audience"], "mirror site audience"),
         site_state=_state(site["state"], "mirror site state"),
     )
@@ -892,6 +1389,10 @@ def load_mirror_ledger(path: str | Path) -> MirrorLedger:
                     raise ValueError("complete-private mirror requires verified private products")
     if ledger.root_state == "uploaded-private":
         _validate_uploaded_private_terminal(ledger)
+    if schema_version == 3 and ledger.root_state != _PUBLIC_STATE:
+        raise ValueError("schema-3 mirror ledger requires public-verified root state")
+    if schema_version == 3:
+        _validate_public_terminal(ledger)
     return ledger
 
 
@@ -1374,6 +1875,56 @@ def record_site_draft(
     return load_mirror_ledger(path)
 
 
+def record_public_verification(
+    *,
+    mirror_path: str | Path,
+    verification: object,
+) -> MirrorLedger:
+    """Atomically record exact public access without claiming a full byte round trip."""
+    path = Path(mirror_path).absolute()
+    if path.is_symlink():
+        raise ValueError("mirror ledger must not be a symlink")
+    ledger = load_mirror_ledger(path)
+    normalized = _validate_public_verification(
+        verification,
+        root_url=ledger.root_url,
+        site_public_url=ledger.site_public_url,
+        phases=ledger.phases,
+    )
+    normalized_frozen = _deep_freeze(normalized)
+    if ledger.root_state == _PUBLIC_STATE:
+        if ledger.public_verification == normalized_frozen:
+            return ledger
+        raise ValueError("record-public-verified refuses to replace terminal public verification")
+    if ledger.root_state != "uploaded-private":
+        raise ValueError("public verification requires an uploaded-private mirror root")
+    if (
+        ledger.site_state != "draft-complete"
+        or ledger.site_audience != "university-only"
+        or ledger.site_public_url is None
+    ):
+        raise ValueError("public verification requires the complete university-only Site draft")
+    if ledger.upload_acceptance is None:
+        raise ValueError("public verification requires the Task 8 upload acceptance")
+
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    raw["schema_version"] = 3
+    raw["public_verification"] = _deep_thaw(normalized_frozen)
+    raw["root"]["access"] = "public-link"
+    raw["root"]["state"] = _PUBLIC_STATE
+    raw["site"]["audience"] = "public"
+    raw["site"]["state"] = _PUBLIC_STATE
+    for phase in raw["phases"].values():
+        phase["access"] = "public-link"
+        phase["state"] = _PUBLIC_STATE
+        for product in phase["products"].values():
+            product["access"] = "public-link"
+            product["state"] = _PUBLIC_STATE
+    _validate_mirror_mapping_candidate(path, raw)
+    _write_mirror_mapping_atomic(path, raw)
+    return load_mirror_ledger(path)
+
+
 def record_mirror_quota(
     *,
     mirror_path: str | Path,
@@ -1625,7 +2176,7 @@ def validate_mirror_ledger(
         for phase in ledger.phases.values()
         for product in phase.products.values()
     )
-    if require_state in {"complete-private", "uploaded-private"}:
+    if require_state in {"complete-private", "uploaded-private", _PUBLIC_STATE}:
         if ledger.transport == "undecided":
             raise ValueError(f"{require_state} mirror requires a recorded transport")
         if any(
@@ -1643,6 +2194,19 @@ def validate_mirror_ledger(
             raise ValueError("complete-private mirror requires 125 verified-private products")
     if require_state == "uploaded-private" and verified_private != 0:
         raise ValueError("uploaded-private mirror must not claim verified-private products")
+    if require_state == _PUBLIC_STATE:
+        if (
+            ledger.public_product_count != _EXPECTED_COMPLETE_PRODUCTS
+            or len(public_product_urls(ledger)) != _EXPECTED_COMPLETE_PRODUCTS
+            or ledger.site_audience != "public"
+            or ledger.site_state != _PUBLIC_STATE
+            or ledger.public_verification is None
+        ):
+            raise ValueError(
+                "public-verified mirror requires 125 public products and a public Site"
+            )
+        if verified_private != 0:
+            raise ValueError("public-verified mirror must not claim verified-private products")
     return MirrorValidation(
         ledger=ledger,
         verified_private_products=verified_private,
@@ -1734,7 +2298,7 @@ def _phase_page(
         and (mirror_phase.state == _PUBLIC_STATE or allow_private_links)
     ):
         link_label = (
-            "Open the verified public Drive phase folder"
+            "Open the public full-resolution Drive phase folder"
             if mirror_phase.state == _PUBLIC_STATE
             else "Open the restricted Drive phase folder for signed-in review"
         )

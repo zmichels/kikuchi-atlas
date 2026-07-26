@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 import hashlib
 import json
 import os
@@ -34,6 +35,14 @@ def _write_yaml(path: Path, value: object) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(value, sort_keys=False), encoding="utf-8")
     return path
+
+
+def _plain_data(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {key: _plain_data(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain_data(item) for item in value]
+    return value
 
 
 def _run_mirror_cli(*args: str) -> subprocess.CompletedProcess[str]:
@@ -256,6 +265,370 @@ def _make_uploaded_private_mirror(tmp_path: Path) -> tuple[Path, dict[str, objec
     )
     assert accepted.returncode == 0, accepted.stderr
     return mirror, acceptance
+
+
+def _public_verification(ledger: object) -> dict[str, object]:
+    representatives = (
+        (
+            "png",
+            "quartz",
+            "quartz-direct-reflector-artist-master-x-axis",
+            "previews/preview.png",
+        ),
+        (
+            "svg",
+            "titanite",
+            "titanite-direct-oblique-high",
+            "media/oblique-high.svg",
+        ),
+        (
+            "mp4",
+            "titanite",
+            "titanite-depth-field-x-axis",
+            "media/titanite-direct-reflector-depth-x-axis-rotation.mp4",
+        ),
+        (
+            "mov",
+            "quartz",
+            "quartz-direct-reflector-artist-master-x-axis",
+            "media/quartz-x-axis-rotation-artist-master.mov",
+        ),
+        (
+            "stl",
+            "diamond",
+            "diamond-atlas-kinematical-intensity-relief",
+            "media/diamond-intensity-relief-globe.stl",
+        ),
+        (
+            "yml",
+            "quartz",
+            "quartz-direct-reflector-artist-master-x-axis",
+            "provenance/release-metadata.yml",
+        ),
+        (
+            "npz",
+            "diamond",
+            "diamond-atlas-kinematical-intensity-relief",
+            "provenance/scientific-fields/relief-field.npz",
+        ),
+    )
+    observed_files = []
+    for index, (kind, phase_slug, product_id, relative_path) in enumerate(representatives):
+        package = load_product_package(
+            ROOT
+            / "local/atlas/phases"
+            / phase_slug
+            / "products"
+            / product_id
+            / "product-package.yml"
+        )
+        file_record = next(
+            item for item in package.files if item.relative_path.as_posix() == relative_path
+        )
+        url = (
+            "https://drive.usercontent.google.com/download"
+            f"?id=representative-{index}&export=download&confirm=t"
+        )
+        observed_files.append(
+            {
+                "kind": kind,
+                "product_id": product_id,
+                "relative_path": relative_path,
+                "url": url,
+                "final_url": url,
+                "status": 200,
+                "content_type": "application/octet-stream",
+                "content_disposition": f'attachment; filename="{Path(relative_path).name}"',
+                "expected_bytes": file_record.byte_count,
+                "observed_bytes": file_record.byte_count,
+                "expected_sha256": file_record.sha256,
+                "observed_sha256": file_record.sha256,
+                "retained_temp_files": 0,
+            }
+        )
+    return {
+        "observed_at": "2026-07-26T20:40:00Z",
+        "transport": "cookie-free-http",
+        "site": {
+            "public_url": ledger.site_public_url,  # type: ignore[attr-defined]
+            "pages_checked": 14,
+            "status_200": 14,
+            "exact_final_urls": 14,
+            "phase_pages_with_exact_targets": 12,
+            "exceptions": [],
+        },
+        "github": {
+            "pages_checked": 12,
+            "status_200": 12,
+            "exact_final_urls": 12,
+            "registry_titles_visible": 12,
+            "exceptions": [],
+        },
+        "drive": {
+            "root_url": ledger.root_url,  # type: ignore[attr-defined]
+            "roots_checked": 1,
+            "phases_checked": 12,
+            "products_checked": 125,
+            "status_200": 138,
+            "exact_final_urls": 138,
+            "identities_visible": 138,
+            "inventory_markers_visible": 138,
+            "denied_signals": 0,
+            "exceptions": [],
+        },
+        "representatives": observed_files,
+        "streaming": "bounded-memory-chunks",
+        "retained_temp_files": 0,
+        "exceptions": [],
+    }
+
+
+def _make_public_mapping(tmp_path: Path) -> tuple[Path, dict[str, object]]:
+    mirror, _ = _make_uploaded_private_mirror(tmp_path)
+    site = _run_mirror_cli(
+        "record-site-draft",
+        "--mirror",
+        str(mirror),
+        "--editor-url",
+        "https://sites.google.com/d/site-id/p/home-page-id/edit",
+        "--proposed-public-url",
+        "https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test",
+        "--audience",
+        "university-only",
+        "--state",
+        "draft-complete",
+    )
+    assert site.returncode == 0, site.stderr
+    ledger = load_mirror_ledger(mirror)
+    verification = _public_verification(ledger)
+    raw = yaml.safe_load(mirror.read_text(encoding="utf-8"))
+    raw["schema_version"] = 3
+    raw["public_verification"] = verification
+    raw["root"]["access"] = "public-link"
+    raw["root"]["state"] = "public-verified"
+    raw["site"]["audience"] = "public"
+    raw["site"]["state"] = "public-verified"
+    for phase in raw["phases"].values():
+        phase["access"] = "public-link"
+        phase["state"] = "public-verified"
+        for product in phase["products"].values():
+            product["access"] = "public-link"
+            product["state"] = "public-verified"
+    return mirror, raw
+
+
+def test_schema_v3_public_verification_is_fail_closed(tmp_path: Path) -> None:
+    mirror, raw = _make_public_mapping(tmp_path)
+    _write_yaml(mirror, raw)
+
+    ledger = load_mirror_ledger(mirror)
+
+    assert ledger.root_state == "public-verified"
+    assert ledger.public_product_count == 125
+    assert _plain_data(ledger.public_verification) == raw["public_verification"]
+    assert ledger.upload_acceptance == _uploaded_private_acceptance()
+    round_trip = ledger.upload_acceptance["round_trip_verification"]
+    assert round_trip["status"] == "not-performed"
+    assert round_trip["disposition"] == "waived-by-user"
+    with pytest.raises(TypeError):
+        ledger.public_verification["transport"] = "authenticated-http"
+
+    invalid_cases = (
+        ("wrong-site-count", "Site access counts"),
+        ("wrong-site-url", "Site public URL differs"),
+        ("wrong-drive-count", "Drive access counts"),
+        ("denied-signal", "Drive access counts"),
+        ("drive-exception", "Drive exceptions"),
+        ("top-level-exception", "verification exceptions"),
+        ("missing-kind", "exactly seven representatives"),
+        ("extra-kind", "exactly seven representatives"),
+        ("duplicate-kind", "representative kinds"),
+        ("retained-temp-file", "retained temporary files"),
+        ("retained-top-level-temp-file", "retained temporary files"),
+        ("authenticated-transport", "cookie-free-http"),
+        ("unbounded-streaming", "bounded-memory-chunks"),
+        ("wrong-root-url", "root URL"),
+        ("unknown-product", "resolve to one ledger product"),
+        ("unknown-path", "resolve to one canonical manifest file"),
+        ("non-200", "HTTP status must be 200"),
+        ("empty-content-type", "content_type must be non-empty text"),
+        ("empty-disposition", "content_disposition must be non-empty text"),
+        ("redirected-final-url", "must exactly match"),
+        ("wrong-bytes", "canonical manifest"),
+        ("wrong-sha", "canonical manifest"),
+        ("mutated-waiver", "not-performed"),
+    )
+    for tamper, message in invalid_cases:
+        candidate = json.loads(json.dumps(raw))
+        evidence = candidate["public_verification"]
+        if tamper == "wrong-site-count":
+            evidence["site"]["pages_checked"] = 13
+        elif tamper == "wrong-site-url":
+            evidence["site"]["public_url"] = "https://sites.google.com/umn.edu/a-different-site"
+        elif tamper == "wrong-drive-count":
+            evidence["drive"]["products_checked"] = 124
+        elif tamper == "denied-signal":
+            evidence["drive"]["denied_signals"] = 1
+        elif tamper == "drive-exception":
+            evidence["drive"]["exceptions"] = ["one denied folder"]
+        elif tamper == "top-level-exception":
+            evidence["exceptions"] = ["one unresolved public check"]
+        elif tamper == "missing-kind":
+            evidence["representatives"].pop()
+        elif tamper == "extra-kind":
+            evidence["representatives"].append(
+                json.loads(json.dumps(evidence["representatives"][0]))
+            )
+        elif tamper == "duplicate-kind":
+            evidence["representatives"][1]["kind"] = "png"
+        elif tamper == "retained-temp-file":
+            evidence["representatives"][0]["retained_temp_files"] = 1
+        elif tamper == "retained-top-level-temp-file":
+            evidence["retained_temp_files"] = 1
+        elif tamper == "authenticated-transport":
+            evidence["transport"] = "authenticated-http"
+        elif tamper == "unbounded-streaming":
+            evidence["streaming"] = "whole-file-memory"
+        elif tamper == "wrong-root-url":
+            evidence["drive"]["root_url"] = (
+                "https://drive.google.com/drive/folders/a-different-root"
+            )
+        elif tamper == "unknown-product":
+            evidence["representatives"][0]["product_id"] = "unknown-product"
+        elif tamper == "unknown-path":
+            evidence["representatives"][0]["relative_path"] = "previews/unknown.png"
+        elif tamper == "non-200":
+            evidence["representatives"][0]["status"] = 206
+        elif tamper == "empty-content-type":
+            evidence["representatives"][0]["content_type"] = ""
+        elif tamper == "empty-disposition":
+            evidence["representatives"][0]["content_disposition"] = ""
+        elif tamper == "redirected-final-url":
+            evidence["representatives"][0]["final_url"] = (
+                "https://drive.usercontent.google.com/download"
+                "?id=a-different-file&export=download&confirm=t"
+            )
+        elif tamper == "wrong-bytes":
+            evidence["representatives"][0]["observed_bytes"] += 1
+        elif tamper == "wrong-sha":
+            evidence["representatives"][0]["observed_sha256"] = "0" * 64
+        elif tamper == "mutated-waiver":
+            candidate["upload_acceptance"]["round_trip_verification"]["status"] = "complete"
+        else:  # pragma: no cover - exhaustive table
+            raise AssertionError(tamper)
+        _write_yaml(mirror, candidate)
+        with pytest.raises(ValueError, match=message):
+            load_mirror_ledger(mirror)
+
+
+def test_schema_v3_public_verification_is_deeply_immutable(tmp_path: Path) -> None:
+    mirror, raw = _make_public_mapping(tmp_path)
+    _write_yaml(mirror, raw)
+    ledger = load_mirror_ledger(mirror)
+    verification = ledger.public_verification
+    assert verification is not None
+
+    site = verification["site"]
+    with pytest.raises(TypeError):
+        site["pages_checked"] = 13
+
+    exceptions = verification["exceptions"]
+    with pytest.raises(AttributeError):
+        exceptions.append("late mutation")
+
+    representatives = verification["representatives"]
+    with pytest.raises(TypeError):
+        representatives[0] = representatives[1]
+    with pytest.raises(TypeError):
+        representatives[0]["status"] = 500
+
+    raw["public_verification"]["site"]["pages_checked"] = 13
+    raw["public_verification"]["exceptions"].append("source alias mutation")
+    raw["public_verification"]["representatives"][0]["status"] = 500
+    assert verification["site"]["pages_checked"] == 14
+    assert verification["exceptions"] == ()
+    assert verification["representatives"][0]["status"] == 200
+
+
+def test_cli_records_public_verification_without_overclaim(tmp_path: Path) -> None:
+    mirror, acceptance = _make_uploaded_private_mirror(tmp_path)
+    site = _run_mirror_cli(
+        "record-site-draft",
+        "--mirror",
+        str(mirror),
+        "--editor-url",
+        "https://sites.google.com/d/site-id/p/home-page-id/edit",
+        "--proposed-public-url",
+        "https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test",
+        "--audience",
+        "university-only",
+        "--state",
+        "draft-complete",
+    )
+    assert site.returncode == 0, site.stderr
+    verification = _public_verification(load_mirror_ledger(mirror))
+    command = (
+        "record-public-verified",
+        "--mirror",
+        str(mirror),
+        "--verification-json",
+        json.dumps(verification, separators=(",", ":")),
+    )
+
+    before = mirror.read_bytes()
+    invalid = json.loads(json.dumps(verification))
+    invalid["drive"]["denied_signals"] = 1
+    rejected = _run_mirror_cli(
+        "record-public-verified",
+        "--mirror",
+        str(mirror),
+        "--verification-json",
+        json.dumps(invalid, separators=(",", ":")),
+    )
+    assert rejected.returncode != 0
+    assert mirror.read_bytes() == before
+    assert not tuple(tmp_path.glob(".mirror.yml.*.partial"))
+    assert not tuple(tmp_path.glob(".mirror.yml.*.validate"))
+
+    first = _run_mirror_cli(*command)
+
+    assert first.returncode == 0, first.stderr
+    first_bytes = mirror.read_bytes()
+    ledger = load_mirror_ledger(mirror)
+    assert ledger.root_access == "public-link"
+    assert ledger.root_state == "public-verified"
+    assert ledger.site_audience == "public"
+    assert ledger.site_state == "public-verified"
+    assert _plain_data(ledger.public_verification) == verification
+    assert ledger.upload_acceptance == acceptance
+    assert len(public_product_urls(ledger)) == 125
+    assert all(
+        product.package_manifest_sha256 is None and product.verified_at is None
+        for phase in ledger.phases.values()
+        for product in phase.products.values()
+    )
+    round_trip = ledger.upload_acceptance["round_trip_verification"]
+    assert round_trip["status"] == "not-performed"
+    assert round_trip["disposition"] == "waived-by-user"
+    assert "representatives=7" in first.stdout
+    assert "round-trip=not-performed" in first.stdout
+
+    second = _run_mirror_cli(*command)
+    assert second.returncode == 0, second.stderr
+    assert mirror.read_bytes() == first_bytes
+
+    changed = json.loads(json.dumps(verification))
+    changed["observed_at"] = "2026-07-26T20:41:00Z"
+    collision = _run_mirror_cli(
+        "record-public-verified",
+        "--mirror",
+        str(mirror),
+        "--verification-json",
+        json.dumps(changed, separators=(",", ":")),
+    )
+    assert collision.returncode != 0
+    assert "refuses to replace terminal public verification" in collision.stderr
+    assert mirror.read_bytes() == first_bytes
 
 
 def test_mirror_ledger_rejects_wrong_account_and_local_mount(tmp_path: Path) -> None:
@@ -1417,3 +1790,63 @@ def test_google_site_source_has_landing_about_and_twelve_phase_pages(
     )
     assert "https://drive.google.com/drive/folders/" not in generated_text
     assert "public access has not been verified" in generated_text
+
+
+def test_google_site_source_wording_tracks_public_and_private_ledger_state(
+    tmp_path: Path,
+) -> None:
+    private_mirror, _ = _make_uploaded_private_mirror(tmp_path / "private")
+    private_site = _run_mirror_cli(
+        "record-site-draft",
+        "--mirror",
+        str(private_mirror),
+        "--editor-url",
+        "https://sites.google.com/d/site-id/p/home-page-id/edit",
+        "--proposed-public-url",
+        "https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test",
+        "--audience",
+        "university-only",
+        "--state",
+        "draft-complete",
+    )
+    assert private_site.returncode == 0, private_site.stderr
+    private_result = build_google_site_source(
+        registry_path=REGISTRY,
+        product_registry_path=PRODUCTS,
+        mirror_registry_path=private_mirror,
+        output_root=tmp_path / "private-site",
+        allow_private_links=True,
+    )
+    private_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (
+            private_result.index_path,
+            private_result.about_path,
+            *private_result.phase_pages,
+        )
+    )
+    assert private_text.count("public access has not been verified") == 2
+    assert private_text.count("Open the restricted Drive phase folder for signed-in review") == 12
+    assert "Open the public full-resolution Drive phase folder" not in private_text
+
+    public_mirror, public_raw = _make_public_mapping(tmp_path / "public")
+    _write_yaml(public_mirror, public_raw)
+    public_result = build_google_site_source(
+        registry_path=REGISTRY,
+        product_registry_path=PRODUCTS,
+        mirror_registry_path=public_mirror,
+        output_root=tmp_path / "public-site",
+    )
+    public_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (
+            public_result.index_path,
+            public_result.about_path,
+            *public_result.phase_pages,
+        )
+    )
+    assert public_text.count("Public access has been independently verified.") == 2
+    assert "public access has not been verified" not in public_text
+    assert "restricted Drive phase folder" not in public_text
+    assert "signed-in review" not in public_text
+    assert public_text.count("Open the public full-resolution Drive phase folder") == 12
