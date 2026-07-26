@@ -1,965 +1,967 @@
-schema_version: 1
+schema_version: 2
 provider: google-drive
 account: zmichels@umn.edu
 local_mount: null
-transport: undecided
+transport: chrome-folder-upload
 quota:
-  observed_at: null
-  total_bytes: null
-  used_bytes: null
-  free_bytes: null
+  observed_at: '2026-07-26T08:33:38.368Z'
+  total_bytes: 100000000000
+  used_bytes: 7820000000
+  free_bytes: 92180000000
   required_headroom_bytes: 10737418240
+  canonical_upload_bytes: 7206478751
+  canonical_upload_bytes_basis: exact-regular-file-sum
 root:
-  drive_id: null
-  url: null
+  drive_id: 1aUvGSjpQsGqyAlmLcS_vafcHQ6jVciZ4
+  url: https://drive.google.com/drive/folders/1aUvGSjpQsGqyAlmLcS_vafcHQ6jVciZ4
   access: private
-  state: planned
+  state: uploaded-private
 phases:
   forsterite:
-    drive_id: null
-    url: null
+    drive_id: 1uFO-00ytNO74eRJsfWpZdIFt98hD-uux
+    url: https://drive.google.com/drive/folders/1uFO-00ytNO74eRJsfWpZdIFt98hD-uux
     access: private
-    state: planned
+    state: uploaded
     products:
       forsterite-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 1voB1LgfSVv56sJVusv6I1mSFNhlcctng
+        url: https://drive.google.com/drive/folders/1voB1LgfSVv56sJVusv6I1mSFNhlcctng
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 1MQOx8FFPOf7TZWxTgTtpEOJQ7DRXvBH1
+        url: https://drive.google.com/drive/folders/1MQOx8FFPOf7TZWxTgTtpEOJQ7DRXvBH1
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 1eE6vLuil5azweGXvKw3xpRyE4ok1LJ0z
+        url: https://drive.google.com/drive/folders/1eE6vLuil5azweGXvKw3xpRyE4ok1LJ0z
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 1AmbUHfGiDSJBoIQXtYS9bp6px5H6YNCS
+        url: https://drive.google.com/drive/folders/1AmbUHfGiDSJBoIQXtYS9bp6px5H6YNCS
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-direct-wide:
-        drive_id: null
-        url: null
+        drive_id: 17A-93zwik7KzrYwmblwYROuY0JCgBQQS
+        url: https://drive.google.com/drive/folders/17A-93zwik7KzrYwmblwYROuY0JCgBQQS
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 19XSB79SEdrkTPuj4nxSEyd0dBBFpUWDn
+        url: https://drive.google.com/drive/folders/19XSB79SEdrkTPuj4nxSEyd0dBBFpUWDn
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 1ZOIUvjfPC-K0Hk8E-wMVvTJnUZQe8NIx
+        url: https://drive.google.com/drive/folders/1ZOIUvjfPC-K0Hk8E-wMVvTJnUZQe8NIx
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-dynamical-master-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1PB7THbYqkKp9H7U4xYReoGtrqy_eNIGo
+        url: https://drive.google.com/drive/folders/1PB7THbYqkKp9H7U4xYReoGtrqy_eNIGo
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-depth-field-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1ckMqIHb9JvHkT9YwWAhqvSXOx2myNc7h
+        url: https://drive.google.com/drive/folders/1ckMqIHb9JvHkT9YwWAhqvSXOx2myNc7h
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-intensity-relief-globe:
-        drive_id: null
-        url: null
+        drive_id: 1heLWKgib2E0pkQ7eW2kLv0aLyJ__l7QR
+        url: https://drive.google.com/drive/folders/1heLWKgib2E0pkQ7eW2kLv0aLyJ__l7QR
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1jw1nznsFKRcfiZ9kOWOjgDhWkhBYHton
+        url: https://drive.google.com/drive/folders/1jw1nznsFKRcfiZ9kOWOjgDhWkhBYHton
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1mf1j_qvLwHAvNcFIpKBOBAPbtFvjX8rd
+        url: https://drive.google.com/drive/folders/1mf1j_qvLwHAvNcFIpKBOBAPbtFvjX8rd
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       forsterite-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 1kmF388EZDMpp9CSEKIh9uRUbdiFrEvwJ
+        url: https://drive.google.com/drive/folders/1kmF388EZDMpp9CSEKIh9uRUbdiFrEvwJ
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
   ice-ih:
-    drive_id: null
-    url: null
+    drive_id: 1zXbZQn1frYJGhMpzGY_Kbo0DDXQ6Jod-
+    url: https://drive.google.com/drive/folders/1zXbZQn1frYJGhMpzGY_Kbo0DDXQ6Jod-
     access: private
-    state: planned
+    state: uploaded
     products:
       ice-ih-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 1-aHXljqUGPgHoh8FDyDadDpG5jSqnsDG
+        url: https://drive.google.com/drive/folders/1-aHXljqUGPgHoh8FDyDadDpG5jSqnsDG
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 1k0Z-HSXif5Oo7DEVo0kpJZVt-EyPjlj4
+        url: https://drive.google.com/drive/folders/1k0Z-HSXif5Oo7DEVo0kpJZVt-EyPjlj4
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 1W7ujLg1ok9S_D15rnAr3w7u_NTmwC-Ue
+        url: https://drive.google.com/drive/folders/1W7ujLg1ok9S_D15rnAr3w7u_NTmwC-Ue
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 1J4fPi83kT15zp1DOgafTyF-_Cx5bvBhx
+        url: https://drive.google.com/drive/folders/1J4fPi83kT15zp1DOgafTyF-_Cx5bvBhx
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-direct-wide:
-        drive_id: null
-        url: null
+        drive_id: 1PamqDkhYgrBw9PdbRAmoinkQ9LuCod49
+        url: https://drive.google.com/drive/folders/1PamqDkhYgrBw9PdbRAmoinkQ9LuCod49
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 1nahk5I2TksKPNWYp4KT7rtF0O8DdQ1uP
+        url: https://drive.google.com/drive/folders/1nahk5I2TksKPNWYp4KT7rtF0O8DdQ1uP
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 1ECYraE6yBLOjf8w5hsviH0Zb7nY8P9T1
+        url: https://drive.google.com/drive/folders/1ECYraE6yBLOjf8w5hsviH0Zb7nY8P9T1
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-depth-field-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1dWSP63VBH2OPWLdeduxPwdz0dwvP61WD
+        url: https://drive.google.com/drive/folders/1dWSP63VBH2OPWLdeduxPwdz0dwvP61WD
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-near-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1Q4eC1r6qQmtCCjrF3m2P9AXZk-FVK7bg
+        url: https://drive.google.com/drive/folders/1Q4eC1r6qQmtCCjrF3m2P9AXZk-FVK7bg
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-intensity-relief-globe:
-        drive_id: null
-        url: null
+        drive_id: 1DqNmj-j8JRcb8ifRTJohn-taQxm9WkWR
+        url: https://drive.google.com/drive/folders/1DqNmj-j8JRcb8ifRTJohn-taQxm9WkWR
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1Eln3BmScEVGBD-MYckzOkd9y3Olda0yT
+        url: https://drive.google.com/drive/folders/1Eln3BmScEVGBD-MYckzOkd9y3Olda0yT
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1B-l1J-Ux7o3EjUph-gXLJFO6vZyEpULy
+        url: https://drive.google.com/drive/folders/1B-l1J-Ux7o3EjUph-gXLJFO6vZyEpULy
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       ice-ih-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 1qrCPImfx6IaNChsAH8xmZE7AG0N_vhPb
+        url: https://drive.google.com/drive/folders/1qrCPImfx6IaNChsAH8xmZE7AG0N_vhPb
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
   quartz:
-    drive_id: null
-    url: null
+    drive_id: 1dcwErMuUCAEkxLp218nrZiv2cjRqspUP
+    url: https://drive.google.com/drive/folders/1dcwErMuUCAEkxLp218nrZiv2cjRqspUP
     access: private
-    state: planned
+    state: uploaded
     products:
       quartz-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 1TDlz6Fpzd7Wo1IstXuaA_vbBQrI7UMk-
+        url: https://drive.google.com/drive/folders/1TDlz6Fpzd7Wo1IstXuaA_vbBQrI7UMk-
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 1ZiIiDC6x1oPM96Ckh35Vp7Bg6f3JFRPm
+        url: https://drive.google.com/drive/folders/1ZiIiDC6x1oPM96Ckh35Vp7Bg6f3JFRPm
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 1oPgcmF183FDA7A2A7AjaFxXODfGnPCSR
+        url: https://drive.google.com/drive/folders/1oPgcmF183FDA7A2A7AjaFxXODfGnPCSR
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 1bxdaMJdkFnCP6M_s_GjJXcmIFe0Jp0iZ
+        url: https://drive.google.com/drive/folders/1bxdaMJdkFnCP6M_s_GjJXcmIFe0Jp0iZ
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-direct-wide:
-        drive_id: null
-        url: null
+        drive_id: 11kANjTCbMloN7zjA0pis5P1dNjsvLnpy
+        url: https://drive.google.com/drive/folders/11kANjTCbMloN7zjA0pis5P1dNjsvLnpy
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 1GPhOV-zUPocm5hAIkTIGg8ZHy22YoxMf
+        url: https://drive.google.com/drive/folders/1GPhOV-zUPocm5hAIkTIGg8ZHy22YoxMf
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 18bUOEsEXRljKh9vTPMKqj-U1Nlsdk05h
+        url: https://drive.google.com/drive/folders/18bUOEsEXRljKh9vTPMKqj-U1Nlsdk05h
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1ntucmA4a1A0HELBzqVqXe0d3kUAcJG3w
+        url: https://drive.google.com/drive/folders/1ntucmA4a1A0HELBzqVqXe0d3kUAcJG3w
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1p6hRugRHSNP6t_z9JEFkPrhCfXfRQHE6
+        url: https://drive.google.com/drive/folders/1p6hRugRHSNP6t_z9JEFkPrhCfXfRQHE6
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 1CUXbTwF8fiBx8oqC3QuSDT6w3cBktDqd
+        url: https://drive.google.com/drive/folders/1CUXbTwF8fiBx8oqC3QuSDT6w3cBktDqd
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-direct-reflector-artist-master-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1VPZizjJg7Frj7S8FXGDxYAe5iqWjU_uf
+        url: https://drive.google.com/drive/folders/1VPZizjJg7Frj7S8FXGDxYAe5iqWjU_uf
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-near-depth-artist-master-identity-60fps:
-        drive_id: null
-        url: null
+        drive_id: 10UnnGMNjZ66CleBST2ckCG1nb3e6z6h4
+        url: https://drive.google.com/drive/folders/10UnnGMNjZ66CleBST2ckCG1nb3e6z6h4
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       quartz-near-depth-artist-master-oblique-17-31-43-60fps:
-        drive_id: null
-        url: null
+        drive_id: 1w9aqADD7HwOX6TB91oW8nHLuNnL5mxmd
+        url: https://drive.google.com/drive/folders/1w9aqADD7HwOX6TB91oW8nHLuNnL5mxmd
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
   zircon:
-    drive_id: null
-    url: null
+    drive_id: 1eGh686RGwhJzJsj20WplctVxDnmlslTZ
+    url: https://drive.google.com/drive/folders/1eGh686RGwhJzJsj20WplctVxDnmlslTZ
     access: private
-    state: planned
+    state: uploaded
     products:
       zircon-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 1VuSfqcuzwR6hrMKDQUakNR_It-W7Own5
+        url: https://drive.google.com/drive/folders/1VuSfqcuzwR6hrMKDQUakNR_It-W7Own5
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       zircon-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 1kNOQ5rGXdsO1rQQF3nLqtFQK2Pnn1FBP
+        url: https://drive.google.com/drive/folders/1kNOQ5rGXdsO1rQQF3nLqtFQK2Pnn1FBP
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       zircon-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 1XFFymZW9i-aIwKQN9lrCBUzzCTuDWfiN
+        url: https://drive.google.com/drive/folders/1XFFymZW9i-aIwKQN9lrCBUzzCTuDWfiN
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       zircon-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 1A1b74v-RBfj5M-emK2LshXyvu3Gkl92m
+        url: https://drive.google.com/drive/folders/1A1b74v-RBfj5M-emK2LshXyvu3Gkl92m
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       zircon-direct-wide:
-        drive_id: null
-        url: null
+        drive_id: 1sdchz6-3V2GkFWx6wQK8Bv75iMwQthcH
+        url: https://drive.google.com/drive/folders/1sdchz6-3V2GkFWx6wQK8Bv75iMwQthcH
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       zircon-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 1a8zG5bwgjacmTKPHM0cxJFS51T2pHh7o
+        url: https://drive.google.com/drive/folders/1a8zG5bwgjacmTKPHM0cxJFS51T2pHh7o
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       zircon-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 1IE_W04Lz8ZD8jWdwS2P40najsAsIMGBf
+        url: https://drive.google.com/drive/folders/1IE_W04Lz8ZD8jWdwS2P40najsAsIMGBf
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       zircon-near-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1Iz1Gjm0M86vm1-nKbwrh7jGdU7ELBF5f
+        url: https://drive.google.com/drive/folders/1Iz1Gjm0M86vm1-nKbwrh7jGdU7ELBF5f
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       zircon-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1q_FZQv_Pzi-ls0vKEe45zs2X5IO04TTS
+        url: https://drive.google.com/drive/folders/1q_FZQv_Pzi-ls0vKEe45zs2X5IO04TTS
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       zircon-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1Z33C6qHvw10hBHcUd7UstqWJyfMBjMxG
+        url: https://drive.google.com/drive/folders/1Z33C6qHvw10hBHcUd7UstqWJyfMBjMxG
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       zircon-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 1bhNB4pwvg8Z9soImawzcPurvfx3NY0bj
+        url: https://drive.google.com/drive/folders/1bhNB4pwvg8Z9soImawzcPurvfx3NY0bj
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
   titanite:
-    drive_id: null
-    url: null
+    drive_id: 1nSRgie7827YB8RCOkotrA43Pr1pCsJ_i
+    url: https://drive.google.com/drive/folders/1nSRgie7827YB8RCOkotrA43Pr1pCsJ_i
     access: private
-    state: planned
+    state: uploaded
     products:
       titanite-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 1JN_Qgyg0oKFcmESiLYVcvgcKe48DX6e0
+        url: https://drive.google.com/drive/folders/1JN_Qgyg0oKFcmESiLYVcvgcKe48DX6e0
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       titanite-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 1n-xw2vaUO6XeqlzGCIHfvu8TJ0Lf4V1T
+        url: https://drive.google.com/drive/folders/1n-xw2vaUO6XeqlzGCIHfvu8TJ0Lf4V1T
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       titanite-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 1XYDzdlJn_062E5a-gcksIXW-FQY2DFfq
+        url: https://drive.google.com/drive/folders/1XYDzdlJn_062E5a-gcksIXW-FQY2DFfq
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       titanite-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 1jUaDRy0mkOstEaO-WM6OgCLnKHQV7_s8
+        url: https://drive.google.com/drive/folders/1jUaDRy0mkOstEaO-WM6OgCLnKHQV7_s8
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       titanite-direct-wide:
-        drive_id: null
-        url: null
+        drive_id: 11o5iU7KDXS3d9kj2EEztEY3-fG2dIamF
+        url: https://drive.google.com/drive/folders/11o5iU7KDXS3d9kj2EEztEY3-fG2dIamF
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       titanite-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 1eB2o3g1C8Htx5Q9s8kHNSTETfTqQ7EKM
+        url: https://drive.google.com/drive/folders/1eB2o3g1C8Htx5Q9s8kHNSTETfTqQ7EKM
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       titanite-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 1iK-Nq6pTTmc3a3u14rzIiMglf-Wpd3Kq
+        url: https://drive.google.com/drive/folders/1iK-Nq6pTTmc3a3u14rzIiMglf-Wpd3Kq
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       titanite-depth-field-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1cjEOLUllBpFp9bxoApahgc5CQmj0sdCP
+        url: https://drive.google.com/drive/folders/1cjEOLUllBpFp9bxoApahgc5CQmj0sdCP
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       titanite-near-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 19BYnTC6YMT_62F6PZ_HSMKpZqLNxCinF
+        url: https://drive.google.com/drive/folders/19BYnTC6YMT_62F6PZ_HSMKpZqLNxCinF
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       titanite-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1kHdflNYdSgAF67t3f_LJtxMHFaaOWUKF
+        url: https://drive.google.com/drive/folders/1kHdflNYdSgAF67t3f_LJtxMHFaaOWUKF
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       titanite-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1ZrTsJgbwTZO3v5rw7vOF0k-Ft7rYKFnQ
+        url: https://drive.google.com/drive/folders/1ZrTsJgbwTZO3v5rw7vOF0k-Ft7rYKFnQ
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       titanite-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 1iasHRb1KZYqHLWMYO9RS_IIOy_Fv87L6
+        url: https://drive.google.com/drive/folders/1iasHRb1KZYqHLWMYO9RS_IIOy_Fv87L6
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
   diamond:
-    drive_id: null
-    url: null
+    drive_id: 1sKD7-lIM8I2s2oY39sAan0j8IaigCjyM
+    url: https://drive.google.com/drive/folders/1sKD7-lIM8I2s2oY39sAan0j8IaigCjyM
     access: private
-    state: planned
+    state: uploaded
     products:
       diamond-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 1OOXlfvYxnpmaRqaHWq175ZLO-t6JtTxX
+        url: https://drive.google.com/drive/folders/1OOXlfvYxnpmaRqaHWq175ZLO-t6JtTxX
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diamond-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 1glHcgrFP_3rjNFOCrYeqB0LgbDg0FZBg
+        url: https://drive.google.com/drive/folders/1glHcgrFP_3rjNFOCrYeqB0LgbDg0FZBg
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diamond-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 1Gp9zLyy6HujbiWOpwBvMZFxsi9IJZElJ
+        url: https://drive.google.com/drive/folders/1Gp9zLyy6HujbiWOpwBvMZFxsi9IJZElJ
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diamond-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 1Q8HT1NDbxgliovoITB3jZMdx0aYPU4CT
+        url: https://drive.google.com/drive/folders/1Q8HT1NDbxgliovoITB3jZMdx0aYPU4CT
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diamond-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 1fQrUaGBZxzaIswiW0tcwHaXoSgMqtBKL
+        url: https://drive.google.com/drive/folders/1fQrUaGBZxzaIswiW0tcwHaXoSgMqtBKL
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diamond-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 14An9yoMIdnjoiz_kS0vOZlpwWF2CH4dG
+        url: https://drive.google.com/drive/folders/14An9yoMIdnjoiz_kS0vOZlpwWF2CH4dG
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diamond-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1qQpJKEEU7jUYhsnPVFdizz70uJKfpdZx
+        url: https://drive.google.com/drive/folders/1qQpJKEEU7jUYhsnPVFdizz70uJKfpdZx
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diamond-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1sj1anx3xhpcR5Q2qgocKOGu01j_w_g3t
+        url: https://drive.google.com/drive/folders/1sj1anx3xhpcR5Q2qgocKOGu01j_w_g3t
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diamond-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 1vfaEREzMURxG-sWkF4blkOtdyUrtO-mw
+        url: https://drive.google.com/drive/folders/1vfaEREzMURxG-sWkF4blkOtdyUrtO-mw
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
   plagioclase-an52:
-    drive_id: null
-    url: null
+    drive_id: 1yVb6SvBIXOJXkqZ1izqQYq5ZUPvPfmzB
+    url: https://drive.google.com/drive/folders/1yVb6SvBIXOJXkqZ1izqQYq5ZUPvPfmzB
     access: private
-    state: planned
+    state: uploaded
     products:
       plagioclase-an52-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 1ff5BOjK2vxqRMkktD8hwKsXEbGcN1dto
+        url: https://drive.google.com/drive/folders/1ff5BOjK2vxqRMkktD8hwKsXEbGcN1dto
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       plagioclase-an52-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 1oa0M53945e1QlL3pSaYQjFjUXo9jjt3e
+        url: https://drive.google.com/drive/folders/1oa0M53945e1QlL3pSaYQjFjUXo9jjt3e
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       plagioclase-an52-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 119xQXvjRAktuUE-3X-oFgsS4gnOSKkqc
+        url: https://drive.google.com/drive/folders/119xQXvjRAktuUE-3X-oFgsS4gnOSKkqc
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       plagioclase-an52-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 1lec5e5JJMh2x940BFA3ea3nlHWmOvwlo
+        url: https://drive.google.com/drive/folders/1lec5e5JJMh2x940BFA3ea3nlHWmOvwlo
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       plagioclase-an52-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 1jl1gke1ovzkhA-d-baMJ71tn1eff16eD
+        url: https://drive.google.com/drive/folders/1jl1gke1ovzkhA-d-baMJ71tn1eff16eD
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       plagioclase-an52-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 1OiEMEgOT4H0k3kXV05WTlmeuW3fR42nQ
+        url: https://drive.google.com/drive/folders/1OiEMEgOT4H0k3kXV05WTlmeuW3fR42nQ
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       plagioclase-an52-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1sV6adANXo4r2MNZzlA64_XUsRiDL3n9Q
+        url: https://drive.google.com/drive/folders/1sV6adANXo4r2MNZzlA64_XUsRiDL3n9Q
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       plagioclase-an52-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1WiAq8tkF1ShAb6l7dy33_B0wBzPEHkW6
+        url: https://drive.google.com/drive/folders/1WiAq8tkF1ShAb6l7dy33_B0wBzPEHkW6
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       plagioclase-an52-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 12Mcw3yJw7KmA23l3B4h_27qmN9du9d7W
+        url: https://drive.google.com/drive/folders/12Mcw3yJw7KmA23l3B4h_27qmN9du9d7W
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
   muscovite-2m1:
-    drive_id: null
-    url: null
+    drive_id: 1U5MtyTCmHjarK2hxXoD37jgLAlISiSBn
+    url: https://drive.google.com/drive/folders/1U5MtyTCmHjarK2hxXoD37jgLAlISiSBn
     access: private
-    state: planned
+    state: uploaded
     products:
       muscovite-2m1-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 1TMZu9kmMj76u1x_gS9RKVeLuFuv2LvSO
+        url: https://drive.google.com/drive/folders/1TMZu9kmMj76u1x_gS9RKVeLuFuv2LvSO
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       muscovite-2m1-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 1qi1oedFCkPr6F9YDe3wva0JQBRVO7QX5
+        url: https://drive.google.com/drive/folders/1qi1oedFCkPr6F9YDe3wva0JQBRVO7QX5
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       muscovite-2m1-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 1cFoVeOgwybQa5pNavFejk6hvFhUzDrGD
+        url: https://drive.google.com/drive/folders/1cFoVeOgwybQa5pNavFejk6hvFhUzDrGD
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       muscovite-2m1-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 1QGGUq6cOjdw3sOaSijJ3OVz15rtjNrQd
+        url: https://drive.google.com/drive/folders/1QGGUq6cOjdw3sOaSijJ3OVz15rtjNrQd
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       muscovite-2m1-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 1ot4V1v-srTZHGzB2PzKry8QD49du1j3-
+        url: https://drive.google.com/drive/folders/1ot4V1v-srTZHGzB2PzKry8QD49du1j3-
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       muscovite-2m1-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 1a3JYOgB_lPVw3Mg63R77Jw_WkKnna-eH
+        url: https://drive.google.com/drive/folders/1a3JYOgB_lPVw3Mg63R77Jw_WkKnna-eH
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       muscovite-2m1-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1U8okqWhHZfwVgYhm-Ay1iu-NLv3PEczz
+        url: https://drive.google.com/drive/folders/1U8okqWhHZfwVgYhm-Ay1iu-NLv3PEczz
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       muscovite-2m1-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1AU2HLGOwKGAVo1U7gsbk5ouFnqVTEeLO
+        url: https://drive.google.com/drive/folders/1AU2HLGOwKGAVo1U7gsbk5ouFnqVTEeLO
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       muscovite-2m1-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 1Npc-IbYj7pFxos3CbNNpRhXltA-j-YKH
+        url: https://drive.google.com/drive/folders/1Npc-IbYj7pFxos3CbNNpRhXltA-j-YKH
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
   diopside:
-    drive_id: null
-    url: null
+    drive_id: 10pnWgbaix3BEZO36tE-vvO3TB7BVdPqy
+    url: https://drive.google.com/drive/folders/10pnWgbaix3BEZO36tE-vvO3TB7BVdPqy
     access: private
-    state: planned
+    state: uploaded
     products:
       diopside-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 1ZHOoTPv4VNEMX4CIhMclNEeE89pfsWFT
+        url: https://drive.google.com/drive/folders/1ZHOoTPv4VNEMX4CIhMclNEeE89pfsWFT
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diopside-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 1et6p_zV0ZiCu_siwY9CXobgOLmFXpDI5
+        url: https://drive.google.com/drive/folders/1et6p_zV0ZiCu_siwY9CXobgOLmFXpDI5
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diopside-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 1snkPzY5Ubl4F0n8ltBqpex9ou95_DfGs
+        url: https://drive.google.com/drive/folders/1snkPzY5Ubl4F0n8ltBqpex9ou95_DfGs
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diopside-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 19gySSv-_rduj5KLkQJz0MvACex8IeMev
+        url: https://drive.google.com/drive/folders/19gySSv-_rduj5KLkQJz0MvACex8IeMev
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diopside-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 10O43eSQF4-06yHuT7RDAzFz25A9WRWwJ
+        url: https://drive.google.com/drive/folders/10O43eSQF4-06yHuT7RDAzFz25A9WRWwJ
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diopside-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 1iSwyzLrCQcLTjjFoQCFyOuJCj-IwoJ9x
+        url: https://drive.google.com/drive/folders/1iSwyzLrCQcLTjjFoQCFyOuJCj-IwoJ9x
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diopside-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1NWLWrR4Ubb7-tYkZ-dc60tgykNmqwEt1
+        url: https://drive.google.com/drive/folders/1NWLWrR4Ubb7-tYkZ-dc60tgykNmqwEt1
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diopside-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1-4yltWGL93UdooTKp17rwYm0J3ifF3sl
+        url: https://drive.google.com/drive/folders/1-4yltWGL93UdooTKp17rwYm0J3ifF3sl
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       diopside-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 1vKFtIJKZFl0u5HRcJpt6ubfr41xfdhP9
+        url: https://drive.google.com/drive/folders/1vKFtIJKZFl0u5HRcJpt6ubfr41xfdhP9
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
   calcite:
-    drive_id: null
-    url: null
+    drive_id: 17ytpMtje74rIbg4KRwHht-rQgnAk9zdg
+    url: https://drive.google.com/drive/folders/17ytpMtje74rIbg4KRwHht-rQgnAk9zdg
     access: private
-    state: planned
+    state: uploaded
     products:
       calcite-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 1RkU6wn6P_LtkZMR_zXclPimoFNGLZ9vh
+        url: https://drive.google.com/drive/folders/1RkU6wn6P_LtkZMR_zXclPimoFNGLZ9vh
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       calcite-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 16JZgebu_KgqKt9e5cIqT6lzEb62-HiB4
+        url: https://drive.google.com/drive/folders/16JZgebu_KgqKt9e5cIqT6lzEb62-HiB4
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       calcite-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 1MmipQNNcsMxgz6KQLI7_7Z-o7OLViFqo
+        url: https://drive.google.com/drive/folders/1MmipQNNcsMxgz6KQLI7_7Z-o7OLViFqo
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       calcite-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 1W-XV9GPA6xeGzhLoCtYxzasl6v5SdmqO
+        url: https://drive.google.com/drive/folders/1W-XV9GPA6xeGzhLoCtYxzasl6v5SdmqO
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       calcite-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 1HCRZ_3mNGzKbEQ8vfCx0w8st0jebaUkV
+        url: https://drive.google.com/drive/folders/1HCRZ_3mNGzKbEQ8vfCx0w8st0jebaUkV
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       calcite-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 1Li7g4Hqb0sHPQ0cDBv9DboKCYhqjL8PE
+        url: https://drive.google.com/drive/folders/1Li7g4Hqb0sHPQ0cDBv9DboKCYhqjL8PE
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       calcite-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1d9oRlTru9MUMLSvpHo06s85YTHUi9_P4
+        url: https://drive.google.com/drive/folders/1d9oRlTru9MUMLSvpHo06s85YTHUi9_P4
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       calcite-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1zRNFsQIuHsdK4vAZi5J1rTyv55-2-2Sp
+        url: https://drive.google.com/drive/folders/1zRNFsQIuHsdK4vAZi5J1rTyv55-2-2Sp
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       calcite-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 1yLnRcB95Z0ROLIFsGhomEpc6nAJF8QTY
+        url: https://drive.google.com/drive/folders/1yLnRcB95Z0ROLIFsGhomEpc6nAJF8QTY
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
   enstatite:
-    drive_id: null
-    url: null
+    drive_id: 19lQOiCUQdZgt9UG_WalD81UzPwvJ_3wy
+    url: https://drive.google.com/drive/folders/19lQOiCUQdZgt9UG_WalD81UzPwvJ_3wy
     access: private
-    state: planned
+    state: uploaded
     products:
       enstatite-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 1zcBs26H0cBtWoN90C0usyfMea7lwUTPT
+        url: https://drive.google.com/drive/folders/1zcBs26H0cBtWoN90C0usyfMea7lwUTPT
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       enstatite-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 1PNkvLln_f41BW-jk2R4xUZXOzkF5WC2u
+        url: https://drive.google.com/drive/folders/1PNkvLln_f41BW-jk2R4xUZXOzkF5WC2u
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       enstatite-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 1xrgUw202lAZB2_raCh_BaZYifNlBIRof
+        url: https://drive.google.com/drive/folders/1xrgUw202lAZB2_raCh_BaZYifNlBIRof
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       enstatite-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 1bpmTCqwGzpKqvGP5hBvvvkqij56XJOJc
+        url: https://drive.google.com/drive/folders/1bpmTCqwGzpKqvGP5hBvvvkqij56XJOJc
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       enstatite-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 1YlGIl5_hguJN0nfosz0FIWhE_Rr8Uk7w
+        url: https://drive.google.com/drive/folders/1YlGIl5_hguJN0nfosz0FIWhE_Rr8Uk7w
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       enstatite-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 1lNOE9nqSsDmYW6ZyJdgzrMC6QCjlugKe
+        url: https://drive.google.com/drive/folders/1lNOE9nqSsDmYW6ZyJdgzrMC6QCjlugKe
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       enstatite-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1dqLjYRdT13nyNhegxNGuOmrgkabp8n1c
+        url: https://drive.google.com/drive/folders/1dqLjYRdT13nyNhegxNGuOmrgkabp8n1c
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       enstatite-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1GqU-hqElNoIuCedEIIRrpf4FNvCkEBRl
+        url: https://drive.google.com/drive/folders/1GqU-hqElNoIuCedEIIRrpf4FNvCkEBRl
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       enstatite-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 1L3q5NJA_CMtsb8-2bU9Zx0Y0qzhCqF5K
+        url: https://drive.google.com/drive/folders/1L3q5NJA_CMtsb8-2bU9Zx0Y0qzhCqF5K
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
   pyrope:
-    drive_id: null
-    url: null
+    drive_id: 1RBfQteDR1LJ4mXz1EssmAuTzEpmPRenh
+    url: https://drive.google.com/drive/folders/1RBfQteDR1LJ4mXz1EssmAuTzEpmPRenh
     access: private
-    state: planned
+    state: uploaded
     products:
       pyrope-direct-standard:
-        drive_id: null
-        url: null
+        drive_id: 19js0jZIO01XHo-a4gKSRBPfeBpGq5ruj
+        url: https://drive.google.com/drive/folders/19js0jZIO01XHo-a4gKSRBPfeBpGq5ruj
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       pyrope-direct-azimuthal-60:
-        drive_id: null
-        url: null
+        drive_id: 13hebDsAdrf1TVGQbQIL1ErLwlKX2PHt9
+        url: https://drive.google.com/drive/folders/13hebDsAdrf1TVGQbQIL1ErLwlKX2PHt9
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       pyrope-direct-tilt-plus-20:
-        drive_id: null
-        url: null
+        drive_id: 1FRiDo6U331os7qaUvE-9BQvIKkKBlXle
+        url: https://drive.google.com/drive/folders/1FRiDo6U331os7qaUvE-9BQvIKkKBlXle
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       pyrope-direct-oblique-high:
-        drive_id: null
-        url: null
+        drive_id: 1VqE8uzjfZC_3HqpsZUUGBDdEPi7Sm3F_
+        url: https://drive.google.com/drive/folders/1VqE8uzjfZC_3HqpsZUUGBDdEPi7Sm3F_
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       pyrope-x-axis-rotation:
-        drive_id: null
-        url: null
+        drive_id: 1BTRqm9_q3dHQPvGOUcS5X7iSrqcYYRl8
+        url: https://drive.google.com/drive/folders/1BTRqm9_q3dHQPvGOUcS5X7iSrqcYYRl8
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       pyrope-reflector-ridge-globe:
-        drive_id: null
-        url: null
+        drive_id: 1W0dvhfy8psrzVcE0i-0e9v8eTXgUe0AL
+        url: https://drive.google.com/drive/folders/1W0dvhfy8psrzVcE0i-0e9v8eTXgUe0AL
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       pyrope-atlas-kinematical-master:
-        drive_id: null
-        url: null
+        drive_id: 1URInoEovq6mYL5EuleENfzmWdbOBwoGn
+        url: https://drive.google.com/drive/folders/1URInoEovq6mYL5EuleENfzmWdbOBwoGn
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       pyrope-atlas-retained-depth-x-axis:
-        drive_id: null
-        url: null
+        drive_id: 1OWAcT9Us61HIvfnue1Mv5vI9AjoTs7dG
+        url: https://drive.google.com/drive/folders/1OWAcT9Us61HIvfnue1Mv5vI9AjoTs7dG
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
       pyrope-atlas-kinematical-intensity-relief:
-        drive_id: null
-        url: null
+        drive_id: 17kcN-47Uu862jpvKIbPsv-JPUEsnYclV
+        url: https://drive.google.com/drive/folders/17kcN-47Uu862jpvKIbPsv-JPUEsnYclV
         access: private
-        state: planned
+        state: uploaded
         package_manifest_sha256: null
         verified_at: null
 site:
@@ -967,3 +969,38 @@ site:
   public_url: null
   audience: university-only
   state: draft
+upload_acceptance:
+  upload_observation:
+    observed_at: null
+    completed_files: 1212
+    total_files: 1212
+    completion_signal: 1 upload complete
+    failure_signal: none-observed
+    canonical_upload_bytes: 7206478751
+    canonical_upload_bytes_basis: exact-regular-file-sum
+  hierarchy_reconciliation:
+    root_phases_folder_count: 1
+    phase_count: 12
+    product_count: 125
+    missing_identities: 0
+    duplicate_drive_ids: 0
+    duplicate_urls: 0
+  privacy_verification:
+    observed_at: null
+    root_private: true
+    phases_private: 12
+    product_folder_samples_private: 12
+    leaf_file_samples_private: 3
+    inherited_public_link_removed: true
+    sample_leaf_files:
+    - calcite/product-package.yml
+    - forsterite/product-package.yml
+    - titanite/product-package.yml
+  round_trip_verification:
+    status: not-performed
+    disposition: waived-by-user
+    waived_at: '2026-07-26T18:50:51Z'
+    reason: User accepted observed Drive upload completeness and explicitly waived
+      round-trip downloads.
+    downloaded_phase_archives: 0
+    sha256_compared_files: 0
