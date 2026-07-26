@@ -298,6 +298,7 @@ def validate_product_package(path: str | Path) -> ProductPackage:
     _validate_package_root(source_path, "product manifest")
     package = load_product_package(source_path)
     _validate_product_location(package.manifest_path, package.phase_slug, package.product_id)
+    _validate_package_root_entries(package)
     for item in package.files:
         file_path = _package_file_path(package.manifest_path.parent, item.relative_path)
         _validate_regular_file(file_path, f"package file {item.relative_path}")
@@ -309,15 +310,33 @@ def validate_product_package(path: str | Path) -> ProductPackage:
     return package
 
 
+def _validate_package_root_entries(package: ProductPackage) -> None:
+    package_root = package.manifest_path.parent
+    expected_names = {"product-package.yml", *_ROLE_DIRECTORIES.values()}
+    entries = {entry.name: entry for entry in package_root.iterdir()}
+    unexpected_names = set(entries) - expected_names
+    if unexpected_names:
+        raise ValueError(f"unexpected package root entry: {sorted(unexpected_names)[0]}")
+    missing_names = expected_names - set(entries)
+    if missing_names:
+        raise ValueError(f"missing package root entry: {sorted(missing_names)[0]}")
+    for directory in _ROLE_DIRECTORIES.values():
+        role_root = entries[directory]
+        if role_root.is_symlink():
+            raise ValueError(f"package role directory {directory} must not be a symlink")
+        if not role_root.exists() or not role_root.is_dir():
+            raise ValueError(f"package role directory {directory} must be a real directory")
+
+
 def _validate_role_payload_inventory(package: ProductPackage) -> None:
     package_root = package.manifest_path.parent
     declared_paths = {item.relative_path for item in package.files}
     for directory in _ROLE_DIRECTORIES.values():
         role_root = package_root / directory
-        if not role_root.exists():
-            continue
         if role_root.is_symlink():
             raise ValueError(f"package role directory {directory} must not be a symlink")
+        if not role_root.exists() or not role_root.is_dir():
+            raise ValueError(f"package role directory {directory} must be a real directory")
         for root, directories, filenames in os.walk(role_root, followlinks=False):
             current = Path(root)
             for name in directories:

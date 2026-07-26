@@ -17,7 +17,8 @@ from kikuchi_lab.atlas.packages import (
 
 def _write_product(root: Path, *, digest: str | None = None) -> Path:
     media = root / "media/demo.png"
-    media.parent.mkdir(parents=True)
+    for directory in ("media", "previews", "web", "provenance"):
+        (root / directory).mkdir(parents=True, exist_ok=True)
     media.write_bytes(b"demo")
     manifest = {
         "schema_version": 1,
@@ -98,6 +99,32 @@ def test_product_package_rejects_unmanifested_role_payloads(tmp_path: Path) -> N
         validate_product_package(path)
 
 
+def test_product_package_rejects_unexpected_root_files(tmp_path: Path) -> None:
+    path = _write_product(tmp_path / "quartz-demo")
+    (path.parent / "unexpected.txt").write_text("not a payload", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unexpected package root entry"):
+        validate_product_package(path)
+
+
+def test_product_package_rejects_dangling_role_root_symlinks(tmp_path: Path) -> None:
+    path = _write_product(tmp_path / "quartz-demo")
+    previews = path.parent / "previews"
+    previews.rmdir()
+    previews.symlink_to(tmp_path / "missing-previews", target_is_directory=True)
+
+    with pytest.raises(ValueError, match="symlink"):
+        validate_product_package(path)
+
+
+def test_product_package_requires_all_role_directories(tmp_path: Path) -> None:
+    path = _write_product(tmp_path / "quartz-demo")
+    (path.parent / "web").rmdir()
+
+    with pytest.raises(ValueError, match="web"):
+        validate_product_package(path)
+
+
 def test_package_validation_requires_exact_manifest_filenames(tmp_path: Path) -> None:
     product_path = _write_product(tmp_path / "phase/products/quartz-demo")
     product = validate_product_package(product_path)
@@ -165,7 +192,7 @@ def test_load_product_package_rejects_invalid_file_metadata(tmp_path: Path) -> N
 def test_validate_product_package_rejects_symlinks_and_hard_links(tmp_path: Path) -> None:
     path = _write_product(tmp_path / "quartz-demo")
     media = path.parent / "media/demo.png"
-    target = path.parent / "target.png"
+    target = tmp_path / "target.png"
     target.write_bytes(b"demo")
     media.unlink()
     media.symlink_to(target)
