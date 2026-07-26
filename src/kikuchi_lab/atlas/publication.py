@@ -402,6 +402,7 @@ def _rewrite_site_links(
     web_paths: dict[Path, Path],
     all_local_paths: set[Path],
     products: Iterable[AtlasProduct],
+    companion_site_url: str | None,
 ) -> None:
     """Replace local workspace links with web assets or the release inventory."""
     for page in sorted(site_root.rglob("*.html")):
@@ -430,6 +431,10 @@ def _rewrite_site_links(
                 f'<a href="{target_href}">open MP4</a>',
             )
         nav_link = f'<a href="{escape(inventory_href)}">Release inventory</a>'
+        if companion_site_url is not None:
+            nav_link += (
+                f'<a href="{escape(companion_site_url)}">Google Sites mirror</a>'
+            )
         html = html.replace("</nav>", f"{nav_link}</nav>")
         if "local/" in html:
             raise ValueError(f"public Atlas page retains a local artifact link: {page}")
@@ -472,10 +477,18 @@ def build_public_atlas(
     root = registry.parents[2]
     phases = load_phase_registry(registry)
     _, products = load_product_registry(product_registry, phase_slugs={phase.slug for phase in phases})
-    product_urls = (
-        public_product_urls(load_mirror_ledger(mirror_registry_path))
+    mirror = (
+        load_mirror_ledger(mirror_registry_path)
         if mirror_registry_path is not None
-        else {}
+        else None
+    )
+    product_urls = public_product_urls(mirror) if mirror is not None else {}
+    companion_site_url = (
+        mirror.site_public_url
+        if mirror is not None
+        and mirror.site_state == "public-verified"
+        and mirror.site_audience == "public"
+        else None
     )
 
     output = Path(output_root).resolve()
@@ -564,6 +577,7 @@ def build_public_atlas(
         web_paths=web_paths,
         all_local_paths=all_local_paths,
         products=products,
+        companion_site_url=companion_site_url,
     )
 
     archive_assets: tuple[Path, ...] = tuple(sorted(set(archive_paths.values())))

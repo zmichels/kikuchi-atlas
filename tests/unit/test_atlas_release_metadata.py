@@ -25,10 +25,21 @@ EXPECTED_PHASE_SLUGS = {
     "enstatite",
     "pyrope",
 }
+EXPECTED_DRIVE_ROOT_URL = (
+    "https://drive.google.com/drive/folders/1aUvGSjpQsGqyAlmLcS_vafcHQ6jVciZ4"
+)
+EXPECTED_GOOGLE_SITE_URL = (
+    "https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test"
+)
+EXPECTED_RELEASE_TAG = "atlas-gallery-web-0.2.0-draft.3"
+EXPECTED_RELEASE_ASSET_GLOB = (
+    "kikuchi-atlas-gallery-web-0.2.0-draft.3.zip.part-*"
+)
 
 
-def test_release_metadata_and_citation_do_not_invent_publication_links_or_a_license() -> None:
+def test_release_metadata_records_exact_public_mirror_links_without_inventing_archive_doi() -> None:
     metadata = yaml.safe_load((ROOT / "docs/atlas/RELEASE_METADATA.yml").read_text(encoding="utf-8"))
+    mirror = yaml.safe_load((ROOT / "docs/atlas/GOOGLE_MIRROR.yml").read_text(encoding="utf-8"))
     citation = yaml.safe_load((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
     zenodo = json.loads((ROOT / ".zenodo.json").read_text(encoding="utf-8"))
 
@@ -37,8 +48,16 @@ def test_release_metadata_and_citation_do_not_invent_publication_links_or_a_lice
     assert metadata["release"]["version"] == "0.2.0-draft"
     assert metadata["publication"]["repository_url"] == "https://github.com/zmichels/kikuchi-atlas"
     assert metadata["publication"]["static_site_url"] == "https://zmichels.github.io/kikuchi-atlas/"
-    assert metadata["publication"]["google_drive_root_url"] is None
-    assert metadata["publication"]["google_site_url"] is None
+    assert metadata["publication"]["gallery_prerelease_tag"] == EXPECTED_RELEASE_TAG
+    assert metadata["publication"]["gallery_prerelease_url"] == (
+        f"https://github.com/zmichels/kikuchi-atlas/releases/tag/{EXPECTED_RELEASE_TAG}"
+    )
+    assert mirror["root"]["state"] == "public-verified"
+    assert mirror["site"]["state"] == "public-verified"
+    assert mirror["root"]["url"] == EXPECTED_DRIVE_ROOT_URL
+    assert mirror["site"]["public_url"] == EXPECTED_GOOGLE_SITE_URL
+    assert metadata["publication"]["google_drive_root_url"] == mirror["root"]["url"]
+    assert metadata["publication"]["google_site_url"] == mirror["site"]["public_url"]
     assert metadata["publication"]["archive_doi"] is None
     assert metadata["licenses"] == {
         "project_code": "MIT",
@@ -63,9 +82,22 @@ def test_public_candidate_contains_125_bounded_products_without_local_references
     inventory = json.loads(
         (site_root / "release-inventory.json").read_text(encoding="utf-8")
     )
+    mirror = yaml.safe_load((ROOT / "docs/atlas/GOOGLE_MIRROR.yml").read_text(encoding="utf-8"))
+    expected_product_urls = {
+        product_id: product["url"]
+        for phase in mirror["phases"].values()
+        for product_id, product in phase["products"].items()
+    }
 
     assert inventory["product_count"] == len(inventory["products"]) == 125
     assert set(inventory["phase_slugs"]) == EXPECTED_PHASE_SLUGS
+    assert len(expected_product_urls) == 125
+    assert {
+        product["id"]: product["delivery"]["full_resolution_url"]
+        for product in inventory["products"]
+    } == expected_product_urls
+    assert all(expected_product_urls.values())
+    assert len(set(expected_product_urls.values())) == 125
     assert inventory["web_asset_limit_bytes"] == 26_214_400
     declared_assets = {asset["path"]: asset for asset in inventory["web_assets"]}
     present_assets = {
@@ -79,10 +111,9 @@ def test_public_candidate_contains_125_bounded_products_without_local_references
         asset["bytes"] == present_assets[relative].stat().st_size <= 26_214_400
         for relative, asset in declared_assets.items()
     )
-    assert all(
-        product["delivery"]["full_resolution_url"] is None
-        for product in inventory["products"]
-    )
+    index = (site_root / "index.html").read_text(encoding="utf-8")
+    assert f'href="{EXPECTED_GOOGLE_SITE_URL}"' in index
+    assert ">Google Sites mirror</a>" in index
     authoritative_movies = [
         product
         for product in inventory["products"]
@@ -206,18 +237,18 @@ def test_pages_workflow_treats_dispatch_inputs_as_data_and_pins_actions() -> Non
     )
     assert (
         dispatch_inputs["release_tag"]["default"]
-        == "atlas-gallery-web-0.2.0-draft.2"
+        == EXPECTED_RELEASE_TAG
     )
     assert (
         dispatch_inputs["asset_glob"]["default"]
-        == "kikuchi-atlas-gallery-web-0.2.0-draft.2.zip.part-*"
+        == EXPECTED_RELEASE_ASSET_GLOB
     )
     assert "${{ inputs." not in download_step["run"]
     assert 'test "$RELEASE_TAG" = "$EXPECTED_RELEASE_TAG"' in download_step["run"]
     assert 'test "$ASSET_GLOB" = "$EXPECTED_ASSET_GLOB"' in download_step["run"]
     assert "set -euo pipefail" in download_step["run"]
     assert (
-        '"d32d21494ae2b9b078d3e59dee7dd241c8474914ade76db7226cbb410875a514"'
+        '"214f49f383596a42301f8d9ef05304f792f70bc929c4238a90f100ec891d16c3"'
         in download_step["run"]
     )
     assert (
@@ -234,14 +265,19 @@ def test_pages_workflow_treats_dispatch_inputs_as_data_and_pins_actions() -> Non
     )
 
 
-def test_public_release_describes_the_125_product_site_as_pending() -> None:
+def test_public_release_describes_the_link_complete_candidate_and_public_mirrors_truthfully() -> None:
     public_release = (
         ROOT / "docs/atlas/PUBLIC_RELEASE.md"
     ).read_text(encoding="utf-8").lower()
 
-    assert "125-product candidate is pending" in public_release
+    assert EXPECTED_RELEASE_TAG in public_release
+    assert EXPECTED_DRIVE_ROOT_URL.lower() in public_release
+    assert EXPECTED_GOOGLE_SITE_URL.lower() in public_release
+    assert "125-product link-complete candidate is pending" in public_release
     assert re.search(r"merge to\s+`master`", public_release)
     assert re.search(r"observed live\s+verification", public_release)
+    assert "round-trip downloads were waived by the user" in public_release
+    assert "archive and doi release remain intentionally unpublished" in public_release
 
 
 def test_structural_source_audit_has_one_exact_record_per_atlas_phase() -> None:

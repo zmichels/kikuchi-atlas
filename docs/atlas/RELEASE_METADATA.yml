@@ -16,8 +16,10 @@ licenses:
 publication:
   repository_url: https://github.com/zmichels/kikuchi-atlas
   static_site_url: https://zmichels.github.io/kikuchi-atlas/
-  google_drive_root_url:
-  google_site_url:
+  gallery_prerelease_tag: atlas-gallery-web-0.2.0-draft.3
+  gallery_prerelease_url: https://github.com/zmichels/kikuchi-atlas/releases/tag/atlas-gallery-web-0.2.0-draft.3
+  google_drive_root_url: https://drive.google.com/drive/folders/1aUvGSjpQsGqyAlmLcS_vafcHQ6jVciZ4
+  google_site_url: https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test
   archive_doi:
   maintainer_identity_source: confirmed from local git configuration
 confirmation:

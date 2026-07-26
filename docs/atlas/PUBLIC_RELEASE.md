@@ -6,13 +6,20 @@ The source repository is public at
 [`zmichels/kikuchi-atlas`](https://github.com/zmichels/kikuchi-atlas), and its
 existing browser-safe static gallery is public at
 [`zmichels.github.io/kikuchi-atlas`](https://zmichels.github.io/kikuchi-atlas/).
-The new 12-phase, 125-product candidate is pending independent review, merge to
-`master`, a successful protected-environment workflow run, and observed live
-verification. Until those gates pass, this contract does not claim that the
-live gallery serves the candidate. The full-resolution UMN mirror remains
-private, and the separately reviewed archive and DOI release remain
-intentionally unpublished. No public Drive root or Google Site has passed its
-separate publication gate.
+The [full-resolution UMN Drive
+mirror](https://drive.google.com/drive/folders/1aUvGSjpQsGqyAlmLcS_vafcHQ6jVciZ4)
+and its [Google Sites
+catalogue](https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test) have
+passed their separate public-access gates. The 125-product link-complete candidate is pending
+independent review, merge to `master`, a successful
+protected-environment workflow run, and observed live verification. Until
+those gates pass, this contract does not claim that the live GitHub gallery
+serves the link-complete candidate. The separately reviewed archive and DOI release remain intentionally unpublished.
+
+The Drive upload completed before publication, but full Drive round-trip downloads were waived by the user.
+The mirror ledger therefore records public
+folder identity and logged-out accessibility without inventing per-product
+round-trip package hashes or verification timestamps.
 
 ## Deliverables
 
@@ -47,17 +54,23 @@ than being made implicit web-host dependencies. Canonical kinematical master
 and relief-field exports are selected into the archive when their bundle has
 them; redundant run intermediates stay recipe-reconstructible.
 
-## Pending static-gallery candidate
+## Pending link-complete static-gallery candidate
 
 The
-[`atlas-gallery-web-0.2.0-draft.2` prerelease](https://github.com/zmichels/kikuchi-atlas/releases/tag/atlas-gallery-web-0.2.0-draft.2)
-is the review candidate payload. The Pages workflow reconstructs the gallery
-from its ordered assets, checks the reconstructed ZIP against its pinned
-SHA-256, and deploys only the resulting static `site/` tree after the reviewed
-workflow reaches `master`. The release payload is deliberately a technical
-deployment transport rather than the final archival distribution. Publication
-status changes only after a successful master deployment and observed live
+[`atlas-gallery-web-0.2.0-draft.3` prerelease](https://github.com/zmichels/kikuchi-atlas/releases/tag/atlas-gallery-web-0.2.0-draft.3)
+is the collision-free review candidate payload. It supersedes the earlier
+gallery transport without moving, overwriting, deleting, or reusing an
+existing tag or release. The Pages workflow reconstructs the gallery from its
+ordered assets, checks the reconstructed ZIP against its pinned SHA-256, and
+deploys only the resulting static `site/` tree after the reviewed workflow
+reaches `master`. The release payload is deliberately a technical deployment
+transport rather than the final archival distribution. Publication status
+changes only after a successful master deployment and observed live
 verification.
+
+Every candidate product links to its exact public Drive package folder, and
+the GitHub gallery links back to the public Google Site. The folder links do
+not imply the waived package-level download-and-hash comparison.
 
 ## Remaining release gates
 

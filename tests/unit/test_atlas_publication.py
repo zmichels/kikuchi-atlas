@@ -351,11 +351,13 @@ def test_public_atlas_emits_only_public_verified_full_resolution_urls(
                 },
                 "site": {
                     "draft_url": (
-                        "https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test"
+                        "https://sites.google.com/d/"
+                        "1lyi4zBFb31m-8nRdtAsR14bmTvS35g5r/p/"
+                        "1lQWfJnlloPvDy9Yx029riQUJ4QgzDUWS/edit"
                     ),
-                    "public_url": None,
-                    "audience": "university-only",
-                    "state": "draft",
+                    "public_url": "https://sites.google.com/umn.edu/demo-atlas",
+                    "audience": "public",
+                    "state": "public-verified",
                 },
             },
             sort_keys=False,
@@ -386,3 +388,7 @@ def test_public_atlas_emits_only_public_verified_full_resolution_urls(
     assert "https://drive.google.com/drive/folders/private-id" not in inventory_text
     assert "https://drive.google.com/drive/folders/verified-id" in pages
     assert pages.count(">open full-resolution package<") == 2
+    assert pages.count(
+        'href="https://sites.google.com/umn.edu/demo-atlas">'
+        "Google Sites mirror</a>"
+    ) == 6
