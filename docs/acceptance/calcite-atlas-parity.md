@@ -14,6 +14,19 @@ Date accepted: 2026-07-24
 `verify_structure()` accepted the CIF checksum, formula, lattice, coordinates,
 occupancies, Uiso values, and 6/6/18 site multiplicities.
 
+## Scoped provenance whitespace waiver
+
+Date adjudicated: 2026-07-25.
+
+The raw upstream source `phases/calcite/COD-1547350.cif` is preserved
+byte-for-byte to retain its declared and verified SHA-256
+`0fb4f7a3f6f0aeb6e053e0512a1ffa959f3ba1d6f49e7186063324acab3290e7`.
+The generic full-range `git diff --check` warning is waived only for the
+trailing spaces in that source file at lines 104 and 113; removing them would
+change the checksum-pinned scientific source bytes. This waiver does not apply
+to any other file: all non-source diffs must continue to pass whitespace
+checks.
+
 ## Tracked baseline paths
 
 - Source record: `phases/calcite/source.yml`.
