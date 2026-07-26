@@ -20,6 +20,7 @@ links:
 evidence:
   - ../../scripts/build_public_atlas.py
   - ../../src/kikuchi_lab/atlas/publication.py
+  - ../acceptance/atlas-consolidation-and-google-mirror.md
 ---
 
 # KIKU-F012: Prepare the Kikuchi Atlas for public release
@@ -37,7 +38,7 @@ browser-safe gallery assets from DOI-oriented scientific/print artifacts.
   filesystem links.
 - [x] The gallery and archive have a machine-readable product and checksum
   inventory with explicit claim boundaries.
-- [ ] A future account/DOI decision is recorded before any external upload.
+- [ ] A stable archival release version and DOI decision are recorded before the separate archive upload.
 
 ## Progress Evidence
 
@@ -48,3 +49,8 @@ browser-safe gallery assets from DOI-oriented scientific/print artifacts.
 - KIKU-T086 refreshes the release-driven 125-product GitHub Pages catalogue.
 - KIKU-T087 gates the UMN Drive and Google Sites mirror on action-time
   confirmation and logged-out verification.
+- KIKU-T085, KIKU-T086, and KIKU-T087 are complete with a final acceptance
+  record covering the canonical tree, live Pages, public Drive/Site mirror,
+  recoverable cleanup, and explicit Drive round-trip nonclaim.
+- The feature remains active only for the separately reviewed archival package
+  and DOI. `archive_doi` is still null.

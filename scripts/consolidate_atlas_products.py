@@ -9,6 +9,7 @@ from pathlib import Path
 from kikuchi_lab.atlas.consolidation import (
     audit_legacy_paths,
     build_migration_ledger,
+    cleanup_legacy_files,
     materialize_ledger,
     record_github_pages_verification,
     rewrite_product_registry,
@@ -114,6 +115,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     github_verification.add_argument("--phase-count", type=int, required=True)
     github_verification.add_argument("--product-count", type=int, required=True)
     github_verification.add_argument("--zip-sha256", required=True)
+    cleanup = subparsers.add_parser(
+        "cleanup",
+        help="Move only exact verified legacy publishables to recoverable Trash.",
+    )
+    cleanup.add_argument(
+        "--ledger",
+        type=Path,
+        default=ROOT / "docs/atlas/ATLAS_MIGRATION.yml",
+    )
+    cleanup.add_argument(
+        "--mirror",
+        type=Path,
+        default=ROOT / "docs/atlas/GOOGLE_MIRROR.yml",
+    )
+    cleanup.add_argument("--github-verification", type=Path, required=True)
+    cleanup.add_argument("--root", type=Path, default=ROOT)
+    cleanup.add_argument("--trash-directory", type=Path)
+    cleanup.add_argument("--dry-run", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -136,10 +155,7 @@ def main(
         print(f"{ledger.state} phases={ledger.phase_count} products={ledger.product_count}")
     elif args.command == "materialize":
         ledger = materialize_ledger(args.ledger, repository_root=args.root)
-        print(
-            f"{ledger.state} phases={ledger.phase_count} "
-            f"products={ledger.product_count}"
-        )
+        print(f"{ledger.state} phases={ledger.phase_count} products={ledger.product_count}")
     elif args.command == "verify":
         result = verify_canonical_tree(args.ledger, repository_root=args.root)
         print(
@@ -188,6 +204,27 @@ def main(
             f"recorded run={result.workflow_run_id} "
             f"phases={result.phase_count} products={result.product_count}"
         )
+    elif args.command == "cleanup":
+        result = cleanup_legacy_files(
+            ledger_path=args.ledger,
+            mirror_path=args.mirror,
+            github_verification_path=args.github_verification,
+            repository_root=args.root,
+            dry_run=args.dry_run,
+            trash_directory=args.trash_directory,
+        )
+        action = "dry-run" if result.dry_run else "cleaned"
+        print(
+            f"{action} approved_files={result.approved_count} "
+            f"approved_bytes={result.approved_bytes} "
+            f"moved_files={result.moved_count} moved_bytes={result.moved_bytes} "
+            f"trash_root={result.trash_root}"
+        )
+        for item in result.files:
+            print(
+                f"{item.original_path}\t{item.byte_count}\t{item.sha256}\t"
+                f"destinations={len(item.verified_destinations)}\t{item.trash_path}"
+            )
     return 0
 
 

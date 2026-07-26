@@ -8,6 +8,7 @@ from pathlib import Path, PurePosixPath
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -16,6 +17,7 @@ import kikuchi_lab.atlas.consolidation as consolidation
 from kikuchi_lab.atlas.consolidation import (
     MigrationLedger,
     build_migration_ledger,
+    cleanup_legacy_files,
     materialize_ledger,
     verify_canonical_tree,
     write_migration_ledger,
@@ -27,9 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 VERIFICATION_TAG = "atlas-gallery-web-0.2.0-draft.2"
 VERIFICATION_RUN_ID = 30193991683
 VERIFICATION_SITE_URL = "https://zmichels.github.io/kikuchi-atlas/"
-VERIFICATION_ZIP_SHA256 = (
-    "d32d21494ae2b9b078d3e59dee7dd241c8474914ade76db7226cbb410875a514"
-)
+VERIFICATION_ZIP_SHA256 = "d32d21494ae2b9b078d3e59dee7dd241c8474914ade76db7226cbb410875a514"
 
 
 @pytest.fixture
@@ -211,6 +211,242 @@ def _verification_kwargs(output: Path, repository_root: Path) -> dict[str, objec
     }
 
 
+def _prepare_cleanup_fixture(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[Path, Path, Path, Path]:
+    ledger_path = _write_fixture_ledger(fixture_repo)
+    materialize_ledger(ledger_path, repository_root=fixture_repo)
+    mirror_path = fixture_repo / "docs/atlas/GOOGLE_MIRROR.yml"
+    mirror_path.write_text("fixture: true\n", encoding="utf-8")
+    github_path = fixture_repo / "github-verification.json"
+    github_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "observed_at": "2026-07-26T00:00:00Z",
+                "release_tag": VERIFICATION_TAG,
+                "workflow_run_id": VERIFICATION_RUN_ID,
+                "workflow_conclusion": "success",
+                "site_url": VERIFICATION_SITE_URL,
+                "phase_count": 12,
+                "product_count": 125,
+                "zip_sha256": VERIFICATION_ZIP_SHA256,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        consolidation,
+        "_verify_canonical_tree",
+        lambda ledger, root: consolidation.CanonicalVerification(
+            phase_count=12,
+            product_count=125,
+            missing_count=0,
+            mismatched_count=0,
+            symlink_count=0,
+        ),
+    )
+    monkeypatch.setattr(
+        consolidation,
+        "load_mirror_ledger",
+        lambda path: SimpleNamespace(
+            root_state="public-verified",
+            site_state="public-verified",
+            public_product_count=125,
+            public_verification={"observed_at": "2026-07-26T00:00:00Z"},
+        ),
+        raising=False,
+    )
+    trash = fixture_repo / ".Trash"
+    trash.mkdir()
+    return ledger_path, mirror_path, github_path, trash
+
+
+def test_cleanup_refuses_until_all_publication_gates_are_verified(
+    fixture_repo: Path,
+) -> None:
+    ledger_path = _write_fixture_ledger(fixture_repo)
+    materialize_ledger(ledger_path, repository_root=fixture_repo)
+
+    with pytest.raises(ValueError, match="publication gates"):
+        cleanup_legacy_files(
+            ledger_path=ledger_path,
+            mirror_path=fixture_repo / "docs/atlas/GOOGLE_MIRROR.yml",
+            github_verification_path=fixture_repo / "missing.json",
+            repository_root=fixture_repo,
+            dry_run=False,
+            trash_directory=fixture_repo / ".Trash",
+        )
+
+
+def test_cleanup_deletes_only_exact_approved_files(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    approved = fixture_repo / "local/legacy/demo.svg"
+    intermediate = fixture_repo / "local/legacy/frames/frame-0001.png"
+
+    result = cleanup_legacy_files(
+        ledger_path=ledger_path,
+        mirror_path=mirror_path,
+        github_verification_path=github_path,
+        repository_root=fixture_repo,
+        dry_run=False,
+        trash_directory=trash,
+    )
+
+    assert not approved.exists()
+    assert intermediate.exists()
+    assert result.moved_count == 6
+    assert all(Path(item.trash_path).is_file() for item in result.files)
+    assert consolidation._load_migration_ledger(ledger_path).state == "cleaned"
+
+
+def test_cleanup_stops_on_source_hash_change(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    source = fixture_repo / "local/legacy/demo.svg"
+    source.write_bytes(b"changed after planning")
+
+    with pytest.raises(ValueError, match="source changed"):
+        cleanup_legacy_files(
+            ledger_path=ledger_path,
+            mirror_path=mirror_path,
+            github_verification_path=github_path,
+            repository_root=fixture_repo,
+            dry_run=False,
+            trash_directory=trash,
+        )
+
+    assert source.exists()
+    assert not tuple(trash.iterdir())
+
+
+def test_cleanup_stops_on_canonical_hash_change_before_moving_any_source(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    destination = fixture_repo / ("local/atlas/phases/quartz/products/quartz-demo/media/demo.svg")
+    destination.write_bytes(b"changed canonical copy")
+
+    with pytest.raises(ValueError, match="canonical destination changed"):
+        cleanup_legacy_files(
+            ledger_path=ledger_path,
+            mirror_path=mirror_path,
+            github_verification_path=github_path,
+            repository_root=fixture_repo,
+            dry_run=False,
+            trash_directory=trash,
+        )
+
+    assert (fixture_repo / "local/legacy/demo.svg").is_file()
+    assert not tuple(trash.iterdir())
+
+
+def test_cleanup_refuses_git_tracked_source_before_moving_any_source(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    subprocess.run(["git", "init", "-q"], cwd=fixture_repo, check=True)
+    subprocess.run(
+        ["git", "add", "local/legacy/demo.svg"],
+        cwd=fixture_repo,
+        check=True,
+    )
+
+    with pytest.raises(ValueError, match="tracked by git"):
+        cleanup_legacy_files(
+            ledger_path=ledger_path,
+            mirror_path=mirror_path,
+            github_verification_path=github_path,
+            repository_root=fixture_repo,
+            dry_run=False,
+            trash_directory=trash,
+        )
+
+    assert (fixture_repo / "local/legacy/demo.svg").is_file()
+    assert not tuple(trash.iterdir())
+
+
+def test_cleanup_dry_run_is_non_mutating_and_reports_exact_unique_sources(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+
+    result = cleanup_legacy_files(
+        ledger_path=ledger_path,
+        mirror_path=mirror_path,
+        github_verification_path=github_path,
+        repository_root=fixture_repo,
+        dry_run=True,
+        trash_directory=trash,
+    )
+
+    assert result.dry_run is True
+    assert result.moved_count == 0
+    assert result.approved_count == 6
+    assert all((fixture_repo / item.original_path).is_file() for item in result.files)
+    assert not tuple(trash.iterdir())
+    assert consolidation._load_migration_ledger(ledger_path).state == "materialized"
+
+
+def test_cleanup_preserves_exact_source_when_approval_is_revoked(
+    fixture_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path, mirror_path, github_path, trash = _prepare_cleanup_fixture(
+        fixture_repo,
+        monkeypatch,
+    )
+    ledger = consolidation._load_migration_ledger(ledger_path)
+    preserved = "local/legacy/demo.json"
+    write_migration_ledger(
+        replace(
+            ledger,
+            files=tuple(
+                replace(item, cleanup_approved=False) if item.source_path == preserved else item
+                for item in ledger.files
+            ),
+        ),
+        ledger_path,
+    )
+
+    result = cleanup_legacy_files(
+        ledger_path=ledger_path,
+        mirror_path=mirror_path,
+        github_verification_path=github_path,
+        repository_root=fixture_repo,
+        dry_run=False,
+        trash_directory=trash,
+    )
+
+    assert (fixture_repo / preserved).is_file()
+    assert result.moved_count == 5
+    assert preserved not in {item.original_path for item in result.files}
+
+
 def test_record_github_verification_cli_writes_exact_atomic_record(
     fixture_repo: Path,
 ) -> None:
@@ -260,9 +496,7 @@ def test_record_github_verification_normalizes_uppercase_digest(
     result = consolidation.record_github_pages_verification(**kwargs)
 
     assert result.zip_sha256 == VERIFICATION_ZIP_SHA256
-    assert json.loads(output.read_text(encoding="utf-8"))["zip_sha256"] == (
-        VERIFICATION_ZIP_SHA256
-    )
+    assert json.loads(output.read_text(encoding="utf-8"))["zip_sha256"] == (VERIFICATION_ZIP_SHA256)
 
 
 @pytest.mark.parametrize(
@@ -308,9 +542,7 @@ def test_record_github_verification_refuses_symlink_output(
     output.symlink_to(target)
 
     with pytest.raises(ValueError, match="symlink"):
-        consolidation.record_github_pages_verification(
-            **_verification_kwargs(output, fixture_repo)
-        )
+        consolidation.record_github_pages_verification(**_verification_kwargs(output, fixture_repo))
 
     assert output.is_symlink()
     assert json.loads(target.read_text(encoding="utf-8")) == {"preserve": True}
@@ -323,9 +555,7 @@ def test_record_github_verification_refuses_output_outside_local_atlas(
     output = fixture_repo / "outside.json"
 
     with pytest.raises(ValueError, match="local/atlas"):
-        consolidation.record_github_pages_verification(
-            **_verification_kwargs(output, fixture_repo)
-        )
+        consolidation.record_github_pages_verification(**_verification_kwargs(output, fixture_repo))
 
     assert not output.exists()
     assert not output.with_name(output.name + ".partial").exists()
@@ -341,9 +571,7 @@ def test_record_github_verification_refuses_symlinked_local_atlas_root(
     output = safe_root / "github-pages-verification.json"
 
     with pytest.raises(ValueError, match="local/atlas.*symlink"):
-        consolidation.record_github_pages_verification(
-            **_verification_kwargs(output, fixture_repo)
-        )
+        consolidation.record_github_pages_verification(**_verification_kwargs(output, fixture_repo))
 
     assert not (target / output.name).exists()
     assert not (target / f"{output.name}.partial").exists()
@@ -354,12 +582,9 @@ def test_plan_combines_registry_products_and_three_intake_products(fixture_repo:
     assert ledger.phase_count == 1
     assert ledger.product_count == 2
     artist = next(item for item in ledger.products if item.product_id == "quartz-artist")
-    assert artist.destination_root == (
-        "local/atlas/phases/quartz/products/quartz-artist"
-    )
+    assert artist.destination_root == ("local/atlas/phases/quartz/products/quartz-artist")
     assert all(
-        item.source_byte_count > 0 and len(item.source_sha256) == 64
-        for item in ledger.files
+        item.source_byte_count > 0 and len(item.source_sha256) == 64 for item in ledger.files
     )
     assert ledger.retained_source_paths == ()
 
@@ -381,9 +606,7 @@ def test_plan_classifies_only_exact_publishable_files(fixture_repo: Path) -> Non
     ledger = _build_fixture_ledger(fixture_repo)
     paths = {item.source_path for item in ledger.files if item.source_path is not None}
     assert "local/legacy/frames/frame-0001.png" not in paths
-    assert {item.role for item in ledger.files} == {
-        "media", "preview", "provenance", "web"
-    }
+    assert {item.role for item in ledger.files} == {"media", "preview", "provenance", "web"}
     assert all(item.cleanup_approved for item in ledger.files if item.kind == "copied")
 
 
@@ -412,9 +635,7 @@ def test_plan_rejects_symlinked_source_that_escapes_approved_root(
 def test_plan_cli_rejects_output_inside_canonical_root_without_writing(
     fixture_repo: Path,
 ) -> None:
-    output = fixture_repo / (
-        "local/atlas/phases/quartz/products/escape/product-package.yml"
-    )
+    output = fixture_repo / ("local/atlas/phases/quartz/products/escape/product-package.yml")
     result = subprocess.run(
         [
             sys.executable,
@@ -455,9 +676,7 @@ def test_plan_cli_anchors_canonical_root_to_registry_with_relocated_policy(
     )
     policy_link = fixture_repo / "relocated-policy.yml"
     policy_link.symlink_to(relocated_policy)
-    output = fixture_repo / (
-        "local/atlas/phases/quartz/products/escape/product-package.yml"
-    )
+    output = fixture_repo / ("local/atlas/phases/quartz/products/escape/product-package.yml")
     output.parent.mkdir(parents=True)
 
     result = subprocess.run(
@@ -495,9 +714,7 @@ def test_materialize_copies_to_partial_then_verifies_and_publishes(
 
     result = materialize_ledger(ledger_path, repository_root=fixture_repo)
 
-    package = fixture_repo / (
-        "local/atlas/phases/quartz/products/quartz-demo/product-package.yml"
-    )
+    package = fixture_repo / ("local/atlas/phases/quartz/products/quartz-demo/product-package.yml")
     assert result.state == "materialized"
     assert validate_product_package(package).product_id == "quartz-demo"
     assert not tuple(package.parent.rglob("*.partial"))
@@ -519,9 +736,7 @@ def test_materialize_resumes_matching_destination_without_rewriting(
 
 def test_materialize_refuses_existing_different_bytes(fixture_repo: Path) -> None:
     ledger_path = _write_fixture_ledger(fixture_repo)
-    destination = fixture_repo / (
-        "local/atlas/phases/quartz/products/quartz-demo/media/demo.svg"
-    )
+    destination = fixture_repo / ("local/atlas/phases/quartz/products/quartz-demo/media/demo.svg")
     destination.parent.mkdir(parents=True)
     destination.write_bytes(b"different")
 
@@ -743,7 +958,7 @@ def test_path_audit_discovers_tracked_readme_legacy_output(
 @pytest.mark.parametrize(
     "live_output_line",
     (
-        '--output local/legacy/live-output',
+        "--output local/legacy/live-output",
         'default=ROOT / "local/legacy/live-output"',
         'else ROOT / "local/legacy/live-output"',
         'output_root = ROOT / "local/legacy/live-output"',
@@ -775,10 +990,7 @@ def test_path_audit_rejects_live_script_output_roots(
     (
         (),
         (PurePosixPath("local/other/verified-source.dat"),),
-        (
-            PurePosixPath("local")
-            / "relief-globes/future-publication/verified-source.dat",
-        ),
+        (PurePosixPath("local") / "relief-globes/future-publication/verified-source.dat",),
     ),
 )
 def test_path_audit_rejects_unlisted_nonmarker_script_path(

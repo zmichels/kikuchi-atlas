@@ -2,7 +2,7 @@
 id: KIKU-T085
 type: task
 title: Canonicalize Atlas product packages
-status: ready
+status: done
 parent: KIKU-F012
 children: []
 created: 2026-07-25
@@ -14,6 +14,7 @@ links:
 evidence:
   - ../../src/kikuchi_lab/atlas/consolidation.py
   - ../atlas/ATLAS_MIGRATION.yml
+  - ../acceptance/atlas-consolidation-and-google-mirror.md
 ---
 
 # KIKU-T085: Canonicalize Atlas product packages
@@ -24,7 +25,13 @@ Copy every publishable 12-phase Atlas artifact into the phase-slugged canonical 
 
 ## Acceptance Criteria
 
-- [ ] Exactly 125 product manifests and 12 phase manifests validate.
-- [ ] Every copied destination matches its frozen source SHA-256 and byte count.
-- [ ] The 125-product Atlas builds without a legacy-root fallback.
-- [ ] No legacy file has been deleted before all external publication gates pass.
+- [x] Exactly 125 product manifests and 12 phase manifests validate.
+- [x] Every copied destination matches its frozen source SHA-256 and byte count.
+- [x] The 125-product Atlas builds without a legacy-root fallback.
+- [x] No legacy file was moved before all external publication gates passed.
+
+## Completion Evidence
+
+The final acceptance record identifies the exact canonical inventory, cleaned
+migration-ledger hash, recoverable 364-file cleanup, post-cleanup local/public
+builds, focused tests, and repository-wide baseline classification.
