@@ -14,11 +14,14 @@ import re
 import shutil
 import stat
 import subprocess
+import tempfile
 from typing import Any
+from uuid import uuid4
 
 import yaml
 
 from .catalog import AtlasProduct, load_phase_registry, load_product_registry
+from .mirror import load_mirror_ledger
 from .packages import (
     ProductPackage,
     sha256_file,
@@ -30,9 +33,7 @@ from .web_proxy import WEB_PROXY_PROFILE, build_web_proxy, validate_web_proxy
 
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_ATLAS_GALLERY_RELEASE_TAG = re.compile(
-    r"^atlas-gallery-web-[0-9]+\.[0-9]+\.[0-9]+-draft\.[0-9]+$"
-)
+_ATLAS_GALLERY_RELEASE_TAG = re.compile(r"^atlas-gallery-web-[0-9]+\.[0-9]+\.[0-9]+-draft\.[0-9]+$")
 _GITHUB_PAGES_SITE_URL = "https://zmichels.github.io/kikuchi-atlas/"
 _POLICY_FIELDS = {"schema_version", "canonical_root", "legacy_roots", "extra_products"}
 _LEDGER_FIELDS = {
@@ -46,6 +47,7 @@ _LEDGER_FIELDS = {
     "products",
     "files",
 }
+_CLEANED_LEDGER_FIELDS = _LEDGER_FIELDS | {"cleanup"}
 _LEDGER_PRODUCT_FIELDS = {
     "product_id",
     "phase_slug",
@@ -129,6 +131,17 @@ _REQUIRED_QUARTZ_INTAKE_IDS = {
     "quartz-near-depth-artist-master-identity-60fps",
     "quartz-near-depth-artist-master-oblique-17-31-43-60fps",
 }
+_GITHUB_VERIFICATION_FIELDS = {
+    "schema_version",
+    "observed_at",
+    "release_tag",
+    "workflow_run_id",
+    "workflow_conclusion",
+    "site_url",
+    "phase_count",
+    "product_count",
+    "zip_sha256",
+}
 
 
 def _load_catalog(path: Path) -> list[dict[str, Any]]:
@@ -168,6 +181,31 @@ class MigrationProduct:
 
 
 @dataclass(frozen=True)
+class CleanupFileRecord:
+    """One exact legacy file approved for a recoverable Trash move."""
+
+    trashed_at: str | None
+    original_path: str
+    trash_path: str
+    byte_count: int
+    sha256: str
+    verified_destinations: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class CleanupResult:
+    """Validated cleanup inventory and, for a live run, its move totals."""
+
+    dry_run: bool
+    trash_root: str
+    approved_count: int
+    approved_bytes: int
+    moved_count: int
+    moved_bytes: int
+    files: tuple[CleanupFileRecord, ...]
+
+
+@dataclass(frozen=True)
 class MigrationLedger:
     state: str
     source_commit: str
@@ -175,6 +213,7 @@ class MigrationLedger:
     retained_source_paths: tuple[str, ...]
     products: tuple[MigrationProduct, ...]
     files: tuple[MigrationFile, ...]
+    cleanup: CleanupResult | None = None
 
     @property
     def product_count(self) -> int:
@@ -253,9 +292,7 @@ def record_github_pages_verification(
         raise ValueError("GitHub Pages verification requires exactly 12 phases")
     if type(product_count) is not int or product_count != 125:
         raise ValueError("GitHub Pages verification requires exactly 125 products")
-    if not isinstance(release_tag, str) or not _ATLAS_GALLERY_RELEASE_TAG.fullmatch(
-        release_tag
-    ):
+    if not isinstance(release_tag, str) or not _ATLAS_GALLERY_RELEASE_TAG.fullmatch(release_tag):
         raise ValueError("release tag must match the Atlas gallery draft tag shape")
     if site_url != _GITHUB_PAGES_SITE_URL:
         raise ValueError(f"site URL must be exactly {_GITHUB_PAGES_SITE_URL}")
@@ -280,9 +317,8 @@ def record_github_pages_verification(
     if output.is_symlink():
         raise ValueError("GitHub verification output must not be a symlink")
     resolved_output = output.resolve(strict=False)
-    if (
-        resolved_output == resolved_safe_root
-        or not resolved_output.is_relative_to(resolved_safe_root)
+    if resolved_output == resolved_safe_root or not resolved_output.is_relative_to(
+        resolved_safe_root
     ):
         raise ValueError("GitHub verification output must be inside repository local/atlas")
     _assert_real_directory(resolved_output.parent, anchor=root)
@@ -307,11 +343,7 @@ def record_github_pages_verification(
     content = (json.dumps(asdict(record), indent=2, sort_keys=True) + "\n").encode()
     partial = resolved_output.with_name(resolved_output.name + ".partial")
     if partial.exists() or partial.is_symlink():
-        if (
-            partial.is_symlink()
-            or not partial.is_file()
-            or partial.stat().st_nlink != 1
-        ):
+        if partial.is_symlink() or not partial.is_file() or partial.stat().st_nlink != 1:
             raise ValueError(f"unsafe partial verification output: {partial}")
         partial.unlink()
     try:
@@ -377,8 +409,7 @@ def _source_path(
 ) -> Path:
     relative = _relative_path(relative_value, "migration source")
     if not any(
-        relative == declared or relative.is_relative_to(declared)
-        for declared, _ in approved_roots
+        relative == declared or relative.is_relative_to(declared) for declared, _ in approved_roots
     ):
         raise ValueError(f"source path is outside approved legacy roots: {relative_value}")
     source = root / relative
@@ -565,7 +596,10 @@ def _validate_extra(
     if not isinstance(extra, dict):
         raise ValueError("extra product must be a mapping")
     fields = set(extra)
-    if not _EXTRA_REQUIRED_FIELDS <= fields or not fields <= _EXTRA_REQUIRED_FIELDS | _EXTRA_OPTIONAL_FIELDS:
+    if (
+        not _EXTRA_REQUIRED_FIELDS <= fields
+        or not fields <= _EXTRA_REQUIRED_FIELDS | _EXTRA_OPTIONAL_FIELDS
+    ):
         raise ValueError("extra product fields differ from schema")
     product_id = extra["id"]
     if not isinstance(product_id, str) or not product_id:
@@ -625,9 +659,7 @@ def validate_migration_output_path(
     ).resolve(strict=False)
     resolved_output = Path(output_path).resolve(strict=False)
     if resolved_output == canonical_root or resolved_output.is_relative_to(canonical_root):
-        raise ValueError(
-            f"migration output must be outside the canonical root: {resolved_output}"
-        )
+        raise ValueError(f"migration output must be outside the canonical root: {resolved_output}")
 
 
 def build_migration_ledger(
@@ -650,10 +682,7 @@ def build_migration_ledger(
     phase_source_by_slug = {phase.slug: phase.source_record for phase in phases}
     families, registry_products = load_product_registry(product_registry, phase_slugs=phase_slugs)
     raw_product_payload = yaml.safe_load(product_registry.read_text(encoding="utf-8"))
-    raw_product_by_id = {
-        item["id"]: item
-        for item in raw_product_payload["products"]
-    }
+    raw_product_by_id = {item["id"]: item for item in raw_product_payload["products"]}
     family_ids = {family.identifier for family in families}
     catalog = _load_catalog(Path(artifact_catalog_path).resolve())
     catalog_by_id = {entry["id"]: entry for entry in catalog}
@@ -706,9 +735,7 @@ def build_migration_ledger(
                     phase_slug=phase_slug,
                     destination_root=destination_root,
                     source_value=source_value,
-                    destination_relative=(
-                        f"{directory}/{PurePosixPath(source_value).name}"
-                    ),
+                    destination_relative=(f"{directory}/{PurePosixPath(source_value).name}"),
                     role=role,
                 )
         for source_value, destination_relative in _supplemental_sources(
@@ -739,9 +766,7 @@ def build_migration_ledger(
                 product_id=product_id,
                 phase_slug=phase_slug,
                 source_path=None,
-                destination_path=(
-                    destination_root / "provenance/release-metadata.yml"
-                ).as_posix(),
+                destination_path=(destination_root / "provenance/release-metadata.yml").as_posix(),
                 role="provenance",
                 kind="generated-metadata",
                 source_byte_count=len(metadata),
@@ -837,9 +862,7 @@ def build_migration_ledger(
                 product_id=product_id,
                 phase_slug=phase_slug,
                 source_path=None,
-                destination_path=(
-                    destination_root / "provenance/release-metadata.yml"
-                ).as_posix(),
+                destination_path=(destination_root / "provenance/release-metadata.yml").as_posix(),
                 role="provenance",
                 kind="generated-metadata",
                 source_byte_count=len(metadata),
@@ -877,8 +900,81 @@ def build_migration_ledger(
     )
 
 
+def _is_in_retained_source_bundle(
+    source_path: str,
+    retained_source_paths: tuple[str, ...],
+) -> bool:
+    source = PurePosixPath(source_path)
+    return any(
+        source == retained or source.is_relative_to(retained)
+        for retained in map(PurePosixPath, retained_source_paths)
+    )
+
+
+def _validate_retained_source_approvals(ledger: MigrationLedger) -> None:
+    if any(
+        item.source_path is not None
+        and item.cleanup_approved
+        and _is_in_retained_source_bundle(
+            item.source_path,
+            ledger.retained_source_paths,
+        )
+        for item in ledger.files
+    ):
+        raise ValueError("cleanup-approved file is inside a retained source bundle")
+
+
+def _cleanup_candidate_groups(
+    ledger: MigrationLedger,
+) -> dict[str, tuple[MigrationFile, ...]]:
+    all_groups: dict[str, list[MigrationFile]] = {}
+    for item in ledger.files:
+        if item.source_path is not None:
+            all_groups.setdefault(item.source_path, []).append(item)
+
+    candidates: dict[str, tuple[MigrationFile, ...]] = {}
+    for source_path, items in all_groups.items():
+        copied = [item for item in items if item.kind == "copied"]
+        if not any(item.cleanup_approved for item in copied):
+            continue
+        if (
+            any(not item.cleanup_approved for item in copied)
+            or any(item.kind == "generated-proxy" and item.cleanup_approved for item in items)
+            or any(item.kind not in {"copied", "generated-proxy"} for item in items)
+        ):
+            raise ValueError(f"cleanup approvals are inconsistent: {source_path}")
+        # A false approval on a generated proxy is intentional: only copied
+        # records authorize cleanup, while every exact-source destination must
+        # still be validated before the source can move.
+        candidates[source_path] = tuple(items)
+    return candidates
+
+
+def _validate_cleanup_destination_journal(ledger: MigrationLedger) -> None:
+    if ledger.state != "cleaned":
+        return
+    if ledger.cleanup is None:
+        raise ValueError("cleaned migration ledger requires a cleanup journal")
+    groups = _cleanup_candidate_groups(ledger)
+    records = {item.original_path: item for item in ledger.cleanup.files}
+    if set(records) != set(groups):
+        raise ValueError("cleanup destination journal source set is incomplete")
+    for source_path, items in groups.items():
+        record = records[source_path]
+        identities = {(item.source_byte_count, item.source_sha256) for item in items}
+        destinations = tuple(sorted(item.destination_path for item in items))
+        if (
+            len(identities) != 1
+            or identities.pop() != (record.byte_count, record.sha256)
+            or record.verified_destinations != destinations
+        ):
+            raise ValueError(f"cleanup destination journal is incomplete: {source_path}")
+
+
 def write_migration_ledger(ledger: MigrationLedger, output_path: str | Path) -> None:
     """Write a deterministic YAML migration ledger."""
+    _validate_retained_source_approvals(ledger)
+    _validate_cleanup_destination_journal(ledger)
     product_by_id = {item.product_id: item for item in ledger.products}
     file_records: list[dict[str, object]] = []
     for item in ledger.files:
@@ -896,8 +992,8 @@ def write_migration_ledger(ledger: MigrationLedger, output_path: str | Path) -> 
                 raise ValueError("generated metadata no longer matches its planned SHA-256")
             record["generated_content"] = content
         file_records.append(record)
-    payload = {
-        "schema_version": 1,
+    payload: dict[str, object] = {
+        "schema_version": 2 if ledger.state == "cleaned" else 1,
         "state": ledger.state,
         "source_commit": ledger.source_commit,
         "canonical_root": ledger.canonical_root,
@@ -907,6 +1003,32 @@ def write_migration_ledger(ledger: MigrationLedger, output_path: str | Path) -> 
         "products": [asdict(item) for item in ledger.products],
         "files": file_records,
     }
+    if ledger.state == "cleaned":
+        cleanup = ledger.cleanup
+        if (
+            cleanup is None
+            or cleanup.dry_run
+            or cleanup.approved_count != len(cleanup.files)
+            or cleanup.moved_count != cleanup.approved_count
+            or cleanup.moved_bytes != cleanup.approved_bytes
+        ):
+            raise ValueError("cleaned migration ledger requires a complete cleanup record")
+        payload["cleanup"] = {
+            "trash_root": cleanup.trash_root,
+            "approved_count": cleanup.approved_count,
+            "approved_bytes": cleanup.approved_bytes,
+            "moved_count": cleanup.moved_count,
+            "moved_bytes": cleanup.moved_bytes,
+            "files": [
+                {
+                    **asdict(item),
+                    "verified_destinations": list(item.verified_destinations),
+                }
+                for item in cleanup.files
+            ],
+        }
+    elif ledger.cleanup is not None:
+        raise ValueError("only a cleaned migration ledger may contain cleanup records")
     output = Path(output_path)
     output.write_text(
         yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
@@ -919,12 +1041,20 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
         payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as error:
         raise ValueError("migration ledger cannot be read as YAML") from error
-    if not isinstance(payload, dict) or set(payload) != _LEDGER_FIELDS:
+    if not isinstance(payload, dict):
         raise ValueError("migration ledger fields differ from schema")
-    if payload["schema_version"] != 1:
+    schema_version = payload.get("schema_version")
+    expected_fields = _LEDGER_FIELDS if schema_version == 1 else _CLEANED_LEDGER_FIELDS
+    if set(payload) != expected_fields:
+        raise ValueError("migration ledger fields differ from schema")
+    if schema_version not in {1, 2}:
         raise ValueError("unsupported migration ledger schema")
-    if payload["state"] not in {"planned", "materialized"}:
-        raise ValueError("migration ledger state must be planned or materialized")
+    if (schema_version == 1 and payload["state"] not in {"planned", "materialized"}) or (
+        schema_version == 2 and payload["state"] != "cleaned"
+    ):
+        raise ValueError(
+            "migration ledger state must match planned, materialized, or cleaned schema"
+        )
     if not isinstance(payload["source_commit"], str) or not _COMMIT.fullmatch(
         payload["source_commit"]
     ):
@@ -935,14 +1065,10 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
     raw_retained_source_paths = payload["retained_source_paths"]
     if (
         not isinstance(raw_retained_source_paths, list)
-        or not all(
-            isinstance(item, str) and item for item in raw_retained_source_paths
-        )
+        or not all(isinstance(item, str) and item for item in raw_retained_source_paths)
         or len(set(raw_retained_source_paths)) != len(raw_retained_source_paths)
     ):
-        raise ValueError(
-            "migration ledger retained_source_paths must contain unique paths"
-        )
+        raise ValueError("migration ledger retained_source_paths must contain unique paths")
     retained_source_paths = tuple(
         _relative_path(value, "retained source path").as_posix()
         for value in raw_retained_source_paths
@@ -987,8 +1113,7 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
         if not isinstance(source_sha256, str) or not _SHA256.fullmatch(source_sha256):
             raise ValueError("migration ledger source SHA-256 is invalid")
         if destination_sha256 is not None and (
-            not isinstance(destination_sha256, str)
-            or not _SHA256.fullmatch(destination_sha256)
+            not isinstance(destination_sha256, str) or not _SHA256.fullmatch(destination_sha256)
         ):
             raise ValueError("migration ledger destination SHA-256 is invalid")
         destinations = raw["destinations"]
@@ -1000,9 +1125,7 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
             MigrationFile(
                 product_id=str(raw["product_id"]),
                 phase_slug=str(raw["phase_slug"]),
-                source_path=(
-                    None if raw["source_path"] is None else str(raw["source_path"])
-                ),
+                source_path=(None if raw["source_path"] is None else str(raw["source_path"])),
                 destination_path=str(raw["destination_path"]),
                 role=str(raw["role"]),
                 kind=str(kind),
@@ -1028,6 +1151,95 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
             if sha256(generated_content.encode("utf-8")).hexdigest() != source_sha256:
                 raise ValueError("generated metadata SHA-256 changed")
 
+    cleanup: CleanupResult | None = None
+    if schema_version == 2:
+        raw_cleanup = payload["cleanup"]
+        if not isinstance(raw_cleanup, dict) or set(raw_cleanup) != {
+            "trash_root",
+            "approved_count",
+            "approved_bytes",
+            "moved_count",
+            "moved_bytes",
+            "files",
+        }:
+            raise ValueError("migration cleanup fields differ from schema")
+        raw_cleanup_files = raw_cleanup["files"]
+        if not isinstance(raw_cleanup_files, list):
+            raise ValueError("migration cleanup files must be a list")
+        cleanup_files: list[CleanupFileRecord] = []
+        seen_originals: set[str] = set()
+        seen_trash: set[str] = set()
+        for raw in raw_cleanup_files:
+            if not isinstance(raw, dict) or set(raw) != {
+                "trashed_at",
+                "original_path",
+                "trash_path",
+                "byte_count",
+                "sha256",
+                "verified_destinations",
+            }:
+                raise ValueError("migration cleanup file fields differ from schema")
+            original_path = _relative_path(
+                raw["original_path"],
+                "cleanup original path",
+            ).as_posix()
+            trash_path = raw["trash_path"]
+            if not isinstance(trash_path, str) or not Path(trash_path).is_absolute():
+                raise ValueError("cleanup Trash path must be absolute")
+            trashed_at = raw["trashed_at"]
+            if not isinstance(trashed_at, str) or not trashed_at.endswith("Z"):
+                raise ValueError("cleanup trashed_at must be a UTC timestamp")
+            digest = raw["sha256"]
+            if not isinstance(digest, str) or not _SHA256.fullmatch(digest):
+                raise ValueError("cleanup SHA-256 is invalid")
+            destinations = raw["verified_destinations"]
+            if (
+                not isinstance(destinations, list)
+                or not destinations
+                or not all(isinstance(item, str) and item for item in destinations)
+                or len(set(destinations)) != len(destinations)
+            ):
+                raise ValueError("cleanup verified destinations must contain unique paths")
+            if original_path in seen_originals or trash_path in seen_trash:
+                raise ValueError("cleanup records contain duplicate paths")
+            seen_originals.add(original_path)
+            seen_trash.add(trash_path)
+            cleanup_files.append(
+                CleanupFileRecord(
+                    trashed_at=trashed_at,
+                    original_path=original_path,
+                    trash_path=trash_path,
+                    byte_count=int(raw["byte_count"]),
+                    sha256=digest,
+                    verified_destinations=tuple(destinations),
+                )
+            )
+        approved_count = int(raw_cleanup["approved_count"])
+        approved_bytes = int(raw_cleanup["approved_bytes"])
+        moved_count = int(raw_cleanup["moved_count"])
+        moved_bytes = int(raw_cleanup["moved_bytes"])
+        if (
+            approved_count <= 0
+            or approved_bytes <= 0
+            or approved_count != len(cleanup_files)
+            or moved_count != approved_count
+            or moved_bytes != approved_bytes
+            or sum(item.byte_count for item in cleanup_files) != approved_bytes
+        ):
+            raise ValueError("migration cleanup totals are inconsistent")
+        trash_root = raw_cleanup["trash_root"]
+        if not isinstance(trash_root, str) or not Path(trash_root).is_absolute():
+            raise ValueError("cleanup Trash root must be absolute")
+        cleanup = CleanupResult(
+            dry_run=False,
+            trash_root=trash_root,
+            approved_count=approved_count,
+            approved_bytes=approved_bytes,
+            moved_count=moved_count,
+            moved_bytes=moved_bytes,
+            files=tuple(cleanup_files),
+        )
+
     ledger = MigrationLedger(
         state=str(payload["state"]),
         source_commit=payload["source_commit"],
@@ -1035,6 +1247,7 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
         retained_source_paths=retained_source_paths,
         products=tuple(products),
         files=tuple(files),
+        cleanup=cleanup,
     )
     if payload["phase_count"] != ledger.phase_count:
         raise ValueError("migration ledger phase_count is inconsistent")
@@ -1043,6 +1256,7 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
     product_ids = {item.product_id for item in ledger.products}
     if any(item.product_id not in product_ids for item in ledger.files):
         raise ValueError("migration ledger file refers to an unknown product")
+    _validate_retained_source_approvals(ledger)
     null_outputs = [
         item
         for item in ledger.files
@@ -1055,8 +1269,9 @@ def _load_migration_ledger(path: Path) -> MigrationLedger:
         for item in null_outputs
     ):
         raise ValueError("only generated proxies may have null destination identity")
-    if ledger.state == "materialized" and null_outputs:
+    if ledger.state in {"materialized", "cleaned"} and null_outputs:
         raise ValueError("materialized ledger contains a null destination identity")
+    _validate_cleanup_destination_journal(ledger)
     return ledger
 
 
@@ -1108,9 +1323,7 @@ def _clone_or_copy_verified(
             or destination.stat().st_nlink != 1
             or sha256_file(destination) != expected_sha256
         ):
-            raise ValueError(
-                f"refusing to overwrite different destination: {destination}"
-            )
+            raise ValueError(f"refusing to overwrite different destination: {destination}")
         return
     partial = destination.with_name(destination.name + ".partial")
     if partial.exists() or partial.is_symlink():
@@ -1151,9 +1364,7 @@ def _publish_bytes_verified(content: bytes, destination: Path) -> None:
             or destination.stat().st_size != len(content)
             or sha256_file(destination) != expected_sha256
         ):
-            raise ValueError(
-                f"refusing to overwrite different destination: {destination}"
-            )
+            raise ValueError(f"refusing to overwrite different destination: {destination}")
         return
     partial = destination.with_name(destination.name + ".partial")
     if partial.exists() or partial.is_symlink():
@@ -1378,11 +1589,7 @@ def _verify_canonical_tree(
                 mismatched.add(manifest)
             continue
         expected_ids = tuple(
-            sorted(
-                item.product_id
-                for item in ledger.products
-                if item.phase_slug == phase_slug
-            )
+            sorted(item.product_id for item in ledger.products if item.phase_slug == phase_slug)
         )
         if (
             phase.phase_slug != phase_slug
@@ -1407,6 +1614,420 @@ def verify_canonical_tree(
     """Verify exact packages, manifests, bytes, links, and tree inventory."""
     ledger = _load_migration_ledger(Path(ledger_path))
     return _verify_canonical_tree(ledger, Path(repository_root).resolve())
+
+
+def _load_github_pages_verification(path: Path) -> GitHubPagesVerification:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError("GitHub Pages verification cannot be read") from error
+    if not isinstance(payload, dict) or set(payload) != _GITHUB_VERIFICATION_FIELDS:
+        raise ValueError("GitHub Pages verification fields differ from schema")
+    if payload["schema_version"] != 1:
+        raise ValueError("unsupported GitHub Pages verification schema")
+    observed_at = payload["observed_at"]
+    if not isinstance(observed_at, str) or not observed_at.endswith("Z"):
+        raise ValueError("GitHub Pages observed_at must be a UTC timestamp")
+    release_tag = payload["release_tag"]
+    zip_sha256 = payload["zip_sha256"]
+    if (
+        not isinstance(release_tag, str)
+        or not _ATLAS_GALLERY_RELEASE_TAG.fullmatch(release_tag)
+        or not isinstance(zip_sha256, str)
+        or not _SHA256.fullmatch(zip_sha256)
+    ):
+        raise ValueError("GitHub Pages release identity is invalid")
+    return GitHubPagesVerification(
+        schema_version=1,
+        observed_at=observed_at,
+        release_tag=release_tag,
+        workflow_run_id=int(payload["workflow_run_id"]),
+        workflow_conclusion=str(payload["workflow_conclusion"]),
+        site_url=str(payload["site_url"]),
+        phase_count=int(payload["phase_count"]),
+        product_count=int(payload["product_count"]),
+        zip_sha256=zip_sha256,
+    )
+
+
+def _cleanup_publication_gates(
+    *,
+    ledger: MigrationLedger,
+    root: Path,
+    mirror_path: Path,
+    github_verification_path: Path,
+) -> None:
+    failures: list[str] = []
+    if ledger.state != "materialized":
+        failures.append("migration ledger is not materialized")
+    verification = _verify_canonical_tree(ledger, root)
+    if (
+        verification.phase_count != 12
+        or verification.product_count != 125
+        or not verification.valid
+    ):
+        failures.append(
+            "canonical tree is not exact 12/125 "
+            f"(phases={verification.phase_count}, "
+            f"products={verification.product_count}, "
+            f"missing={verification.missing_count}, "
+            f"mismatched={verification.mismatched_count}, "
+            f"symlinks={verification.symlink_count})"
+        )
+    try:
+        mirror = load_mirror_ledger(mirror_path)
+    except ValueError as error:
+        failures.append(f"Google mirror is not verified ({error})")
+    else:
+        if (
+            mirror.root_state != "public-verified"
+            or mirror.site_state != "public-verified"
+            or mirror.public_product_count != 125
+            or mirror.public_verification is None
+        ):
+            failures.append("Google mirror is not public-verified 12/125")
+    try:
+        github = _load_github_pages_verification(github_verification_path)
+    except ValueError as error:
+        failures.append(f"GitHub Pages is not verified ({error})")
+    else:
+        if (
+            github.phase_count != 12
+            or github.product_count != 125
+            or github.workflow_conclusion != "success"
+            or github.site_url != _GITHUB_PAGES_SITE_URL
+        ):
+            failures.append("GitHub Pages verification is not successful 12/125")
+    if failures:
+        raise ValueError("publication gates are not verified: " + "; ".join(failures))
+
+
+def _assert_no_symlink_components(path: Path, *, anchor: Path, label: str) -> None:
+    current = anchor
+    if current.is_symlink():
+        raise ValueError(f"{label} contains a symlink: {current}")
+    for component in path.relative_to(anchor).parts:
+        current /= component
+        if current.is_symlink():
+            raise ValueError(f"{label} contains a symlink: {current}")
+
+
+def _cleanup_tracked_paths(root: Path) -> set[str]:
+    def run_git(*arguments: str) -> subprocess.CompletedProcess[bytes]:
+        try:
+            return subprocess.run(
+                ["git", *arguments],
+                cwd=root,
+                check=False,
+                capture_output=True,
+            )
+        except OSError as error:
+            raise ValueError("cleanup cannot prove git worktree/top-level") from error
+
+    inside = run_git("rev-parse", "--is-inside-work-tree")
+    top_level = run_git("rev-parse", "--show-toplevel")
+    if inside.returncode != 0 or inside.stdout.strip() != b"true" or top_level.returncode != 0:
+        raise ValueError("cleanup cannot prove git worktree/top-level")
+    try:
+        resolved_top_level = Path(top_level.stdout.decode("utf-8").strip()).resolve(strict=True)
+    except (OSError, UnicodeDecodeError):
+        raise ValueError("cleanup cannot prove git worktree/top-level") from None
+    if resolved_top_level != root:
+        raise ValueError("cleanup repository root is not the git worktree top-level")
+
+    symbolic_head = run_git("symbolic-ref", "-q", "HEAD")
+    if symbolic_head.returncode == 0:
+        try:
+            head_reference = symbolic_head.stdout.decode("utf-8").strip()
+        except UnicodeDecodeError:
+            raise ValueError("cleanup cannot prove git worktree HEAD") from None
+        if not head_reference or run_git("check-ref-format", head_reference).returncode != 0:
+            raise ValueError("cleanup cannot prove git worktree HEAD")
+    elif symbolic_head.returncode == 1:
+        if run_git("rev-parse", "--verify", "HEAD^{commit}").returncode != 0:
+            raise ValueError("cleanup cannot prove git worktree HEAD")
+    else:
+        raise ValueError("cleanup cannot prove git worktree HEAD")
+
+    inventory = run_git("ls-files", "-z")
+    status = run_git("status", "--porcelain=v1", "-z", "--untracked-files=no")
+    if inventory.returncode != 0 or status.returncode != 0:
+        raise ValueError("cleanup cannot verify tracked-file inventory")
+    try:
+        return {value.decode("utf-8") for value in inventory.stdout.split(b"\0") if value}
+    except UnicodeDecodeError:
+        raise ValueError("cleanup cannot verify tracked-file inventory") from None
+
+
+def _remove_empty_cleanup_batch(batch: Path) -> None:
+    if not batch.exists():
+        return
+    if batch.is_symlink() or not batch.is_dir():
+        raise RuntimeError(f"cleanup rollback found an unsafe batch path: {batch}")
+    for directory, _, files in os.walk(batch, topdown=False):
+        if files:
+            raise RuntimeError(f"cleanup rollback left files in Trash batch: {batch}")
+        Path(directory).rmdir()
+
+
+def _validate_trash_directory(
+    *,
+    trash_directory: Path,
+    repository_root: Path,
+    exercise_rename: bool,
+) -> tuple[Path, int]:
+    if trash_directory.is_symlink() or not trash_directory.is_dir():
+        raise ValueError("macOS Trash is unavailable")
+    trash = trash_directory.resolve(strict=True)
+    _assert_no_symlink_components(
+        trash_directory,
+        anchor=trash_directory.parent,
+        label="macOS Trash",
+    )
+    if not os.access(trash, os.W_OK | os.X_OK):
+        raise ValueError("macOS Trash is not writable")
+    if trash.stat().st_dev != repository_root.stat().st_dev:
+        raise ValueError("macOS Trash is not on the repository filesystem")
+    free_bytes = shutil.disk_usage(trash).free
+    if free_bytes <= 0:
+        raise ValueError("macOS Trash filesystem has no free headroom")
+    if exercise_rename:
+        probe_parent = repository_root / "local/atlas"
+        if not probe_parent.is_dir() or probe_parent.is_symlink():
+            raise ValueError("canonical Atlas root is unavailable for Trash preflight")
+        with tempfile.TemporaryDirectory(
+            prefix=".atlas-trash-preflight-",
+            dir=probe_parent,
+        ) as temporary:
+            source = Path(temporary) / "probe"
+            source.write_bytes(b"atlas-trash-preflight")
+            destination = trash / f".atlas-trash-preflight-{uuid4().hex}"
+            try:
+                os.replace(source, destination)
+                os.replace(destination, source)
+            except OSError as error:
+                if destination.is_file() and not destination.is_symlink():
+                    os.replace(destination, source)
+                raise ValueError("macOS Trash rename preflight failed") from error
+    return trash, free_bytes
+
+
+def cleanup_legacy_files(
+    *,
+    ledger_path: str | Path,
+    mirror_path: str | Path,
+    github_verification_path: str | Path,
+    repository_root: str | Path | None = None,
+    dry_run: bool,
+    trash_directory: str | Path | None = None,
+) -> CleanupResult:
+    """Validate and move only exact ledger-approved sources to macOS Trash."""
+    ledger_file = Path(ledger_path).resolve()
+    root = (
+        Path(repository_root).resolve(strict=True)
+        if repository_root is not None
+        else ledger_file.parents[2]
+    )
+    if not root.is_dir() or root.is_symlink():
+        raise ValueError("repository root must be a real directory")
+    ledger = _load_migration_ledger(ledger_file)
+    _cleanup_publication_gates(
+        ledger=ledger,
+        root=root,
+        mirror_path=Path(mirror_path).resolve(),
+        github_verification_path=Path(github_verification_path).resolve(),
+    )
+
+    grouped = _cleanup_candidate_groups(ledger)
+    if not grouped:
+        raise ValueError("cleanup ledger contains no approved source files")
+    tracked = _cleanup_tracked_paths(root)
+    retained = tuple(PurePosixPath(value) for value in ledger.retained_source_paths)
+    canonical = PurePosixPath(ledger.canonical_root)
+    validated: list[tuple[str, Path, int, str, tuple[str, ...]]] = []
+
+    for source_value, items in sorted(grouped.items()):
+        source_relative = _relative_path(source_value, "cleanup source")
+        if (
+            len(source_relative.parts) < 3
+            or source_relative.parts[0] != "local"
+            or source_relative == canonical
+            or source_relative.is_relative_to(canonical)
+            or any(
+                source_relative == retained_path or source_relative.is_relative_to(retained_path)
+                for retained_path in retained
+            )
+        ):
+            raise ValueError(f"cleanup source is not an exact legacy file: {source_value}")
+        if "frames" in source_relative.parts:
+            raise ValueError(f"cleanup source is a frame sequence: {source_value}")
+        if source_value in tracked:
+            raise ValueError(f"cleanup source is tracked by git: {source_value}")
+        source = root / source_relative
+        _assert_no_symlink_components(source, anchor=root, label="cleanup source")
+        if source.is_symlink() or not source.is_file() or source.stat().st_nlink != 1:
+            raise ValueError(f"cleanup source must be one regular file: {source_value}")
+        identities = {(item.source_byte_count, item.source_sha256) for item in items}
+        if len(identities) != 1:
+            raise ValueError(f"cleanup approvals are inconsistent: {source_value}")
+        expected_bytes, expected_sha256 = identities.pop()
+        if source.stat().st_size != expected_bytes or sha256_file(source) != expected_sha256:
+            raise ValueError(f"source changed after planning: {source_value}")
+
+        destinations: list[str] = []
+        for item in sorted(items, key=lambda value: value.destination_path):
+            destination_relative = _relative_path(
+                item.destination_path,
+                "cleanup destination",
+            )
+            _assert_path_below(
+                destination_relative,
+                canonical,
+                "cleanup destination",
+            )
+            destination = root / destination_relative
+            _assert_no_symlink_components(
+                destination,
+                anchor=root,
+                label="cleanup destination",
+            )
+            if (
+                item.destination_byte_count is None
+                or item.destination_sha256 is None
+                or destination.is_symlink()
+                or not destination.is_file()
+                or destination.stat().st_nlink != 1
+                or destination.stat().st_size != item.destination_byte_count
+                or sha256_file(destination) != item.destination_sha256
+            ):
+                raise ValueError(f"canonical destination changed: {item.destination_path}")
+            destinations.append(destination_relative.as_posix())
+        validated.append(
+            (
+                source_relative.as_posix(),
+                source,
+                expected_bytes,
+                expected_sha256,
+                tuple(sorted(destinations)),
+            )
+        )
+
+    trash_input = Path(trash_directory) if trash_directory is not None else Path.home() / ".Trash"
+    trash, _ = _validate_trash_directory(
+        trash_directory=trash_input,
+        repository_root=root,
+        exercise_rename=not dry_run,
+    )
+    timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    batch = trash / (
+        "Kikuchi Atlas legacy cleanup "
+        + timestamp.replace(":", "").replace("-", "").replace(".", "")
+        + "-"
+        + uuid4().hex[:12]
+    )
+    records = tuple(
+        CleanupFileRecord(
+            trashed_at=None if dry_run else timestamp,
+            original_path=source_value,
+            trash_path=str(batch / PurePosixPath(source_value)),
+            byte_count=byte_count,
+            sha256=digest,
+            verified_destinations=destinations,
+        )
+        for source_value, _, byte_count, digest, destinations in validated
+    )
+    approved_bytes = sum(item.byte_count for item in records)
+    if dry_run:
+        return CleanupResult(
+            dry_run=True,
+            trash_root=str(batch),
+            approved_count=len(records),
+            approved_bytes=approved_bytes,
+            moved_count=0,
+            moved_bytes=0,
+            files=records,
+        )
+
+    result = CleanupResult(
+        dry_run=False,
+        trash_root=str(batch),
+        approved_count=len(records),
+        approved_bytes=approved_bytes,
+        moved_count=len(records),
+        moved_bytes=approved_bytes,
+        files=records,
+    )
+    cleaned = replace(ledger, state="cleaned", cleanup=result)
+    staged_ledger = ledger_file.with_name(ledger_file.name + ".cleanup-generated")
+    if staged_ledger.exists() or staged_ledger.is_symlink():
+        raise ValueError("cleanup ledger staging path is not empty")
+    original_ledger_bytes = ledger_file.read_bytes()
+    moved: list[tuple[Path, Path, CleanupFileRecord]] = []
+    try:
+        write_migration_ledger(cleaned, staged_ledger)
+        _load_migration_ledger(staged_ledger)
+        batch.mkdir()
+        for record, (_, source, _, _, _) in zip(records, validated, strict=True):
+            destination = Path(record.trash_path)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if destination.exists() or destination.is_symlink():
+                raise ValueError(f"cleanup Trash collision: {destination}")
+            os.replace(source, destination)
+            moved.append((source, destination, record))
+            if (
+                destination.is_symlink()
+                or not destination.is_file()
+                or destination.stat().st_nlink != 1
+                or destination.stat().st_size != record.byte_count
+                or sha256_file(destination) != record.sha256
+            ):
+                raise ValueError(f"cleanup Trash verification failed: {destination}")
+        os.replace(staged_ledger, ledger_file)
+    except Exception as error:
+        rollback_errors: list[str] = []
+        for source, destination, record in reversed(moved):
+            try:
+                if source.exists() or source.is_symlink():
+                    raise RuntimeError(f"cleanup source reappeared during rollback: {source}")
+                if (
+                    destination.is_symlink()
+                    or not destination.is_file()
+                    or destination.stat().st_nlink != 1
+                    or destination.stat().st_size != record.byte_count
+                    or sha256_file(destination) != record.sha256
+                ):
+                    raise RuntimeError(f"cleanup Trash file changed before rollback: {destination}")
+                os.replace(destination, source)
+                if (
+                    source.is_symlink()
+                    or not source.is_file()
+                    or source.stat().st_nlink != 1
+                    or source.stat().st_size != record.byte_count
+                    or sha256_file(source) != record.sha256
+                ):
+                    raise RuntimeError(f"cleanup source restoration failed: {source}")
+            except Exception as rollback_error:
+                rollback_errors.append(str(rollback_error))
+        try:
+            if staged_ledger.is_symlink():
+                raise RuntimeError("cleanup staged ledger became a symlink")
+            if staged_ledger.exists():
+                staged_ledger.unlink()
+            _remove_empty_cleanup_batch(batch)
+            if ledger_file.read_bytes() != original_ledger_bytes:
+                rollback_ledger = ledger_file.with_name(ledger_file.name + ".cleanup-rollback")
+                if rollback_ledger.exists() or rollback_ledger.is_symlink():
+                    raise RuntimeError("cleanup rollback ledger staging path is not empty")
+                rollback_ledger.write_bytes(original_ledger_bytes)
+                os.replace(rollback_ledger, ledger_file)
+            if ledger_file.read_bytes() != original_ledger_bytes:
+                raise RuntimeError("cleanup ledger restoration failed")
+        except Exception as rollback_error:
+            rollback_errors.append(str(rollback_error))
+        if rollback_errors:
+            raise RuntimeError("cleanup rollback failed: " + "; ".join(rollback_errors)) from error
+        raise
+    return result
 
 
 def _load_yaml_mapping(path: Path, label: str) -> dict[str, Any]:
@@ -1453,9 +2074,7 @@ def _canonical_registry_record(
     web_paths = role_paths.get("web", [])
     if web_paths:
         if PurePosixPath(media_path).suffix.lower() in _WEB_SUFFIXES:
-            raise ValueError(
-                f"ledger product {product.product_id!r} declares a redundant web copy"
-            )
+            raise ValueError(f"ledger product {product.product_id!r} declares a redundant web copy")
         record["web_path"] = web_paths[0]
     else:
         record.pop("web_path", None)
@@ -1579,9 +2198,7 @@ def rewrite_product_registry(
         rewritten_by_id[product_id] = record
 
     rewritten_products = [rewritten_by_id[product_id] for product_id in ordered_ids]
-    legacy_roots = tuple(
-        _relative_path(value, "legacy root") for value in policy["legacy_roots"]
-    )
+    legacy_roots = tuple(_relative_path(value, "legacy root") for value in policy["legacy_roots"])
     legacy_path_count = _publication_legacy_path_count(
         rewritten_products,
         legacy_roots,
@@ -1611,18 +2228,14 @@ def rewrite_product_registry(
                 f"products={len(products)} available={available_count}"
             )
         mov_products = {
-            product.identifier: product
-            for product in products
-            if product.media_format == "mov"
+            product.identifier: product for product in products if product.media_format == "mov"
         }
         if set(mov_products) != _REQUIRED_QUARTZ_INTAKE_IDS or any(
-            product.web_path is None
-            or product.web_path.suffix.lower() != ".mp4"
+            product.web_path is None or product.web_path.suffix.lower() != ".mp4"
             for product in mov_products.values()
         ):
             raise ValueError(
-                "generated registry must expose the three quartz MOV products "
-                "with MP4 web copies"
+                "generated registry must expose the three quartz MOV products with MP4 web copies"
             )
         os.replace(generated, products_path)
     except Exception:
@@ -1643,9 +2256,7 @@ def _tracked_paths(root: Path) -> tuple[PurePosixPath, ...]:
         capture_output=True,
     )
     return tuple(
-        PurePosixPath(value.decode("utf-8"))
-        for value in result.stdout.split(b"\0")
-        if value
+        PurePosixPath(value.decode("utf-8")) for value in result.stdout.split(b"\0") if value
     )
 
 
@@ -1686,8 +2297,7 @@ def _line_legacy_paths(line: str, legacy_roots: tuple[str, ...]) -> tuple[str, .
     for root in legacy_roots:
         pattern = re.compile(re.escape(root) + r"[A-Za-z0-9._{}<>/\-]*")
         matches.extend(
-            (match.start(), match.group(0).rstrip(".,;:"))
-            for match in pattern.finditer(line)
+            (match.start(), match.group(0).rstrip(".,;:")) for match in pattern.finditer(line)
         )
     return tuple(value for _, value in sorted(set(matches)))
 
@@ -1714,8 +2324,7 @@ def _allowed_reference(
         )
     if value == "docs/products/ARTIFACT_CATALOG.yml":
         if orientation_gallery_root is not None and (
-            legacy == orientation_gallery_root
-            or legacy.is_relative_to(orientation_gallery_root)
+            legacy == orientation_gallery_root or legacy.is_relative_to(orientation_gallery_root)
         ):
             return (
                 "historical-reproduction-evidence",
@@ -1734,8 +2343,7 @@ def _allowed_reference(
         )
     if value.startswith("scripts/"):
         if any(
-            marker in line_text
-            for marker in ("--output", "default=", "else ROOT /", "output_root")
+            marker in line_text for marker in ("--output", "default=", "else ROOT /", "output_root")
         ):
             return None
         retained_input = any(
@@ -1972,9 +2580,7 @@ def materialize_ledger(
             proxy.byte_count != item.destination_byte_count
             or proxy.sha256 != item.destination_sha256
         ):
-            raise ValueError(
-                f"refusing to overwrite different destination: {destination}"
-            )
+            raise ValueError(f"refusing to overwrite different destination: {destination}")
         updated_files.append(
             replace(
                 item,
@@ -2034,6 +2640,8 @@ def materialize_ledger(
 
 __all__ = [
     "CanonicalVerification",
+    "CleanupFileRecord",
+    "CleanupResult",
     "GitHubPagesVerification",
     "LegacyPathAuditResult",
     "MigrationFile",
@@ -2042,6 +2650,7 @@ __all__ = [
     "RegistryRewriteResult",
     "audit_legacy_paths",
     "build_migration_ledger",
+    "cleanup_legacy_files",
     "materialize_ledger",
     "record_github_pages_verification",
     "rewrite_product_registry",
