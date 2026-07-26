@@ -9,6 +9,13 @@ from .catalog import (
     load_phase_registry,
     load_product_registry,
 )
+from .consolidation import (
+    MigrationFile,
+    MigrationLedger,
+    MigrationProduct,
+    build_migration_ledger,
+    write_migration_ledger,
+)
 from .packages import (
     PackageFile,
     PhasePackage,
@@ -26,6 +33,9 @@ __all__ = [
     "AtlasBuildResult",
     "AtlasPhase",
     "AtlasProduct",
+    "MigrationFile",
+    "MigrationLedger",
+    "MigrationProduct",
     "PackageFile",
     "PhasePackage",
     "ProductPackage",
@@ -33,6 +43,7 @@ __all__ = [
     "PublicAtlasBuildResult",
     "StructuralSourceAuditResult",
     "build_atlas",
+    "build_migration_ledger",
     "build_public_atlas",
     "build_structural_source_audit",
     "load_phase_registry",
@@ -42,4 +53,5 @@ __all__ = [
     "sha256_file",
     "validate_phase_package",
     "validate_product_package",
+    "write_migration_ledger",
 ]

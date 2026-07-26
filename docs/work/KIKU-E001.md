@@ -69,3 +69,9 @@ phases, orientation data, print geometry, and independent-engine research.
 - [ ] The exceptional-forsterite feature proves the companion architecture with a cited source and authoritative master pattern.
 - [ ] Project-owned recipes, products, diagnostics, and bundles isolate upstream simulator and projection objects.
 - [ ] Later companion directions are preserved as evidence-aware incubator records.
+
+## Progress Evidence
+
+- KIKU-T085 records canonical package consolidation and byte-identity gates.
+- KIKU-T086 records the 125-product GitHub Pages publication gates.
+- KIKU-T087 records the confirmed UMN Drive and Google Sites mirror gates.
