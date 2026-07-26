@@ -30,6 +30,18 @@ Both loops use one x-axis revolution, 576 distinct frames, 24 fps, 24 seconds,
 4096-square presentation sampling, and the same source master, overlap field,
 tone mapping, optical-depth treatment, and encoding profile.
 
+Original production roots (historical invocation evidence):
+`local/idealized-near-depth-rotation/quartz-identity-4k-24fps-24s-v1`
+and
+`local/idealized-near-depth-rotation/quartz-oblique-17-31-43-4k-24fps-24s-v1`.
+These superseded 24 fps artifacts remain historical evidence and are not
+current Atlas publication packages.
+
+Current canonical publication packages for the superseding 60 fps pair:
+`local/atlas/phases/quartz/products/quartz-near-depth-artist-master-identity-60fps/`
+and
+`local/atlas/phases/quartz/products/quartz-near-depth-artist-master-oblique-17-31-43-60fps/`.
+
 ## Acceptance Criteria
 
 - [x] The tiled high-resolution renderer is pixel-identical to the original full-frame path at a bounded test size.

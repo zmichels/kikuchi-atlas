@@ -106,6 +106,22 @@ _MIME_TYPES = {
 }
 _WEB_SUFFIXES = {".jpeg", ".jpg", ".mp4", ".png", ".svg"}
 _MAX_WEB_BYTES = 25 * 1024 * 1024
+_PUBLICATION_PATH_FIELDS = {
+    "media_path",
+    "preview_path",
+    "web_path",
+    "bundle_path",
+    "provenance_path",
+}
+_ALLOWED_REFERENCE_CLASSIFICATIONS = {
+    "nonpublishable-scientific-input",
+    "historical-reproduction-evidence",
+}
+_REQUIRED_QUARTZ_INTAKE_IDS = {
+    "quartz-direct-reflector-artist-master-x-axis",
+    "quartz-near-depth-artist-master-identity-60fps",
+    "quartz-near-depth-artist-master-oblique-17-31-43-60fps",
+}
 
 
 def _load_catalog(path: Path) -> list[dict[str, Any]]:
@@ -174,6 +190,23 @@ class CanonicalVerification:
     @property
     def valid(self) -> bool:
         return not (self.missing_count or self.mismatched_count or self.symlink_count)
+
+
+@dataclass(frozen=True)
+class RegistryRewriteResult:
+    """Summary of one validated, atomic registry cutover."""
+
+    product_count: int
+    available_count: int
+    legacy_path_count: int
+
+
+@dataclass(frozen=True)
+class LegacyPathAuditResult:
+    """Summary of tracked legacy-path references after registry cutover."""
+
+    publishable_legacy_reference_count: int
+    allowed_reference_count: int
 
 
 def _read_policy(path: Path) -> dict[str, Any]:
@@ -270,6 +303,7 @@ def _registry_record(product: AtlasProduct, root: Path) -> dict[str, object]:
         "format": product.media_format,
         "media_path": relative(product.media_path),
         "preview_path": relative(product.preview_path),
+        "web_path": relative(product.web_path),
         "bundle_path": relative(product.bundle_path),
         "provenance_path": relative(product.provenance_path),
         "recipe": product.recipe,
@@ -1229,6 +1263,463 @@ def verify_canonical_tree(
     return _verify_canonical_tree(ledger, Path(repository_root).resolve())
 
 
+def _load_yaml_mapping(path: Path, label: str) -> dict[str, Any]:
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as error:
+        raise ValueError(f"{label} cannot be read as YAML") from error
+    if not isinstance(payload, dict):
+        raise ValueError(f"{label} must be a mapping")
+    return payload
+
+
+def _canonical_registry_record(
+    product: MigrationProduct,
+    files: tuple[MigrationFile, ...],
+    source_record: dict[str, Any],
+) -> dict[str, Any]:
+    role_paths: dict[str, list[str]] = {}
+    for item in files:
+        role_paths.setdefault(item.role, []).append(item.destination_path)
+    for role in role_paths:
+        role_paths[role].sort()
+    if len(role_paths.get("media", [])) != 1:
+        raise ValueError(
+            f"ledger product {product.product_id!r} must have exactly one authoritative media file"
+        )
+    if len(role_paths.get("preview", [])) > 1 or len(role_paths.get("web", [])) > 1:
+        raise ValueError(
+            f"ledger product {product.product_id!r} has ambiguous preview or web media"
+        )
+
+    record = dict(source_record)
+    media_path = role_paths["media"][0]
+    media_format = record.get("format")
+    if media_format != PurePosixPath(media_path).suffix.lower().lstrip("."):
+        raise ValueError(
+            f"ledger product {product.product_id!r} format differs from authoritative media"
+        )
+    record["media_path"] = media_path
+    if role_paths.get("preview"):
+        record["preview_path"] = role_paths["preview"][0]
+    else:
+        record.pop("preview_path", None)
+    web_paths = role_paths.get("web", [])
+    if web_paths:
+        if PurePosixPath(media_path).suffix.lower() in _WEB_SUFFIXES:
+            raise ValueError(
+                f"ledger product {product.product_id!r} declares a redundant web copy"
+            )
+        record["web_path"] = web_paths[0]
+    else:
+        record.pop("web_path", None)
+    record["bundle_path"] = product.destination_root
+    record["provenance_path"] = (
+        PurePosixPath(product.destination_root) / "product-package.yml"
+    ).as_posix()
+    return record
+
+
+def _publication_legacy_path_count(
+    records: list[dict[str, Any]],
+    legacy_roots: tuple[PurePosixPath, ...],
+) -> int:
+    count = 0
+    for record in records:
+        for field in _PUBLICATION_PATH_FIELDS:
+            value = record.get(field)
+            if value is None:
+                continue
+            path = _relative_path(str(value), f"atlas product {field}")
+            if any(path == root or path.is_relative_to(root) for root in legacy_roots):
+                count += 1
+    return count
+
+
+def _registry_cutover_order(
+    original_ids: tuple[str, ...],
+    ledger_ids: set[str],
+    intake_ids: tuple[str, ...],
+) -> tuple[str, ...]:
+    original = set(original_ids)
+    intake = set(intake_ids)
+    present_intakes = original & intake
+    if present_intakes and present_intakes != intake:
+        raise ValueError("tracked registry contains a partially applied intake set")
+    if present_intakes == intake:
+        expected = original
+        ordered = original_ids
+    else:
+        expected = original | intake
+        ordered = original_ids + intake_ids
+    if ledger_ids != expected:
+        raise ValueError("ledger ids differ from the tracked registry plus intake products")
+    return ordered
+
+
+def rewrite_product_registry(
+    *,
+    ledger_path: str | Path,
+    product_registry_path: str | Path,
+    consolidation_path: str | Path,
+    repository_root: str | Path,
+) -> RegistryRewriteResult:
+    """Validate all canonical packages before atomically cutting over the registry."""
+    root = Path(repository_root).resolve()
+    ledger = _load_migration_ledger(Path(ledger_path))
+    if ledger.state != "materialized":
+        raise ValueError("registry rewrite requires a materialized migration ledger")
+    if ledger.canonical_root != _CANONICAL_ROOT.as_posix():
+        raise ValueError("registry rewrite requires the canonical Atlas root")
+    if ledger.phase_count != 12 or ledger.product_count != 125:
+        raise ValueError("registry rewrite requires exactly 12 phases and 125 products")
+    verification = _verify_canonical_tree(ledger, root)
+    if not verification.valid:
+        raise ValueError(
+            "registry rewrite requires a verified canonical tree: "
+            f"missing={verification.missing_count} "
+            f"mismatched={verification.mismatched_count} "
+            f"symlinks={verification.symlink_count}"
+        )
+
+    products_path = Path(product_registry_path).resolve()
+    if products_path.parents[2] != root:
+        raise ValueError("product registry must be rooted in the target repository")
+    payload = _load_yaml_mapping(products_path, "atlas product registry")
+    raw_products = payload.get("products")
+    if not isinstance(raw_products, list) or not all(
+        isinstance(item, dict) for item in raw_products
+    ):
+        raise ValueError("atlas product registry products must be mappings")
+    original_by_id = {str(item.get("id")): item for item in raw_products}
+    if len(original_by_id) != len(raw_products):
+        raise ValueError("atlas product registry ids must be unique")
+
+    policy = _read_policy(Path(consolidation_path).resolve())
+    extras = policy["extra_products"]
+    extra_ids = tuple(str(item.get("id")) for item in extras if isinstance(item, dict))
+    if set(extra_ids) != _REQUIRED_QUARTZ_INTAKE_IDS or len(extra_ids) != 3:
+        raise ValueError("registry rewrite requires the three quartz intake products")
+    ledger_by_id = {item.product_id: item for item in ledger.products}
+    ordered_ids = _registry_cutover_order(
+        tuple(str(item["id"]) for item in raw_products),
+        set(ledger_by_id),
+        extra_ids,
+    )
+
+    files_by_product = {
+        product_id: tuple(item for item in ledger.files if item.product_id == product_id)
+        for product_id in ledger_by_id
+    }
+    rewritten_by_id: dict[str, dict[str, Any]] = {}
+    for product_id, product in ledger_by_id.items():
+        frozen_record = product.registry_record
+        if product_id in original_by_id:
+            source_record = original_by_id[product_id]
+            for field, value in source_record.items():
+                if field not in _PUBLICATION_PATH_FIELDS and frozen_record.get(field) != value:
+                    raise ValueError(
+                        f"ledger metadata differs from tracked product {product_id!r}: {field}"
+                    )
+        else:
+            source_record = frozen_record
+        record = _canonical_registry_record(
+            product,
+            files_by_product[product_id],
+            source_record,
+        )
+        if record.get("id") != product_id:
+            raise ValueError(f"ledger registry id differs from product id: {product_id}")
+        rewritten_by_id[product_id] = record
+
+    rewritten_products = [rewritten_by_id[product_id] for product_id in ordered_ids]
+    legacy_roots = tuple(
+        _relative_path(value, "legacy root") for value in policy["legacy_roots"]
+    )
+    legacy_path_count = _publication_legacy_path_count(
+        rewritten_products,
+        legacy_roots,
+    )
+    if legacy_path_count:
+        raise ValueError(
+            f"generated registry contains {legacy_path_count} legacy publication paths"
+        )
+
+    generated_payload = dict(payload)
+    generated_payload["products"] = rewritten_products
+    generated = products_path.with_name(products_path.name + ".generated")
+    try:
+        generated.write_text(
+            yaml.safe_dump(generated_payload, sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+        phases = load_phase_registry(root / "docs/atlas/PHASE_REGISTRY.yml")
+        _, products = load_product_registry(
+            generated,
+            phase_slugs={phase.slug for phase in phases},
+        )
+        available_count = sum(product.is_available() for product in products)
+        if len(products) != 125 or available_count != 125:
+            raise ValueError(
+                "generated registry failed availability validation: "
+                f"products={len(products)} available={available_count}"
+            )
+        mov_products = {
+            product.identifier: product
+            for product in products
+            if product.media_format == "mov"
+        }
+        if set(mov_products) != _REQUIRED_QUARTZ_INTAKE_IDS or any(
+            product.web_path is None
+            or product.web_path.suffix.lower() != ".mp4"
+            for product in mov_products.values()
+        ):
+            raise ValueError(
+                "generated registry must expose the three quartz MOV products "
+                "with MP4 web copies"
+            )
+        os.replace(generated, products_path)
+    except Exception:
+        generated.unlink(missing_ok=True)
+        raise
+    return RegistryRewriteResult(
+        product_count=125,
+        available_count=125,
+        legacy_path_count=legacy_path_count,
+    )
+
+
+def _tracked_paths(root: Path) -> tuple[PurePosixPath, ...]:
+    result = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    return tuple(
+        PurePosixPath(value.decode("utf-8"))
+        for value in result.stdout.split(b"\0")
+        if value
+    )
+
+
+def _is_audit_candidate(path: PurePosixPath) -> bool:
+    value = path.as_posix()
+    return (
+        value.startswith(("src/", "scripts/", "tests/", "docs/acceptance/", "docs/work/"))
+        or value.startswith("docs/atlas/")
+        or value == "docs/products/ARTIFACT_CATALOG.yml"
+    )
+
+
+def _audit_input_paths(root: Path) -> tuple[PurePosixPath, ...]:
+    paths = set(_tracked_paths(root))
+    generated_site = root / "docs/atlas/site"
+    if generated_site.is_dir():
+        paths.update(
+            PurePosixPath(path.relative_to(root).as_posix())
+            for path in generated_site.rglob("*")
+            if path.is_file()
+        )
+    return tuple(sorted(paths))
+
+
+def _legacy_roots_from_ledger(ledger: MigrationLedger) -> tuple[str, ...]:
+    roots: set[str] = set()
+    for item in ledger.files:
+        if item.source_path is None:
+            continue
+        parts = PurePosixPath(item.source_path).parts
+        if len(parts) >= 2 and parts[0] == "local":
+            roots.add(PurePosixPath(*parts[:2]).as_posix())
+    if not roots:
+        raise ValueError("migration ledger does not identify any legacy roots")
+    return tuple(sorted(roots, key=lambda value: (-len(value), value)))
+
+
+def _line_legacy_paths(line: str, legacy_roots: tuple[str, ...]) -> tuple[str, ...]:
+    matches: list[tuple[int, str]] = []
+    for root in legacy_roots:
+        pattern = re.compile(re.escape(root) + r"[A-Za-z0-9._{}<>/\-]*")
+        matches.extend(
+            (match.start(), match.group(0).rstrip(".,;:"))
+            for match in pattern.finditer(line)
+        )
+    return tuple(value for _, value in sorted(set(matches)))
+
+
+def _allowed_reference(
+    *,
+    file: PurePosixPath,
+    line_text: str,
+    legacy_path: str,
+    source_paths: tuple[PurePosixPath, ...],
+    orientation_gallery_root: PurePosixPath | None,
+) -> tuple[str, str] | None:
+    value = file.as_posix()
+    legacy = PurePosixPath(legacy_path)
+    if value == "docs/products/ARTIFACT_CATALOG.yml":
+        if orientation_gallery_root is not None and (
+            legacy == orientation_gallery_root
+            or legacy.is_relative_to(orientation_gallery_root)
+        ):
+            return (
+                "historical-reproduction-evidence",
+                "The review-only orientation gallery remains historical evidence and is not an Atlas product or cleanup target.",
+            )
+        return None
+    if value == "docs/atlas/CONSOLIDATION.yml":
+        return (
+            "nonpublishable-scientific-input",
+            "The migration policy retains verified legacy sources as nonpublishable package inputs.",
+        )
+    if value.startswith(("docs/acceptance/", "docs/work/", "tests/")):
+        return (
+            "historical-reproduction-evidence",
+            "The reference records or tests preserve historical production and verification evidence.",
+        )
+    if value.startswith("scripts/"):
+        retained_input = 'Path("local/' in line_text or any(
+            source == legacy or source.is_relative_to(legacy) for source in source_paths
+        )
+        if retained_input and not any(
+            marker in line_text
+            for marker in ("--output", "default=", "else ROOT /", "output_root")
+        ):
+            return (
+                "nonpublishable-scientific-input",
+                "The renderer consumes the retained selection bundle; the Atlas registry does not publish the bundle as an individual product.",
+            )
+        return (
+            "historical-reproduction-evidence",
+            "The renderer or its regression coverage retains an original production default for reproducibility.",
+        )
+    return None
+
+
+def _orientation_gallery_root(root: Path) -> PurePosixPath | None:
+    catalog_path = root / "docs/products/ARTIFACT_CATALOG.yml"
+    if not catalog_path.is_file():
+        return None
+    payload = _load_yaml_mapping(catalog_path, "artifact catalog")
+    entries = payload.get("entries")
+    if not isinstance(entries, list):
+        raise ValueError("artifact catalog entries must be a list")
+    galleries = [
+        item
+        for item in entries
+        if isinstance(item, dict) and item.get("id") == "five-phase-orientation-gallery"
+    ]
+    if len(galleries) != 1 or not isinstance(galleries[0].get("artifact_path"), str):
+        return None
+    return _relative_path(
+        galleries[0]["artifact_path"],
+        "orientation gallery artifact_path",
+    )
+
+
+def audit_legacy_paths(
+    *,
+    ledger_path: str | Path,
+    repository_root: str | Path,
+    output_path: str | Path,
+) -> LegacyPathAuditResult:
+    """Audit tracked current references without hiding publication paths."""
+    root = Path(repository_root).resolve()
+    ledger_file = Path(ledger_path).resolve()
+    ledger = _load_migration_ledger(ledger_file)
+    if ledger.state != "materialized":
+        raise ValueError("legacy path audit requires a materialized migration ledger")
+    legacy_roots = _legacy_roots_from_ledger(ledger)
+    source_paths = tuple(
+        PurePosixPath(item.source_path)
+        for item in ledger.files
+        if item.source_path is not None
+    )
+    gallery_root = _orientation_gallery_root(root)
+    output = Path(output_path).resolve()
+    excluded = {
+        ledger_file.relative_to(root).as_posix(),
+        output.relative_to(root).as_posix(),
+    }
+    allowed: list[dict[str, object]] = []
+    publishable: list[dict[str, object]] = []
+
+    for tracked in _audit_input_paths(root):
+        value = tracked.as_posix()
+        if not _is_audit_candidate(tracked) or value in excluded:
+            continue
+        path = root / tracked
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeDecodeError):
+            continue
+        generated_site = value.startswith("docs/atlas/site/")
+        for line_number, line_text in enumerate(lines, start=1):
+            for legacy_path in _line_legacy_paths(line_text, legacy_roots):
+                record = {
+                    "file": value,
+                    "line": line_number,
+                    "legacy_path": legacy_path,
+                }
+                if generated_site or value == "docs/atlas/PRODUCT_REGISTRY.yml":
+                    publishable.append(record)
+                    continue
+                classification = _allowed_reference(
+                    file=tracked,
+                    line_text=line_text,
+                    legacy_path=legacy_path,
+                    source_paths=source_paths,
+                    orientation_gallery_root=gallery_root,
+                )
+                if classification is None:
+                    publishable.append(record)
+                    continue
+                kind, reason = classification
+                if kind not in _ALLOWED_REFERENCE_CLASSIFICATIONS:
+                    raise ValueError(f"unsupported legacy reference classification: {kind}")
+                allowed.append(
+                    {
+                        **record,
+                        "classification": kind,
+                        "reason": reason,
+                    }
+                )
+
+    allowed.sort(
+        key=lambda item: (
+            str(item["file"]),
+            int(item["line"]),
+            str(item["legacy_path"]),
+        )
+    )
+    payload = {
+        "schema_version": 1,
+        "publishable_legacy_reference_count": len(publishable),
+        "allowed_references": allowed,
+    }
+    generated = output.with_name(output.name + ".generated")
+    try:
+        generated.write_text(
+            yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+        os.replace(generated, output)
+    except Exception:
+        generated.unlink(missing_ok=True)
+        raise
+    if publishable:
+        first = publishable[0]
+        raise ValueError(
+            f"publishable legacy references={len(publishable)}; "
+            f"first={first['file']}:{first['line']}"
+        )
+    return LegacyPathAuditResult(
+        publishable_legacy_reference_count=0,
+        allowed_reference_count=len(allowed),
+    )
+
+
 def materialize_ledger(
     ledger_path: str | Path,
     repository_root: str | Path,
@@ -1381,11 +1872,15 @@ def materialize_ledger(
 
 __all__ = [
     "CanonicalVerification",
+    "LegacyPathAuditResult",
     "MigrationFile",
     "MigrationLedger",
     "MigrationProduct",
+    "RegistryRewriteResult",
+    "audit_legacy_paths",
     "build_migration_ledger",
     "materialize_ledger",
+    "rewrite_product_registry",
     "validate_migration_output_path",
     "verify_canonical_tree",
     "write_migration_ledger",

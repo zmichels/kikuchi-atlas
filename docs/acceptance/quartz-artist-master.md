@@ -50,8 +50,11 @@ acquired detector pattern, or a calibrated instrument response.
 
 ## Retained deliverables
 
-Artifact root:
+Original production root (historical invocation evidence):
 `local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1`
+
+Current canonical publication package:
+`local/atlas/phases/quartz/products/quartz-direct-reflector-artist-master-x-axis/`
 
 | Artifact | Accepted properties | SHA-256 |
 | --- | --- | --- |

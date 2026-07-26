@@ -8,6 +8,7 @@ import time
 import pytest
 import yaml
 
+import kikuchi_lab.atlas.consolidation as consolidation
 from kikuchi_lab.atlas.consolidation import (
     MigrationLedger,
     build_migration_ledger,
@@ -341,3 +342,161 @@ def test_verify_canonical_tree_reports_complete_inventory(fixture_repo: Path) ->
     assert result.missing_count == 0
     assert result.mismatched_count == 0
     assert result.symlink_count == 0
+
+
+def test_registry_rewrite_refuses_planned_ledger_without_touching_registry(
+    fixture_repo: Path,
+) -> None:
+    ledger_path = _write_fixture_ledger(fixture_repo)
+    products = fixture_repo / "docs/atlas/PRODUCT_REGISTRY.yml"
+    before = products.read_bytes()
+
+    with pytest.raises(ValueError, match="materialized"):
+        consolidation.rewrite_product_registry(
+            ledger_path=ledger_path,
+            product_registry_path=products,
+            consolidation_path=fixture_repo / "docs/atlas/CONSOLIDATION.yml",
+            repository_root=fixture_repo,
+        )
+
+    assert products.read_bytes() == before
+    assert not products.with_name(products.name + ".generated").exists()
+
+
+def test_registry_cutover_order_adds_intakes_exactly_once() -> None:
+    assert consolidation._registry_cutover_order(
+        ("existing-a", "existing-b"),
+        {"existing-a", "existing-b", "intake"},
+        ("intake",),
+    ) == ("existing-a", "existing-b", "intake")
+    assert consolidation._registry_cutover_order(
+        ("existing-a", "existing-b", "intake"),
+        {"existing-a", "existing-b", "intake"},
+        ("intake",),
+    ) == ("existing-a", "existing-b", "intake")
+    with pytest.raises(ValueError, match="partially"):
+        consolidation._registry_cutover_order(
+            ("existing-a", "intake"),
+            {"existing-a", "existing-b", "intake"},
+            ("intake", "other-intake"),
+        )
+
+
+def _initialize_fixture_git_repository(fixture_repo: Path) -> None:
+    subprocess.run(
+        ["git", "init", "-q"],
+        cwd=fixture_repo,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "add", "."],
+        cwd=fixture_repo,
+        check=True,
+    )
+
+
+def test_path_audit_rejects_publishable_registry_legacy_reference(
+    fixture_repo: Path,
+) -> None:
+    ledger_path = _write_fixture_ledger(fixture_repo)
+    materialize_ledger(ledger_path, repository_root=fixture_repo)
+    _initialize_fixture_git_repository(fixture_repo)
+    output = fixture_repo / "docs/atlas/LEGACY_PATH_AUDIT.yml"
+
+    with pytest.raises(ValueError, match="publishable legacy references"):
+        consolidation.audit_legacy_paths(
+            ledger_path=ledger_path,
+            repository_root=fixture_repo,
+            output_path=output,
+        )
+
+    payload = yaml.safe_load(output.read_text(encoding="utf-8"))
+    assert payload["publishable_legacy_reference_count"] > 0
+
+
+def test_path_audit_records_only_allowed_reference_classifications(
+    fixture_repo: Path,
+) -> None:
+    ledger_path = _write_fixture_ledger(fixture_repo)
+    materialize_ledger(ledger_path, repository_root=fixture_repo)
+    products = yaml.safe_load(
+        (fixture_repo / "docs/atlas/PRODUCT_REGISTRY.yml").read_text(encoding="utf-8")
+    )
+    record = products["products"][0]
+    package = "local/atlas/phases/quartz/products/quartz-demo"
+    record.update(
+        {
+            "media_path": f"{package}/media/demo.svg",
+            "preview_path": f"{package}/previews/demo.png",
+            "bundle_path": package,
+            "provenance_path": f"{package}/product-package.yml",
+        }
+    )
+    (fixture_repo / "docs/atlas/PRODUCT_REGISTRY.yml").write_text(
+        yaml.safe_dump(products, sort_keys=False),
+        encoding="utf-8",
+    )
+    (fixture_repo / "docs/products/ARTIFACT_CATALOG.yml").write_text(
+        """\
+schema_version: 1
+title: Fixture artifact catalog
+claim_boundary: Fixture only.
+entries:
+  - id: five-phase-orientation-gallery
+    tier: review-proof
+    phase: quartz
+    artifact_path: local/legacy/orientation-gallery
+    files: [comparison.png]
+    recipe: recipes/demo/quartz.yml
+    entrypoint: fixture
+    state: tracked-review-proof
+""",
+        encoding="utf-8",
+    )
+    scripts = fixture_repo / "scripts"
+    scripts.mkdir()
+    (scripts / "render_direct_reflector_rotation.py").write_text(
+        'SELECTION = Path("local/legacy/selection-bundle")\n',
+        encoding="utf-8",
+    )
+    acceptance = fixture_repo / "docs/acceptance"
+    acceptance.mkdir()
+    (acceptance / "historical.md").write_text(
+        "Original production root: `local/legacy/original-run`.\n",
+        encoding="utf-8",
+    )
+    _initialize_fixture_git_repository(fixture_repo)
+    output = fixture_repo / "docs/atlas/LEGACY_PATH_AUDIT.yml"
+
+    result = consolidation.audit_legacy_paths(
+        ledger_path=ledger_path,
+        repository_root=fixture_repo,
+        output_path=output,
+    )
+
+    assert result.publishable_legacy_reference_count == 0
+    payload = yaml.safe_load(output.read_text(encoding="utf-8"))
+    assert {item["classification"] for item in payload["allowed_references"]} == {
+        "nonpublishable-scientific-input",
+        "historical-reproduction-evidence",
+    }
+    assert all(item["reason"] for item in payload["allowed_references"])
+    script_reference = next(
+        item
+        for item in payload["allowed_references"]
+        if item["file"] == "scripts/render_direct_reflector_rotation.py"
+    )
+    assert script_reference["classification"] == "nonpublishable-scientific-input"
+
+    site = fixture_repo / "docs/atlas/site"
+    site.mkdir()
+    (site / "index.html").write_text(
+        '<a href="../../../local/legacy/demo.svg">legacy publication</a>\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="publishable legacy references"):
+        consolidation.audit_legacy_paths(
+            ledger_path=ledger_path,
+            repository_root=fixture_repo,
+            output_path=output,
+        )

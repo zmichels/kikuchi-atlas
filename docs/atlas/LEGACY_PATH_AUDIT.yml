@@ -1,0 +1,777 @@
+schema_version: 1
+publishable_legacy_reference_count: 0
+allowed_references:
+- file: docs/acceptance/calcite-atlas-parity.md
+  line: 54
+  legacy_path: local/atlas-expansion/calcite/templates
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/enstatite-atlas-parity.md
+  line: 43
+  legacy_path: local/atlas-expansion/enstatite/templates
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 16
+  legacy_path: local/phase-general-direct-reflector-art/parity
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 17
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 29
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 30
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery/orientation-gallery-sheet-2e035fcbc2398433/orientation-gallery-comparison.png
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 80
+  legacy_path: local/phase-general-direct-reflector-art/parity/reflector-parity-run-2fc04ef7acef94c4/reflector-parity-report.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 81
+  legacy_path: local/phase-general-direct-reflector-art/parity/reflector-parity-run-83f8b8e06f963665/reflector-parity-report.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 82
+  legacy_path: local/phase-general-direct-reflector-art/parity/reflector-parity-run-e7a0912120a5df91/reflector-parity-report.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 83
+  legacy_path: local/phase-general-direct-reflector-art/parity/reflector-parity-run-fb301916800e50e4/reflector-parity-report.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 84
+  legacy_path: local/phase-general-direct-reflector-art/parity/reflector-parity-run-fd5c960ece11c250/reflector-parity-report.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 97
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 98
+  legacy_path: local/phase-general-direct-reflector-art/parity
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 104
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 123
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery/orientation-gallery-cell-bca1b2621044a96b/ice-ih-azimuthal-60-stencil.png
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 124
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery/orientation-gallery-cell-9b08b8d2311d3fd8/forsterite-azimuthal-60-stencil.png
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 125
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery/orientation-gallery-cell-750e569205dc696c/quartz-azimuthal-60-stencil.png
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 126
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery/orientation-gallery-cell-f475ac06fa7942f5/zircon-azimuthal-60-stencil.png
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/five-phase-standard-orientation-gallery.md
+  line: 127
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery/orientation-gallery-cell-ebd0a69bbd4c7c2f/titanite-azimuthal-60-stencil.png
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/ice-ih-corrected-reviewed-v2.md
+  line: 31
+  legacy_path: local/phase-general-direct-reflector-art/ice-ih-corrected-catalog-v2
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/ice-ih-corrected-reviewed-v2.md
+  line: 32
+  legacy_path: local/phase-general-direct-reflector-art/ice-ih-corrected-catalog-v2/direct-art-catalog-run-886bc7ef458d1e23/art-band-catalog.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/ice-ih-corrected-reviewed-v2.md
+  line: 32
+  legacy_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/ice-ih-corrected-reviewed-v2.md
+  line: 37
+  legacy_path: local/phase-general-direct-reflector-art/ice-ih-corrected-catalog-v2/direct-art-catalog-run-886bc7ef458d1e23
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/ice-ih-corrected-reviewed-v2.md
+  line: 38
+  legacy_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/ice-ih-reflector-ridge-globe.md
+  line: 18
+  legacy_path: local/ice-reflector-globes/reflector-ridge-globe-build-f07f822ff336b13e
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 53
+  legacy_path: local/phase-general-direct-reflector-art/parity
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 54
+  legacy_path: local/phase-general-direct-reflector-art/parity
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 55
+  legacy_path: local/phase-general-direct-reflector-art/parity
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 56
+  legacy_path: local/phase-general-direct-reflector-art/parity
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 57
+  legacy_path: local/phase-general-direct-reflector-art/parity
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 69
+  legacy_path: local/phase-general-direct-reflector-art/parity/<run-id>/reflector-parity-report.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 74
+  legacy_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 74
+  legacy_path: local/phase-general-direct-reflector-art/parity
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 74
+  legacy_path: local/phase-general-direct-reflector-art/series
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 81
+  legacy_path: local/phase-general-direct-reflector-art/series-command-initial-schema-mismatch.log
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 95
+  legacy_path: local/phase-general-direct-reflector-art/series/
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 112
+  legacy_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/phase-general-direct-reflector-art-series.md
+  line: 125
+  legacy_path: local/phase-general-direct-reflector-art/series/phase-art-series-88b3d0d1b9aa9169
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-artist-master.md
+  line: 27
+  legacy_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-artist-master.md
+  line: 54
+  legacy_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-near-depth-artist-pair.md
+  line: 52
+  legacy_path: local/atlas-extension-parity/kinematical/quartz/kinematical-run-9288671de48c1eee
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-near-depth-artist-pair.md
+  line: 52
+  legacy_path: local/atlas-extension-parity/near-depth/quartz/near-depth-run-73fd2b3763870e92
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-near-depth-artist-pair.md
+  line: 58
+  legacy_path: local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-near-depth-artist-pair.md
+  line: 64
+  legacy_path: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-near-depth-artist-pair.md
+  line: 70
+  legacy_path: local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-near-depth-artist-pair.md
+  line: 72
+  legacy_path: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-near-depth-artist-pair.md
+  line: 93
+  legacy_path: local/idealized-near-depth-rotation/quartz-artist-pair-60fps-v1/identity-left-oblique-right.png
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-zircon-titanite-direct-catalogs.md
+  line: 14
+  legacy_path: local/phase-general-direct-reflector-art/quartz-catalog-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-zircon-titanite-direct-catalogs.md
+  line: 15
+  legacy_path: local/phase-general-direct-reflector-art/zircon-catalog-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-zircon-titanite-direct-catalogs.md
+  line: 16
+  legacy_path: local/phase-general-direct-reflector-art/titanite-catalog-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-zircon-titanite-direct-catalogs.md
+  line: 21
+  legacy_path: local/phase-general-direct-reflector-art/quartz-catalog-v1/direct-art-catalog-run-2c7ad6fc6bccd796
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-zircon-titanite-direct-catalogs.md
+  line: 22
+  legacy_path: local/phase-general-direct-reflector-art/zircon-catalog-v1/direct-art-catalog-run-672d40a47371a633
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/quartz-zircon-titanite-direct-catalogs.md
+  line: 23
+  legacy_path: local/phase-general-direct-reflector-art/titanite-catalog-v1/direct-art-catalog-run-ffa0c0e8fd0c4f87
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/reflector-ridge-series.md
+  line: 12
+  legacy_path: local/ice-reflector-globes/reflector-ridge-globe-build-f07f822ff336b13e/ice-ih-reflector-ridges.stl
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/reflector-ridge-series.md
+  line: 13
+  legacy_path: local/reflector-ridge-series/quartz/reflector-ridge-globe-build-5631d275ba61abb6/quartz-reflector-ridges.stl
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/reflector-ridge-series.md
+  line: 14
+  legacy_path: local/reflector-ridge-series/forsterite/reflector-ridge-globe-build-1c2dad85f3d06ae1/forsterite-reflector-ridges.stl
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/reflector-ridge-series.md
+  line: 15
+  legacy_path: local/reflector-ridge-series/titanite/reflector-ridge-globe-build-a786a35bbb9f57db/titanite-reflector-ridges.stl
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/reflector-ridge-series.md
+  line: 16
+  legacy_path: local/reflector-ridge-series/zircon/reflector-ridge-globe-build-d050d0e211300849/zircon-reflector-ridges.stl
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/reflector-ridge-series.md
+  line: 17
+  legacy_path: local/reflector-ridge-series/diamond/reflector-ridge-globe-build-368e3cf8d2cf2bbe/diamond-reflector-ridges.stl
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/spherical-intensity-relief-globe.md
+  line: 10
+  legacy_path: local/relief-globes/forsterite-501/relief-globe-build-3334895cd23540f5
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/spherical-intensity-relief-globe.md
+  line: 11
+  legacy_path: local/relief-globes/forsterite-501/relief-globe-build-3334895cd23540f5/relief-manifest.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/spherical-intensity-relief-globe.md
+  line: 12
+  legacy_path: local/relief-globes/forsterite-501/relief-globe-build-3334895cd23540f5/mesh-validation.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/spherical-intensity-relief-globe.md
+  line: 13
+  legacy_path: local/relief-globes/forsterite-501/relief-globe-build-3334895cd23540f5/forsterite-intensity-relief-preview.png
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/spherical-intensity-relief-globe.md
+  line: 14
+  legacy_path: local/relief-globes/forsterite-501/relief-globe-build-3334895cd23540f5/forsterite-intensity-relief-globe.stl
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/acceptance/titanite-zircon-retained-near-depth.md
+  line: 44
+  legacy_path: local/idealized-near-depth-rotation/{phase}-x-axis-band-led-v1/
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 4
+  legacy_path: local/atlas-expansion
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 5
+  legacy_path: local/atlas-extension-parity
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 6
+  legacy_path: local/phase-general-direct-reflector-art
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 7
+  legacy_path: local/reflector-ridge-series
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 8
+  legacy_path: local/dynamical-master-rotation
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 9
+  legacy_path: local/ice-intensity-globes-fixed
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 10
+  legacy_path: local/ice-reflector-globes
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 11
+  legacy_path: local/idealized-direct-reflector-depth-rotation
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 12
+  legacy_path: local/idealized-near-depth-rotation
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 13
+  legacy_path: local/relief-globes
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 20
+  legacy_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1/quartz-x-axis-rotation-artist-master.mov
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 21
+  legacy_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1/preview.png
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 22
+  legacy_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1/quartz-x-axis-rotation-viewing-copy.mp4
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 23
+  legacy_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1/manifest.json
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 36
+  legacy_path: local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1/quartz-near-depth-identity-60fps-x-axis-rotation-artist-master.mov
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 37
+  legacy_path: local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1/preview.png
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 41
+  legacy_path: local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1/manifest.json
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 54
+  legacy_path: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1/quartz-near-depth-oblique-17-31-43-60fps-x-axis-rotation-artist-master.mov
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 55
+  legacy_path: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1/preview.png
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/atlas/CONSOLIDATION.yml
+  line: 59
+  legacy_path: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1/manifest.json
+  classification: nonpublishable-scientific-input
+  reason: The migration policy retains verified legacy sources as nonpublishable package
+    inputs.
+- file: docs/products/ARTIFACT_CATALOG.yml
+  line: 156
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery/orientation-gallery-sheet-2e035fcbc2398433
+  classification: historical-reproduction-evidence
+  reason: The review-only orientation gallery remains historical evidence and is not
+    an Atlas product or cleanup target.
+- file: docs/work/KIKU-T036.md
+  line: 19
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery/orientation-gallery-sheet-2e035fcbc2398433/orientation-gallery-comparison-ledger.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T037.md
+  line: 17
+  legacy_path: local/phase-general-direct-reflector-art/diamond-catalog-v1/direct-art-catalog-run-065cf8629d81ea13/manifest.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T037.md
+  line: 18
+  legacy_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8/manifest.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T037.md
+  line: 19
+  legacy_path: local/phase-general-direct-reflector-art/exports/diamond-x-axis-rotation-v1/manifest.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T038.md
+  line: 21
+  legacy_path: local/idealized-near-depth-rotation/titanite-x-axis-band-led-v1/manifest.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T038.md
+  line: 22
+  legacy_path: local/idealized-near-depth-rotation/zircon-x-axis-band-led-v1/manifest.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T050.md
+  line: 44
+  legacy_path: local/atlas-extension-parity/kinematical/
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T050.md
+  line: 48
+  legacy_path: local/atlas-extension-parity/depth-motion/
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T050.md
+  line: 51
+  legacy_path: local/atlas-extension-parity/relief/
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T056.md
+  line: 30
+  legacy_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T058.md
+  line: 14
+  legacy_path: local/idealized-near-depth-rotation/quartz-identity-4k-24fps-24s-v1/manifest.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T058.md
+  line: 15
+  legacy_path: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-4k-24fps-24s-v1/manifest.json
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T058.md
+  line: 16
+  legacy_path: local/idealized-near-depth-rotation/quartz-artist-pair-v1/identity-left-oblique-right.png
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T058.md
+  line: 34
+  legacy_path: local/idealized-near-depth-rotation/quartz-identity-4k-24fps-24s-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T058.md
+  line: 36
+  legacy_path: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-4k-24fps-24s-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T059.md
+  line: 16
+  legacy_path: local/idealized-near-depth-rotation/quartz-artist-pair-60fps-v1/identity-left-oblique-right.png
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T059.md
+  line: 17
+  legacy_path: local/idealized-near-depth-rotation/quartz-artist-pair-60fps-v1/STEVE-KIDDER-QUARTZ-60FPS-NOTES.txt
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T059.md
+  line: 32
+  legacy_path: local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: docs/work/KIKU-T059.md
+  line: 34
+  legacy_path: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: scripts/render_direct_reflector_depth_rotation.py
+  line: 23
+  legacy_path: local/phase-general-direct-reflector-art/series/forsterite-hemisphere-standard-run-1c34e517644729c5
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_depth_rotation.py
+  line: 24
+  legacy_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_depth_rotation.py
+  line: 25
+  legacy_path: local/phase-general-direct-reflector-art/series/titanite-hemisphere-standard-run-7a58d5c09fe6273c
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_depth_rotation.py
+  line: 70
+  legacy_path: local/idealized-direct-reflector-depth-rotation/{args.phase}-x-axis-v1
+  classification: historical-reproduction-evidence
+  reason: The renderer or its regression coverage retains an original production default
+    for reproducibility.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 29
+  legacy_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 30
+  legacy_path: local/phase-general-direct-reflector-art/series/forsterite-hemisphere-standard-run-1c34e517644729c5
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 31
+  legacy_path: local/phase-general-direct-reflector-art/series/quartz-hemisphere-standard-run-c8e68d027682d562
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 32
+  legacy_path: local/phase-general-direct-reflector-art/series/zircon-hemisphere-standard-run-ad71aeef33302d99
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 33
+  legacy_path: local/phase-general-direct-reflector-art/series/titanite-hemisphere-standard-run-7a58d5c09fe6273c
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 34
+  legacy_path: local/phase-general-direct-reflector-art/exports/diamond-rotated-tattoo-templates-v1/diamond-hemisphere-standard-run-9b89c88619fe53e8
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 35
+  legacy_path: local/phase-general-direct-reflector-art/exports/plagioclase-an52-standard-plus-orientation-gallery-v1/plagioclase-an52-hemisphere-standard-run-cb6af5ff9f8c51c1
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 36
+  legacy_path: local/phase-general-direct-reflector-art/exports/muscovite-2m1-standard-plus-orientation-gallery-v1/muscovite-2m1-hemisphere-standard-run-723537ba31df321e
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 37
+  legacy_path: local/phase-general-direct-reflector-art/exports/diopside-standard-plus-orientation-gallery-v2/diopside-hemisphere-standard-run-5961de0cf850d6ef
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 38
+  legacy_path: local/atlas-expansion/calcite/templates/calcite-hemisphere-standard-run-83d9c94e36df77ed
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 39
+  legacy_path: local/atlas-expansion/enstatite/templates/enstatite-hemisphere-standard-run-5ac8464fe1575028
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 40
+  legacy_path: local/atlas-expansion/pyrope/templates/pyrope-hemisphere-standard-run-cf3ddb145179cc6e
+  classification: nonpublishable-scientific-input
+  reason: The renderer consumes the retained selection bundle; the Atlas registry
+    does not publish the bundle as an individual product.
+- file: scripts/render_direct_reflector_rotation.py
+  line: 190
+  legacy_path: local/phase-general-direct-reflector-art/exports/{args.phase}-{args.axis}-axis-rotation-v1
+  classification: historical-reproduction-evidence
+  reason: The renderer or its regression coverage retains an original production default
+    for reproducibility.
+- file: scripts/render_dynamical_master_rotation.py
+  line: 43
+  legacy_path: local/dynamical-master-rotation/forsterite-x-axis-proof-v1
+  classification: historical-reproduction-evidence
+  reason: The renderer or its regression coverage retains an original production default
+    for reproducibility.
+- file: scripts/render_ice_near_depth_rotation.py
+  line: 156
+  legacy_path: local/idealized-near-depth-rotation/ice-ih-x-axis-band-led-v1
+  classification: historical-reproduction-evidence
+  reason: The renderer or its regression coverage retains an original production default
+    for reproducibility.
+- file: tests/unit/test_direct_reflector_rotation.py
+  line: 25
+  legacy_path: local/atlas-expansion/pyrope/templates/
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: tests/unit/test_direct_reflector_rotation.py
+  line: 38
+  legacy_path: local/atlas-expansion/enstatite/templates/
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: tests/unit/test_verify_orientation_gallery.py
+  line: 11
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: tests/unit/test_verify_orientation_gallery.py
+  line: 12
+  legacy_path: local/phase-general-direct-reflector-art/parity
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.
+- file: tests/unit/test_verify_orientation_gallery.py
+  line: 36
+  legacy_path: local/phase-general-direct-reflector-art/orientation-gallery
+  classification: historical-reproduction-evidence
+  reason: The reference records or tests preserve historical production and verification
+    evidence.

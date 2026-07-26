@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from kikuchi_lab.atlas import build_atlas, load_phase_registry, load_product_registry
@@ -48,7 +49,7 @@ def test_product_registry_models_individual_products_and_common_core_families() 
         "reflector-ridge-globe",
     }
     assert "tattoo-template" not in {family.identifier for family in families}
-    assert len(products) == 122
+    assert len(products) == 125
     assert all(product.is_available() for product in products)
     assert all("tattoo" not in product.identifier.lower() for product in products)
     assert all("tattoo" not in product.title.lower() for product in products)
@@ -94,6 +95,71 @@ def test_product_registry_models_individual_products_and_common_core_families() 
     }
 
 
+def test_all_products_resolve_only_to_canonical_packages() -> None:
+    phases = load_phase_registry(REGISTRY)
+    _, products = load_product_registry(
+        PRODUCTS,
+        phase_slugs={phase.slug for phase in phases},
+    )
+
+    assert len(products) == 125
+    assert all(product.is_available() for product in products)
+    assert all(
+        "local/atlas/phases/" in path.relative_to(ROOT).as_posix()
+        for product in products
+        for path in product.required_paths()
+        if path.is_relative_to(ROOT / "local")
+    )
+    assert {
+        product.identifier
+        for product in products
+        if product.identifier.startswith("quartz-") and product.media_format == "mov"
+    } == {
+        "quartz-direct-reflector-artist-master-x-axis",
+        "quartz-near-depth-artist-master-identity-60fps",
+        "quartz-near-depth-artist-master-oblique-17-31-43-60fps",
+    }
+    assert all(
+        product.web_path and product.web_path.suffix == ".mp4"
+        for product in products
+        if product.media_format == "mov"
+    )
+
+
+def test_product_availability_requires_package_manifest_and_declared_web_proxy(
+    tmp_path: Path,
+) -> None:
+    phases = load_phase_registry(REGISTRY)
+    _, products = load_product_registry(
+        PRODUCTS,
+        phase_slugs={phase.slug for phase in phases},
+    )
+    source = next(product for product in products if product.media_format == "mov")
+    package = tmp_path / source.identifier
+    package.mkdir()
+    media = package / "media.mov"
+    preview = package / "preview.png"
+    web = package / "web.mp4"
+    manifest = package / "product-package.yml"
+    for path in (media, preview, web, manifest):
+        path.write_bytes(b"fixture")
+    product = replace(
+        source,
+        media_path=media,
+        preview_path=preview,
+        web_path=web,
+        bundle_path=package,
+        provenance_path=manifest,
+    )
+
+    assert product.is_available()
+    web.unlink()
+    assert not product.is_available()
+    web.write_bytes(b"fixture")
+    manifest.unlink()
+    assert not product.is_available()
+
+
 def test_kinematical_extension_baseline_has_exact_twelve_phase_coverage() -> None:
     phases = load_phase_registry(REGISTRY)
     _, products = load_product_registry(PRODUCTS, phase_slugs={phase.slug for phase in phases})
@@ -124,7 +190,7 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     )
 
     assert result.phase_count == 12
-    assert result.product_count == 122
+    assert result.product_count == 125
     assert result.index_path.is_file()
     index = result.index_path.read_text(encoding="utf-8")
     assert "Kikuchi Atlas" in index
@@ -160,7 +226,7 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert 'id="product-search"' in product_page
     assert 'id="phase-filter"' in product_page
     assert 'id="family-filter"' in product_page
-    assert product_page.count('class="card product-card"') == 122
+    assert product_page.count('class="card product-card"') == 125
     assert "tattoo" not in index.lower()
     assert "tattoo" not in product_page.lower()
     assert (tmp_path / "site/phases/forsterite.html").is_file()
@@ -190,6 +256,10 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert 'class="matrix-section" data-coverage="extension"' in forsterite
     assert forsterite.count('data-family="orientation-variation"') == 0
     assert '../product-types/direct-reflector-orientation-set.html' in forsterite
+    quartz = (tmp_path / "site/phases/quartz.html").read_text(encoding="utf-8")
+    assert quartz.count('class="card product-card"') == 13
+    assert quartz.count('type="video/quicktime"') == 3
+    assert quartz.index(">open MOV<") < quartz.index(">web copy<")
     for source_backed_phase in (
         "forsterite",
         "ice-ih",

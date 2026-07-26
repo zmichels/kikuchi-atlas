@@ -11,8 +11,8 @@ links:
   - ../acceptance/quartz-near-depth-artist-pair.md
 evidence:
   - ../../scripts/render_retained_near_depth_rotation.py
-  - ../../local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1/manifest.json
-  - ../../local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1/manifest.json
+  - ../../local/atlas/phases/quartz/products/quartz-near-depth-artist-master-identity-60fps/product-package.yml
+  - ../../local/atlas/phases/quartz/products/quartz-near-depth-artist-master-oblique-17-31-43-60fps/product-package.yml
   - ../../local/idealized-near-depth-rotation/quartz-artist-pair-60fps-v1/identity-left-oblique-right.png
   - ../../local/idealized-near-depth-rotation/quartz-artist-pair-60fps-v1/STEVE-KIDDER-QUARTZ-60FPS-NOTES.txt
 ---
@@ -27,6 +27,16 @@ near-depth editions at true 60 fps and 2048-square resolution. Keep the
 initial orientations fixed while rendering 1,440 unique orientations per
 edition. Stream ordered frames into the editing master so the higher temporal
 resolution does not require another retained PNG sequence.
+
+Original production roots (historical invocation evidence):
+`local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1`
+and
+`local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1`.
+
+Current canonical publication packages:
+`local/atlas/phases/quartz/products/quartz-near-depth-artist-master-identity-60fps/`
+and
+`local/atlas/phases/quartz/products/quartz-near-depth-artist-master-oblique-17-31-43-60fps/`.
 
 ## Acceptance Criteria
 

@@ -13,7 +13,7 @@ links:
   - ../superpowers/specs/2026-07-16-phase-general-direct-reflector-art-series-design.md
 evidence:
   - ../../scripts/render_direct_reflector_rotation.py
-  - ../../local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1/manifest.json
+  - ../../local/atlas/phases/quartz/products/quartz-direct-reflector-artist-master-x-axis/product-package.yml
   - ../acceptance/quartz-artist-master.md
 ---
 
@@ -25,6 +25,12 @@ Publish an edit-friendly, seamless alpha-quartz direct-reflector animation for
 downstream video art. Reuse the accepted direct-reflector catalog and saved standard selection,
 actively rotate the crystallographic normals through one x-axis revolution,
 and preserve the direct-reflector science-art claim boundary.
+
+Original production root (historical invocation evidence):
+`local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1`.
+
+Current canonical publication package:
+`local/atlas/phases/quartz/products/quartz-direct-reflector-artist-master-x-axis/`.
 
 The requested edition doubles the earlier quartz export's frame rate from 12
 to 24 fps, doubles its duration from 12 to 24 seconds, and increases its square

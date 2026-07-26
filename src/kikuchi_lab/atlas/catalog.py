@@ -53,6 +53,7 @@ _PRODUCT_FIELDS = {
     "format",
     "media_path",
     "preview_path",
+    "web_path",
     "bundle_path",
     "provenance_path",
     "recipe",
@@ -66,7 +67,7 @@ _PRODUCT_FIELDS = {
 _SOURCE_STATUSES = {"tracked-source", "candidate-reference"}
 _PRODUCT_STATES = {"local-published", "tracked-review-proof"}
 _COVERAGE = {"core", "extension"}
-_FORMATS = {"png", "svg", "mp4", "stl"}
+_FORMATS = {"png", "svg", "mp4", "mov", "stl"}
 _HIGHLIGHT_FAMILY_ORDER = (
     "direct-reflector-template",
     "intensity-master",
@@ -136,6 +137,7 @@ class AtlasProduct:
     media_format: str
     media_path: Path
     preview_path: Path | None
+    web_path: Path | None
     bundle_path: Path
     provenance_path: Path | None
     recipe: str
@@ -146,8 +148,27 @@ class AtlasProduct:
     orientation: str
     hero: bool
 
+    def required_paths(self) -> tuple[Path, ...]:
+        return tuple(
+            path
+            for path in (
+                self.media_path,
+                self.preview_path,
+                self.web_path,
+                self.bundle_path,
+                self.provenance_path,
+            )
+            if path is not None
+        )
+
     def is_available(self) -> bool:
-        return self.media_path.is_file()
+        return (
+            self.media_path.is_file()
+            and self.bundle_path.is_dir()
+            and (self.preview_path is None or self.preview_path.is_file())
+            and (self.web_path is None or self.web_path.is_file())
+            and (self.provenance_path is None or self.provenance_path.is_file())
+        )
 
 
 @dataclass(frozen=True)
@@ -283,7 +304,13 @@ def _product_from_mapping(
     phase_slugs: set[str],
     family_ids: set[str],
 ) -> AtlasProduct:
-    raw = _mapping_with_optional(value, _PRODUCT_FIELDS - {"preview_path", "provenance_path", "orientation", "hero"}, {"preview_path", "provenance_path", "orientation", "hero"}, "atlas product")
+    optional = {"preview_path", "web_path", "provenance_path", "orientation", "hero"}
+    raw = _mapping_with_optional(
+        value,
+        _PRODUCT_FIELDS - optional,
+        optional,
+        "atlas product",
+    )
     phases = _text_list(raw["phase_slugs"], "atlas product phase_slugs")
     unknown_phases = set(phases) - phase_slugs
     if unknown_phases:
@@ -313,7 +340,18 @@ def _product_from_mapping(
         family_ids=families,
         media_format=media_format,
         media_path=_repository_path(root, raw["media_path"], "atlas product media_path"),
-        preview_path=_repository_path(root, raw.get("preview_path"), "atlas product preview_path", allow_none=True),
+        preview_path=_repository_path(
+            root,
+            raw.get("preview_path"),
+            "atlas product preview_path",
+            allow_none=True,
+        ),
+        web_path=_repository_path(
+            root,
+            raw.get("web_path"),
+            "atlas product web_path",
+            allow_none=True,
+        ),
         bundle_path=_repository_path(root, raw["bundle_path"], "atlas product bundle_path"),
         provenance_path=_repository_path(
             root, raw.get("provenance_path"), "atlas product provenance_path", allow_none=True
@@ -463,11 +501,13 @@ def _product_type_href(page: Path, output_root: Path, product_type: ProductType)
 def _product_visual(product: AtlasProduct, page: Path) -> str:
     media_available = product.is_available()
     preview = product.preview_path if product.preview_path and product.preview_path.is_file() else None
-    if product.media_format == "mp4" and media_available:
+    if product.media_format in {"mov", "mp4"} and media_available:
         poster = f' poster="{escape(_relative_href(page, preview))}"' if preview else ""
+        mime_type = "video/mp4" if product.media_format == "mp4" else "video/quicktime"
         return (
             f'<video controls preload="metadata"{poster}>'
-            f'<source src="{escape(_relative_href(page, product.media_path))}" type="video/mp4"></video>'
+            f'<source src="{escape(_relative_href(page, product.media_path))}" '
+            f'type="{mime_type}"></video>'
         )
     display_path = preview or (product.media_path if media_available else None)
     if display_path is not None and display_path.suffix.lower() in {".png", ".svg", ".jpg", ".jpeg"}:
@@ -834,8 +874,12 @@ def _product_html(
     family_tags = "".join(f'<span class="tag">{escape(family_id)}</span>' for family_id in product.family_ids)
     actions = [
         f'<a href="{escape(_relative_href(page, product.media_path))}">open {escape(product.media_format.upper())}</a>',
-        f'<a href="{escape(_relative_href(page, product.bundle_path))}">bundle</a>',
     ]
+    if product.web_path is not None:
+        actions.append(
+            f'<a href="{escape(_relative_href(page, product.web_path))}">web copy</a>'
+        )
+    actions.append(f'<a href="{escape(_relative_href(page, product.bundle_path))}">bundle</a>')
     if product.provenance_path is not None:
         actions.append(
             f'<a href="{escape(_relative_href(page, product.provenance_path))}">provenance</a>'

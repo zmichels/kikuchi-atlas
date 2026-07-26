@@ -66,6 +66,17 @@ Oblique-specific arguments:
 
 ## Retained deliverables
 
+Original production roots (historical invocation evidence):
+`local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1`
+and
+`local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1`.
+
+Current canonical publication packages:
+`local/atlas/phases/quartz/products/quartz-direct-reflector-artist-master-x-axis/`,
+`local/atlas/phases/quartz/products/quartz-near-depth-artist-master-identity-60fps/`,
+and
+`local/atlas/phases/quartz/products/quartz-near-depth-artist-master-oblique-17-31-43-60fps/`.
+
 | Edition / artifact | Accepted properties | SHA-256 |
 | --- | --- | --- |
 | Identity ProRes master | 2048 x 2048, ProRes 422 HQ, 10-bit `yuv422p10le`, 60 fps, 1,440 frames, 24.000 s, 2,440,639,579 bytes | `8c45c5dc7c220ba80f21b7716205e1197c8e9137114baed26d0d54da796a7b5a` |
@@ -78,7 +89,7 @@ tasks in flight; no PNG sequence was retained. Each output retains a frame-zero
 `preview.png`, the exact `render-plan.json`, and a checksum/probe-bearing
 `manifest.json`. The H.264 copy was derived from the validated ProRes master.
 
-The side-by-side review proof is retained at
+The side-by-side review-only historical evidence is retained at
 `local/idealized-near-depth-rotation/quartz-artist-pair-60fps-v1/identity-left-oblique-right.png`
 (identity left, oblique right), SHA-256
 `27f3b33aa3d2192420f21ebd0948af948a233191549d4a7ad38e05296483c118`.
