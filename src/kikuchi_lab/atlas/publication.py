@@ -21,6 +21,8 @@ import shutil
 from typing import Iterable
 
 from .catalog import AtlasProduct, build_atlas, load_phase_registry, load_product_registry
+from .mirror import load_mirror_ledger, public_product_urls
+from .packages import load_product_package, validate_product_package
 
 
 _WEB_SUFFIXES = {".png", ".svg", ".jpg", ".jpeg", ".mp4"}
@@ -89,10 +91,23 @@ def _web_safe(path: Path, *, max_web_asset_bytes: int) -> bool:
 
 
 def _archive_sources(product: AtlasProduct) -> tuple[Path, ...]:
+    manifest = product.provenance_path
+    if manifest is not None and manifest.name == "product-package.yml":
+        package = validate_product_package(manifest)
+        sources = [
+            manifest,
+            *(
+                manifest.parent.joinpath(*item.relative_path.parts)
+                for item in package.files
+            ),
+        ]
+        return tuple(dict.fromkeys(sources))
     return tuple(
-        path
-        for path in (product.media_path, product.preview_path, product.provenance_path)
-        if path is not None and path.is_file()
+        dict.fromkeys(
+            path
+            for path in (product.media_path, product.preview_path, manifest)
+            if path is not None and path.is_file()
+        )
     )
 
 
@@ -103,6 +118,11 @@ def _supplemental_archive_sources(product: AtlasProduct) -> tuple[tuple[str, Pat
     The canonical kinematical field and the relief-driving field are the compact
     source artifacts that must travel with their rendered extension products.
     """
+    if (
+        product.provenance_path is not None
+        and product.provenance_path.name == "product-package.yml"
+    ):
+        return ()
     sources: list[tuple[str, Path]] = []
     if "intensity-master" in product.family_ids:
         master = product.bundle_path / "products" / "canonical-kinematical-master.npz"
@@ -124,6 +144,8 @@ def _product_inventory(
     web_paths: dict[Path, Path],
     archive_paths: dict[Path, Path],
     stage_archive: bool,
+    product_urls: dict[str, str],
+    max_web_asset_bytes: int,
 ) -> dict[str, object]:
     def web_entry(path: Path | None) -> str | None:
         target = web_paths.get(path) if path is not None else None
@@ -144,6 +166,35 @@ def _product_inventory(
     for role, source in _supplemental_archive_sources(product):
         staged_path, digest = archive_entry(source)
         supplemental.append({"role": role, "path": staged_path, "sha256": digest})
+    package_files = []
+    if (
+        product.provenance_path is not None
+        and product.provenance_path.name == "product-package.yml"
+    ):
+        package = load_product_package(product.provenance_path)
+        staged_path, digest = archive_entry(product.provenance_path)
+        package_files.append(
+            {
+                "package_path": "product-package.yml",
+                "role": "manifest",
+                "path": staged_path,
+                "sha256": digest,
+            }
+        )
+        for item in package.files:
+            source = product.provenance_path.parent.joinpath(
+                *item.relative_path.parts
+            )
+            staged_path, digest = archive_entry(source)
+            package_files.append(
+                {
+                    "package_path": item.relative_path.as_posix(),
+                    "role": item.role,
+                    "path": staged_path,
+                    "sha256": digest,
+                }
+            )
+    browser_media = product.web_path or product.media_path
     return {
         "id": product.identifier,
         "title": product.title,
@@ -157,9 +208,14 @@ def _product_inventory(
         "recipe": product.recipe,
         "entrypoint": product.entrypoint,
         "web": {
-            "media_path": web_entry(product.media_path),
+            "media_path": web_entry(browser_media),
             "preview_path": web_entry(product.preview_path),
-            "maximum_asset_bytes": _DEFAULT_MAX_WEB_ASSET_BYTES,
+            "maximum_asset_bytes": max_web_asset_bytes,
+        },
+        "delivery": {
+            "authoritative_media_format": product.media_format,
+            "browser_media_path": web_entry(browser_media),
+            "full_resolution_url": product_urls.get(product.identifier),
         },
         "archive": {
             "status": "staged" if stage_archive else "inventory-only",
@@ -170,10 +226,11 @@ def _product_inventory(
             "provenance_path": provenance_archive_path,
             "provenance_sha256": provenance_sha256,
             "supplemental": supplemental,
+            "package_files": package_files,
             "bundle_note": (
-                "Bundle directories are intentionally not copied wholesale; canonical master and "
-                "relief fields are selected above when present. Use the recipe and release "
-                "manifest to reconstruct any remaining intermediate products."
+                "Canonical product packages archive exactly their manifest-declared payloads. "
+                "Legacy bundle directories are not copied wholesale; selected compact fields "
+                "are listed above when present."
             ),
             "source_media_path": product.media_path.relative_to(root).as_posix(),
         },
@@ -299,6 +356,7 @@ def build_public_atlas(
     output_root: str | Path,
     stage_archive: bool = False,
     max_web_asset_bytes: int = _DEFAULT_MAX_WEB_ASSET_BYTES,
+    mirror_registry_path: str | Path | None = None,
 ) -> PublicAtlasBuildResult:
     """Build a self-contained web gallery and optional local archival staging area.
 
@@ -315,6 +373,11 @@ def build_public_atlas(
     root = registry.parents[2]
     phases = load_phase_registry(registry)
     _, products = load_product_registry(product_registry, phase_slugs={phase.slug for phase in phases})
+    product_urls = (
+        public_product_urls(load_mirror_ledger(mirror_registry_path))
+        if mirror_registry_path is not None
+        else {}
+    )
 
     output = Path(output_root).resolve()
     _reset_generated_output(output)
@@ -327,6 +390,7 @@ def build_public_atlas(
         product_registry_path=product_registry,
         anchor_catalog_path=anchors,
         output_root=site_root,
+        product_urls=product_urls,
     )
 
     web_paths: dict[Path, Path] = {}
@@ -335,12 +399,21 @@ def build_public_atlas(
     for product in products:
         all_local_paths.update(
             path
-            for path in (product.media_path, product.preview_path, product.bundle_path, product.provenance_path)
+            for path in (
+                product.media_path,
+                product.preview_path,
+                product.web_path,
+                product.bundle_path,
+                product.provenance_path,
+            )
             if path is not None
         )
-        for source in (product.media_path, product.preview_path):
+        browser_media = product.web_path or product.media_path
+        for source in (browser_media, product.preview_path):
             if source is not None and _web_safe(source, max_web_asset_bytes=max_web_asset_bytes):
-                _copy_asset(source, web_asset_root, web_paths)
+                target = _copy_asset(source, web_asset_root, web_paths)
+                if source == browser_media:
+                    web_paths[product.media_path] = target
         if stage_archive:
             for source in _archive_sources(product):
                 _copy_asset(source, archive_asset_root, archive_paths)
@@ -366,6 +439,8 @@ def build_public_atlas(
                 web_paths=web_paths,
                 archive_paths=archive_paths,
                 stage_archive=stage_archive,
+                product_urls=product_urls,
+                max_web_asset_bytes=max_web_asset_bytes,
             )
             for product in products
         ],
@@ -378,7 +453,7 @@ def build_public_atlas(
     )
     _rewrite_site_links(site_root=site_root, web_paths=web_paths, all_local_paths=all_local_paths)
 
-    archive_assets: tuple[Path, ...] = tuple(sorted(archive_paths.values()))
+    archive_assets: tuple[Path, ...] = tuple(sorted(set(archive_paths.values())))
     if stage_archive:
         phase_source_records = tuple(root / (phase.source_record or "") for phase in phases)
         _copy_tracked_release_context(
@@ -401,7 +476,7 @@ def build_public_atlas(
         site_root=site_root,
         archive_root=archive_root,
         inventory_path=inventory_path,
-        web_assets=tuple(sorted(web_paths.values())),
+        web_assets=tuple(sorted(set(web_paths.values()))),
         archive_assets=archive_assets,
     )
 

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from html import escape
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import yaml
 
@@ -864,6 +864,7 @@ def _product_html(
     page: Path,
     output_root: Path,
     phase_by_slug: dict[str, AtlasPhase],
+    product_urls: Mapping[str, str],
 ) -> str:
     availability = "available locally" if product.is_available() else "not present in this checkout"
     phase_tags = "".join(
@@ -883,6 +884,11 @@ def _product_html(
     if product.provenance_path is not None:
         actions.append(
             f'<a href="{escape(_relative_href(page, product.provenance_path))}">provenance</a>'
+        )
+    full_resolution_url = product_urls.get(product.identifier)
+    if full_resolution_url is not None:
+        actions.append(
+            f'<a href="{escape(full_resolution_url)}">open full-resolution package</a>'
         )
     search = " ".join(
         (
@@ -961,6 +967,7 @@ def _individual_product_groups_html(
     page: Path,
     output_root: Path,
     phase_by_slug: dict[str, AtlasPhase],
+    product_urls: Mapping[str, str],
 ) -> str:
     """Render product cards once, grouped by their authoritative coverage family."""
     coverage_by_family = {family.identifier: family.coverage for family in families}
@@ -976,7 +983,7 @@ def _individual_product_groups_html(
         f'<section class="product-group" data-coverage="{coverage}">'
         f'<div class="product-group-heading"><p class="kicker">{coverage} release</p>'
         f'<h3>{escape(label)}</h3><p>{escape(description)}</p></div>'
-        f'<div class="grid">{"".join(_product_html(product, page, output_root, phase_by_slug) for product in grouped[coverage])}</div>'
+        f'<div class="grid">{"".join(_product_html(product, page, output_root, phase_by_slug, product_urls) for product in grouped[coverage])}</div>'
         '</section>'
         for coverage, (label, description) in _COVERAGE_PRESENTATION.items()
         if grouped[coverage]
@@ -991,6 +998,7 @@ def _phase_page_html(
     page: Path,
     output_root: Path,
     phase_by_slug: dict[str, AtlasPhase],
+    product_urls: Mapping[str, str],
 ) -> str:
     related = tuple(product for product in products if phase.slug in product.phase_slugs)
     product_html = _individual_product_groups_html(
@@ -999,6 +1007,7 @@ def _phase_page_html(
         page,
         output_root,
         phase_by_slug,
+        product_urls,
     )
     if not product_html:
         product_html = '<div class="placeholder">No individual product published yet</div>'
@@ -1022,6 +1031,7 @@ def _products_page_html(
     phases: tuple[AtlasPhase, ...],
     page: Path,
     output_root: Path,
+    product_urls: Mapping[str, str],
 ) -> str:
     phase_by_slug = {phase.slug: phase for phase in phases}
     options = "".join(
@@ -1030,7 +1040,10 @@ def _products_page_html(
     family_options = "".join(
         f'<option value="{escape(family.identifier)}">{escape(family.label)}</option>' for family in families
     )
-    cards = "".join(_product_html(product, page, output_root, phase_by_slug) for product in products)
+    cards = "".join(
+        _product_html(product, page, output_root, phase_by_slug, product_urls)
+        for product in products
+    )
     return _page_shell(
         "Kikuchi Atlas — products",
         f'''{_navigation(page, output_root)}<h1>Browse individual products</h1>
@@ -1084,6 +1097,7 @@ def build_atlas(
     product_registry_path: str | Path,
     anchor_catalog_path: str | Path,
     output_root: str | Path,
+    product_urls: Mapping[str, str] | None = None,
 ) -> AtlasBuildResult:
     """Render a relational local atlas while leaving generated media in ``local/``."""
     registry = Path(registry_path).resolve()
@@ -1098,6 +1112,7 @@ def build_atlas(
     phase_directory.mkdir(parents=True, exist_ok=True)
     product_type_directory.mkdir(parents=True, exist_ok=True)
     phase_by_slug = {phase.slug: phase for phase in phases}
+    verified_product_urls = dict(product_urls or {})
     phase_pages: list[Path] = []
     for phase in phases:
         page = phase_directory / f"{phase.slug}.html"
@@ -1109,6 +1124,7 @@ def build_atlas(
                 page=page,
                 output_root=output,
                 phase_by_slug=phase_by_slug,
+                product_urls=verified_product_urls,
             ),
             encoding="utf-8",
         )
@@ -1130,7 +1146,12 @@ def build_atlas(
     products_page = output / "products.html"
     products_page.write_text(
         _products_page_html(
-            products=products, families=families, phases=phases, page=products_page, output_root=output
+            products=products,
+            families=families,
+            phases=phases,
+            page=products_page,
+            output_root=output,
+            product_urls=verified_product_urls,
         ),
         encoding="utf-8",
     )

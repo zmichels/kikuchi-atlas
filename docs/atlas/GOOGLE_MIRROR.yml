@@ -1,0 +1,969 @@
+schema_version: 1
+provider: google-drive
+account: zmichels@umn.edu
+local_mount: null
+transport: undecided
+quota:
+  observed_at: null
+  total_bytes: null
+  used_bytes: null
+  free_bytes: null
+  required_headroom_bytes: 10737418240
+root:
+  drive_id: null
+  url: null
+  access: private
+  state: planned
+phases:
+  forsterite:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      forsterite-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-direct-wide:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-dynamical-master-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-depth-field-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-intensity-relief-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      forsterite-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+  ice-ih:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      ice-ih-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-direct-wide:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-depth-field-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-near-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-intensity-relief-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      ice-ih-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+  quartz:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      quartz-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-direct-wide:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-direct-reflector-artist-master-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-near-depth-artist-master-identity-60fps:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      quartz-near-depth-artist-master-oblique-17-31-43-60fps:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+  zircon:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      zircon-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      zircon-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      zircon-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      zircon-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      zircon-direct-wide:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      zircon-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      zircon-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      zircon-near-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      zircon-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      zircon-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      zircon-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+  titanite:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      titanite-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      titanite-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      titanite-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      titanite-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      titanite-direct-wide:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      titanite-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      titanite-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      titanite-depth-field-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      titanite-near-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      titanite-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      titanite-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      titanite-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+  diamond:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      diamond-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diamond-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diamond-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diamond-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diamond-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diamond-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diamond-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diamond-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diamond-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+  plagioclase-an52:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      plagioclase-an52-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      plagioclase-an52-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      plagioclase-an52-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      plagioclase-an52-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      plagioclase-an52-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      plagioclase-an52-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      plagioclase-an52-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      plagioclase-an52-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      plagioclase-an52-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+  muscovite-2m1:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      muscovite-2m1-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      muscovite-2m1-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      muscovite-2m1-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      muscovite-2m1-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      muscovite-2m1-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      muscovite-2m1-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      muscovite-2m1-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      muscovite-2m1-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      muscovite-2m1-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+  diopside:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      diopside-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diopside-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diopside-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diopside-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diopside-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diopside-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diopside-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diopside-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      diopside-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+  calcite:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      calcite-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      calcite-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      calcite-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      calcite-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      calcite-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      calcite-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      calcite-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      calcite-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      calcite-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+  enstatite:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      enstatite-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      enstatite-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      enstatite-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      enstatite-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      enstatite-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      enstatite-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      enstatite-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      enstatite-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      enstatite-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+  pyrope:
+    drive_id: null
+    url: null
+    access: private
+    state: planned
+    products:
+      pyrope-direct-standard:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      pyrope-direct-azimuthal-60:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      pyrope-direct-tilt-plus-20:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      pyrope-direct-oblique-high:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      pyrope-x-axis-rotation:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      pyrope-reflector-ridge-globe:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      pyrope-atlas-kinematical-master:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      pyrope-atlas-retained-depth-x-axis:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+      pyrope-atlas-kinematical-intensity-relief:
+        drive_id: null
+        url: null
+        access: private
+        state: planned
+        package_manifest_sha256: null
+        verified_at: null
+site:
+  draft_url: https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test
+  public_url: null
+  audience: university-only
+  state: draft

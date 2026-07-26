@@ -291,3 +291,35 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert diamond.count('class="card product-card"') == 9
     assert 'data-family="direct-reflector-orientation-set"' in diamond
     assert 'data-state="available" data-thumbnail-count="4"' in diamond
+
+
+def test_atlas_adds_full_resolution_action_only_for_explicit_product_url(
+    tmp_path: Path,
+) -> None:
+    result = build_atlas(
+        registry_path=REGISTRY,
+        product_registry_path=PRODUCTS,
+        anchor_catalog_path=ANCHORS,
+        output_root=tmp_path / "site",
+        product_urls={
+            "quartz-direct-reflector-artist-master-x-axis": (
+                "https://drive.google.com/drive/folders/verified-product-id"
+            )
+        },
+    )
+
+    quartz = (result.index_path.parent / "phases/quartz.html").read_text(encoding="utf-8")
+    assert quartz.count(">open full-resolution package<") == 1
+    assert "https://drive.google.com/drive/folders/verified-product-id" in quartz
+    url_position = quartz.index(
+        "https://drive.google.com/drive/folders/verified-product-id"
+    )
+    product_card = quartz[quartz.rfind("<article", 0, url_position) : quartz.index(
+        "</article>", url_position
+    )]
+    assert product_card.index(">open MOV<") < product_card.index(">web copy<")
+    assert product_card.index(">web copy<") < product_card.index(">bundle<")
+    assert product_card.index(">bundle<") < product_card.index(">provenance<")
+    assert product_card.index(">provenance<") < product_card.index(
+        ">open full-resolution package<"
+    )
