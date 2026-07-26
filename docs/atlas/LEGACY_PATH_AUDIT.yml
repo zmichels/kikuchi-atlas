@@ -649,12 +649,6 @@ allowed_references:
   classification: nonpublishable-scientific-input
   reason: The renderer consumes the retained selection bundle; the Atlas registry
     does not publish the bundle as an individual product.
-- file: scripts/render_direct_reflector_depth_rotation.py
-  line: 70
-  legacy_path: local/idealized-direct-reflector-depth-rotation/{args.phase}-x-axis-v1
-  classification: historical-reproduction-evidence
-  reason: The renderer or its regression coverage retains an original production default
-    for reproducibility.
 - file: scripts/render_direct_reflector_rotation.py
   line: 29
   legacy_path: local/phase-general-direct-reflector-art/ice-ih-corrected-reviewed-v2/ice-tattoo-run-a4cecd7a5122f980
@@ -727,24 +721,6 @@ allowed_references:
   classification: nonpublishable-scientific-input
   reason: The renderer consumes the retained selection bundle; the Atlas registry
     does not publish the bundle as an individual product.
-- file: scripts/render_direct_reflector_rotation.py
-  line: 190
-  legacy_path: local/phase-general-direct-reflector-art/exports/{args.phase}-{args.axis}-axis-rotation-v1
-  classification: historical-reproduction-evidence
-  reason: The renderer or its regression coverage retains an original production default
-    for reproducibility.
-- file: scripts/render_dynamical_master_rotation.py
-  line: 43
-  legacy_path: local/dynamical-master-rotation/forsterite-x-axis-proof-v1
-  classification: historical-reproduction-evidence
-  reason: The renderer or its regression coverage retains an original production default
-    for reproducibility.
-- file: scripts/render_ice_near_depth_rotation.py
-  line: 156
-  legacy_path: local/idealized-near-depth-rotation/ice-ih-x-axis-band-led-v1
-  classification: historical-reproduction-evidence
-  reason: The renderer or its regression coverage retains an original production default
-    for reproducibility.
 - file: tests/unit/test_direct_reflector_rotation.py
   line: 25
   legacy_path: local/atlas-expansion/pyrope/templates/

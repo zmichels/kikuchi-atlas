@@ -260,6 +260,7 @@ def test_atlas_builds_browsable_index_and_phase_pages(tmp_path: Path) -> None:
     assert quartz.count('class="card product-card"') == 13
     assert quartz.count('type="video/quicktime"') == 3
     assert quartz.index(">open MOV<") < quartz.index(">web copy<")
+    assert "Each card opens its actual SVG, PNG, MP4, MOV, or STL first." in quartz
     for source_backed_phase in (
         "forsterite",
         "ice-ih",

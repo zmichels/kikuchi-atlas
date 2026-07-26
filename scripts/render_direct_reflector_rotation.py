@@ -187,7 +187,7 @@ def main() -> None:
     output = (
         args.output.resolve()
         if args.output is not None
-        else ROOT / f"local/phase-general-direct-reflector-art/exports/{args.phase}-{args.axis}-axis-rotation-v1"
+        else ROOT / f"local/work/kikuchi-renders/direct-reflector-rotation/{args.phase}-{args.axis}-axis-rotation-v1"
     )
     if output.exists() and (output / "manifest.json").exists() and not args.reencode:
         raise FileExistsError(f"completed output already exists: {output}")

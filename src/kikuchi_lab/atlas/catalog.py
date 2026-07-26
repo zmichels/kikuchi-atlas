@@ -1011,7 +1011,7 @@ def _phase_page_html(
 {_visual_product_matrix_html(phase, families, products, page, output_root)}
 <h2>Coverage table</h2><p class="lede">Every phase is measured against the same named product families. A blank slot is a transparent production state, not a different kind of plot.</p>
 {_matrix_html(phase, families, products)}
-<h2>Individual products</h2><p class="lede">Each card opens its actual SVG, PNG, MP4, or STL first. The bundle and provenance record are secondary links for reproduction and audit.</p>{product_html}''',
+<h2>Individual products</h2><p class="lede">Each card opens its actual SVG, PNG, MP4, MOV, or STL first. The bundle and provenance record are secondary links for reproduction and audit.</p>{product_html}''',
     )
 
 

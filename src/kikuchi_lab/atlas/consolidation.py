@@ -1503,12 +1503,10 @@ def _tracked_paths(root: Path) -> tuple[PurePosixPath, ...]:
     )
 
 
-def _is_audit_candidate(path: PurePosixPath) -> bool:
+def _is_audit_excluded(path: PurePosixPath, excluded_files: set[str]) -> bool:
     value = path.as_posix()
-    return (
-        value.startswith(("src/", "scripts/", "tests/", "docs/acceptance/", "docs/work/"))
-        or value.startswith("docs/atlas/")
-        or value == "docs/products/ARTIFACT_CATALOG.yml"
+    return value in excluded_files or value.startswith(
+        ("docs/superpowers/plans/", "docs/superpowers/specs/")
     )
 
 
@@ -1558,6 +1556,16 @@ def _allowed_reference(
 ) -> tuple[str, str] | None:
     value = file.as_posix()
     legacy = PurePosixPath(legacy_path)
+    if (
+        value.startswith("local/atlas/phases/")
+        and "/products/" in value
+        and "/provenance/" in value
+        and file.name in {"manifest.json", "release-metadata.yml"}
+    ):
+        return (
+            "historical-reproduction-evidence",
+            "Canonical package provenance preserves the verified source-run path while publication resolves through canonical product paths.",
+        )
     if value == "docs/products/ARTIFACT_CATALOG.yml":
         if orientation_gallery_root is not None and (
             legacy == orientation_gallery_root
@@ -1579,21 +1587,20 @@ def _allowed_reference(
             "The reference records or tests preserve historical production and verification evidence.",
         )
     if value.startswith("scripts/"):
-        retained_input = 'Path("local/' in line_text or any(
-            source == legacy or source.is_relative_to(legacy) for source in source_paths
-        )
-        if retained_input and not any(
+        if any(
             marker in line_text
             for marker in ("--output", "default=", "else ROOT /", "output_root")
         ):
+            return None
+        retained_input = 'Path("local/' in line_text or any(
+            source == legacy or source.is_relative_to(legacy) for source in source_paths
+        )
+        if retained_input:
             return (
                 "nonpublishable-scientific-input",
                 "The renderer consumes the retained selection bundle; the Atlas registry does not publish the bundle as an individual product.",
             )
-        return (
-            "historical-reproduction-evidence",
-            "The renderer or its regression coverage retains an original production default for reproducibility.",
-        )
+        return None
     return None
 
 
@@ -1639,6 +1646,8 @@ def audit_legacy_paths(
     gallery_root = _orientation_gallery_root(root)
     output = Path(output_path).resolve()
     excluded = {
+        "docs/atlas/ATLAS_MIGRATION.yml",
+        "docs/atlas/LEGACY_PATH_AUDIT.yml",
         ledger_file.relative_to(root).as_posix(),
         output.relative_to(root).as_posix(),
     }
@@ -1647,7 +1656,7 @@ def audit_legacy_paths(
 
     for tracked in _audit_input_paths(root):
         value = tracked.as_posix()
-        if not _is_audit_candidate(tracked) or value in excluded:
+        if _is_audit_excluded(tracked, excluded):
             continue
         path = root / tracked
         try:

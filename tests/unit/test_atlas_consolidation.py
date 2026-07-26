@@ -395,28 +395,7 @@ def _initialize_fixture_git_repository(fixture_repo: Path) -> None:
     )
 
 
-def test_path_audit_rejects_publishable_registry_legacy_reference(
-    fixture_repo: Path,
-) -> None:
-    ledger_path = _write_fixture_ledger(fixture_repo)
-    materialize_ledger(ledger_path, repository_root=fixture_repo)
-    _initialize_fixture_git_repository(fixture_repo)
-    output = fixture_repo / "docs/atlas/LEGACY_PATH_AUDIT.yml"
-
-    with pytest.raises(ValueError, match="publishable legacy references"):
-        consolidation.audit_legacy_paths(
-            ledger_path=ledger_path,
-            repository_root=fixture_repo,
-            output_path=output,
-        )
-
-    payload = yaml.safe_load(output.read_text(encoding="utf-8"))
-    assert payload["publishable_legacy_reference_count"] > 0
-
-
-def test_path_audit_records_only_allowed_reference_classifications(
-    fixture_repo: Path,
-) -> None:
+def _prepare_allowed_audit_fixture(fixture_repo: Path) -> tuple[Path, Path]:
     ledger_path = _write_fixture_ledger(fixture_repo)
     materialize_ledger(ledger_path, repository_root=fixture_repo)
     products = yaml.safe_load(
@@ -467,6 +446,32 @@ entries:
     )
     _initialize_fixture_git_repository(fixture_repo)
     output = fixture_repo / "docs/atlas/LEGACY_PATH_AUDIT.yml"
+    return ledger_path, output
+
+
+def test_path_audit_rejects_publishable_registry_legacy_reference(
+    fixture_repo: Path,
+) -> None:
+    ledger_path = _write_fixture_ledger(fixture_repo)
+    materialize_ledger(ledger_path, repository_root=fixture_repo)
+    _initialize_fixture_git_repository(fixture_repo)
+    output = fixture_repo / "docs/atlas/LEGACY_PATH_AUDIT.yml"
+
+    with pytest.raises(ValueError, match="publishable legacy references"):
+        consolidation.audit_legacy_paths(
+            ledger_path=ledger_path,
+            repository_root=fixture_repo,
+            output_path=output,
+        )
+
+    payload = yaml.safe_load(output.read_text(encoding="utf-8"))
+    assert payload["publishable_legacy_reference_count"] > 0
+
+
+def test_path_audit_records_only_allowed_reference_classifications(
+    fixture_repo: Path,
+) -> None:
+    ledger_path, output = _prepare_allowed_audit_fixture(fixture_repo)
 
     result = consolidation.audit_legacy_paths(
         ledger_path=ledger_path,
@@ -487,6 +492,12 @@ entries:
         if item["file"] == "scripts/render_direct_reflector_rotation.py"
     )
     assert script_reference["classification"] == "nonpublishable-scientific-input"
+    canonical_provenance = next(
+        item
+        for item in payload["allowed_references"]
+        if item["file"].endswith("/provenance/release-metadata.yml")
+    )
+    assert canonical_provenance["classification"] == "historical-reproduction-evidence"
 
     site = fixture_repo / "docs/atlas/site"
     site.mkdir()
@@ -495,6 +506,54 @@ entries:
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="publishable legacy references"):
+        consolidation.audit_legacy_paths(
+            ledger_path=ledger_path,
+            repository_root=fixture_repo,
+            output_path=output,
+        )
+
+
+def test_path_audit_discovers_tracked_readme_legacy_output(
+    fixture_repo: Path,
+) -> None:
+    ledger_path, output = _prepare_allowed_audit_fixture(fixture_repo)
+    (fixture_repo / "README.md").write_text(
+        "Render with `--output local/legacy/readme-output`.\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "README.md"], cwd=fixture_repo, check=True)
+
+    with pytest.raises(ValueError, match=r"first=README\.md:1"):
+        consolidation.audit_legacy_paths(
+            ledger_path=ledger_path,
+            repository_root=fixture_repo,
+            output_path=output,
+        )
+
+
+@pytest.mark.parametrize(
+    "live_output_line",
+    (
+        '--output local/legacy/live-output',
+        'default=ROOT / "local/legacy/live-output"',
+        'else ROOT / "local/legacy/live-output"',
+        'output_root = ROOT / "local/legacy/live-output"',
+    ),
+)
+def test_path_audit_rejects_live_script_output_roots(
+    fixture_repo: Path,
+    live_output_line: str,
+) -> None:
+    ledger_path, output = _prepare_allowed_audit_fixture(fixture_repo)
+    script = fixture_repo / "scripts/live_output.py"
+    script.write_text(f"{live_output_line}\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "scripts/live_output.py"],
+        cwd=fixture_repo,
+        check=True,
+    )
+
+    with pytest.raises(ValueError, match=r"first=scripts/live_output\.py:1"):
         consolidation.audit_legacy_paths(
             ledger_path=ledger_path,
             repository_root=fixture_repo,
