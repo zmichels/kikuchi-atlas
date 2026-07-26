@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -25,6 +26,8 @@ ROOT = Path(__file__).parents[2]
 REGISTRY = ROOT / "docs/atlas/PHASE_REGISTRY.yml"
 PRODUCTS = ROOT / "docs/atlas/PRODUCT_REGISTRY.yml"
 MIRROR_SCRIPT = ROOT / "scripts/atlas_google_mirror.py"
+CANONICAL_UPLOAD_BYTES = 7_206_478_751
+CANONICAL_UPLOAD_BYTES_BASIS = "exact-regular-file-sum"
 
 
 def _write_yaml(path: Path, value: object) -> Path:
@@ -124,6 +127,31 @@ def _complete_remote_inventory(ledger: object) -> dict[str, object]:
     }
 
 
+def _recorded_remote_inventory(ledger: object) -> dict[str, object]:
+    phases = ledger.phases  # type: ignore[attr-defined]
+    return {
+        "account": "zmichels@umn.edu",
+        "root": {
+            "drive_id": ledger.root_drive_id,  # type: ignore[attr-defined]
+            "url": ledger.root_url,  # type: ignore[attr-defined]
+        },
+        "phases": {
+            slug: {
+                "drive_id": phase.drive_id,
+                "url": phase.url,
+                "products": {
+                    product_id: {
+                        "drive_id": product.drive_id,
+                        "url": product.url,
+                    }
+                    for product_id, product in phase.products.items()
+                },
+            }
+            for slug, phase in phases.items()
+        },
+    }
+
+
 def _uploaded_private_acceptance() -> dict[str, object]:
     return {
         "upload_observation": {
@@ -132,6 +160,8 @@ def _uploaded_private_acceptance() -> dict[str, object]:
             "total_files": 1212,
             "completion_signal": "1 upload complete",
             "failure_signal": "none-observed",
+            "canonical_upload_bytes": CANONICAL_UPLOAD_BYTES,
+            "canonical_upload_bytes_basis": CANONICAL_UPLOAD_BYTES_BASIS,
         },
         "hierarchy_reconciliation": {
             "root_phases_folder_count": 1,
@@ -168,6 +198,66 @@ def _uploaded_private_acceptance() -> dict[str, object]:
     }
 
 
+def _make_uploaded_private_mirror(tmp_path: Path) -> tuple[Path, dict[str, object]]:
+    mirror = tmp_path / "mirror.yml"
+    initialize_mirror_ledger(
+        registry_path=REGISTRY,
+        product_registry_path=PRODUCTS,
+        output_path=mirror,
+    )
+    quota = _run_mirror_cli(
+        "record-quota",
+        "--mirror",
+        str(mirror),
+        "--observed-at",
+        "2026-07-26T08:30:00Z",
+        "--total-bytes",
+        "100000000000",
+        "--used-bytes",
+        "7820000000",
+        "--free-bytes",
+        "92180000000",
+        "--canonical-bytes",
+        str(CANONICAL_UPLOAD_BYTES),
+    )
+    assert quota.returncode == 0, quota.stderr
+    created = _run_mirror_cli(
+        "set-root",
+        "--mirror",
+        str(mirror),
+        "--transport",
+        "chrome-folder-upload",
+        "--drive-id",
+        "exact-root-id",
+        "--url",
+        "https://drive.google.com/drive/folders/exact-root-id",
+        "--access",
+        "private",
+        "--state",
+        "created",
+    )
+    assert created.returncode == 0, created.stderr
+    inventory = _complete_remote_inventory(load_mirror_ledger(mirror))
+    recorded = _run_mirror_cli(
+        "record-remote-folders",
+        "--mirror",
+        str(mirror),
+        "--inventory-json",
+        json.dumps(inventory, separators=(",", ":")),
+    )
+    assert recorded.returncode == 0, recorded.stderr
+    acceptance = _uploaded_private_acceptance()
+    accepted = _run_mirror_cli(
+        "record-uploaded-private",
+        "--mirror",
+        str(mirror),
+        "--acceptance-json",
+        json.dumps(acceptance, separators=(",", ":")),
+    )
+    assert accepted.returncode == 0, accepted.stderr
+    return mirror, acceptance
+
+
 def test_mirror_ledger_rejects_wrong_account_and_local_mount(tmp_path: Path) -> None:
     wrong_account = _write_yaml(
         tmp_path / "wrong-account.yml",
@@ -185,6 +275,80 @@ def test_mirror_ledger_rejects_wrong_account_and_local_mount(tmp_path: Path) -> 
     )
     with pytest.raises(ValueError, match="mich0201"):
         load_mirror_ledger(wrong_mount)
+
+
+def test_initialize_refuses_to_overwrite_an_existing_ledger(tmp_path: Path) -> None:
+    mirror = tmp_path / "mirror.yml"
+    initialize_mirror_ledger(
+        registry_path=REGISTRY,
+        product_registry_path=PRODUCTS,
+        output_path=mirror,
+    )
+    before = mirror.read_bytes()
+
+    with pytest.raises(ValueError, match="refuses an existing output"):
+        initialize_mirror_ledger(
+            registry_path=REGISTRY,
+            product_registry_path=PRODUCTS,
+            output_path=mirror,
+        )
+
+    assert mirror.read_bytes() == before
+    assert not tuple(tmp_path.glob(".mirror.yml.*.partial"))
+
+
+def test_initialize_refuses_symlink_output_and_parent_escape(tmp_path: Path) -> None:
+    target = _write_yaml(tmp_path / "target.yml", {"sentinel": "preserve"})
+    before = target.read_bytes()
+    output_link = tmp_path / "linked-output.yml"
+    output_link.symlink_to(target)
+
+    with pytest.raises(ValueError, match="symlink"):
+        initialize_mirror_ledger(
+            registry_path=REGISTRY,
+            product_registry_path=PRODUCTS,
+            output_path=output_link,
+        )
+
+    assert target.read_bytes() == before
+    real_parent = tmp_path / "real-parent"
+    real_parent.mkdir()
+    linked_parent = tmp_path / "linked-parent"
+    linked_parent.symlink_to(real_parent, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="parent.*symlink"):
+        initialize_mirror_ledger(
+            registry_path=REGISTRY,
+            product_registry_path=PRODUCTS,
+            output_path=linked_parent / "mirror.yml",
+        )
+
+    assert not (real_parent / "mirror.yml").exists()
+
+
+def test_initialize_refuses_hardlink_and_nonregular_output(tmp_path: Path) -> None:
+    hardlink_source = tmp_path / "hardlink-source.yml"
+    hardlink_source.write_bytes(b"preserve-hardlink")
+    hardlink_output = tmp_path / "hardlink-output.yml"
+    os.link(hardlink_source, hardlink_output)
+
+    with pytest.raises(ValueError, match="refuses an existing output"):
+        initialize_mirror_ledger(
+            registry_path=REGISTRY,
+            product_registry_path=PRODUCTS,
+            output_path=hardlink_output,
+        )
+
+    assert hardlink_source.read_bytes() == b"preserve-hardlink"
+    nonregular_output = tmp_path / "directory-output"
+    nonregular_output.mkdir()
+
+    with pytest.raises(ValueError, match="refuses an existing output"):
+        initialize_mirror_ledger(
+            registry_path=REGISTRY,
+            product_registry_path=PRODUCTS,
+            output_path=nonregular_output,
+        )
 
 
 def test_drive_ids_and_urls_are_validated_independently(tmp_path: Path) -> None:
@@ -354,7 +518,7 @@ def test_cli_records_uploaded_private_waiver_without_hash_overclaim(
         "--free-bytes",
         "92180000000",
         "--canonical-bytes",
-        "7209332736",
+        str(CANONICAL_UPLOAD_BYTES),
     )
     assert quota.returncode == 0, quota.stderr
     created = _run_mirror_cli(
@@ -456,6 +620,252 @@ def test_cli_records_uploaded_private_waiver_without_hash_overclaim(
     assert mirror.read_bytes() == before
 
 
+@pytest.mark.parametrize(
+    ("tamper", "message"),
+    (
+        ("duplicate-drive-id", "Drive IDs must be globally unique"),
+        ("duplicate-drive-url", "Drive URLs must be globally unique"),
+        ("mismatched-url-token", "URL token must match"),
+        ("bad-quota-timestamp", "quota observed_at must be ISO-8601 UTC"),
+        ("incoherent-quota", "total_bytes must equal used_bytes plus free_bytes"),
+        ("failed-headroom", "quota headroom gate failed"),
+        ("wrong-registry-product", "registry set"),
+        ("canonical-byte-mismatch", "canonical upload bytes differ"),
+    ),
+)
+def test_uploaded_private_loader_recomputes_terminal_invariants(
+    tmp_path: Path,
+    tamper: str,
+    message: str,
+) -> None:
+    mirror, _ = _make_uploaded_private_mirror(tmp_path)
+    raw = yaml.safe_load(mirror.read_text(encoding="utf-8"))
+    phase_records = list(raw["phases"].values())
+    product_records = [product for phase in phase_records for product in phase["products"].values()]
+
+    if tamper == "duplicate-drive-id":
+        product_records[1]["drive_id"] = product_records[0]["drive_id"]
+    elif tamper == "duplicate-drive-url":
+        product_records[1]["url"] = product_records[0]["url"]
+    elif tamper == "mismatched-url-token":
+        product_records[0]["url"] = "https://drive.google.com/drive/folders/different-unique-token"
+    elif tamper == "bad-quota-timestamp":
+        raw["quota"]["observed_at"] = "2026-07-26T08:30:00-07:00"
+    elif tamper == "incoherent-quota":
+        raw["quota"]["total_bytes"] += 1
+    elif tamper == "failed-headroom":
+        raw["quota"]["free_bytes"] = (
+            raw["quota"]["canonical_upload_bytes"] + raw["quota"]["required_headroom_bytes"] - 1
+        )
+        raw["quota"]["total_bytes"] = raw["quota"]["used_bytes"] + raw["quota"]["free_bytes"]
+    elif tamper == "wrong-registry-product":
+        first_phase = phase_records[0]
+        product_id, product = first_phase["products"].popitem()
+        first_phase["products"][f"{product_id}-tampered"] = product
+    elif tamper == "canonical-byte-mismatch":
+        raw["upload_acceptance"]["upload_observation"]["canonical_upload_bytes"] += 1
+    else:  # pragma: no cover - parameter list is exhaustive
+        raise AssertionError(tamper)
+
+    _write_yaml(mirror, raw)
+
+    with pytest.raises(ValueError, match=message):
+        load_mirror_ledger(mirror)
+
+    validated = _run_mirror_cli(
+        "validate",
+        "--mirror",
+        str(mirror),
+        "--require-state",
+        "uploaded-private",
+    )
+    assert validated.returncode != 0
+    assert message.replace("\\", "")[:20] in validated.stderr
+
+
+def test_uploaded_private_acceptance_is_terminal_and_collision_safe(
+    tmp_path: Path,
+) -> None:
+    mirror, acceptance = _make_uploaded_private_mirror(tmp_path)
+    before = mirror.read_bytes()
+    identical = _run_mirror_cli(
+        "record-uploaded-private",
+        "--mirror",
+        str(mirror),
+        "--acceptance-json",
+        json.dumps(acceptance, separators=(",", ":")),
+    )
+    assert identical.returncode == 0, identical.stderr
+    assert mirror.read_bytes() == before
+
+    changed_acceptance = json.loads(json.dumps(acceptance))
+    changed_acceptance["round_trip_verification"]["reason"] = (
+        "A different but otherwise valid waiver reason."
+    )
+    collision = _run_mirror_cli(
+        "record-uploaded-private",
+        "--mirror",
+        str(mirror),
+        "--acceptance-json",
+        json.dumps(changed_acceptance, separators=(",", ":")),
+    )
+    assert collision.returncode != 0
+    assert "refuses to replace terminal acceptance" in collision.stderr
+    assert mirror.read_bytes() == before
+
+
+def test_uploaded_private_promotion_validates_before_atomic_write(
+    tmp_path: Path,
+) -> None:
+    mirror, acceptance = _make_uploaded_private_mirror(tmp_path)
+    raw = yaml.safe_load(mirror.read_text(encoding="utf-8"))
+    raw["root"]["state"] = "uploaded"
+    raw["upload_acceptance"] = None
+    first_phase = next(iter(raw["phases"].values()))
+    first_product = next(iter(first_phase["products"].values()))
+    first_product["url"] = "https://drive.google.com/drive/folders/different-unique-token"
+    _write_yaml(mirror, raw)
+    before = mirror.read_bytes()
+
+    rejected = _run_mirror_cli(
+        "record-uploaded-private",
+        "--mirror",
+        str(mirror),
+        "--acceptance-json",
+        json.dumps(acceptance, separators=(",", ":")),
+    )
+
+    assert rejected.returncode != 0
+    assert "URL token must match" in rejected.stderr
+    assert mirror.read_bytes() == before
+    assert not tuple(tmp_path.glob(".mirror.yml.*.partial"))
+    assert not tuple(tmp_path.glob(".mirror.yml.*.validate"))
+
+
+def test_terminal_uploaded_private_quota_is_immutable(tmp_path: Path) -> None:
+    mirror, _ = _make_uploaded_private_mirror(tmp_path)
+    before = mirror.read_bytes()
+    exact = _run_mirror_cli(
+        "record-quota",
+        "--mirror",
+        str(mirror),
+        "--observed-at",
+        "2026-07-26T08:30:00Z",
+        "--total-bytes",
+        "100000000000",
+        "--used-bytes",
+        "7820000000",
+        "--free-bytes",
+        "92180000000",
+        "--canonical-bytes",
+        str(CANONICAL_UPLOAD_BYTES),
+    )
+    assert exact.returncode == 0, exact.stderr
+    assert mirror.read_bytes() == before
+
+    changed = _run_mirror_cli(
+        "record-quota",
+        "--mirror",
+        str(mirror),
+        "--observed-at",
+        "2026-07-26T08:31:00Z",
+        "--total-bytes",
+        "100000000000",
+        "--used-bytes",
+        "7820000000",
+        "--free-bytes",
+        "92180000000",
+        "--canonical-bytes",
+        str(CANONICAL_UPLOAD_BYTES),
+    )
+    assert changed.returncode != 0
+    assert "refuses to replace terminal quota" in changed.stderr
+    assert mirror.read_bytes() == before
+
+
+@pytest.mark.parametrize("terminal_state", ("complete", "public-verified"))
+def test_other_terminal_quota_states_are_immutable(
+    tmp_path: Path,
+    terminal_state: str,
+) -> None:
+    mirror, _ = _make_uploaded_private_mirror(tmp_path)
+    raw = yaml.safe_load(mirror.read_text(encoding="utf-8"))
+    raw["root"]["state"] = terminal_state
+    if terminal_state == "public-verified":
+        raw["root"]["access"] = "public-link"
+    _write_yaml(mirror, raw)
+    before = mirror.read_bytes()
+
+    changed = _run_mirror_cli(
+        "record-quota",
+        "--mirror",
+        str(mirror),
+        "--observed-at",
+        "2026-07-26T08:31:00Z",
+        "--total-bytes",
+        "100000000000",
+        "--used-bytes",
+        "7820000000",
+        "--free-bytes",
+        "92180000000",
+        "--canonical-bytes",
+        str(CANONICAL_UPLOAD_BYTES),
+    )
+
+    assert changed.returncode != 0
+    assert "refuses to replace terminal quota" in changed.stderr
+    assert mirror.read_bytes() == before
+
+
+def test_other_identity_transitions_refuse_uploaded_private_regression(
+    tmp_path: Path,
+) -> None:
+    mirror, _ = _make_uploaded_private_mirror(tmp_path)
+    ledger = load_mirror_ledger(mirror)
+    before = mirror.read_bytes()
+
+    set_root = _run_mirror_cli(
+        "set-root",
+        "--mirror",
+        str(mirror),
+        "--transport",
+        "chrome-folder-upload",
+        "--drive-id",
+        str(ledger.root_drive_id),
+        "--url",
+        str(ledger.root_url),
+        "--access",
+        "private",
+        "--state",
+        "created",
+    )
+    assert set_root.returncode != 0
+    assert "progressed root state" in set_root.stderr
+
+    remote_folders = _run_mirror_cli(
+        "record-remote-folders",
+        "--mirror",
+        str(mirror),
+        "--inventory-json",
+        json.dumps(_recorded_remote_inventory(ledger), separators=(",", ":")),
+    )
+    assert remote_folders.returncode != 0
+    assert "created or uploaded root" in remote_folders.stderr
+
+    reconcile = _run_mirror_cli(
+        "reconcile-downloaded",
+        "--canonical-root",
+        str(tmp_path / "canonical-not-read"),
+        "--download-root",
+        str(tmp_path / "download-not-read"),
+        "--mirror",
+        str(mirror),
+    )
+    assert reconcile.returncode != 0
+    assert "requires an uploaded mirror root" in reconcile.stderr
+    assert mirror.read_bytes() == before
+
+
 def test_cli_record_quota_enforces_the_headroom_gate(tmp_path: Path) -> None:
     mirror = _write_yaml(tmp_path / "mirror.yml", _mirror_mapping())
     command = (
@@ -471,7 +881,7 @@ def test_cli_record_quota_enforces_the_headroom_gate(tmp_path: Path) -> None:
         "--free-bytes",
         "92180000000",
         "--canonical-bytes",
-        "7209332736",
+        str(CANONICAL_UPLOAD_BYTES),
     )
 
     recorded = _run_mirror_cli(*command)
@@ -484,6 +894,8 @@ def test_cli_record_quota_enforces_the_headroom_gate(tmp_path: Path) -> None:
         "used_bytes": 7820000000,
         "free_bytes": 92180000000,
         "required_headroom_bytes": 10737418240,
+        "canonical_upload_bytes": CANONICAL_UPLOAD_BYTES,
+        "canonical_upload_bytes_basis": CANONICAL_UPLOAD_BYTES_BASIS,
     }
 
     before = mirror.read_bytes()
@@ -500,7 +912,7 @@ def test_cli_record_quota_enforces_the_headroom_gate(tmp_path: Path) -> None:
         "--free-bytes",
         "10000000000",
         "--canonical-bytes",
-        "7209332736",
+        str(CANONICAL_UPLOAD_BYTES),
     )
     assert blocked.returncode != 0
     assert "headroom gate" in blocked.stderr

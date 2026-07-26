@@ -9,7 +9,7 @@ the later Google Sites workflow.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
@@ -41,12 +41,16 @@ _LEGACY_TOP_LEVEL_FIELDS = {
     "site",
 }
 _TOP_LEVEL_FIELDS = _LEGACY_TOP_LEVEL_FIELDS | {"upload_acceptance"}
-_QUOTA_FIELDS = {
+_LEGACY_QUOTA_FIELDS = {
     "observed_at",
     "total_bytes",
     "used_bytes",
     "free_bytes",
     "required_headroom_bytes",
+}
+_QUOTA_FIELDS = _LEGACY_QUOTA_FIELDS | {
+    "canonical_upload_bytes",
+    "canonical_upload_bytes_basis",
 }
 _ROOT_FIELDS = {"drive_id", "url", "access", "state"}
 _PHASE_FIELDS = {"drive_id", "url", "access", "state", "products"}
@@ -71,6 +75,8 @@ _UPLOAD_OBSERVATION_FIELDS = {
     "total_files",
     "completion_signal",
     "failure_signal",
+    "canonical_upload_bytes",
+    "canonical_upload_bytes_basis",
 }
 _HIERARCHY_RECONCILIATION_FIELDS = {
     "root_phases_folder_count",
@@ -104,6 +110,11 @@ _INVENTORY_COMPLETE_STATES = _COMPLETE_STATES | {"uploaded-private"}
 _PUBLIC_STATE = "public-verified"
 _EXPECTED_COMPLETE_PHASES = 12
 _EXPECTED_COMPLETE_PRODUCTS = 125
+_EXPECTED_PRIVATE_DRIVE_IDENTITIES = 138
+_CANONICAL_UPLOAD_BYTES_BASIS = "exact-regular-file-sum"
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+_PHASE_REGISTRY = _REPOSITORY_ROOT / "docs/atlas/PHASE_REGISTRY.yml"
+_PRODUCT_REGISTRY = _REPOSITORY_ROOT / "docs/atlas/PRODUCT_REGISTRY.yml"
 
 
 @dataclass(frozen=True)
@@ -279,10 +290,16 @@ def _drive_folder_url(value: object, label: str) -> str | None:
         or len(parts) != 3
         or parts[:2] != ("drive", "folders")
         or not _OPAQUE_ID.fullmatch(parts[2])
+        or parsed.query
         or parsed.fragment
     ):
         raise ValueError(f"{label} must be a Google Drive folder URL")
     return url
+
+
+def _drive_folder_url_token(url: str) -> str:
+    parts = tuple(part for part in urlsplit(url).path.split("/") if part)
+    return parts[2]
 
 
 def _sites_url(value: object, label: str, *, allow_none: bool) -> str | None:
@@ -333,6 +350,7 @@ def _iso_timestamp(
     label: str,
     *,
     allow_none: bool,
+    require_utc: bool = False,
 ) -> str | None:
     timestamp = _optional_text(value, label)
     if timestamp is None:
@@ -345,6 +363,8 @@ def _iso_timestamp(
         raise ValueError(f"{label} must be an ISO-8601 timestamp") from error
     if parsed.tzinfo is None:
         raise ValueError(f"{label} must include a timezone")
+    if require_utc and parsed.utcoffset() != timedelta(0):
+        raise ValueError(f"{label} must be ISO-8601 UTC")
     return timestamp
 
 
@@ -363,6 +383,7 @@ def _validate_upload_acceptance(value: object) -> Mapping[str, object]:
         upload["observed_at"],
         "mirror upload observation observed_at",
         allow_none=True,
+        require_utc=True,
     )
     completed_files = _non_negative_integer(
         upload["completed_files"],
@@ -390,6 +411,20 @@ def _validate_upload_acceptance(value: object) -> Mapping[str, object]:
         != "none-observed"
     ):
         raise ValueError("uploaded-private mirror requires the observed no-failure signal")
+    canonical_upload_bytes = _non_negative_integer(
+        upload["canonical_upload_bytes"],
+        "mirror upload observation canonical_upload_bytes",
+    )
+    if canonical_upload_bytes == 0:
+        raise ValueError("mirror upload observation canonical_upload_bytes must be positive")
+    if (
+        _text(
+            upload["canonical_upload_bytes_basis"],
+            "mirror upload observation canonical_upload_bytes_basis",
+        )
+        != _CANONICAL_UPLOAD_BYTES_BASIS
+    ):
+        raise ValueError("mirror upload observation canonical byte basis is unsupported")
 
     hierarchy = _mapping(
         raw["hierarchy_reconciliation"],
@@ -424,6 +459,7 @@ def _validate_upload_acceptance(value: object) -> Mapping[str, object]:
         privacy["observed_at"],
         "mirror privacy verification observed_at",
         allow_none=True,
+        require_utc=True,
     )
     if privacy["root_private"] is not True:
         raise ValueError("uploaded-private mirror requires a private root")
@@ -487,6 +523,7 @@ def _validate_upload_acceptance(value: object) -> Mapping[str, object]:
         round_trip["waived_at"],
         "mirror round-trip verification waived_at",
         allow_none=False,
+        require_utc=True,
     )
     _text(
         round_trip["reason"],
@@ -514,8 +551,13 @@ def _validate_upload_acceptance(value: object) -> Mapping[str, object]:
     )
 
 
-def _validate_quota(value: object) -> Mapping[str, object]:
-    raw = _mapping(value, _QUOTA_FIELDS, "mirror quota")
+def _validate_quota(
+    value: object,
+    *,
+    schema_version: int,
+) -> Mapping[str, object]:
+    expected_fields = _LEGACY_QUOTA_FIELDS if schema_version == 1 else _QUOTA_FIELDS
+    raw = _mapping(value, expected_fields, "mirror quota")
     required = raw["required_headroom_bytes"]
     if not isinstance(required, int) or isinstance(required, bool) or required != 10 * 1024**3:
         raise ValueError("mirror quota required_headroom_bytes must be 10737418240")
@@ -526,6 +568,47 @@ def _validate_quota(value: object) -> Mapping[str, object]:
         ):
             raise ValueError(f"mirror quota {field} must be a non-negative integer or null")
     _optional_text(raw["observed_at"], "mirror quota observed_at")
+    if schema_version == 2:
+        canonical_upload_bytes = raw["canonical_upload_bytes"]
+        if canonical_upload_bytes is not None and (
+            not isinstance(canonical_upload_bytes, int)
+            or isinstance(canonical_upload_bytes, bool)
+            or canonical_upload_bytes <= 0
+        ):
+            raise ValueError(
+                "mirror quota canonical_upload_bytes must be a positive integer or null"
+            )
+        canonical_basis = raw["canonical_upload_bytes_basis"]
+        if canonical_basis not in {None, _CANONICAL_UPLOAD_BYTES_BASIS}:
+            raise ValueError("mirror quota canonical_upload_bytes_basis is unsupported")
+        if (canonical_upload_bytes is None) != (canonical_basis is None):
+            raise ValueError("mirror quota canonical bytes and basis must be recorded together")
+        recorded_values = (
+            raw["observed_at"],
+            raw["total_bytes"],
+            raw["used_bytes"],
+            raw["free_bytes"],
+            canonical_upload_bytes,
+            canonical_basis,
+        )
+        if any(value is not None for value in recorded_values):
+            if any(value is None for value in recorded_values):
+                raise ValueError("mirror quota observation fields must be recorded together")
+            _iso_timestamp(
+                raw["observed_at"],
+                "mirror quota observed_at",
+                allow_none=False,
+                require_utc=True,
+            )
+            total_bytes = int(raw["total_bytes"])
+            used_bytes = int(raw["used_bytes"])
+            free_bytes = int(raw["free_bytes"])
+            if total_bytes <= 0 or free_bytes <= 0:
+                raise ValueError("mirror quota total_bytes and free_bytes must be positive")
+            if total_bytes != used_bytes + free_bytes:
+                raise ValueError("mirror quota total_bytes must equal used_bytes plus free_bytes")
+            if int(canonical_upload_bytes) + int(required) > free_bytes:
+                raise ValueError("mirror quota headroom gate failed")
     return MappingProxyType(dict(raw))
 
 
@@ -581,6 +664,96 @@ def _mirror_phase(slug: str, value: object) -> MirrorPhase:
         state=state,
         products=products,
     )
+
+
+def _expected_registry_products_by_phase() -> dict[str, set[str]]:
+    phases = load_phase_registry(_PHASE_REGISTRY)
+    phase_slugs = {phase.slug for phase in phases}
+    _, products = load_product_registry(
+        _PRODUCT_REGISTRY,
+        phase_slugs=phase_slugs,
+    )
+    by_phase = {slug: set() for slug in phase_slugs}
+    for product in products:
+        for slug in product.phase_slugs:
+            by_phase[slug].add(product.identifier)
+    return by_phase
+
+
+def _validate_uploaded_private_terminal(ledger: MirrorLedger) -> None:
+    expected_products = _expected_registry_products_by_phase()
+    if set(ledger.phases) != set(expected_products) or any(
+        set(ledger.phases[slug].products) != product_ids
+        for slug, product_ids in expected_products.items()
+    ):
+        raise ValueError(
+            "uploaded-private mirror phase/product registry set differs from "
+            "the canonical registries"
+        )
+    if (
+        ledger.root_drive_id is None
+        or ledger.root_url is None
+        or ledger.root_access != "private"
+        or ledger.upload_acceptance is None
+    ):
+        raise ValueError(
+            "uploaded-private mirror root requires a private ID, URL, and acceptance record"
+        )
+
+    identities: list[tuple[str, str, str]] = [
+        ("mirror root", ledger.root_drive_id, ledger.root_url)
+    ]
+    for slug, phase in ledger.phases.items():
+        if (
+            phase.state != "uploaded"
+            or phase.access != "private"
+            or phase.drive_id is None
+            or phase.url is None
+        ):
+            raise ValueError("uploaded-private mirror requires uploaded private phases")
+        identities.append((f"mirror phase {slug}", phase.drive_id, phase.url))
+        for product_id, product in phase.products.items():
+            if (
+                product.state != "uploaded"
+                or product.access != "private"
+                or product.drive_id is None
+                or product.url is None
+                or product.package_manifest_sha256 is not None
+                or product.verified_at is not None
+            ):
+                raise ValueError(
+                    "uploaded-private mirror requires uploaded, not verified-private, products"
+                )
+            identities.append(
+                (
+                    f"mirror product {product_id}",
+                    product.drive_id,
+                    product.url,
+                )
+            )
+
+    if len(identities) != _EXPECTED_PRIVATE_DRIVE_IDENTITIES:
+        raise ValueError("uploaded-private mirror requires exactly 138 Drive identities")
+    drive_ids = [drive_id for _, drive_id, _ in identities]
+    drive_urls = [url for _, _, url in identities]
+    if len(set(drive_ids)) != len(drive_ids):
+        raise ValueError("uploaded-private Drive IDs must be globally unique")
+    if len(set(drive_urls)) != len(drive_urls):
+        raise ValueError("uploaded-private Drive URLs must be globally unique")
+    for label, drive_id, url in identities:
+        if _drive_folder_url_token(url) != drive_id:
+            raise ValueError(f"{label} URL token must match its recorded Drive ID")
+
+    upload = ledger.upload_acceptance["upload_observation"]
+    quota_bytes = ledger.quota["canonical_upload_bytes"]
+    quota_basis = ledger.quota["canonical_upload_bytes_basis"]
+    if (
+        upload["canonical_upload_bytes"] != quota_bytes
+        or upload["canonical_upload_bytes_basis"] != quota_basis
+    ):
+        raise ValueError(
+            "uploaded-private canonical upload bytes differ between quota and upload evidence"
+        )
 
 
 def load_mirror_ledger(path: str | Path) -> MirrorLedger:
@@ -647,7 +820,7 @@ def load_mirror_ledger(path: str | Path) -> MirrorLedger:
         account=_ACCOUNT,
         local_mount=local_mount,
         transport=transport,
-        quota=_validate_quota(raw["quota"]),
+        quota=_validate_quota(raw["quota"], schema_version=schema_version),
         root_drive_id=root_drive_id,
         root_url=root_url,
         root_access=root_access,
@@ -691,35 +864,7 @@ def load_mirror_ledger(path: str | Path) -> MirrorLedger:
                 ):
                     raise ValueError("complete-private mirror requires verified private products")
     if ledger.root_state == "uploaded-private":
-        if (
-            ledger.root_drive_id is None
-            or ledger.root_url is None
-            or ledger.root_access != "private"
-            or ledger.upload_acceptance is None
-        ):
-            raise ValueError(
-                "uploaded-private mirror root requires a private ID, URL, and acceptance record"
-            )
-        for phase in ledger.phases.values():
-            if (
-                phase.state != "uploaded"
-                or phase.access != "private"
-                or phase.drive_id is None
-                or phase.url is None
-            ):
-                raise ValueError("uploaded-private mirror requires uploaded private phases")
-            for product in phase.products.values():
-                if (
-                    product.state != "uploaded"
-                    or product.access != "private"
-                    or product.drive_id is None
-                    or product.url is None
-                    or product.package_manifest_sha256 is not None
-                    or product.verified_at is not None
-                ):
-                    raise ValueError(
-                        "uploaded-private mirror requires uploaded, not verified-private, products"
-                    )
+        _validate_uploaded_private_terminal(ledger)
     return ledger
 
 
@@ -742,6 +887,54 @@ def _initial_product() -> dict[str, object]:
         "package_manifest_sha256": None,
         "verified_at": None,
     }
+
+
+def _reject_symlink_parents(path: Path, label: str) -> None:
+    current = path.parent
+    while current != current.parent:
+        if current.is_symlink():
+            raise ValueError(f"{label} parent must not be a symlink")
+        current = current.parent
+
+
+def _write_new_mirror_mapping_atomic(
+    path: Path,
+    raw: Mapping[str, object],
+) -> None:
+    if path.is_symlink():
+        raise ValueError("mirror initialization output must not be a symlink")
+    if path.exists():
+        raise ValueError("mirror initialization refuses an existing output")
+    _reject_symlink_parents(path, "mirror initialization output")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _reject_symlink_parents(path, "mirror initialization output")
+    partial: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".partial",
+            delete=False,
+        ) as handle:
+            partial = Path(handle.name)
+            yaml.safe_dump(dict(raw), handle, sort_keys=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        load_mirror_ledger(partial)
+        try:
+            os.link(partial, path, follow_symlinks=False)
+        except FileExistsError as error:
+            raise ValueError("mirror initialization refuses an existing output") from error
+        directory_fd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        if partial is not None and partial.exists():
+            partial.unlink()
 
 
 def initialize_mirror_ledger(
@@ -772,6 +965,8 @@ def initialize_mirror_ledger(
             "used_bytes": None,
             "free_bytes": None,
             "required_headroom_bytes": 10 * 1024**3,
+            "canonical_upload_bytes": None,
+            "canonical_upload_bytes_basis": None,
         },
         "root": {
             "drive_id": None,
@@ -799,9 +994,8 @@ def initialize_mirror_ledger(
             "state": "draft",
         },
     }
-    output = Path(output_path).resolve()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
+    output = Path(output_path).absolute()
+    _write_new_mirror_mapping_atomic(output, raw)
     ledger = load_mirror_ledger(output)
     if (
         ledger.phase_count != _EXPECTED_COMPLETE_PHASES
@@ -838,6 +1032,30 @@ def _write_mirror_mapping_atomic(path: Path, raw: Mapping[str, object]) -> None:
     finally:
         if partial is not None and partial.exists():
             partial.unlink()
+
+
+def _validate_mirror_mapping_candidate(
+    path: Path,
+    raw: Mapping[str, object],
+) -> None:
+    candidate: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".validate",
+            delete=False,
+        ) as handle:
+            candidate = Path(handle.name)
+            yaml.safe_dump(dict(raw), handle, sort_keys=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        load_mirror_ledger(candidate)
+    finally:
+        if candidate is not None and candidate.exists():
+            candidate.unlink()
 
 
 def set_mirror_root(
@@ -1066,13 +1284,16 @@ def record_uploaded_private_acceptance(
             "uploaded-private acceptance requires uploaded, not "
             "verified-private, product identities"
         )
-    if ledger.root_state == "uploaded-private" and ledger.upload_acceptance == normalized:
-        return ledger
+    if ledger.root_state == "uploaded-private":
+        if ledger.upload_acceptance == normalized:
+            return ledger
+        raise ValueError("record-uploaded-private refuses to replace terminal acceptance")
 
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     raw["schema_version"] = 2
     raw["upload_acceptance"] = {field: dict(value) for field, value in normalized.items()}
     raw["root"]["state"] = "uploaded-private"
+    _validate_mirror_mapping_candidate(path, raw)
     _write_mirror_mapping_atomic(path, raw)
     return load_mirror_ledger(path)
 
@@ -1091,12 +1312,12 @@ def record_mirror_quota(
     if path.is_symlink():
         raise ValueError("mirror ledger must not be a symlink")
     ledger = load_mirror_ledger(path)
-    try:
-        observation = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
-    except ValueError as error:
-        raise ValueError("quota observed_at must be ISO-8601") from error
-    if observation.tzinfo is None:
-        raise ValueError("quota observed_at must include a timezone")
+    _iso_timestamp(
+        observed_at,
+        "quota observed_at",
+        allow_none=False,
+        require_utc=True,
+    )
     for label, value in (
         ("total_bytes", total_bytes),
         ("used_bytes", used_bytes),
@@ -1105,6 +1326,8 @@ def record_mirror_quota(
     ):
         if not isinstance(value, int) or isinstance(value, bool) or value < 0:
             raise ValueError(f"quota {label} must be a non-negative integer")
+    if total_bytes == 0 or free_bytes == 0 or canonical_bytes == 0:
+        raise ValueError("quota total_bytes, free_bytes, and canonical_bytes must be positive")
     if used_bytes + free_bytes != total_bytes:
         raise ValueError("quota total_bytes must equal used_bytes plus free_bytes")
     required_headroom = int(ledger.quota["required_headroom_bytes"])
@@ -1116,11 +1339,19 @@ def record_mirror_quota(
         "used_bytes": used_bytes,
         "free_bytes": free_bytes,
         "required_headroom_bytes": required_headroom,
+        "canonical_upload_bytes": canonical_bytes,
+        "canonical_upload_bytes_basis": _CANONICAL_UPLOAD_BYTES_BASIS,
     }
     if dict(ledger.quota) == quota:
         return ledger
+    if ledger.root_state in _INVENTORY_COMPLETE_STATES:
+        raise ValueError("record-quota refuses to replace terminal quota")
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if raw["schema_version"] == 1:
+        raw["schema_version"] = 2
+        raw["upload_acceptance"] = None
     raw["quota"] = quota
+    _validate_mirror_mapping_candidate(path, raw)
     _write_mirror_mapping_atomic(path, raw)
     return load_mirror_ledger(path)
 

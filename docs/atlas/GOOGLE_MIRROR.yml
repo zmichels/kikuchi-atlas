@@ -9,6 +9,8 @@ quota:
   used_bytes: 7820000000
   free_bytes: 92180000000
   required_headroom_bytes: 10737418240
+  canonical_upload_bytes: 7206478751
+  canonical_upload_bytes_basis: exact-regular-file-sum
 root:
   drive_id: 1aUvGSjpQsGqyAlmLcS_vafcHQ6jVciZ4
   url: https://drive.google.com/drive/folders/1aUvGSjpQsGqyAlmLcS_vafcHQ6jVciZ4
@@ -974,6 +976,8 @@ upload_acceptance:
     total_files: 1212
     completion_signal: 1 upload complete
     failure_signal: none-observed
+    canonical_upload_bytes: 7206478751
+    canonical_upload_bytes_basis: exact-regular-file-sum
   hierarchy_reconciliation:
     root_phases_folder_count: 1
     phase_count: 12
