@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 import hashlib
 import json
 import os
@@ -34,6 +35,14 @@ def _write_yaml(path: Path, value: object) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(value, sort_keys=False), encoding="utf-8")
     return path
+
+
+def _plain_data(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {key: _plain_data(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain_data(item) for item in value]
+    return value
 
 
 def _run_mirror_cli(*args: str) -> subprocess.CompletedProcess[str]:
@@ -416,7 +425,7 @@ def test_schema_v3_public_verification_is_fail_closed(tmp_path: Path) -> None:
 
     assert ledger.root_state == "public-verified"
     assert ledger.public_product_count == 125
-    assert ledger.public_verification == raw["public_verification"]
+    assert _plain_data(ledger.public_verification) == raw["public_verification"]
     assert ledger.upload_acceptance == _uploaded_private_acceptance()
     round_trip = ledger.upload_acceptance["round_trip_verification"]
     assert round_trip["status"] == "not-performed"
@@ -512,6 +521,35 @@ def test_schema_v3_public_verification_is_fail_closed(tmp_path: Path) -> None:
             load_mirror_ledger(mirror)
 
 
+def test_schema_v3_public_verification_is_deeply_immutable(tmp_path: Path) -> None:
+    mirror, raw = _make_public_mapping(tmp_path)
+    _write_yaml(mirror, raw)
+    ledger = load_mirror_ledger(mirror)
+    verification = ledger.public_verification
+    assert verification is not None
+
+    site = verification["site"]
+    with pytest.raises(TypeError):
+        site["pages_checked"] = 13
+
+    exceptions = verification["exceptions"]
+    with pytest.raises(AttributeError):
+        exceptions.append("late mutation")
+
+    representatives = verification["representatives"]
+    with pytest.raises(TypeError):
+        representatives[0] = representatives[1]
+    with pytest.raises(TypeError):
+        representatives[0]["status"] = 500
+
+    raw["public_verification"]["site"]["pages_checked"] = 13
+    raw["public_verification"]["exceptions"].append("source alias mutation")
+    raw["public_verification"]["representatives"][0]["status"] = 500
+    assert verification["site"]["pages_checked"] == 14
+    assert verification["exceptions"] == ()
+    assert verification["representatives"][0]["status"] == 200
+
+
 def test_cli_records_public_verification_without_overclaim(tmp_path: Path) -> None:
     mirror, acceptance = _make_uploaded_private_mirror(tmp_path)
     site = _run_mirror_cli(
@@ -561,7 +599,7 @@ def test_cli_records_public_verification_without_overclaim(tmp_path: Path) -> No
     assert ledger.root_state == "public-verified"
     assert ledger.site_audience == "public"
     assert ledger.site_state == "public-verified"
-    assert ledger.public_verification == verification
+    assert _plain_data(ledger.public_verification) == verification
     assert ledger.upload_acceptance == acceptance
     assert len(public_product_urls(ledger)) == 125
     assert all(
@@ -1752,3 +1790,63 @@ def test_google_site_source_has_landing_about_and_twelve_phase_pages(
     )
     assert "https://drive.google.com/drive/folders/" not in generated_text
     assert "public access has not been verified" in generated_text
+
+
+def test_google_site_source_wording_tracks_public_and_private_ledger_state(
+    tmp_path: Path,
+) -> None:
+    private_mirror, _ = _make_uploaded_private_mirror(tmp_path / "private")
+    private_site = _run_mirror_cli(
+        "record-site-draft",
+        "--mirror",
+        str(private_mirror),
+        "--editor-url",
+        "https://sites.google.com/d/site-id/p/home-page-id/edit",
+        "--proposed-public-url",
+        "https://sites.google.com/umn.edu/kikuchi-atlas-publishing-test",
+        "--audience",
+        "university-only",
+        "--state",
+        "draft-complete",
+    )
+    assert private_site.returncode == 0, private_site.stderr
+    private_result = build_google_site_source(
+        registry_path=REGISTRY,
+        product_registry_path=PRODUCTS,
+        mirror_registry_path=private_mirror,
+        output_root=tmp_path / "private-site",
+        allow_private_links=True,
+    )
+    private_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (
+            private_result.index_path,
+            private_result.about_path,
+            *private_result.phase_pages,
+        )
+    )
+    assert private_text.count("public access has not been verified") == 2
+    assert private_text.count("Open the restricted Drive phase folder for signed-in review") == 12
+    assert "Open the public full-resolution Drive phase folder" not in private_text
+
+    public_mirror, public_raw = _make_public_mapping(tmp_path / "public")
+    _write_yaml(public_mirror, public_raw)
+    public_result = build_google_site_source(
+        registry_path=REGISTRY,
+        product_registry_path=PRODUCTS,
+        mirror_registry_path=public_mirror,
+        output_root=tmp_path / "public-site",
+    )
+    public_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (
+            public_result.index_path,
+            public_result.about_path,
+            *public_result.phase_pages,
+        )
+    )
+    assert public_text.count("Public access has been independently verified.") == 2
+    assert "public access has not been verified" not in public_text
+    assert "restricted Drive phase folder" not in public_text
+    assert "signed-in review" not in public_text
+    assert public_text.count("Open the public full-resolution Drive phase folder") == 12

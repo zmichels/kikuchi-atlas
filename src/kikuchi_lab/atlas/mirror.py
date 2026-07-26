@@ -177,6 +177,22 @@ _PHASE_REGISTRY = _REPOSITORY_ROOT / "docs/atlas/PHASE_REGISTRY.yml"
 _PRODUCT_REGISTRY = _REPOSITORY_ROOT / "docs/atlas/PRODUCT_REGISTRY.yml"
 
 
+def _deep_freeze(value: object) -> object:
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _deep_freeze(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_deep_freeze(item) for item in value)
+    return value
+
+
+def _deep_thaw(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {key: _deep_thaw(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_deep_thaw(item) for item in value]
+    return value
+
+
 @dataclass(frozen=True)
 class MirrorProduct:
     """One remotely addressed product folder."""
@@ -239,7 +255,7 @@ class MirrorLedger:
             object.__setattr__(
                 self,
                 "public_verification",
-                MappingProxyType(dict(self.public_verification)),
+                _deep_freeze(self.public_verification),
             )
         object.__setattr__(self, "phases", MappingProxyType(dict(self.phases)))
 
@@ -1875,8 +1891,9 @@ def record_public_verification(
         site_public_url=ledger.site_public_url,
         phases=ledger.phases,
     )
+    normalized_frozen = _deep_freeze(normalized)
     if ledger.root_state == _PUBLIC_STATE:
-        if ledger.public_verification == normalized:
+        if ledger.public_verification == normalized_frozen:
             return ledger
         raise ValueError("record-public-verified refuses to replace terminal public verification")
     if ledger.root_state != "uploaded-private":
@@ -1892,7 +1909,7 @@ def record_public_verification(
 
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     raw["schema_version"] = 3
-    raw["public_verification"] = json.loads(json.dumps(dict(normalized)))
+    raw["public_verification"] = _deep_thaw(normalized_frozen)
     raw["root"]["access"] = "public-link"
     raw["root"]["state"] = _PUBLIC_STATE
     raw["site"]["audience"] = "public"
@@ -2281,7 +2298,7 @@ def _phase_page(
         and (mirror_phase.state == _PUBLIC_STATE or allow_private_links)
     ):
         link_label = (
-            "Open the verified public Drive phase folder"
+            "Open the public full-resolution Drive phase folder"
             if mirror_phase.state == _PUBLIC_STATE
             else "Open the restricted Drive phase folder for signed-in review"
         )
