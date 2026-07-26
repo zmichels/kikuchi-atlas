@@ -51,6 +51,30 @@ def test_product_package_validates_exact_files_and_identity(tmp_path: Path) -> N
     assert package.package_sha256
 
 
+def test_package_contract_mappings_are_immutable_and_keep_identity_stable(tmp_path: Path) -> None:
+    product_path = _write_product(tmp_path / "phase/products/quartz-demo")
+    product = validate_product_package(product_path)
+    product_digest = product.package_sha256
+    with pytest.raises(TypeError):
+        product.tracked_references["new_reference"] = "docs/new.yml"
+    assert product.package_sha256 == product_digest
+
+    phase_path = tmp_path / "phase/phase-package.yml"
+    phase_path.write_text(yaml.safe_dump({
+        "schema_version": 1,
+        "phase_slug": "quartz",
+        "source_record": "phases/quartz/source.yml",
+        "products": [{
+            "product_id": "quartz-demo",
+            "manifest": "products/quartz-demo/product-package.yml",
+            "manifest_sha256": product.package_sha256,
+        }],
+    }, sort_keys=False), encoding="utf-8")
+    phase = validate_phase_package(phase_path)
+    with pytest.raises(TypeError):
+        phase.manifest_sha256_by_product["other"] = "0" * 64
+
+
 def test_product_package_rejects_tampered_bytes(tmp_path: Path) -> None:
     path = _write_product(tmp_path / "quartz-demo", digest="0" * 64)
     with pytest.raises(ValueError, match="SHA-256 mismatch"):
@@ -64,6 +88,41 @@ def test_product_package_rejects_absolute_escape_and_symlink(tmp_path: Path) -> 
     path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     with pytest.raises(ValueError, match="relative"):
         validate_product_package(path)
+
+
+def test_product_package_rejects_unmanifested_role_payloads(tmp_path: Path) -> None:
+    path = _write_product(tmp_path / "quartz-demo")
+    (path.parent / "media/unmanifested.png").write_bytes(b"extra")
+
+    with pytest.raises(ValueError, match="unmanifested payload"):
+        validate_product_package(path)
+
+
+def test_package_validation_requires_exact_manifest_filenames(tmp_path: Path) -> None:
+    product_path = _write_product(tmp_path / "phase/products/quartz-demo")
+    product = validate_product_package(product_path)
+    renamed_product_path = product_path.with_name("renamed-product.yml")
+    product_path.rename(renamed_product_path)
+    with pytest.raises(ValueError, match="product-package.yml"):
+        validate_product_package(renamed_product_path)
+
+    product_path = _write_product(tmp_path / "other-phase/products/quartz-demo")
+    product = validate_product_package(product_path)
+    phase_path = tmp_path / "other-phase/phase-package.yml"
+    phase_path.write_text(yaml.safe_dump({
+        "schema_version": 1,
+        "phase_slug": "quartz",
+        "source_record": "phases/quartz/source.yml",
+        "products": [{
+            "product_id": "quartz-demo",
+            "manifest": "products/quartz-demo/product-package.yml",
+            "manifest_sha256": product.package_sha256,
+        }],
+    }, sort_keys=False), encoding="utf-8")
+    renamed_phase_path = phase_path.with_name("renamed-phase.yml")
+    phase_path.rename(renamed_phase_path)
+    with pytest.raises(ValueError, match="phase-package.yml"):
+        validate_phase_package(renamed_phase_path)
 
 
 def test_phase_package_binds_product_manifest_digest(tmp_path: Path) -> None:

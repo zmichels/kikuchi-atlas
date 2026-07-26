@@ -5,10 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import stat
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Mapping
 
 import yaml
 
@@ -168,8 +170,11 @@ class ProductPackage:
     product_id: str
     registry_id: str
     source_commit: str
-    tracked_references: dict[str, str]
+    tracked_references: Mapping[str, str]
     files: tuple[PackageFile, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "tracked_references", MappingProxyType(dict(self.tracked_references)))
 
     @property
     def package_sha256(self) -> str:
@@ -178,7 +183,7 @@ class ProductPackage:
             "product_id": self.product_id,
             "registry_id": self.registry_id,
             "source_commit": self.source_commit,
-            "tracked_references": self.tracked_references,
+            "tracked_references": dict(self.tracked_references),
             "files": [
                 {
                     "path": item.relative_path.as_posix(),
@@ -201,7 +206,14 @@ class PhasePackage:
     phase_slug: str
     source_record: str
     product_ids: tuple[str, ...]
-    manifest_sha256_by_product: dict[str, str]
+    manifest_sha256_by_product: Mapping[str, str]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "manifest_sha256_by_product",
+            MappingProxyType(dict(self.manifest_sha256_by_product)),
+        )
 
 
 def _package_file(value: object) -> PackageFile:
@@ -238,6 +250,8 @@ def _package_file(value: object) -> PackageFile:
 def load_product_package(path: str | Path) -> ProductPackage:
     """Parse a product manifest into an immutable package contract."""
     manifest_path = _manifest_path(path)
+    if manifest_path.name != "product-package.yml":
+        raise ValueError("product manifest filename must be product-package.yml")
     raw = _mapping(_read_yaml(manifest_path, "product manifest"), _PRODUCT_FIELDS, "product manifest")
     if raw["schema_version"] != 1:
         raise ValueError("unsupported product package schema")
@@ -291,12 +305,40 @@ def validate_product_package(path: str | Path) -> ProductPackage:
             raise ValueError(f"byte-count mismatch for package file {item.relative_path}")
         if sha256_file(file_path) != item.sha256:
             raise ValueError(f"SHA-256 mismatch for package file {item.relative_path}")
+    _validate_role_payload_inventory(package)
     return package
+
+
+def _validate_role_payload_inventory(package: ProductPackage) -> None:
+    package_root = package.manifest_path.parent
+    declared_paths = {item.relative_path for item in package.files}
+    for directory in _ROLE_DIRECTORIES.values():
+        role_root = package_root / directory
+        if not role_root.exists():
+            continue
+        if role_root.is_symlink():
+            raise ValueError(f"package role directory {directory} must not be a symlink")
+        for root, directories, filenames in os.walk(role_root, followlinks=False):
+            current = Path(root)
+            for name in directories:
+                if (current / name).is_symlink():
+                    raise ValueError(f"package role directory {directory} must not traverse a symlink")
+            for name in filenames:
+                payload = current / name
+                if payload.is_symlink():
+                    raise ValueError(f"package file {payload.relative_to(package_root)} must not be a symlink")
+                if not payload.is_file():
+                    raise ValueError(f"package file {payload.relative_to(package_root)} must be a regular file")
+                relative_path = PurePosixPath(payload.relative_to(package_root).as_posix())
+                if relative_path not in declared_paths:
+                    raise ValueError(f"unmanifested payload: {relative_path}")
 
 
 def load_phase_package(path: str | Path) -> PhasePackage:
     """Parse a phase package manifest and enforce its product-reference shape."""
     manifest_path = _manifest_path(path)
+    if manifest_path.name != "phase-package.yml":
+        raise ValueError("phase manifest filename must be phase-package.yml")
     raw = _mapping(_read_yaml(manifest_path, "phase manifest"), _PHASE_FIELDS, "phase manifest")
     if raw["schema_version"] != 1:
         raise ValueError("unsupported phase package schema")
