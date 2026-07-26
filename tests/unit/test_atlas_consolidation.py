@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, timezone
+import importlib.util
+import json
 from pathlib import Path, PurePosixPath
 import subprocess
 import sys
@@ -21,6 +24,12 @@ from kikuchi_lab.atlas.packages import validate_product_package
 
 
 ROOT = Path(__file__).resolve().parents[2]
+VERIFICATION_TAG = "atlas-gallery-web-0.2.0-draft.2"
+VERIFICATION_RUN_ID = 30193991683
+VERIFICATION_SITE_URL = "https://zmichels.github.io/kikuchi-atlas/"
+VERIFICATION_ZIP_SHA256 = (
+    "d32d21494ae2b9b078d3e59dee7dd241c8474914ade76db7226cbb410875a514"
+)
 
 
 @pytest.fixture
@@ -154,6 +163,190 @@ def _write_fixture_ledger(fixture_repo: Path) -> Path:
     ledger_path = fixture_repo / "docs/atlas/ATLAS_MIGRATION.yml"
     write_migration_ledger(_build_fixture_ledger(fixture_repo), ledger_path)
     return ledger_path
+
+
+def _load_consolidation_cli():
+    script = ROOT / "scripts/consolidate_atlas_products.py"
+    spec = importlib.util.spec_from_file_location("_atlas_consolidation_cli", script)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _verification_cli_args(output: Path) -> list[str]:
+    return [
+        "record-github-verification",
+        "--output",
+        str(output),
+        "--release-tag",
+        VERIFICATION_TAG,
+        "--workflow-run-id",
+        str(VERIFICATION_RUN_ID),
+        "--workflow-conclusion",
+        "success",
+        "--site-url",
+        VERIFICATION_SITE_URL,
+        "--phase-count",
+        "12",
+        "--product-count",
+        "125",
+        "--zip-sha256",
+        VERIFICATION_ZIP_SHA256,
+    ]
+
+
+def _verification_kwargs(output: Path, repository_root: Path) -> dict[str, object]:
+    return {
+        "output_path": output,
+        "repository_root": repository_root,
+        "release_tag": VERIFICATION_TAG,
+        "workflow_run_id": VERIFICATION_RUN_ID,
+        "workflow_conclusion": "success",
+        "site_url": VERIFICATION_SITE_URL,
+        "phase_count": 12,
+        "product_count": 125,
+        "zip_sha256": VERIFICATION_ZIP_SHA256,
+    }
+
+
+def test_record_github_verification_cli_writes_exact_atomic_record(
+    fixture_repo: Path,
+) -> None:
+    output = fixture_repo / "local/atlas/github-pages-verification.json"
+
+    result = _load_consolidation_cli().main(
+        _verification_cli_args(Path("local/atlas/github-pages-verification.json")),
+        repository_root=fixture_repo,
+    )
+
+    assert result == 0
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert set(payload) == {
+        "schema_version",
+        "observed_at",
+        "release_tag",
+        "workflow_run_id",
+        "workflow_conclusion",
+        "site_url",
+        "phase_count",
+        "product_count",
+        "zip_sha256",
+    }
+    assert payload == {
+        "schema_version": 1,
+        "observed_at": payload["observed_at"],
+        "release_tag": VERIFICATION_TAG,
+        "workflow_run_id": VERIFICATION_RUN_ID,
+        "workflow_conclusion": "success",
+        "site_url": VERIFICATION_SITE_URL,
+        "phase_count": 12,
+        "product_count": 125,
+        "zip_sha256": VERIFICATION_ZIP_SHA256,
+    }
+    observed_at = datetime.fromisoformat(payload["observed_at"].replace("Z", "+00:00"))
+    assert observed_at.tzinfo == timezone.utc
+    assert not output.with_name(output.name + ".partial").exists()
+
+
+def test_record_github_verification_normalizes_uppercase_digest(
+    fixture_repo: Path,
+) -> None:
+    output = fixture_repo / "local/atlas/github-pages-verification.json"
+    kwargs = _verification_kwargs(output, fixture_repo)
+    kwargs["zip_sha256"] = VERIFICATION_ZIP_SHA256.upper()
+
+    result = consolidation.record_github_pages_verification(**kwargs)
+
+    assert result.zip_sha256 == VERIFICATION_ZIP_SHA256
+    assert json.loads(output.read_text(encoding="utf-8"))["zip_sha256"] == (
+        VERIFICATION_ZIP_SHA256
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("workflow_conclusion", "failure", "conclusion"),
+        ("workflow_run_id", 0, "run ID"),
+        ("workflow_run_id", "30193991683", "run ID"),
+        ("phase_count", 11, "12 phases"),
+        ("product_count", 124, "125 products"),
+        ("release_tag", "", "release tag"),
+        ("release_tag", "atlas-gallery-web-0.2.0", "release tag"),
+        ("zip_sha256", "g" * 64, "SHA-256"),
+        ("zip_sha256", "a" * 63, "SHA-256"),
+        ("site_url", "http://zmichels.github.io/kikuchi-atlas/", "site URL"),
+        ("site_url", "https://example.com/kikuchi-atlas/", "site URL"),
+    ),
+)
+def test_record_github_verification_rejects_invalid_observation_without_debris(
+    fixture_repo: Path,
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    output = fixture_repo / "local/atlas/github-pages-verification.json"
+    kwargs = _verification_kwargs(output, fixture_repo)
+    kwargs[field] = value
+
+    with pytest.raises(ValueError, match=message):
+        consolidation.record_github_pages_verification(**kwargs)
+
+    assert not output.exists()
+    assert not output.with_name(output.name + ".partial").exists()
+
+
+def test_record_github_verification_refuses_symlink_output(
+    fixture_repo: Path,
+) -> None:
+    output = fixture_repo / "local/atlas/github-pages-verification.json"
+    output.parent.mkdir(parents=True)
+    target = fixture_repo / "outside.json"
+    target.write_text('{"preserve": true}\n', encoding="utf-8")
+    output.symlink_to(target)
+
+    with pytest.raises(ValueError, match="symlink"):
+        consolidation.record_github_pages_verification(
+            **_verification_kwargs(output, fixture_repo)
+        )
+
+    assert output.is_symlink()
+    assert json.loads(target.read_text(encoding="utf-8")) == {"preserve": True}
+    assert not output.with_name(output.name + ".partial").exists()
+
+
+def test_record_github_verification_refuses_output_outside_local_atlas(
+    fixture_repo: Path,
+) -> None:
+    output = fixture_repo / "outside.json"
+
+    with pytest.raises(ValueError, match="local/atlas"):
+        consolidation.record_github_pages_verification(
+            **_verification_kwargs(output, fixture_repo)
+        )
+
+    assert not output.exists()
+    assert not output.with_name(output.name + ".partial").exists()
+
+
+def test_record_github_verification_refuses_symlinked_local_atlas_root(
+    fixture_repo: Path,
+) -> None:
+    target = fixture_repo / "redirected-atlas"
+    target.mkdir()
+    safe_root = fixture_repo / "local/atlas"
+    safe_root.symlink_to(target, target_is_directory=True)
+    output = safe_root / "github-pages-verification.json"
+
+    with pytest.raises(ValueError, match="local/atlas.*symlink"):
+        consolidation.record_github_pages_verification(
+            **_verification_kwargs(output, fixture_repo)
+        )
+
+    assert not (target / output.name).exists()
+    assert not (target / f"{output.name}.partial").exists()
 
 
 def test_plan_combines_registry_products_and_three_intake_products(fixture_repo: Path) -> None:
