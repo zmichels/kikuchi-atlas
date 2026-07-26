@@ -25,6 +25,9 @@ def test_product_catalog_has_unique_static_entries_and_tracked_inputs() -> None:
         "forsterite-reflector-ridge-globe",
         "forsterite-intensity-relief-globe",
         "five-phase-standard-vector-family",
+        "quartz-direct-reflector-artist-master-x-axis",
+        "quartz-near-depth-artist-master-identity-60fps",
+        "quartz-near-depth-artist-master-oblique-17-31-43-60fps",
         "five-phase-orientation-gallery",
     }
     for entry in entries:

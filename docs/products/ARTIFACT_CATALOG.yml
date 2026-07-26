@@ -78,6 +78,33 @@ entries:
     entrypoint: scripts/render_phase_art_templates.py
     state: local-published
 
+  - id: quartz-direct-reflector-artist-master-x-axis
+    tier: direct-reflector-art
+    phase: quartz
+    artifact_path: local/phase-general-direct-reflector-art/exports/quartz-x-axis-rotation-4k-24fps-24s-v1
+    files: [manifest.json, preview.png, quartz-x-axis-rotation-artist-master.mov, quartz-x-axis-rotation-viewing-copy.mp4]
+    recipe: recipes/reflectors/quartz-art-bands.yml
+    entrypoint: scripts/render_direct_reflector_rotation.py
+    state: local-published
+
+  - id: quartz-near-depth-artist-master-identity-60fps
+    tier: retained-near-depth-field
+    phase: quartz
+    artifact_path: local/idealized-near-depth-rotation/quartz-identity-2k-60fps-24s-v1
+    files: [manifest.json, preview.png, quartz-near-depth-identity-60fps-x-axis-rotation-artist-master.mov, quartz-near-depth-identity-60fps-x-axis-rotation-viewing-copy.mp4]
+    recipe: recipes/presentation/quartz-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    state: local-published
+
+  - id: quartz-near-depth-artist-master-oblique-17-31-43-60fps
+    tier: retained-near-depth-field
+    phase: quartz
+    artifact_path: local/idealized-near-depth-rotation/quartz-oblique-17-31-43-2k-60fps-24s-v1
+    files: [manifest.json, preview.png, quartz-near-depth-oblique-17-31-43-60fps-x-axis-rotation-artist-master.mov, quartz-near-depth-oblique-17-31-43-60fps-x-axis-rotation-viewing-copy.mp4]
+    recipe: recipes/presentation/quartz-near-depth-atlas-parity.yml
+    entrypoint: scripts/render_retained_near_depth_rotation.py
+    state: local-published
+
   - id: five-phase-orientation-gallery
     tier: direct-reflector-art
     phase: [forsterite, ice-ih, quartz, zircon, titanite]
